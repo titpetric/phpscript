@@ -8,7 +8,7 @@ import (
 
 // lintReferences reports the reference markers that parse and confer nothing
 // (docs/design.md, "`&` outside `foreach`"): `$a = &$b` binds by value, and
-// `function &f()` returns by value. Both spellings survive the formatter, so
+// `function &f()` returns by value. Both spellings survive the formatter and
 // the linter is where a port hears that the aliasing they promise never
 // happens. The `&` of `foreach ($a as &$v)`, a parameter or a closure `use`
 // never builds these nodes and is not reported.
@@ -62,8 +62,8 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // lintChainedAssign reports `$a = $b = value`, a single statement binding one
 // value to two or more names.
 //
-// PHP copies an array on assignment, so there each name holds its own
-// array. phpscript's arrays are references, so one array sits
+// PHP copies an array on assignment and there each name holds its own
+// array. phpscript's arrays are references and one array sits
 // under both names and a later write through either is visible through the
 // other, a bug
 // the shape hides and never announces.
@@ -93,7 +93,7 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	})
 }
 
-// chainedValue walks to the end of an assignment chain, so the check judges
+// chainedValue walks to the end of an assignment chain and the check judges
 // `$a = $b = $c = '00'` by the `'00'` and not by the assignment that binds
 // `$c`.
 func chainedValue(n *model.AssignExpr) model.Expr {
@@ -110,7 +110,7 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 // isScalarLiteral reports whether the source spells out a value that no name
 // can share: a string, int, float, bool or null literal, an interpolated
 // string, which always evaluates to a string, or a prefix operator over one of
-// those, so a negative number counts. A *model.Lit holding a *model.Array is
+// those and a negative number counts. A *model.Lit holding a *model.Array is
 // not one of these; the parser does not build them, but the check reads the
 // value and never guesses it.
 func isScalarLiteral(e model.Expr) bool {

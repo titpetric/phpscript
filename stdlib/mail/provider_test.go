@@ -13,7 +13,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// Mail leaves the process, so the span records it as external work on the trace
+// Mail leaves the process and the span records it as external work on the trace
 // of the request that sent it, whether the script used mail() or `new Mail`.
 func TestMailRecordsAnExternalSpan(t *testing.T) {
 	t.Parallel()
@@ -97,7 +97,7 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 
 // TestProvider covers what a host builds from its mail block: a fixed set of
 // named servers, keyed by the name a script types. The constructor lowercases
-// a name and fills in a missing port, so a delivery reads a complete
+// a name and fills in a missing port and a delivery reads a complete
 // credential. It copies the map, because configuration layering passes one map
 // to every site that declared no mail block, and a normalisation written into
 // it would reach every one.
@@ -124,7 +124,7 @@ func TestProvider(t *testing.T) {
 	}
 }
 
-// TestProvider_Configured covers the verdict the constructor reads, so `new
+// TestProvider_Configured covers the verdict the constructor reads and `new
 // Mail("marketing")` fails where the delivery would. An empty name is the
 // "default" server, as `new Mail` and mail() both resolve. For a name nobody
 // configured, the error carries the name the call passes and says nothing
@@ -156,7 +156,7 @@ func TestProvider_Configured(t *testing.T) {
 
 // TestProvider_Send covers the delivery path: a name resolves to a credential,
 // the credential reaches the transport, and nothing holds it once the call
-// returns. A name nobody configured never reaches the transport, so the
+// returns. A name nobody configured never reaches the transport and the
 // refusal costs no connection.
 func TestProvider_Send(t *testing.T) {
 	t.Parallel()
@@ -185,7 +185,7 @@ func TestProvider_Send(t *testing.T) {
 }
 
 // TestProvider_SendMessage covers a whole message against a replaced
-// transport. A Deliver reads the three parts of a plain-text message, so the
+// transport. A Deliver reads the three parts of a plain-text message and the
 // provider refuses one with an HTML part or a Reply-To before the transport
 // runs; cut down to the text, it would be a message the script did not send.
 func TestProvider_SendMessage(t *testing.T) {
@@ -224,7 +224,7 @@ func TestProvider_SendMessage(t *testing.T) {
 // TestDeliver covers the one function a host replaces to send by a transport
 // that is not SMTP. It reads the credential the name resolved to, with the
 // port already filled in, and the three parts of the message; name resolution
-// and tenant isolation sit above it, so a transport does none of its own.
+// and tenant isolation sit above it and a transport does none of its own.
 func TestDeliver(t *testing.T) {
 	t.Parallel()
 	var (
@@ -253,7 +253,7 @@ func TestDeliver(t *testing.T) {
 
 // TestNewProviderFunc covers the transport swap, the way
 // database.NewDatabaseProvider takes its connector. A host passing nil sends
-// over SMTP, so the zero value of the option is the behaviour of a host that
+// over SMTP and the zero value of the option is the behaviour of a host that
 // said nothing about transport: the dial refused by a port nobody listens on
 // carries the SMTP path's own wording.
 func TestNewProviderFunc(t *testing.T) {

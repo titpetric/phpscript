@@ -81,11 +81,11 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("str_starts_with", phpStrStartsWith)
 	// str_ends_with reports whether $haystack ends with $needle.
 	rt.RegisterFunc("str_ends_with", phpStrEndsWith)
-	// strrev returns $string with its bytes in reverse order, so a multi-byte
+	// strrev returns $string with its bytes in reverse order and a multi-byte
 	// character comes out as its bytes in reverse.
 	rt.RegisterFunc("strrev", phpStrrev)
 	// str_split returns $string cut into chunks of $length bytes, the last one
-	// shorter when the string does not divide evenly, so a chunk boundary may
+	// shorter when the string does not divide evenly and a chunk boundary may
 	// fall inside a multi-byte character. An empty string returns an empty
 	// array.
 	rt.RegisterFunc("str_split", phpStrSplit)
@@ -140,7 +140,7 @@ func registerStrings(rt *runner.Runtime) {
 
 // htmlSpecialCharsReplacer holds one Replacer for the whole package: a
 // strings.Replacer compiles a trie over its pairs, and htmlspecialchars runs
-// once per template variable, so constructing it inside the binding paid for
+// once per template variable and constructing it inside the binding paid for
 // that trie on every call.
 var htmlSpecialCharsReplacer = strings.NewReplacer(
 	"&", "&amp;",
@@ -156,7 +156,7 @@ var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 // phpCRC32 checksums a string without the []byte(str) conversion the previous
 // implementation paid on every call. Escape analysis confirmed the conversion
 // escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
-// argument leaks into the slicing-by-8 and hardware paths, so every crc32()
+// argument leaks into the slicing-by-8 and hardware paths and every crc32()
 // allocated and copied its input. Short strings, every practical use since
 // crc32 keys and etags are short, run the table loop in place with no
 // allocation. Longer ones keep the standard library's implementation, which
@@ -221,7 +221,7 @@ var chrTable = func() [256]string {
 }()
 
 // phpChr returns the byte $codepoint names. PHP reduces the argument modulo
-// 256 and wraps negatives up into 0-255, so chr(256) is chr(0) and chr(-1) is
+// 256 and wraps negatives up into 0-255 and chr(256) is chr(0) and chr(-1) is
 // chr(255).
 func phpChr(codepoint int64) string {
 	c := codepoint % 256
@@ -231,7 +231,7 @@ func phpChr(codepoint int64) string {
 	return chrTable[c]
 }
 
-// phpOrd returns the first byte, not the first rune: PHP's ord is byte-wise, so
+// phpOrd returns the first byte, not the first rune: PHP's ord is byte-wise and
 // a multi-byte character reports its leading byte. An empty string is 0.
 func phpOrd(character string) int64 {
 	if character == "" {

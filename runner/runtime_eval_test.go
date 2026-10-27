@@ -7,7 +7,7 @@ import (
 )
 
 // TestScopeBuiltins covers the names installed per-environment and no entry in
-// the function table. function_exists() and the linter both read that table, so
+// the function table. function_exists() and the linter both read that table and
 // a call to one of these would read as a call to something undefined if the
 // list stayed unpublished.
 func TestScopeBuiltins(t *testing.T) {

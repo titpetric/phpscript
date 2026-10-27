@@ -14,7 +14,7 @@ import (
 // TestWithin covers the containment test a host shares with the allowlist: a
 // server serving a writable directory has to know not to execute the PHP a
 // script may have written into it. The separator is what keeps a sibling out,
-// so a directory whose name starts with a root's name is outside it.
+// and a directory whose name starts with a root's name is outside it.
 func TestWithin(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -36,7 +36,7 @@ func TestWithin(t *testing.T) {
 	}
 }
 
-// TestHostPath covers the mapping a binding in another package calls, so the
+// TestHostPath covers the mapping a binding in another package calls and the
 // file it opens is the file file_get_contents would open for the same
 // spelling. The rule is the runtime's, and every caller joining its answer
 // onto the bound root is what keeps one rule for the whole tree.
@@ -106,8 +106,8 @@ func TestWritableRoots(t *testing.T) {
 		})
 	}
 
-	// An absolute entry grants nothing: the path a script's /srv/shared
-	// resolves to is under the root, so it never lands inside /srv/shared.
+	// An absolute entry grants no access: the path a script's /srv/shared
+	// resolves to is under the root and it never lands inside /srv/shared.
 	if allowed := files.Within(files.HostPath(runner.New(&strings.Builder{}, runner.Options{}), root, "/srv/shared/x"), filepath.FromSlash("/srv/shared")); allowed {
 		t.Error("an absolute writable_paths entry allowed a write")
 	}
@@ -137,7 +137,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterRoot covers what a host binds a project directory with: it
-// replaces whatever root stands before it, so a path a script writes
+// replaces whatever root stands before it and a path a script writes
 // resolves under the directory named last and never under the first.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
@@ -203,7 +203,7 @@ echo "written";`)
 }
 
 // TestWritablePathsThrowsOutsideTheAllowlist pins the refusal and its shape: an
-// exception and no false return, so a script cannot carry on believing
+// exception and no false return and a script cannot carry on believing
 // the write happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 	t.Parallel()
@@ -247,7 +247,7 @@ try {
 }
 
 // Reads are not writes. An allowlist restricts what a script may change, not
-// what it may look at, so the file it cannot overwrite it can still read.
+// what it may look at and the file it cannot overwrite it can still read.
 func TestWritablePathsLeavesReadsAlone(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)

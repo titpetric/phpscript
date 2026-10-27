@@ -55,7 +55,7 @@ func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 //
 // Options.Precompile makes the include cache answer for entrypoints as well as
 // for includes: the runtime parses the file once for the life of the process,
-// so each request reads back the bytecode and the compiled expressions keyed by
+// and each request reads back the bytecode and the compiled expressions keyed by
 // that AST and builds neither again. Without it every load reads and parses the
 // file again, as a CLI run and an unconfigured host do.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
@@ -82,7 +82,7 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 
 // loadResolved reads and parses a path the caller has already put through
 // resolveFSPath. Resolution happens once per include, above the cache lookup,
-// so the cache keys on the file and not on the spelling: after a chdir the
+// and the cache keys on the file and not on the spelling: after a chdir the
 // same "x.php" names a different file, and a cache keyed on the spelling would
 // answer with the previous one.
 func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
@@ -98,11 +98,11 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 	return prog, nil
 }
 
-// runPrelude includes Options.Include ahead of this request's entrypoint, so
+// runPrelude includes Options.Include ahead of this request's entrypoint and
 // the entrypoint and everything it includes see what it declared.
 //
 // runPrelude skips a file that is not there: the option names what to load
-// when the application carries it, so one configuration covers a tree where
+// when the application carries it and one configuration covers a tree where
 // the bootstrap file it names does not exist yet.
 func (rt *Runtime) runPrelude() error {
 	if rt.preludeDone || rt.opts.Include == "" || rt.opts.RootFS == nil {
@@ -241,7 +241,7 @@ func autoloaderKey(callback any) string {
 		}
 		return fmt.Sprintf("static:%v:%v", target, method)
 	}
-	// A closure or a host func has no PHP-visible name, so its code pointer is
+	// A closure or a host func has no PHP-visible name and its code pointer is
 	// the only identity available.
 	if rv := reflect.ValueOf(callback); rv.IsValid() {
 		switch rv.Kind() {
@@ -334,7 +334,7 @@ func cleanFSPath(p string) string {
 }
 
 // clampFSPath cleans p against the root: the clean collapses a ".." that would
-// climb above the root, so "a/../../etc/passwd" names etc/passwd inside it.
+// climb above the root and "a/../../etc/passwd" names etc/passwd inside it.
 // Cleaning happens against "/" first, which does the collapsing; path.Clean on
 // its own keeps a leading "..".
 func clampFSPath(p string) string {
@@ -346,7 +346,7 @@ func clampFSPath(p string) string {
 }
 
 // rootPath spells an fs.FS path the way a script reads it. The source
-// filesystem sits at "/", so a name below it starts from there, and that is
+// filesystem sits at "/" and a name below it starts from there, and that is
 // what __FILE__, __DIR__ and getcwd() answer with.
 //
 // The point of the leading slash is that resolveFSPath leaves it alone: a path
@@ -367,7 +367,7 @@ func rootPath(p string) string {
 //
 // A path written from the root passes through as it stands; anything else is
 // relative to the working directory. clampFSPath cleans both against the root,
-// so neither can climb out of it.
+// and neither can climb out of it.
 func (rt *Runtime) resolveFSPath(p string) string {
 	slash := filepath.ToSlash(p)
 	if strings.HasPrefix(slash, "/") {
@@ -376,7 +376,7 @@ func (rt *Runtime) resolveFSPath(p string) string {
 	if rt.opts.WorkDir == "" || rt.opts.WorkDir == "." {
 		return clampFSPath(slash)
 	}
-	// The join happens before the clamp and never after, so a ".." climbs out
+	// The join happens before the clamp and never after and a ".." climbs out
 	// of the working directory the way it would on a real filesystem and stops
 	// at the root, not at the directory the script happens to be in.
 	return clampFSPath(rt.opts.WorkDir + "/" + slash)

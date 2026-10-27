@@ -6,7 +6,7 @@ import (
 )
 
 // TestGenerate covers the wiring the listing depends on. The generator reads a
-// runtime, so what it names is what a script can call: an
+// runtime, and what it names is what a script can call: an
 // installer left out of generate publishes a reference with a whole area
 // missing, and the committed docs/reference/extensions/implemented-apis.md
 // would read as though those functions do not exist.

@@ -6,7 +6,7 @@ import (
 
 // TestASCIICaseFolding covers the two folds this package writes itself rather
 // than taking from strings: php's strtolower and strtoupper fold the ASCII
-// range alone, so a byte over 0x7f travels unchanged and a UTF-8 sequence
+// range alone and a byte over 0x7f travels unchanged and a UTF-8 sequence
 // survives a round trip through either.
 func TestASCIICaseFolding(t *testing.T) {
 	t.Parallel()
@@ -30,7 +30,7 @@ func TestASCIICaseFolding(t *testing.T) {
 }
 
 // TestUcwordsSeparators covers ucwords(): the default separators are the five
-// whitespace bytes, and a call naming its own replaces them, so a hyphen
+// whitespace bytes, and a call naming its own replaces them and a hyphen
 // capitalises only where the call names it.
 func TestUcwordsSeparators(t *testing.T) {
 	t.Parallel()

@@ -19,7 +19,7 @@ const benchPassword = "correct horse battery staple"
 
 // TestParamsFrom covers the ($algo, $options) tail both hashing functions
 // take: the algorithm decides which option keys apply and what an absent key
-// falls back to, so paramsFrom cannot read the two independently.
+// falls back to and paramsFrom cannot read the two independently.
 func TestParamsFrom(t *testing.T) {
 	t.Parallel()
 	options := func(pairs ...any) *model.Array {
@@ -204,7 +204,7 @@ func BenchmarkPasswordHash(b *testing.B) {
 
 // BenchmarkPasswordVerify prices password_verify() against a stored hash. The
 // derivation is the one password_hash runs, at the work factors the hash
-// records, so a login costs what the registration cost. Lowering the cost
+// records and a login costs what the registration cost. Lowering the cost
 // leaves every stored hash at the cost it carries.
 func BenchmarkPasswordVerify(b *testing.B) {
 	stored := []params{
@@ -245,7 +245,7 @@ func BenchmarkPasswordVerify(b *testing.B) {
 // derivation can turn any of them into a match: the first three carry no salt
 // and no tag, the fourth is bcrypt's 1997 spelling with no revision marker,
 // which php's crypt refuses, and the last is argon2 1.0, which derives a
-// different tag from the same parameters, so argon2Decode refuses it as
+// different tag from the same parameters and argon2Decode refuses it as
 // unreadable.
 var refusedHashes = []struct{ name, hash string }{
 	{"empty", ""},
@@ -260,7 +260,7 @@ var refusedHashes = []struct{ name, hash string }{
 //
 // A decoy derivation ahead of the refusal costs 214 ms of one core for
 // password_verify("x", ""), where php returns in 31 ns. 4000 refusals measure
-// 804 us. One derivation at cost 4, the cheapest bcrypt accepts, is 898 us, so
+// 804 us. One derivation at cost 4, the cheapest bcrypt accepts, is 898 us and
 // a 200 ms ceiling fails on a decoy at any cost and leaves two orders of
 // headroom over the measurement.
 //
@@ -311,11 +311,11 @@ func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 // BenchmarkPasswordVerifyThroughput answers how many logins a host serves,
 // which is not one derivation divided into the core count.
 //
-// A bcrypt derivation holds a core and 5 KiB, so two of them run at twice the
+// A bcrypt derivation holds a core and 5 KiB and two of them run at twice the
 // rate of one. An argon2id derivation holds its whole memory_cost and streams
-// it, so two of them contend for memory bandwidth and the rate falls short of
+// it and two of them contend for memory bandwidth and the rate falls short of
 // twice. Dividing BenchmarkPasswordVerify's sec/op into the core count reports
-// the bcrypt case correctly and overstates the argon2 one, so this row
+// the bcrypt case correctly and overstates the argon2 one and this row
 // measures the rate: under RunParallel, sec/op is wall clock per completed
 // derivation across the cores in play, and logins per second is its reciprocal.
 //

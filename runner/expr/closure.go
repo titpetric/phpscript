@@ -17,7 +17,7 @@ type Env struct {
 	// Scratch is the argument arena scratchCall boxes into, growing across
 	// evaluations and reset when the environment goes back to its pool. It
 	// is stack-disciplined: a call pushes its arguments, borrows the region
-	// for the call, and pops it when the call returns, so the compiler puts
+	// for the call, and pops it when the call returns and the compiler puts
 	// only the helpers that never keep their argument slice onto it.
 	Scratch []any
 }
@@ -46,7 +46,7 @@ type Helpers struct {
 	Negate     func(v any) any
 
 	// PanicError converts a recovered panic into the error the runner's own
-	// call boundary would have produced, so a host panic stays catchable as
+	// call boundary would have produced and a host panic stays catchable as
 	// the same PHP exception on both engines.
 	PanicError func(recovered any) error
 

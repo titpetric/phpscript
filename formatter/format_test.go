@@ -183,7 +183,7 @@ func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
 
 // A directory of PHP holds code phpscript does not support yet. Formatting the
 // rest serves an author better than stopping at the first file that does not
-// parse, so the formatter reports an unreadable file and leaves it untouched.
+// parse and the formatter reports an unreadable file and leaves it untouched.
 func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

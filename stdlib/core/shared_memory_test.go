@@ -93,7 +93,7 @@ func TestSharedMemoryInfo(t *testing.T) {
 }
 
 // TestSharedMemory_Get covers reading a value back, and what a key nothing set
-// reads as. The binding has one return value and no found flag, so a miss is
+// reads as. The binding has one return value and no found flag and a miss is
 // the empty string; Has is the separate question.
 func TestSharedMemory_Get(t *testing.T) {
 	t.Parallel()
@@ -116,7 +116,7 @@ func TestSharedMemory_Get(t *testing.T) {
 }
 
 // TestSharedMemory_Count covers reading a counter without moving it. Count
-// answers a decimal string where Incr answers the int, so a template prints the
+// answers a decimal string where Incr answers the int and a template prints the
 // figure with no cast, and a counter nothing touched reads as "0".
 func TestSharedMemory_Count(t *testing.T) {
 	t.Parallel()
@@ -138,7 +138,7 @@ func TestSharedMemory_Count(t *testing.T) {
 }
 
 // TestSharedMemory_Delete covers removing a name and reporting whether the
-// store held it. One name holds a value or a counter, so the call clears it
+// store held it. One name holds a value or a counter and the call clears it
 // from the values, then from the counters.
 func TestSharedMemory_Delete(t *testing.T) {
 	t.Parallel()
@@ -167,7 +167,7 @@ func TestSharedMemory_Delete(t *testing.T) {
 }
 
 // TestSharedMemory_Has covers the one question Get cannot answer: a key set to
-// the empty string reads the same as a key nothing set, so presence is its own
+// the empty string reads the same as a key nothing set and presence is its own
 // call. A counter counts as present.
 func TestSharedMemory_Has(t *testing.T) {
 	t.Parallel()
@@ -190,7 +190,7 @@ func TestSharedMemory_Has(t *testing.T) {
 }
 
 // TestSharedMemory_Clear covers emptying the store through the same pointer a
-// host bound into its context, so every request holding the store sees the
+// host bound into its context and every request holding the store sees the
 // reset.
 func TestSharedMemory_Clear(t *testing.T) {
 	t.Parallel()

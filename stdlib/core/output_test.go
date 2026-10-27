@@ -6,10 +6,10 @@ import (
 
 // TestVarExport covers the source var_export writes, which has to read back as
 // the value behind it. The single-quoted string escapes the quote and the
-// backslash and nothing else, and a whole float keeps its ".0", because
+// backslash alone, and a whole float keeps its ".0", because
 // var_export(1.0) writing "1" would read back as an int.
 //
-// A nested array breaks after the arrow and indents two, so the inner "array ("
+// A nested array breaks after the arrow and indents two and the inner "array ("
 // sits on its own line under the key.
 func TestVarExport(t *testing.T) {
 	t.Parallel()
@@ -36,7 +36,7 @@ echo "\n";`)
 }
 
 // TestVarExportReturn covers the second argument: with $return true
-// var_export answers the source and writes nothing, so a caller nests one
+// var_export answers the source and writes nothing and a caller nests one
 // export inside another string.
 func TestVarExportReturn(t *testing.T) {
 	t.Parallel()
@@ -52,7 +52,7 @@ echo "[", $source, "]";`)
 
 // TestVarDump covers the annotation var_dump carries: the type, the element
 // count of a composite, and the length of a string in bytes. A two-byte é
-// makes string(6) out of five characters, so a script sees the encoding it
+// makes string(6) out of five characters and a script sees the encoding it
 // actually holds.
 func TestVarDump(t *testing.T) {
 	t.Parallel()
@@ -74,7 +74,7 @@ var_dump([1 => "a", "k" => [true]]);`)
 // line php leaves after a nested array.
 //
 // A bare scalar has no lines of its own, and the float carries precision=14
-// digits where var_dump passes the round-tripping ones, so 0.1+0.2 prints 0.3
+// digits where var_dump passes the round-tripping ones and 0.1+0.2 prints 0.3
 // here and 0.30000000000000004 there.
 func TestPrintR(t *testing.T) {
 	t.Parallel()

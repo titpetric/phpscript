@@ -1,0 +1,13 @@
+---
+extends: existence
+message: "'%s' leans on an absolute. Name the thing that does not happen."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\bnothing (?:more|else|at all)\b'
+  - '\b(?:there|here) (?:is|was|are) nothing\b'
+  - '\bnothing (?:to|but) (?:do|say|see|it)\b'
+  - '(?:^|[.!?]\s+)nothing\b'
+  - '\bnothing:\s'
+  - ':\s*nothing\b'

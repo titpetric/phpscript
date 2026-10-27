@@ -19,7 +19,7 @@ func init() {
 // registerArraySort adds the half of PHP's sort family that keeps the
 // key-to-value association: ksort/krsort order by key, asort/arsort by value,
 // uasort/uksort by a script comparator. The other half (sort, rsort, usort)
-// lives in arrays.go and throws the keys away, so they can share
+// lives in arrays.go and throws the keys away and they can share
 // sortValues and these cannot.
 func registerArraySort(rt *runner.Runtime) {
 	// ksort sorts $array in place by key ascending with PHP's default
@@ -80,7 +80,7 @@ func phpArsort(array any) (bool, error) {
 
 // callbackLess adapts a script comparator (func(...any) (any, error), as
 // rt.Callable returns it) to the boolean sort.SliceStable declares, the same
-// way phpUsort does. It reads a comparator that raises as "not less", so a
+// way phpUsort does. It reads a comparator that raises as "not less" and a
 // failing callback leaves the order it saw and aborts nothing mid-sort.
 func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	r, err := fn(x, y)
@@ -102,7 +102,7 @@ func callbackLess(fn func(...any) (any, error), x, y any) bool {
 // slice a binding such as explode() or array_keys() returns. sortValues can
 // sort a Go slice in place through its backing array because it only permutes
 // values; a re-keying sort has nowhere to put the keys, and a Go slice has no
-// keys to preserve in the first place, so sorting one here would either be a
+// keys to preserve in the first place and sorting one here would either be a
 // plain sort() under another name or a mutation of a copy the script cannot
 // observe. arrayTarget is the established precedent (array_splice, array_shift)
 // and this follows it. Cast with (array) or build the value with array() first.
@@ -174,7 +174,7 @@ func sortLess(x, y any) bool {
 
 // sortValues reorders a list in place using less. A *model.Array is rebuilt as
 // a 0-indexed list; it sorts a native Go slice through the backing array the
-// script shares, so both change in place as PHP expects.
+// script shares and both change in place as PHP expects.
 func sortValues(a any, less func(x, y any) bool) bool {
 	switch target := a.(type) {
 	case nil:
@@ -199,7 +199,7 @@ func sortValues(a any, less func(x, y any) bool) bool {
 	if rv.Kind() != reflect.Slice {
 		return false
 	}
-	// rv indexes the same backing array sort.SliceStable swaps, so reads stay
+	// rv indexes the same backing array sort.SliceStable swaps and reads stay
 	// consistent with the ongoing sort.
 	sort.SliceStable(a, func(i, j int) bool {
 		return less(rv.Index(i).Interface(), rv.Index(j).Interface())

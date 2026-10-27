@@ -7,7 +7,7 @@
 //
 // The examples are markdown, one file per command, embedded from this
 // directory. A terminal gets them through the same box-drawing table the rest
-// of the tool prints; anything else gets the markdown back byte for byte, so
+// of the tool prints; anything else gets the markdown back byte for byte and
 // `phpscript --help > help.md` is a document and not a screenshot of one.
 package helpdocs
 
@@ -37,7 +37,7 @@ type Command struct {
 }
 
 // Examples returns the rendered example document for one command, or the empty
-// string when it has none. A command's cli.Usage hook returns it, so
+// string when it has none. A command's cli.Usage hook returns it and
 // `phpscript test --help` carries the same table the long help does.
 func Examples(name string, markdown bool) string {
 	src, err := fs.ReadFile(docs, "example."+name+".md")
@@ -165,7 +165,7 @@ func isRow(lines []string, i int) bool {
 }
 
 // isSeparator reports whether the line is a table's header rule: cells holding
-// nothing but dashes and the alignment colons.
+// only dashes and the alignment colons.
 func isSeparator(lines []string, i int) bool {
 	if !isRow(lines, i) {
 		return false

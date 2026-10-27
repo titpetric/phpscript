@@ -10,10 +10,10 @@ import (
 
 // TestMailBindingsAreContributed covers the wiring the package init does. A
 // binding package registers its installer through runner.RegisterBinding, and
-// stdlib.Register runs every contributed installer, so importing the package
+// stdlib.Register runs every contributed installer and importing the package
 // is the whole of what a host does to put mail() and the Mail class within
 // reach of a script. Both resolve through the runtime's provider, and through
-// the package default when a host configured none, so a runtime set up with no
+// the package default when a host configured none and a runtime set up with no
 // mail block still answers function_exists("mail").
 func TestMailBindingsAreContributed(t *testing.T) {
 	t.Parallel()

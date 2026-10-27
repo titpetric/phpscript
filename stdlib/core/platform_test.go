@@ -6,9 +6,9 @@ import (
 )
 
 // TestStrtr covers both spellings of strtr. Three arguments replace bytes
-// positionally and stop at the shorter of the two tables, so a $to shorter
+// positionally and stop at the shorter of the two tables and a $to shorter
 // than $from leaves the uncovered bytes alone. Two arguments replace
-// substrings, longest key first, so the result is independent of the order the
+// substrings, longest key first and the result is independent of the order the
 // pairs appear in and a replacement never rewrites its own output:
 // ["a" => "b", "b" => "c"] over "abc" is "bcc" and never "ccc".
 func TestStrtr(t *testing.T) {
@@ -27,7 +27,7 @@ echo strtr("hello", "abc", "x"), "\n";`)
 }
 
 // TestStrrpos covers the offset argument, which means two different things by
-// its sign. A positive offset skips that many leading bytes, so the search
+// its sign. A positive offset skips that many leading bytes and the search
 // runs over the rest. A negative one caps where the match may start, counted
 // back from the end, and the result is still a position in the whole string:
 // -5 over "hello world" finds the "o" at 4 and not the one at 7.
@@ -47,9 +47,9 @@ var_dump(strrpos("hello world", "o"), strrpos("hello world", "o", 5), strrpos("h
 
 // TestFilterVar covers the three validators this runtime implements, which
 // each answer the typed value or false and never the input: "42" validates to
-// the int 42, so a caller can use the result directly. filter_var trims the
-// value first, and a float spelling fails the integer validator and truncates
-// nothing.
+// the int 42 and a caller can use the result directly. filter_var trims the
+// value first, and a float spelling fails the integer validator and leaves the
+// value whole.
 //
 // An unknown filter passes the value through, as FILTER_DEFAULT does.
 func TestFilterVar(t *testing.T) {
@@ -74,7 +74,7 @@ var_dump(filter_var("passed through"));`)
 
 // TestDefineDefinedConstant covers the three functions a script defines its own
 // constants through. define answers true, defined answers for a name nothing
-// defines, and constant reads one back by name, so a script reaches a constant
+// defines, and constant reads one back by name and a script reaches a constant
 // whose name it computed.
 func TestDefineDefinedConstant(t *testing.T) {
 	t.Parallel()
@@ -112,7 +112,7 @@ var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
 // features it may use. The three spellings have to agree, because a library
 // gates on whichever one it learned.
 //
-// The php binary the fixture matrix runs beside carries its own version, so
+// The php binary the fixture matrix runs beside carries its own version and
 // this test states the value and settles nothing by running php.
 func TestPlatformVersion(t *testing.T) {
 	t.Parallel()
@@ -128,7 +128,7 @@ var_dump(phpversion(), zend_version());`)
 }
 
 // TestPlatformOS covers PHP_OS and PHP_OS_FAMILY, which carry php's spelling
-// of the host and not Go's: php reads the uname system name, so linux is
+// of the host and not Go's: php reads the uname system name and linux is
 // "Linux". The family is the coarser grouping a script branches on, and the
 // two agree on every platform this runs on except the BSDs and Solaris.
 func TestPlatformOS(t *testing.T) {
@@ -148,11 +148,11 @@ var_dump(PHP_OS, PHP_OS_FAMILY, php_uname());`)
 // TestIniStubs covers the configuration surface, which answers the same way
 // for every directive because this runtime has no php.ini to read. Reporting
 // an unset directive is what php does for a name it does not know, and
-// library code reads it as "this extension is not configured", so a probe for
+// library code reads it as "this extension is not configured" and a probe for
 // APCu or an opcache finds nothing and falls back.
 //
 // headers_sent is false for the length of a script because the runtime stages
-// response headers and writes them after it finishes, so nothing leaves while
+// response headers and writes them after it finishes and nothing leaves while
 // php is still running.
 func TestIniStubs(t *testing.T) {
 	t.Parallel()

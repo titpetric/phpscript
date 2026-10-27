@@ -22,7 +22,7 @@ func scriptArray(values ...any) *model.Array {
 // A second Go implementation makes a poor oracle: rendering a float and an
 // unknown type with fmt's %v turns the shortest round-tripping float form and
 // Go's struct dump into the expected answers. A php name is a
-// behaviour claim settled by php, so the want column is php's output for the
+// behaviour claim settled by php and the want column is php's output for the
 // same list, pasted.
 func TestString(t *testing.T) {
 	t.Parallel()
@@ -67,7 +67,7 @@ func TestString(t *testing.T) {
 
 // TestStringPrecisionMatchesEcho pins the reason the renderer moved here: the
 // runner rendered a float at php's precision of 14 and this rendered the
-// shortest form that round-trips, so one value printed two ways depending on
+// shortest form that round-trips and one value printed two ways depending on
 // whether it went through echo or through a binding.
 func TestStringPrecisionMatchesEcho(t *testing.T) {
 	t.Parallel()
@@ -91,7 +91,7 @@ func TestStringPrecisionMatchesEcho(t *testing.T) {
 }
 
 // TestStringContextRefusesAnObject pins the one case a string context refuses
-// and a key or a var_dump does not. There is no __toString here, so an object
+// and a key or a var_dump does not. There is no __toString here and an object
 // has no string form at all and php's Error covers the case.
 func TestStringContextRefusesAnObject(t *testing.T) {
 	t.Parallel()
@@ -128,7 +128,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 }
 
 // TestBytes pins the rule the value helpers ask about a []byte: it reads as
-// the string it carries, so a binding returning one returns text and not a
+// the string it carries and a binding returning one returns text and not a
 // list of integers.
 func TestBytes(t *testing.T) {
 	t.Parallel()
@@ -248,7 +248,7 @@ func TestFloat(t *testing.T) {
 
 // TestFloatAgreesWithInt pins the invariant the leadingFloat/leadingInt pair
 // exists for: whatever prefix one of them reads, the other reads the same
-// number, so Int and Float can never disagree about a string.
+// number and Int and Float can never disagree about a string.
 func TestFloatAgreesWithInt(t *testing.T) {
 	t.Parallel()
 	inputs := []string{
@@ -343,7 +343,7 @@ func TestKey(t *testing.T) {
 		{"word", "abc", "abc"},
 		{"empty string", "", ""},
 
-		// Not canonical spellings, so not integer keys.
+		// Not canonical spellings and not integer keys.
 		{"leading zero", "01", "01"},
 		{"leading zeros", "007", "007"},
 		{"zero padded zero", "00", "00"},

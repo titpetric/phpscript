@@ -54,7 +54,7 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// is_executable reports whether $filename has an execute bit set on the
 	// host; a file that exists only in the source filesystem is not
-	// executable, because there is nothing there to run.
+	// executable, because there is no file there to run.
 	rt.RegisterFunc("is_executable", func(filename string) bool {
 		info, err := os.Stat(r.resolve(filename))
 		return err == nil && info.Mode().Perm()&0o111 != 0
@@ -91,7 +91,7 @@ func registerStat(rt *runner.Runtime, r root) {
 	// realpath returns $path written from the root, with . and .. resolved,
 	// or false when nothing is there; php answers a host path, and a runtime
 	// that may serve its scripts out of an embedded tree has none to answer
-	// with, so this answers the spelling getcwd() and __DIR__ use.
+	// with and this answers the spelling getcwd() and __DIR__ use.
 	rt.RegisterFunc("realpath", func(path string) any {
 		if _, ok := r.stat(path); !ok {
 			return false
@@ -124,7 +124,7 @@ func registerStat(rt *runner.Runtime, r root) {
 	// pathinfo returns the parts of $path as an array of dirname, basename,
 	// extension and filename; a path with no dot carries no extension key,
 	// which php leaves out and never empties. It never touches
-	// the filesystem, so it answers about a path that does not exist.
+	// the filesystem and it answers about a path that does not exist.
 	rt.RegisterFunc("pathinfo", func(path string) *model.Array {
 		out := model.NewArraySize(4)
 		out.Set("dirname", stdpath.Dir(strings.TrimRight(path, "/")))

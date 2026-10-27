@@ -109,7 +109,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	if span.Attributes["query_type"] != "select" || span.Attributes["query_comment"] != "userGet" {
 		t.Fatalf("attributes = %+v", span.Attributes)
 	}
-	// The comment stays in the statement, so `show processlist` shows it too.
+	// The comment stays in the statement and `show processlist` shows it too.
 	if span.Attributes["query"] != "/* userGet */ SELECT * FROM user WHERE id = ?" {
 		t.Fatalf("query = %#v", span.Attributes["query"])
 	}
@@ -122,7 +122,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	}
 }
 
-// The CRUD helpers write by definition, so a read-only client refuses them
+// The CRUD helpers write by definition and a read-only client refuses them
 // before it builds a statement. The nil Bridge is the assertion that nothing
 // reached the database: running one would panic.
 func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
@@ -157,7 +157,7 @@ func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
 	}
 }
 
-// Statements reach the database as text, so the boundary reads the text: what
+// Statements reach the database as text and the boundary reads the text: what
 // the statement starts with decides, and a tag in front of it does not.
 func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 	t.Parallel()
@@ -193,7 +193,7 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 	}
 }
 
-// A refused statement never reaches the query log, so the span carrying the
+// A refused statement never reaches the query log and the span carrying the
 // call records the refusal. Otherwise a wrong refusal leaves nothing behind
 // to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
@@ -271,7 +271,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 		t.Fatalf("columns = %#v", columns)
 	}
 
-	// A row is a Go map, so a script adding a column mutates the row the result
+	// A row is a Go map and a script adding a column mutates the row the result
 	// set holds, the same reference semantics the *model.Array copy had.
 	row.(map[string]any)["columns"] = int64(6)
 	if got := rows.([]map[string]any)[0]["columns"]; got != int64(6) {
@@ -281,7 +281,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 
 // TestDatabase_SetID covers the name a constructed client records under. The
 // runtime passes the receiving PHP variable, and every span the client opens
-// carries it, so a trace tells two clients in one request apart.
+// carries it and a trace tells two clients in one request apart.
 func TestDatabase_SetID(t *testing.T) {
 	t.Parallel()
 	database := &Database{}
@@ -299,7 +299,7 @@ func TestDatabase_SetID(t *testing.T) {
 }
 
 // TestDatabase_Connect covers pinning the client to one connection out of the
-// pool. A temporary table and a session variable both live on a connection, so
+// pool. A temporary table and a session variable both live on a connection and
 // a script that creates one reserves the connection first; the reads that
 // follow run on it.
 func TestDatabase_Connect(t *testing.T) {
@@ -319,7 +319,7 @@ func TestDatabase_Connect(t *testing.T) {
 }
 
 // TestDatabase_Close covers releasing the reserved connection. The pool here
-// is one connection wide, so a read after Close is the evidence it went back:
+// is one connection wide and a read after Close is the evidence it went back:
 // a reservation left open would block until the context expired.
 func TestDatabase_Close(t *testing.T) {
 	t.Parallel()
@@ -337,7 +337,7 @@ func TestDatabase_Close(t *testing.T) {
 }
 
 // TestDatabase_Begin covers the span a transaction opens. It stays open until
-// Commit or Rollback ends it, so a transaction reads as one region on the
+// Commit or Rollback ends it and a transaction reads as one region on the
 // trace and no pair of markers a reader has to match up.
 func TestDatabase_Begin(t *testing.T) {
 	t.Parallel()
@@ -358,7 +358,7 @@ func TestDatabase_Begin(t *testing.T) {
 
 // TestDatabase_Commit covers the committed outcome: the row survives the
 // transaction, and Commit renames the span Begin opened for the outcome and
-// ends it, so one span carries the whole transaction.
+// ends it and one span carries the whole transaction.
 func TestDatabase_Commit(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -392,7 +392,7 @@ func TestDatabase_Commit(t *testing.T) {
 }
 
 // TestDatabase_Rollback covers the discarded outcome: the row never lands, and
-// the span Begin opened carries the rollback as its name, so a trace says which
+// the span Begin opened carries the rollback as its name and a trace says which
 // way a transaction ended without a second span to pair with it.
 func TestDatabase_Rollback(t *testing.T) {
 	t.Parallel()
@@ -425,7 +425,7 @@ func TestDatabase_Rollback(t *testing.T) {
 
 // TestDatabase_InsertID covers the key the server generated for the last
 // insert. That key is the one part of an INSERT the statement does not carry,
-// so a script writing a row with an autoincrement key reads the new id here.
+// and a script writing a row with an autoincrement key reads the new id here.
 func TestDatabase_InsertID(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -443,7 +443,7 @@ func TestDatabase_InsertID(t *testing.T) {
 }
 
 // TestDatabase_RowsAffected covers the count of the last write. An UPDATE
-// names a condition and reports how many rows matched it, so a script learns
+// names a condition and reports how many rows matched it and a script learns
 // whether the write landed from this and from nothing in the statement.
 func TestDatabase_RowsAffected(t *testing.T) {
 	t.Parallel()
@@ -462,7 +462,7 @@ func TestDatabase_RowsAffected(t *testing.T) {
 }
 
 // newRecordedTrace returns a context carrying a recording trace, and the trace
-// itself, so a test reads back the spans a call left on it.
+// itself and a test reads back the spans a call left on it.
 func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 	t.Helper()
 
@@ -482,7 +482,7 @@ func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 }
 
 // spanNamed returns the span of one name off a trace. The spans arrive in the
-// order they opened, and a transaction span opens first and ends last, so the
+// order they opened, and a transaction span opens first and ends last and the
 // last span recorded is seldom the one a test is reading.
 func spanNamed(t *testing.T, trace *telemetry.Trace, name string) *telemetry.Span {
 	t.Helper()

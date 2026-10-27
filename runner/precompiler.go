@@ -12,8 +12,8 @@ import (
 
 // Precompiler fills the caches a source tree serves from, before it serves
 // anything. The pass parses every .php file below Root into Includes and
-// compiles it into Exprs, so startup pays once for the parse and the compile a
-// request pays for today. Nothing invalidates an entry afterwards: a reload or
+// compiles it into Exprs and startup pays once for the parse and the compile a
+// request pays for today. No call invalidates an entry afterwards: a reload or
 // a restart takes up an edited file.
 type Precompiler struct {
 	// Root is the application root the walk starts at.
@@ -50,7 +50,7 @@ func (p Precompiler) Run() int {
 	// This measures the cost and estimates nothing. A parsed program is a
 	// graph of nodes with no size of its own to add up, and the number worth
 	// reporting is what the process holds because of the pass. Both reads
-	// follow a collection, so the figure is live heap on each side and never
+	// follow a collection and the figure is live heap on each side and never
 	// whatever the collector has yet to sweep.
 	before := liveHeap()
 	defer func() { p.Includes.Account(liveHeap() - before) }()
@@ -96,7 +96,7 @@ func liveHeap() int64 {
 }
 
 // sources lists the .php files below Root. The walk passes over a directory it
-// cannot read and runs to the end, so one unreadable folder costs its own
+// cannot read and runs to the end and one unreadable folder costs its own
 // files and not the tree.
 func (p Precompiler) sources() []string {
 	var files []string

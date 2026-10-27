@@ -42,7 +42,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	if pattern == "" {
 		return fmt.Errorf("HTTP\\Mux::handle: pattern is required")
 	}
-	// Resolved here, so a handler that cannot run on another runtime is an
+	// Resolved here and a handler that cannot run on another runtime is an
 	// error where the script writes the route, ahead of a 500 on the first
 	// request that reaches it.
 	callable, err := m.rt.AsCallable(handler)
@@ -51,8 +51,8 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	}
 
 	m.mux.HandleFunc(pattern, func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		// A client that has already gone gets no handler at all. Nothing
-		// written now reaches it, and skipping the work is what the check
+		// A client that has already gone gets no handler at all. No write
+		// now reaches it, and skipping the work is what the check
 		// is for.
 		if r.Context().Err() != nil {
 			return
@@ -65,7 +65,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 // answer submits one request to a worker and waits for it.
 func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *nethttp.Request) {
 	// The tracker is the work as well as the wrapper: it lives for the length
-	// of the run already, so submitting it submits no closure. Its Run method
+	// of the run already and submitting it submits no closure. Its Run method
 	// is what the worker calls, and tracker.go holds it.
 	answered := trackers.Get().(*answerTracker)
 	answered.ResponseWriter, answered.wrote, answered.failure = w, false, nil
@@ -75,11 +75,11 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 	ran := m.workers().Submit(r.Context(), answered)
 
 	if !ran {
-		// The client left with the run queued or in flight. Nothing written
-		// now would reach it.
+		// The client left with the run queued or in flight. A write now
+		// would reach no client.
 		//
 		// The tracker is not put back. A run already started notices the
-		// disconnect itself, so the worker may still be inside the handler and
+		// disconnect itself and the worker may still be inside the handler and
 		// still holding this value; returning it here is the one way a free-list
 		// entry could outlive its request and reach a second one. Dropping it
 		// costs an allocation on a path a client has already left.
@@ -92,13 +92,13 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 	if answered.failure != nil && !answered.wrote {
 		nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
 	}
-	// The release last, so nothing above reads a cleared field and no idle
+	// The release last and nothing above reads a cleared field and no idle
 	// free-list entry holds a connection alive.
 	answered.release()
 }
 
 // workers answers the pool this mux runs on, building a default one for a mux
-// nothing called listen() on: a Go host that mounted it serves it concurrently
+// that never called listen(): a Go host that mounted it serves it concurrently
 // too, and the script runs on the runtime that built it.
 func (m *Mux) workers() *runner.Pool {
 	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, 0, nil) })

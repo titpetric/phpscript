@@ -10,7 +10,7 @@ import (
 )
 
 // pexecNames is everything stdlib/pexec registers: the Exec profile area in
-// full. A name added to that package belongs in this list, so the secure
+// full. A name added to that package belongs in this list and the secure
 // profile keeps excluding it.
 var pexecNames = []string{
 	"exec", "system", "passthru", "shell_exec",
@@ -49,7 +49,7 @@ echo "none";`
 // TestMountSecureExcludesExec pins the security property of the secure
 // profile: it defines no pexec name, and no call route reaches one - a direct
 // call, call_user_func and a variable function all resolve through the one
-// function table, on either engine. strlen answers beside each refusal, so the
+// function table, on either engine. strlen answers beside each refusal and the
 // failure is the absence of the name and no broken runtime.
 func TestMountSecureExcludesExec(t *testing.T) {
 	t.Parallel()
@@ -122,9 +122,9 @@ func TestRegisterKeepsFullSurface(t *testing.T) {
 }
 
 // TestRegisterFSKeepsTheProfile covers the reroot. RegisterFS reinstalls the
-// areas it reroots, so rerooting pexec unconditionally handed back every name
+// areas it reroots and rerooting pexec unconditionally handed back every name
 // the secure mount had just left out - and every mount site calls Mount and
-// RegisterFS in that order, so the mask reached nothing.
+// RegisterFS in that order and the mask reached nothing.
 func TestRegisterFSKeepsTheProfile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

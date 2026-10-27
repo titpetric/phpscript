@@ -13,7 +13,7 @@ import (
 
 // TestCommandsBindWithGlobals binds every command the way decorate does: the
 // global flags first, then the command's own. pflag panics on a name declared
-// twice on one set, so a command that reuses a global's name fails here and
+// twice on one set and a command that reuses a global's name fails here and
 // never in a run of that command. A command package binding on a flag set of
 // its own never meets the globals and cannot see the clash.
 func TestCommandsBindWithGlobals(t *testing.T) {
@@ -29,7 +29,7 @@ func TestCommandsBindWithGlobals(t *testing.T) {
 // TestWantsHelp covers which spellings main answers itself. main prints the
 // whole document; a help flag written after a command name belongs to that
 // command, and the library prints that command's usage. The split is
-// positional, so the first argument that is not a flag ends main's claim on
+// positional and the first argument that is not a flag ends main's claim on
 // the line.
 func TestWantsHelp(t *testing.T) {
 	t.Parallel()
@@ -103,7 +103,7 @@ func TestWriteHelp(t *testing.T) {
 }
 
 // TestDecorate covers what a command gets for free. decorate binds the shared
-// flags onto it and wraps its Run with the work they imply, so no command
+// flags onto it and wraps its Run with the work they imply and no command
 // package repeats either, and a command naming no usage of its own takes the
 // examples
 // registered under its name.

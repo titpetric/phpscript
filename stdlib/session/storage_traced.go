@@ -10,7 +10,7 @@ import (
 )
 
 // tracedStorage records a span per session store operation. It decorates
-// whichever backend a script constructed, so a single wrapper instruments
+// whichever backend a script constructed and a single wrapper instruments
 // memory and disk alike, and the trace shows which one a request paid for.
 //
 // The span never carries the session ID. That ID is the credential in the
@@ -47,7 +47,7 @@ func backendName(storage Storage) string {
 		return "memory"
 	default:
 		// A storage a host implemented. Its type name would put a Go
-		// identifier on a front end, so the trace says this much and no
+		// identifier on a front end and the trace says this much and no
 		// more: neither of the two this package ships.
 		return "custom"
 	}
@@ -106,7 +106,7 @@ func (s *tracedStorage) DeleteByUser(ctx context.Context, userID string) (int, e
 }
 
 // missing reports whether an error means the session does not exist. An expired
-// or never-created session is what a logged out visitor looks like, so the span
+// or never-created session is what a logged out visitor looks like and the span
 // records a miss and the trace no failure.
 func missing(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)

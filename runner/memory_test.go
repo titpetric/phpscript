@@ -112,7 +112,7 @@ func TestEstimateValueSize(t *testing.T) {
 
 // TestShallowElementSize covers what one entry of a container costs while the
 // shallow estimate walks it. A nested container costs its header and nothing
-// below it, so the estimate stays one level deep whatever it holds.
+// below it and the estimate stays one level deep whatever it holds.
 func TestShallowElementSize(t *testing.T) {
 	t.Parallel()
 	filled := model.NewArray()

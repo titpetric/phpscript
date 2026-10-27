@@ -29,7 +29,7 @@ const (
 
 // collectUploads copies every file part of a parsed multipart body to a
 // temporary file and records it on the context. PHP exposes a path on disk and
-// no stream, so the copy happens up front; Cleanup removes
+// no stream and the copy happens up front; Cleanup removes
 // whatever the script did not move away.
 func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 	if r.MultipartForm == nil {
@@ -47,7 +47,7 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 		}
 	}
 	// net/http spills the parts it could not hold in memory into temporary
-	// files of its own. saveUpload has copied every one of them by now, so the
+	// files of its own. saveUpload has copied every one of them by now and the
 	// originals go before the handler has a chance to forget about them.
 	_ = r.MultipartForm.RemoveAll()
 }
@@ -97,7 +97,7 @@ func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 }
 
 // uploadBaseName strips the directory part a client may have sent along with
-// the file name. The separator is the client's, not this host's, so it cuts on
+// the file name. The separator is the client's, not this host's and it cuts on
 // both; PHP keeps the base name only.
 func uploadBaseName(name string) string {
 	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
@@ -122,7 +122,7 @@ func (c Context) Cleanup() {
 // IsUpload reports whether path is the temporary file of a part of this
 // request. It backs is_uploaded_file() and move_uploaded_file(), which in PHP
 // refuse any path the request did not produce. A path the script has already
-// moved away drops out of that set, so the copy has to still be there.
+// moved away drops out of that set and the copy has to still be there.
 func (c Context) IsUpload(path string) bool {
 	c.decodeForm()
 	for _, files := range c.files() {
@@ -139,7 +139,7 @@ func (c Context) IsUpload(path string) bool {
 // uploadKeys is the key set of a $_FILES entry, in the order PHP writes it.
 var uploadKeys = [...]string{"name", "full_path", "type", "tmp_name", "error", "size"}
 
-// uploadValue reads one key of a $_FILES entry off an upload, so the scalar and
+// uploadValue reads one key of a $_FILES entry off an upload and the scalar and
 // the parallel-array shapes cannot disagree about what a key holds.
 func uploadValue(file *UploadedFile, key string) any {
 	switch key {

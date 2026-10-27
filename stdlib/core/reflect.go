@@ -23,10 +23,10 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return classNameOf(object[0])
 	})
-	// get_parent_class always returns false; phpscript has no inheritance, so
+	// get_parent_class always returns false; phpscript has no inheritance and
 	// no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
-	// is_subclass_of always returns false; phpscript has no inheritance, so no
+	// is_subclass_of always returns false; phpscript has no inheritance and no
 	// object is an instance of a subclass. A guard written as
 	// `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
 	// through to the name comparison, which is the check that answers here.
@@ -40,7 +40,7 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		out := model.NewArraySize(obj.Len())
 		// A property named for its digits becomes an integer key as an array
-		// entry, so `(object) array("a", "b")` reads back as a list.
+		// entry and `(object) array("a", "b")` reads back as a list.
 		obj.Range(func(name string, v any) bool {
 			out.Set(phpval.Key(name), v)
 			return true
@@ -106,7 +106,7 @@ func classNameOf(value any) string {
 		return object.Class.Name
 	}
 	// A throwable records its own class, and the throwable classes share one Go
-	// type, so the Go type name would answer "Exception" for an
+	// type and the Go type name would answer "Exception" for an
 	// InvalidArgumentException.
 	if throwable, ok := value.(runner.Throwable); ok {
 		if class := throwable.ThrowableClass(); class != "" {

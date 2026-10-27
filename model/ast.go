@@ -41,7 +41,7 @@ type Program struct {
 	SourceSpans map[Stmt]SourceSpan
 	// AnonClasses holds the declaration of every anonymous class written in the
 	// file, in source order. An anonymous class sits inside an expression and
-	// not in a statement, so a consumer that walks Stmts looking for a
+	// not in a statement and a consumer that walks Stmts looking for a
 	// ClassDecl does not see one; whatever registers or checks the file's
 	// classes reads this alongside Stmts.
 	AnonClasses []*ClassDecl
@@ -86,7 +86,7 @@ type ExprStmt struct {
 }
 
 // Assign is `Target = Value`. Op may be "=", ".=", "+=", "[]=" (append).
-// expr-lang cannot mutate, so the runner handles assignment on its own.
+// expr-lang cannot mutate and the runner handles assignment on its own.
 type Assign struct {
 	Target Expr // Var, PropAccess or Index
 	Op     string
@@ -99,7 +99,7 @@ type If struct {
 	Then []Stmt
 	Else []Stmt // may itself contain a single nested *If for elseif chains
 	// ElseLine is the source line of the `else` or `elseif` keyword, which is
-	// not a statement of its own. It marks where the then arm ends, so the
+	// not a statement of its own. It marks where the then arm ends and the
 	// formatter can tell a comment written above the keyword from one written
 	// below it.
 	ElseLine int
@@ -108,8 +108,8 @@ type If struct {
 // Foreach is `foreach (Source as [KeyTarget =>] ValTarget) { Body }`.
 //
 // ByRef records the `as &$v` spelling. It selects between PHP's two loop
-// semantics: by value the target holds a copy of the element, so writing to it
-// leaves the source alone; by reference the target is the element, so writing
+// semantics: by value the target holds a copy of the element and writing to it
+// leaves the source alone; by reference the target is the element and writing
 // to it edits the source.
 type Foreach struct {
 	Source    Expr
@@ -131,7 +131,7 @@ type For struct {
 }
 
 // DoWhile is `do { Body } while (Cond);`. The body runs before the condition
-// is first checked, so it executes at least once; continue jumps to the
+// is first checked and it executes at least once; continue jumps to the
 // check and break leaves the loop, as in the other loops.
 type DoWhile struct {
 	Body []Stmt
@@ -165,7 +165,7 @@ type FuncDecl struct {
 	ReturnType string // declared `: Type`, kept for printing only
 	Static     bool
 	Abstract   bool // declaration only; Body is empty
-	// ByRef is `function &name()`. The runtime has no reference values, so
+	// ByRef is `function &name()`. The runtime has no reference values and
 	// the function returns by value; the marker stays so the formatter
 	// prints the declaration back and the linter can report it.
 	ByRef bool
@@ -175,7 +175,7 @@ type FuncDecl struct {
 // no inheritance; abstract, final and readonly parse without enforcement.
 //
 // The parser records Parent so the formatter prints back the file it read, and
-// nothing in runner may read it: there is no inheritance here, and
+// runner may not read it: there is no inheritance here, and
 // docs/design.md says why. CheckInterfaces reads Implements, confers nothing
 // and reports what a class does not declare.
 type ClassDecl struct {
@@ -196,7 +196,7 @@ type ClassDecl struct {
 // An interface is a declaration contract alone. It names method
 // signatures and constants, and a class that says `implements` must declare
 // every one of those methods itself. No member is ever acquired from it, no
-// method body comes from it, and `instanceof` does not consult it, so
+// method body comes from it, and `instanceof` does not consult it and
 // `$a instanceof SomeInterface` stays false. See docs/design.md.
 type InterfaceDecl struct {
 	Name string
@@ -208,13 +208,13 @@ type InterfaceDecl struct {
 	Consts  []Field
 	// Methods are signatures: the parser records the parameters, the return
 	// type and the modifiers so the formatter prints the declaration back, and
-	// Body is always nil. Nothing ever calls them; they are only names to
+	// Body is always nil. No code calls them; they are only names to
 	// check a class against.
 	Methods []*FuncDecl
 }
 
 // Use is `use A\B\C;`, `use A\B\C as D;` or `use function f;`. The parser
-// resolves an import to a fully-qualified name while parsing, so the statement
+// resolves an import to a fully-qualified name while parsing and the statement
 // has no effect at runtime. The node stays in the AST: the formatter rewrites
 // files in place, and a node the printer cannot see is a node it deletes.
 type Use struct {
@@ -230,7 +230,7 @@ type UseImport struct {
 }
 
 // Declare is `declare(strict_types=1);` or `declare(ticks=1) { ... }`. The
-// runtime has one set of semantics and no directive varies it, so the node
+// runtime has one set of semantics and no directive varies it and the node
 // carries the directives for printing and the runtime ignores them; a block
 // form still runs its body.
 type Declare struct {
@@ -291,7 +291,7 @@ type Throw struct {
 // clause whose declared type matches the error raised in Body (a throw or a
 // runtime error from a forwarded Go call) handles it; an error no clause
 // matches keeps propagating. Finally always runs either way. Matching is
-// by Go error type and no PHP class hierarchy, so a catch clause cannot
+// by Go error type and no PHP class hierarchy and a catch clause cannot
 // separate two throwable names backed by the same type.
 type Try struct {
 	Body        []Stmt
@@ -345,7 +345,7 @@ type Continue struct {
 // Param is a single function parameter with an optional default value.
 //
 // The runtime binds a parameter by name and ignores everything declared around
-// it, but the formatter rewrites files in place, so the node keeps it all:
+// it, but the formatter rewrites files in place and the node keeps it all:
 // Modifiers holds the `public readonly` of a promoted constructor property,
 // Type the type hint, and ByRef and Variadic the `&` and `...` markers.
 type Param struct {
@@ -474,7 +474,7 @@ func (*Declare) stmt() {}
 // Raw holds the source spelling, quotes included, for a string literal that
 // came from a parsed file. Decoding a string is lossy (`'$a'` and `"\$a"`
 // decode to the same value, and only one of them can be re-encoded from it),
-// so the formatter prints from Raw and falls back to encoding Value for nodes
+// and the formatter prints from Raw and falls back to encoding Value for nodes
 // a caller builds without parsing.
 type Lit struct {
 	Value any
@@ -497,7 +497,7 @@ type Interp struct {
 // A bare identifier, a constant such as `PHP_EOL` or a magic constant such as
 // `__DIR__`, is also a Var, because both resolve the same way at runtime: the
 // current scope first, where the magic constants live, then the
-// constant table. Const records which spelling the source used, so that
+// constant table. Const records which spelling the source used and that
 // printing the node back out does not turn `PHP_EOL` into `$PHP_EOL`.
 type Var struct {
 	Name  string
@@ -572,7 +572,7 @@ type New struct {
 
 // Ref is the reference marker `&$var` written in expression position, as in
 // `$a = &$b`. The runtime has no reference values (docs/design.md, "`&`
-// outside `foreach`"), so evaluating a Ref evaluates X and binds by value;
+// outside `foreach`") and evaluating a Ref evaluates X and binds by value;
 // the node exists so the formatter prints the source back as written and the
 // linter can report the marker.
 type Ref struct {
@@ -644,7 +644,7 @@ type StaticCall struct {
 }
 
 // StaticProp is `Class::$name` / `self::$name` static-property access. Unlike a
-// PropAccess it names storage owned by the class, shared by every instance, so
+// PropAccess it names storage owned by the class, shared by every instance and
 // the runner reads and writes it through its per-class static table.
 type StaticProp struct {
 	Class string
@@ -653,7 +653,7 @@ type StaticProp struct {
 
 // Invoke calls a callable held in a value, with no name at the call site:
 // `$fn($x)`, `$this->handlers[0]($x)`, `(self::$includeFile)($file)`.
-// Runtime.Callable resolves the callee, so every PHP callable spelling
+// Runtime.Callable resolves the callee and every PHP callable spelling
 // (closure, "func", array($obj, "method")) works.
 type Invoke struct {
 	Callee     Expr
@@ -669,7 +669,7 @@ type Cast struct {
 
 // Closure is an anonymous function expression `function($a,$b) use ($c){ ... }`.
 // minitpl uses one as the usort() comparator; composer's generated autoloader
-// uses the `use (...)` capture form, so Uses records the captured names. Static
+// uses the `use (...)` capture form and Uses records the captured names. Static
 // marks `static function(){}`, which PHP declares to have no `$this`.
 type Closure struct {
 	Params     []Param
@@ -681,7 +681,7 @@ type Closure struct {
 }
 
 // ClosureUse is one entry of a closure's `use (...)` capture list. ByRef marks
-// `&$name`; the runtime has no reference values, so a by-reference capture
+// `&$name`; the runtime has no reference values and a by-reference capture
 // binds the same value a by-value one does.
 type ClosureUse struct {
 	Name  string
@@ -690,7 +690,7 @@ type ClosureUse struct {
 
 // AssignExpr is assignment used as an expression, e.g. the PHP idiom
 // `if (($x = f()) !== false)`. The README forbids assignment in conditions, but
-// minitpl relies on it, so the runner accepts it with Var/Index/Prop targets.
+// minitpl relies on it and the runner accepts it with Var/Index/Prop targets.
 // As a statement the parser lowers it to *Assign.
 type AssignExpr struct {
 	Target Expr

@@ -31,7 +31,7 @@ func parse(t *testing.T, source string) *model.Program {
 }
 
 // TestExitError covers the alias the exit error travels under. The embedding
-// API is runner's, aliased and never wrapped, so a value a host builds under
+// API is runner's, aliased and never wrapped and a value a host builds under
 // the flatstack name fits everywhere runner's own type does, and the
 // wording and status are runner's.
 func TestExitError(t *testing.T) {
@@ -45,7 +45,7 @@ func TestExitError(t *testing.T) {
 		t.Errorf("ScriptExit() = %d, want 3", got)
 	}
 
-	// The alias is the same type, so one value satisfies both spellings and a
+	// The alias is the same type and one value satisfies both spellings and a
 	// host swapping runner for flatstack changes its import alone.
 	var same *runner.ExitError = err
 	if same.Code != 3 {
@@ -85,10 +85,10 @@ func TestIsExit(t *testing.T) {
 }
 
 // TestExprCache covers the two tables the cache holds and the sharing it
-// exists for. The cache keys flat bytecode by parsed program identity, so
+// exists for. The cache keys flat bytecode by parsed program identity and
 // EnsureFlat compiles once and a second call reads it back, and keys
 // compiled expressions by AST node identity. Len counts the expression half,
-// so it stays zero while the cache holds bytecode alone.
+// and it stays zero while the cache holds bytecode alone.
 func TestExprCache(t *testing.T) {
 	t.Parallel()
 	cache := flatstack.NewExprCache()
@@ -117,7 +117,7 @@ func TestExprCache(t *testing.T) {
 		}
 	}
 
-	// The expression half keys on the node itself, so one node stored is one
+	// The expression half keys on the node itself and one node stored is one
 	// entry and reading it back returns the same compiled value.
 	node := &model.Lit{Value: int64(7)}
 	compiled, err := expr.CompileExpr(node, &expr.Helpers{})
@@ -133,7 +133,7 @@ func TestExprCache(t *testing.T) {
 		t.Errorf("Len() = %d, want 1", n)
 	}
 
-	// Clear drops both tables, so a host holding the cache for the life of
+	// Clear drops both tables and a host holding the cache for the life of
 	// the process can release what it retained.
 	cache.Clear()
 	if _, ok := cache.GetExpr(node); ok || cache.Len() != 0 {
@@ -166,7 +166,7 @@ func TestIncludeCache(t *testing.T) {
 		t.Errorf("Len() = %d, want 1", n)
 	}
 
-	// Account records what precompiling read off disk, so a host can report
+	// Account records what precompiling read off disk and a host can report
 	// how much source it holds resident.
 	cache.Account(1024)
 	if got := cache.Precompiled(); got != 1024 {
@@ -180,7 +180,7 @@ func TestIncludeCache(t *testing.T) {
 }
 
 // TestIncludeFunc covers the resolver a host wires in. The runner holds no
-// filesystem and no parser, so the function the host set resolves an include,
+// filesystem and no parser and the function the host set resolves an include,
 // and the runtime runs whatever it returns in place of reading a file.
 func TestIncludeFunc(t *testing.T) {
 	t.Parallel()
@@ -206,7 +206,7 @@ func TestIncludeFunc(t *testing.T) {
 }
 
 // TestScope covers the variable table one execution frame holds. PHP has no
-// block scoping, so one flat table per frame is the whole model: a name set
+// block scoping and one flat table per frame is the whole model: a name set
 // is readable, an unset name answers nothing, and DefinedVars reports the
 // table as get_defined_vars() does.
 func TestScope(t *testing.T) {
@@ -235,7 +235,7 @@ func TestScope(t *testing.T) {
 }
 
 // TestContext covers the request context a host fills itself. NewContext
-// allocates the maps a host writes into directly, so a host that sets a query
+// allocates the maps a host writes into directly and a host that sets a query
 // field reads it back through the accessor that feeds the superglobal, with
 // no request behind it.
 func TestContext(t *testing.T) {
@@ -256,7 +256,7 @@ func TestContext(t *testing.T) {
 		t.Errorf("HeaderMap()[X-Request-Id] = %q, want %q", got, "r1")
 	}
 
-	// The alias is runner's type, so the same value is what either package
+	// The alias is runner's type and the same value is what either package
 	// returns.
 	var same runner.Context = ctx
 	if same.GetMap()["q"] != "phpscript" {
@@ -294,7 +294,7 @@ func TestFromRequest(t *testing.T) {
 
 // TestScopeFromContext covers what a registered Go callable reads off the
 // context it receives: the calling PHP frame. The runtime attaches it per
-// call, so a binding reaches the caller's variables without the script
+// call and a binding reaches the caller's variables without the script
 // passing them.
 func TestScopeFromContext(t *testing.T) {
 	t.Parallel()
@@ -323,7 +323,7 @@ func TestScopeFromContext(t *testing.T) {
 		t.Errorf("the frame reads $total as %#v, want int64(42)", total)
 	}
 
-	// A context nobody attached a frame to answers false, so a binding called
+	// A context nobody attached a frame to answers false and a binding called
 	// from Go and not from a script can tell.
 	if _, ok := flatstack.ScopeFromContext(context.Background()); ok {
 		t.Error("ScopeFromContext() = true for a plain context")

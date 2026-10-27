@@ -9,7 +9,7 @@ import (
 // TestDatabaseMigrate covers the handle a script holds on a schema: the
 // connection it runs the SQL on, the filesystem it reads the files off, and the
 // project mig records applied files under. Running the same set twice applies
-// each file once, because mig reads its own record to decide, so a deployment
+// each file once, because mig reads its own record to decide and a deployment
 // that migrates on every process start does not replay the schema.
 func TestDatabaseMigrate(t *testing.T) {
 	t.Parallel()
@@ -38,9 +38,9 @@ func TestDatabaseMigrate(t *testing.T) {
 }
 
 // TestDatabaseMigrate_Load covers the glob a script names its migrations with.
-// A script writes the pattern relative to itself, so the handle joins in the
+// A script writes the pattern relative to itself and the handle joins in the
 // runtime work directory and takes the leading "./" off; what the pattern
-// matched is what mig records, so the spelling has to settle to one form.
+// matched is what mig records and the spelling has to settle to one form.
 func TestDatabaseMigrate_Load(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -68,7 +68,7 @@ func TestDatabaseMigrate_Load(t *testing.T) {
 }
 
 // TestDatabaseMigrate_Run covers applying a schema, and the empty set. Every
-// statement of every matched file runs against the connection, so the tables
+// statement of every matched file runs against the connection and the tables
 // are there when Run returns. A pattern matching nothing returns nil: a script
 // can hold a schema directory it has not filled yet, and the binding has
 // always let such a script start.

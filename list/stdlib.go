@@ -16,7 +16,7 @@ import (
 // Stdlib returns everything the standard CLI runtime registers: the functions,
 // the classes and their methods, and the constants.
 //
-// It answers from the runtime and not from a checked-in list, so a build
+// It answers from the runtime and not from a checked-in list and a build
 // reports what that build actually binds. What it cannot report is the doc
 // comment written next to each registration, or the PHP spelling of a
 // parameter name: a generator reads both out of the Go source, which a shipped
@@ -88,10 +88,10 @@ func StdlibMarkdown(symbols []Symbol) string {
 	return markdownTable([]string{"Kind", "Name", "Signature"}, rows)
 }
 
-// stdlibRuntime builds the runtime the phpscript CLI runs, so the listing is
+// stdlibRuntime builds the runtime the phpscript CLI runs and the listing is
 // what a script sees. The request-aware functions (header, http_response_code,
 // getallheaders) arrive per request and not through stdlib.Register, and a
-// server-targeted script still names them, so an empty request context
+// server-targeted script still names them and an empty request context
 // registers them for the listing. This is the recipe scripts/list-apis uses.
 func stdlibRuntime() *runner.Runtime {
 	rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
@@ -103,7 +103,7 @@ func stdlibRuntime() *runner.Runtime {
 
 // paramTypes renders a parameter list as types alone.
 //
-// Reflection invents a name out of the Go type, so a binding with two string
+// Reflection invents a name out of the Go type and a binding with two string
 // parameters publishes them as $string1 and $string2 here whatever the
 // registration site called them. Printing an
 // invented name is worse than printing none: it reads as the argument's real

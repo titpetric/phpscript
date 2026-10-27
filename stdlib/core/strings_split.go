@@ -14,7 +14,7 @@ const (
 	strPadBoth  = 2
 )
 
-// phpStrrev reverses bytes, as PHP's strrev does, so a multi-byte character
+// phpStrrev reverses bytes, as PHP's strrev does and a multi-byte character
 // comes out as its bytes in reverse, which is not valid UTF-8.
 func phpStrrev(str string) string {
 	b := []byte(str)
@@ -41,7 +41,7 @@ func phpStrSplit(str string, length ...int64) []string {
 }
 
 // phpStrPad implements str_pad($string, $length, $pad_string, $pad_type). Go
-// allows one variadic, so both optional arguments arrive together: the pad
+// allows one variadic and both optional arguments arrive together: the pad
 // string first, the STR_PAD_* selector second.
 func phpStrPad(str string, length int64, optional ...any) string {
 	pad := " "
@@ -79,7 +79,7 @@ func padTo(pad string, n int) string {
 }
 
 // phpSubstrReplace implements substr_replace($string, $replace, $offset[, $length]).
-// PHP clamps an out-of-range offset here and raises nothing, so this does too.
+// PHP clamps an out-of-range offset here and raises nothing and this does too.
 func phpSubstrReplace(str, replace string, offset int64, length ...int64) string {
 	n := int64(len(str))
 	start := offset
@@ -184,7 +184,7 @@ func phpImplode(separator, array any) (string, error) {
 }
 
 // phpExplode returns the parts as a []string: strings.Split already allocated
-// exactly that, so handing it straight to the VM costs nothing beyond the split
+// exactly that and handing it straight to the VM costs nothing beyond the split
 // itself. The VM indexes, iterates and destructures it like any array.
 func phpExplode(separator, str string, limit ...int64) []string {
 	parts := strings.Split(str, separator)

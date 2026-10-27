@@ -17,7 +17,7 @@ func randomRuntime(t *testing.T) *runner.Runtime {
 }
 
 // TestRegisterRandom covers the three names and the bounds each one holds to.
-// random_int and rand both pick from [min, max] inclusive, so a range of one
+// random_int and rand both pick from [min, max] inclusive and a range of one
 // value is that value and a range spanning zero reaches both signs. big.Int
 // carries the span because max-min+1 overflows int64 once the bounds cover
 // most of the type, and rand.Int does the rejection sampling that keeps the
@@ -87,7 +87,7 @@ func TestRegisterRandom_bytes(t *testing.T) {
 		}
 	}
 
-	// Two calls of the same length differ, so each call reads the source.
+	// Two calls of the same length differ and each call reads the source.
 	first, err := rt.InvokeNamed("random_bytes", int64(32))
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestRegisterRandom_bytes(t *testing.T) {
 // TestRegisterRandom_bounds covers the refusals and rand()'s argument counts.
 // rand() takes nothing or both bounds, and an argument-less call spans 0 to
 // PHP's getrandmax(); both names refuse a reversed range and never silently
-// swap it, so a script computing its bounds wrongly fails where it did so.
+// swap it and a script computing its bounds wrongly fails where it did so.
 func TestRegisterRandom_bounds(t *testing.T) {
 	t.Parallel()
 	rt := randomRuntime(t)

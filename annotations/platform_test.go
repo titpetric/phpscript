@@ -15,7 +15,7 @@ func TestModule(t *testing.T) {
 	if module.Name() != "phpprobe" {
 		t.Errorf("Name() = %q, want phpprobe", module.Name())
 	}
-	// The hooks a module leaves alone answer nil, so a module writes the one
+	// The hooks a module leaves alone answer nil and a module writes the one
 	// or two it has and inherits the rest.
 	if err := module.Start(context.Background()); err != nil {
 		t.Errorf("Start() = %v, want nil from the zero module", err)

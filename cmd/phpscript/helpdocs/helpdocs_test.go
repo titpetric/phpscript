@@ -84,7 +84,7 @@ func TestExamples(t *testing.T) {
 }
 
 // TestFS pins that every embedded document is a command's examples and holds a
-// table, since the renderer reads nothing else.
+// table, the only thing the renderer reads.
 func TestFS(t *testing.T) {
 	t.Parallel()
 	names, err := fs.Glob(helpdocs.FS(), "*.md")

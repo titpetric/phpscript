@@ -72,7 +72,7 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 	}
 }
 
-// The scanner walks in path order, so a failure in the first file must not stop
+// The scanner walks in path order and a failure in the first file must not stop
 // the second from running: the jobs of one tree are independent, and the
 // returned error joins every failure the run met.
 func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {

@@ -8,12 +8,12 @@ import (
 )
 
 // phpArrayColumn projects one field out of every row. The real caller is
-// Database::get_all, which returns a []map[string]any, so this reads the rows
+// Database::get_all, which returns a []map[string]any and this reads the rows
 // through model.RangeValues and takes any collection shape.
 //
 // Without $index_key the result is a plain list, a presized []any. With one the
 // function keys the result by a value taken from the rows, which can be a
-// hybrid of int and string keys, so it returns an *model.Array (rule 4).
+// hybrid of int and string keys and it returns an *model.Array (rule 4).
 func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	n, _ := model.LenValues(array)
 
@@ -51,7 +51,7 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 }
 
 // arrayColumnValue reads one field of a row. A null column key is PHP's "the
-// whole row", so array_column($rows, null, "id") is a re-keying
+// whole row" and array_column($rows, null, "id") is a re-keying
 // of the input.
 func arrayColumnValue(row any, key any) (any, bool) {
 	if key == nil {
@@ -104,7 +104,7 @@ func arrayFind(needle, haystack any, strict bool) (any, bool) {
 }
 
 // arrayIdentical is PHP's === at value level: the types must match before it
-// compares the values. Go's == would panic on a slice or a map, so values it
+// compares the values. Go's == would panic on a slice or a map and values it
 // cannot compare directly fall back to reflect.DeepEqual.
 func arrayIdentical(x, y any) bool {
 	if x == nil || y == nil {

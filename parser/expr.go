@@ -11,11 +11,11 @@ import (
 // subset of PHP operators the runner/transpiler understands.
 //
 // Note: the README forbids assignment inside conditions (no `if ($a = "b")`),
-// so `=` is NOT an expression operator here; assignment is a statement only.
+// and `=` is NOT an expression operator here; assignment is a statement only.
 //
 // The bitwise levels sit where PHP 8 puts them: `| ^ &` are looser than any
 // comparison but tighter than `&&`, and `<< >>` are tighter than `.` but looser
-// than `+ -`, so `1 | 2 == 2` folds the comparison first (1) and
+// than `+ -` and `1 | 2 == 2` folds the comparison first (1) and
 // `1 << 2 + 3` shift by five (32).
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
@@ -117,9 +117,9 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		// PHP binds an assignment tighter than the comparison to its left, so
+		// PHP binds an assignment tighter than the comparison to its left and
 		// `false !== $pos = strrpos($s, "\\")` assigns and then compares. The
-		// operand parser cannot see this (it stops at the operator), so the
+		// operand parser cannot see this (it stops at the operator) and the
 		// fold here puts the assignment onto the right operand.
 		if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(right) {
 			p.next()
@@ -207,9 +207,9 @@ func (p *parser) parseUnary() (model.Expr, error) {
 }
 
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
-// `!`, so `!$e instanceof Foo` negates the test and never tests the
-// negation, so it sits below parseUnary. A bare class name on the
-// right takes a qualification, the same resolution `new` and a static call get, so a
+// `!` and `!$e instanceof Foo` negates the test and never tests the
+// negation and it sits below parseUnary. A bare class name on the
+// right takes a qualification, the same resolution `new` and a static call get and a
 // `use` alias and an unqualified name inside a namespace reach the runtime
 // fully qualified. Any other operand - a variable, a parenthesized
 // expression - names the class at run time and passes through unresolved.
@@ -221,7 +221,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 	for p.isKw("instanceof") {
 		p.next()
 		// parsePrimary strips a leading `\` before the name reaches the
-		// constant-reference node, so absoluteness is only visible here.
+		// constant-reference node and absoluteness is only visible here.
 		absolute := p.isOp("\\")
 		right, err := p.parsePow()
 		if err != nil {
@@ -237,7 +237,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 
 // parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
 // minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
-// exponent (`2 ** -1`, `2 ** 3 ** 2`), so it sits between
+// exponent (`2 ** -1`, `2 ** 3 ** 2`) and it sits between
 // parseUnary and parsePostfix, and not in the binPrec table.
 func (p *parser) parsePow() (model.Expr, error) {
 	base, err := p.parsePostfix()
@@ -267,14 +267,14 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 		case p.isOp("->"):
 			// Member/method access. The README floats `.` notation for fields,
 			// but `.` is also PHP string concatenation (used throughout the
-			// minitpl T1 target). Those are irreconcilable without type information, so
+			// minitpl T1 target). Those are irreconcilable without type information and
 			// v0 uses `->` for members and keeps `.` as concat.
 			p.next()
 			// `$obj->$m(...)` calls the method named by `$m`. Without the
 			// parens it would be a dynamic property, which stays unsupported.
 			//
 			// This takes the bare variable alone. PHP 7's uniform variable syntax
-			// made `$obj->$m["get"]()` mean `($obj->$m)["get"]()`, so taking
+			// made `$obj->$m["get"]()` mean `($obj->$m)["get"]()` and taking
 			// the index here would call a different method than PHP does.
 			if p.cur().kind == tVar && p.peek(1).kind == tOp && p.peek(1).val == "(" {
 				varName := p.next().val
@@ -632,7 +632,7 @@ func (p *parser) parseList() (model.Expr, error) {
 }
 
 // parseVarRef reads the value holding a class name: a variable, then any
-// index and property accessors applied to it. It stops before "(", so the
+// index and property accessors applied to it. It stops before "(" and the
 // caller owns the argument list; that boundary is what separates the name from
 // the constructor call in `new $factories["png"]($file)`.
 func (p *parser) parseVarRef() (model.Expr, error) {
@@ -669,7 +669,7 @@ func (p *parser) parseNew() (model.Expr, error) {
 		return p.parseAnonClass()
 	}
 	// `new $className(...)`: a runtime value names the class. An index or a
-	// property can hold that name as well as the variable itself, so this
+	// property can hold that name as well as the variable itself and this
 	// takes the whole reference and never the variable alone.
 	// Leaving the accessors to parsePostfix would read
 	// `new $renderers["json"]($data)` as `(new $renderers)["json"]($data)`,
@@ -708,11 +708,11 @@ func (p *parser) parseNew() (model.Expr, error) {
 // after `new`, the declaration of a class with no name.
 //
 // The parser assigns it one anyway. A name is what `new` resolves, what a method
-// call looks a class up by, and what `instanceof` compares, so a class without
+// call looks a class up by, and what `instanceof` compares and a class without
 // one would need a second path through every one of those; naming it here means
 // the runtime registers and reaches the declaration exactly like a written class, and
 // only the parser knows the difference. The spelling follows PHP's, which also
-// synthesizes a name, so a script that prints get_class() sees something of the
+// synthesizes a name and a script that prints get_class() sees something of the
 // same shape. The parser collects the declarations on the program because they sit in
 // an expression, where nothing walking statements would find them.
 //
@@ -761,7 +761,7 @@ func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
 // atFirstClassMarker reports whether the argument list starting at the current
 // token is exactly `(...)`. The lexer has no ellipsis token - a variadic
 // parameter reads three `.` operators in parseParamDecoration - and `.` is
-// string concatenation, so one match takes the whole five-token shape rather
+// string concatenation and one match takes the whole five-token shape rather
 // than consumed one token at a time and backed out of.
 func (p *parser) atFirstClassMarker() bool {
 	return p.isOpAt(0, "(") && p.isOpAt(1, ".") && p.isOpAt(2, ".") && p.isOpAt(3, ".") && p.isOpAt(4, ")")

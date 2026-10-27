@@ -120,7 +120,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		opts.Cover = CoverLine
 	}
 	if opts.Cover != "" {
-		// A coverage count is how many times the fixture reached a line, so a
+		// A coverage count is how many times the fixture reached a line and a
 		// benchmark loop would multiply every count by its repetitions.
 		if opts.Count > 0 || opts.Time > 0 {
 			return fmt.Errorf("cover cannot be combined with --count or --time")
@@ -183,7 +183,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		defer report.Close()
 	}
 
-	// The state a suite lays down is what its fixtures assert against, so a
+	// The state a suite lays down is what its fixtures assert against and a
 	// setup that failed ends the run before a fixture reports the same missing
 	// table once per file. Teardown runs whatever the fixtures did, and its
 	// failure prints on stderr without displacing theirs: a suite that could
@@ -293,7 +293,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		failedCount += groupFailed
 	}
 
-	// A coverage reading needs every fixture to have run, so the per-folder
+	// A coverage reading needs every fixture to have run and the per-folder
 	// measure happens here and not as each folder closed.
 	var covers []folderCover
 	if opts.Cover != "" && !opts.JSON && !opts.coverReport() {

@@ -10,7 +10,7 @@ import (
 var superglobals = []string{"_COOKIE", "_ENV", "_FILES", "_GET", "_POST", "_REQUEST", "_SERVER", "_SESSION"}
 
 // TestAutoGlobals_Set covers which names claim a fixed field. The language
-// closes the set, so a name outside it reports false and the caller stores
+// closes the set and a name outside it reports false and the caller stores
 // the variable the way it stores every other one.
 func TestAutoGlobals_Set(t *testing.T) {
 	t.Parallel()
@@ -65,7 +65,7 @@ func TestAutoGlobals_Lookup(t *testing.T) {
 
 // TestAutoGlobals_Range covers the visit order and the skip. Range visits
 // every bound field once in the order the struct declares the fields, and
-// skips an unset one, so a request that bound three superglobals registers
+// skips an unset one and a request that bound three superglobals registers
 // three.
 func TestAutoGlobals_Range(t *testing.T) {
 	t.Parallel()
@@ -105,7 +105,7 @@ func TestAutoGlobals_Range(t *testing.T) {
 
 // TestAutoGlobals_RangeVisitsEveryField covers the full set: a request that
 // bound all eight visits all eight, in the declared field order. That order is
-// alphabetical, so the expected list is the sorted one.
+// alphabetical and the expected list is the sorted one.
 func TestAutoGlobals_RangeVisitsEveryField(t *testing.T) {
 	t.Parallel()
 	var globals AutoGlobals
@@ -134,7 +134,7 @@ func TestAutoGlobals_RangeVisitsEveryField(t *testing.T) {
 }
 
 // TestAutoGlobals_Reset covers the per-request clear. Every field drops to
-// nil, so the next request's Register rebinds from nothing and Lookup never
+// nil and the next request's Register rebinds from nothing and Lookup never
 // answers a value from the last request.
 func TestAutoGlobals_Reset(t *testing.T) {
 	t.Parallel()

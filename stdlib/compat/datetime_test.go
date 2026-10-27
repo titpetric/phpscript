@@ -7,7 +7,7 @@ import (
 )
 
 // epoch is a fixed instant, 2023-11-14 22:13:20 UTC. A test reading a local
-// rendering back computes what it wants from time.Local, so the assertions
+// rendering back computes what it wants from time.Local and the assertions
 // hold in whatever timezone the host runs in.
 const epoch = int64(1700000000)
 
@@ -39,7 +39,7 @@ func TestStrtotime(t *testing.T) {
 
 // TestStrtotimeReadsWhatDateWrote covers the layout list against the formatter
 // beside it: every layout strtotime tries reads in the local timezone, and the
-// shapes date() writes are among them, so a timestamp rendered and read back
+// shapes date() writes are among them and a timestamp rendered and read back
 // is the timestamp it started as. A layout list that drifted from the
 // formatter would break that round trip silently.
 func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
@@ -50,7 +50,7 @@ func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
 
 		want := any(epoch)
 		if format == "Y-m-d" {
-			// A date without a time reads as midnight local, so the round
+			// A date without a time reads as midnight local and the round
 			// trip lands on the start of that day and not on the instant.
 			year, month, day := time.Unix(epoch, 0).In(time.Local).Date()
 			want = time.Date(year, month, day, 0, 0, 0, 0, time.Local).Unix()
@@ -105,7 +105,7 @@ func TestDate(t *testing.T) {
 }
 
 // TestDateMidnightIsTwelve covers the one arithmetic in the formatter: PHP's
-// g and h count 1 to 12, so the hour 0 renders as 12 and never as 0.
+// g and h count 1 to 12 and the hour 0 renders as 12 and never as 0.
 func TestDateMidnightIsTwelve(t *testing.T) {
 	t.Parallel()
 	midnight := time.Date(2023, time.November, 14, 0, 0, 0, 0, time.Local).Unix()

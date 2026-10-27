@@ -35,8 +35,8 @@ var Runners = []Runner{RunnerFlatstack, RunnerRuntime, RunnerPHP}
 var ErrRunnerUnavailable = errors.New("runner unavailable")
 
 // ErrFlatstackUnsupported reports that the flat bytecode compiler rejected the
-// fixture's program. The flatstack runner skips the fixture and delegates
-// nothing: a fallback run would report the compatibility interpreter's
+// fixture's program. The flatstack runner skips the fixture without falling
+// back: a fallback run would report the compatibility interpreter's
 // result and cost under the flatstack column.
 var ErrFlatstackUnsupported = errors.New("program not supported by flatstack")
 
@@ -68,7 +68,7 @@ type phpRun struct {
 }
 
 // executePHP runs the fixture source through the php binary. writePHPScript
-// puts the script in the fixture's include root, so relative includes and
+// puts the script in the fixture's include root and relative includes and
 // __DIR__ resolve the way they do for the two Go runtimes rooted there.
 func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	binary, err := exec.LookPath("php")
@@ -78,7 +78,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 
 	// php runs in the fixture's include root, which is the directory holding
 	// it unless it named a root of its own. That is the same root both Go
-	// runtimes resolve against, so a relative require reaches the same file on
+	// runtimes resolve against and a relative require reaches the same file on
 	// all three.
 	dir := f.RootDir()
 	if f.Path == "" {
@@ -96,7 +96,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	}
 	defer cleanupPrepend()
 
-	// The fixture output is the contract, so these flags pin error display to
+	// The fixture output is the contract and these flags pin error display to
 	// stderr and switch log duplication off; a php.ini differing per machine
 	// would otherwise decide whether a warning lands in the compared stdout.
 	args := append(prepend,
@@ -146,7 +146,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 
 // phpPrepend materializes the harness prelude for the php runner as an
 // auto_prepend_file: the generated file includes each prelude file from the
-// application root, so php sees the same world the in-process runtimes
+// application root and php sees the same world the in-process runtimes
 // assemble from SetAppRoot. The includes run inside a function scope with the
 // application root as the working directory, mirroring the fresh scope and
 // root-relative resolution the Go runtimes apply to the prelude.
@@ -200,7 +200,7 @@ var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 func writePHPScript(dir string, f *Fixture) (string, func(), error) {
 	// A _test.php body is already a file php can run, at the path the other
 	// runtimes read it from. Copying it would move __FILE__ and __DIR__ to a
-	// name nothing else sees.
+	// name of its own.
 	if strings.HasSuffix(f.Path, GoldenSuffix) {
 		return filepath.Base(f.Path), func() {}, nil
 	}

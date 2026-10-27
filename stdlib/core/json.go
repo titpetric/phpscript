@@ -35,16 +35,16 @@ func registerJSON(rt *runner.Runtime) {
 	// `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
 	// string of it existing first, and an encoder over php://output writes the
 	// response as the script builds it. Both take the io.Reader or io.Writer
-	// they wrap, so any handle fopen() returns works, and so do STDIN and
+	// they wrap and any handle fopen() returns works, and so do STDIN and
 	// STDOUT.
 	rt.RegisterConstructor("JSON\\Encoder", NewJSONEncoder)
 	rt.RegisterConstructor("JSON\\Decoder", NewJSONDecoder)
 }
 
 // phpJSONEncode encodes value. It takes $flags and ignores it, the way
-// json_decode accepts $depth and $flags, so a port carrying
-// JSON_UNESCAPED_SLASHES runs: nothing defines a JSON_* constant, the argument
-// arrives as null, and there is nothing for it to select. The encoding is not
+// json_decode accepts $depth and $flags and a port carrying
+// JSON_UNESCAPED_SLASHES runs: the runtime defines no JSON_* constant, the
+// argument arrives as null, and the flag selects no option. The encoding is not
 // configurable by design; see docs/design.md, "JSON".
 func phpJSONEncode(value any, flags ...any) (any, error) {
 	buf, err := appendJSONValue(make([]byte, 0, 64), value)
@@ -56,9 +56,9 @@ func phpJSONEncode(value any, flags ...any) (any, error) {
 
 func phpJSONDecode(text string, opts ...any) (any, error) {
 	// $associative selects the shape objects decode into. The decoder only
-	// builds arrays, so this refuses false and never answers with the shape it
+	// builds arrays and this refuses false and never answers with the shape it
 	// did not name; it takes $depth and $flags and ignores them. stdClass
-	// exists and `(object)` builds one, so what is missing is the decode path,
+	// exists and `(object)` builds one and what is missing is the decode path,
 	// not the class; see docs/design.md, "JSON".
 	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
 		return nil, errors.New("json_decode(): $associative must be true; decoding into objects is not implemented")
@@ -76,7 +76,7 @@ func phpJSONDecode(text string, opts ...any) (any, error) {
 //
 // It reads tokens and decodes into no map, because a Go map has no
 // order and the decoder would return the document's keys in a different
-// order on every run. PHP preserves the document's own order, so a
+// order on every run. PHP preserves the document's own order and a
 // decoded object encoded again reads the way it arrived.
 func jsonDecodeStream(dec *json.Decoder) (any, error) {
 	token, err := dec.Token()
@@ -125,7 +125,7 @@ func jsonDecodeStream(dec *json.Decoder) (any, error) {
 }
 
 // jsonEncodeValue rewrites the value model into something encoding/json
-// understands. Native Go collections are already encodable, so they are only
+// understands. Native Go collections are already encodable and they are only
 // walked when they might contain an *model.Array or *model.Object; scalars and
 // []string pass through untouched.
 func jsonEncodeValue(v any) any {
@@ -208,7 +208,7 @@ func arrayIsList(a *model.Array) bool {
 func jsonDecodeValue(v any) any {
 	switch x := v.(type) {
 	case []any:
-		// A JSON array is positional, so a []any loses nothing and reuses the
+		// A JSON array is positional and a []any loses nothing and reuses the
 		// slice the decoder already allocated.
 		for i, item := range x {
 			x[i] = jsonDecodeValue(item)
@@ -229,7 +229,7 @@ func jsonDecodeValue(v any) any {
 
 // JSONEncoder writes JSON values to a stream, Go's json.Encoder with the one
 // difference PHP forces: Encode takes a PHP value and converts it the way
-// json_encode() converts one, so the two spellings answer the same JSON for
+// json_encode() converts one and the two spellings answer the same JSON for
 // the same array.
 //
 // A plain encoder appends the document into buf and writes it in one call.
@@ -243,7 +243,7 @@ type JSONEncoder struct {
 }
 
 // jsonEncoderBuffer is how much of its buffer an encoder keeps between values.
-// An encoder reuses one response's buffer and drops a large document's, so a
+// An encoder reuses one response's buffer and drops a large document's and a
 // handle held open for the length of a script does not hold that peak with it.
 const jsonEncoderBuffer = 1 << 16
 

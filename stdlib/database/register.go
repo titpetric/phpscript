@@ -64,9 +64,9 @@ func RegisterConnections(rt *runner.Runtime) {
 
 		// A relative sqlite path resolves against the application root when the
 		// connection opens. An absolute one does not, and opening it creates the
-		// file, so a script could put a database anywhere the process can write
+		// file and a script could put a database anywhere the process can write
 		// while file_exists() on the same path answers false. Refused here
-		// and never anchored, so the script sees which spelling is wrong.
+		// and never anchored and the script sees which spelling is wrong.
 		if path, outside := scriptSQLitePath(dsn); outside {
 			return false, fmt.Errorf("Database::register(): argument #2 ($dsn) names %s outside the application root", path)
 		}
@@ -76,7 +76,7 @@ func RegisterConnections(rt *runner.Runtime) {
 			return false, fmt.Errorf("Database::register(): connections cannot be registered")
 		}
 
-		// A virtual host resolves through its own provider, so a site
+		// A virtual host resolves through its own provider and a site
 		// registering a connection cannot reach another site's.
 		extended.Register(strings.ToLower(name), dsn)
 		return true, nil
@@ -88,19 +88,19 @@ func RegisterMigrate(rt *runner.Runtime) {
 	// Database\Migrate loads a set of SQL migrations from the script filesystem
 	// and runs them against the named connection.
 	//
-	// The first name is also the project name mig records under, so two
+	// The first name is also the project name mig records under and two
 	// schemas sharing one database keep separate records when they open
 	// under separate names. A script that names no connection migrates
 	// "default": the connection an unnamed one resolves to anyway.
 	//
-	// The constructor tries each name as "<name>:migrate" before "<name>", so a
+	// The constructor tries each name as "<name>:migrate" before "<name>" and a
 	// deployment can point migrations at a user allowed to alter tables while
 	// the script queries through one that is not, without the script naming
 	// either. The project stays "<name>" whichever credential answered: what a
 	// migration connects with is not what it records under. A "<name>:migrate"
 	// credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
 	// form, because an environment variable name holds no colon; it arrives
-	// through Database::register, so a virtual host owning its own connections
+	// through Database::register and a virtual host owning its own connections
 	// already supplies them.
 	//
 	// A name longer than 16 characters fails the run with mig's ErrNoProject,
@@ -131,7 +131,7 @@ func RegisterMigrate(rt *runner.Runtime) {
 
 // provider returns the connections rt resolves through. A host that configured
 // none, which is every CLI run, gets the process environment; a virtual host
-// sets its own and resolves through nothing else.
+// sets its own and resolves through that alone.
 func provider(rt *runner.Runtime) model.DatabaseProvider {
 	if configured := rt.Database(); configured != nil {
 		return configured

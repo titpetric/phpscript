@@ -122,7 +122,7 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 // TestSessionManagerReadsAServedRequestsCookie is the manager against the
 // context a server builds, and not one a host filled in.
 //
-// A request decodes its cookies on the first read through Context.CookieMap, so
+// A request decodes its cookies on the first read through Context.CookieMap and
 // the Cookie field is empty until something asks. Reading the field instead made
 // every served request anonymous - valid() answered false for a cookie the same
 // manager had issued one request earlier - while $_COOKIE held it, because the
@@ -186,7 +186,7 @@ func TestNewSessionManagerValidatesConfiguration(t *testing.T) {
 }
 
 // users is a user database of one account, standing in for the password file.
-// The manager makes one call per login and no other, so these two methods are
+// The manager makes one call per login and no other and these two methods are
 // the whole interface.
 type users struct {
 	username string
@@ -207,7 +207,7 @@ func (u users) Authenticate(_ context.Context, key, secret string) (auth.User, e
 func (u users) Exists() (bool, error) { return u.err == nil, u.err }
 
 // account is the record the stub answers with: an id that is not derived from
-// anything, so a test can assert on the exact value the session carries.
+// anything and a test can assert on the exact value the session carries.
 type account struct {
 	name string
 }
@@ -236,7 +236,7 @@ func TestSessionManagerLogin(t *testing.T) {
 	if valid, err := manager.Valid(ctx); err != nil || !valid {
 		t.Fatalf("Valid after Login = %v, %v; want true, nil", valid, err)
 	}
-	// A login is a session start, so it stages the cookie with the same
+	// A login is a session start and it stages the cookie with the same
 	// attributes Start writes and the script spells none of them.
 	if staged := request.ResponseHeaders().Values("Set-Cookie"); len(staged) != 1 {
 		t.Fatalf("Set-Cookie count = %d, want 1", len(staged))
@@ -286,7 +286,7 @@ func TestSessionManagerLoginRefused(t *testing.T) {
 }
 
 // TestSessionManagerLoginWithoutAUserDatabase covers a manager a Go host built
-// with storage alone. There is nothing to put the credential to, and the
+// with storage alone. There is no user database to put the credential to, and the
 // message says that; reporting a wrong password would name the wrong fault.
 func TestSessionManagerLoginWithoutAUserDatabase(t *testing.T) {
 	t.Parallel()
@@ -331,7 +331,7 @@ func TestSessionManagerDestroy(t *testing.T) {
 	}
 
 	// The cookie the response carries now is the deletion: same name and
-	// path, so a client applies it to the one it holds, with no expiry left.
+	// path and a client applies it to the one it holds, with no expiry left.
 	staged := (&http.Response{Header: http.Header{
 		"Set-Cookie": request.ResponseHeaders().Values("Set-Cookie"),
 	}}).Cookies()
@@ -343,7 +343,7 @@ func TestSessionManagerDestroy(t *testing.T) {
 		t.Errorf("deletion cookie = %#v", deletion)
 	}
 
-	// The storage dropped the session, and not only this manager, so the
+	// The storage dropped the session, and not only this manager and the
 	// cookie a client kept is worth nothing on the next request.
 	next, err := session.NewManager(storage)
 	if err != nil {
@@ -357,7 +357,7 @@ func TestSessionManagerDestroy(t *testing.T) {
 
 // TestSessionManagerDeleteByUser covers a removed account losing every session
 // it holds, including the one making the request: the sweep clears this
-// manager's own session, so valid() answers false before the request ends.
+// manager's own session and valid() answers false before the request ends.
 func TestSessionManagerDeleteByUser(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -472,7 +472,7 @@ func TestSessionManagerSetters(t *testing.T) {
 }
 
 // sessionIDOf reads back the id the manager holds, the one it staged in the
-// cookie. Nothing exposes that id, the credential itself, so a test needing to
+// cookie. No accessor exposes that id, the credential itself and a test needing to
 // look in storage reads it off the response the way a client would.
 func sessionIDOf(t *testing.T, ctx context.Context, manager *session.Manager) string {
 	t.Helper()

@@ -91,7 +91,7 @@ func TestClientSendsRequest(t *testing.T) {
 }
 
 // TestRequestIsANetHTTPRequest pins the shape a script gets back. The binding
-// exposes the net/http value and no facade, so a script reads and
+// exposes the net/http value and no facade and a script reads and
 // writes it the way Go does.
 func TestRequestIsANetHTTPRequest(t *testing.T) {
 	t.Parallel()
@@ -176,7 +176,7 @@ func TestClientOptions(t *testing.T) {
 		t.Errorf("Authorization = %q, want the client header", gotAuth)
 	}
 
-	// Send clones, so the caller keeps its request intact and can send it again.
+	// Send clones and the caller keeps its request intact and can send it again.
 	if request.URL.IsAbs() {
 		t.Errorf("Send mutated the caller's request URL to %q", request.URL)
 	}

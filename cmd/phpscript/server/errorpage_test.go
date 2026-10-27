@@ -14,7 +14,7 @@ import (
 
 // browserAccept is what Chrome sends when someone follows a link, the one
 // request shape a site's error page exists for, and the tests below use it
-// verbatim and not a tidied up "text/html", so the parser faces a real
+// verbatim and not a tidied up "text/html" and the parser faces a real
 // header and not an easy one.
 const browserAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 
@@ -54,7 +54,7 @@ func fetch(h http.Handler, method, target string, headers map[string]string) *ht
 }
 
 // TestErrorPageAnswersBrowserNavigationOnly pins what replaces the path prefix
-// the issue started from. The server mounts one catch-all, so an unrouted
+// the issue started from. The server mounts one catch-all and an unrouted
 // /api/... request and an unrouted /article/... one are the same request as far
 // as the path goes; what tells them apart is who is asking. A person following
 // a link gets the site's page and every program gets the plain status it got
@@ -314,7 +314,7 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 }
 
 // TestErrorPageSeesTheRequestItAnswersFor pins the $_SERVER keys a page
-// reads. They are Apache's ErrorDocument names, so a page written against
+// reads. They are Apache's ErrorDocument names and a page written against
 // Apache works here, and they describe the request that failed and not the
 // page that is answering for it.
 func TestErrorPageSeesTheRequestItAnswersFor(t *testing.T) {
@@ -359,7 +359,7 @@ func TestErrorPageMayChooseItsOwnStatus(t *testing.T) {
 // the same rule as any other .php below the document root: a directory a
 // visitor can put files in is not a directory to run code from, and a 404.php
 // that arrived by upload goes out as bytes and never executes. Here the
-// whole document root is writable, so the page never runs at all.
+// whole document root is writable and the page never runs at all.
 func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	t.Parallel()
 	h, err := newHandler(
@@ -391,7 +391,7 @@ func post(h http.Handler, target, contentType, body string, headers map[string]s
 }
 
 // TestUnroutedRequestKeepsItsBody is what lets 404.php dispatch a site's own
-// routes. A request that matched no file ran no script, so nothing read its
+// routes. A request that matched no file ran no script and nothing read its
 // body and only the page answering for it still can. It sees the form the way
 // its target endpoint would.
 func TestUnroutedRequestKeepsItsBody(t *testing.T) {
@@ -441,8 +441,8 @@ echo "no route";`)},
 }
 
 // TestFailedScriptErrorPageHasNoBody pins the other half of the split. By the
-// time a failing script reaches an error page it has read the body itself, so
-// there is nothing left to pass on, and the page sees exactly that and never
+// time a failing script reaches an error page it has read the body itself,
+// leaving no body to pass on, and the page sees exactly that and never
 // a payload it cannot read.
 func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
 	t.Parallel()
@@ -464,7 +464,7 @@ echo $_SERVER["REQUEST_METHOD"], "|",
 }
 
 // TestUnroutedRequestKeepsItsUploads is the same rule for $_FILES. A multipart
-// POST to a URL no file backs reaches the page with its parts intact, so a
+// POST to a URL no file backs reaches the page with its parts intact and a
 // router that handles uploads can live in 404.php.
 func TestUnroutedRequestKeepsItsUploads(t *testing.T) {
 	t.Parallel()

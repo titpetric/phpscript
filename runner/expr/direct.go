@@ -39,7 +39,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 	switch n := e.(type) {
 	case *model.Lit:
 		// The value goes in as itself, invalid UTF-8 included: with no
-		// source text to travel through there is nothing to mis-decode.
+		// source text to travel through no decoding can corrupt it.
 		return constClosure(n.Value), nil
 
 	case *model.Var:
@@ -280,7 +280,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 // call resolves its name in the base env, installed by Eval.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
-		// `greet(...)` takes the callable and never calls it, so the name
+		// `greet(...)` takes the callable and never calls it and the name
 		// goes in as a value and the fallback with it: resolution is the
 		// runtime's, as for a call, and the result is a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil

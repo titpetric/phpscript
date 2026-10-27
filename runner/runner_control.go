@@ -29,8 +29,8 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		ret   flow
 		retOK bool
 	)
-	// PHP's two loop semantics. `as &$v` binds the element, so a body that
-	// assigns to the target edits the source; `as $v` binds a copy, so it does
+	// PHP's two loop semantics. `as &$v` binds the element and a body that
+	// assigns to the target edits the source; `as $v` binds a copy and it does
 	// not. Only a *model.Array accepts a write-back or a copy; a collection
 	// a binding returned belongs to the host and not to the script.
 	//
@@ -65,7 +65,7 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 			return false
 		}
 		// The write-back happens before the switch reads the flow: a reference
-		// makes the element live, so a body that assigns and then breaks or
+		// makes the element live and a body that assigns and then breaks or
 		// returns has still edited the source.
 		if writable != nil {
 			if updated, readErr := rt.readLValue(valTarget, scope); readErr == nil {
@@ -92,7 +92,7 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	case *model.Object:
 		// An object visits its properties, name and value, in the order it
 		// reads them back. PHP visits only the ones visible where the script
-		// writes the loop; phpscript enforces no visibility anywhere, so it
+		// writes the loop; phpscript enforces no visibility anywhere and it
 		// visits them all. See docs/README.md.
 		src.Range(func(name string, value any) bool {
 			return iter(name, value)
@@ -164,7 +164,7 @@ func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
 	return nil, flowNormal, nil
 }
 
-// execDoWhile runs the body before the first condition check, so it executes
+// execDoWhile runs the body before the first condition check and it executes
 // at least once. continue falls through to the check, matching PHP.
 func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error) {
 	for {
@@ -196,7 +196,7 @@ func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error
 //
 // exit() and die() are not errors and are not catchable, as in PHP: `try {
 // exit(); } catch (Throwable $e) {}` ends the script there. They
-// travel as an error here only because that is how the interpreter unwinds, so
+// travel as an error here only because that is how the interpreter unwinds and
 // the try has to recognise the sentinel and get out of the way. A catch that
 // could swallow an exit would turn `header("Location: ...") ; exit();` inside a
 // try into a page that carries on running past a staged redirect.
@@ -251,11 +251,11 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 // matchCatchType reports whether a catch clause declaring declaredType handles
 // rootErr. A union takes the error when any alternative does.
 //
-// There is no class hierarchy to walk, so matchCatchType answers the clause
+// There is no class hierarchy to walk and matchCatchType answers the clause
 // from the name the throwable records:
 //
 //   - nothing, or Throwable, takes everything.
-//   - an error that is no PHP class at all takes any clause, so a Go binding's
+//   - an error that is no PHP class at all takes any clause and a Go binding's
 //     error reaches the catch a script already wrote around the call.
 //   - Exception takes any class whose name does not end in "Error", and Error
 //     takes any class whose name does. That suffix is the whole of the split

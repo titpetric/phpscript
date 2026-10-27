@@ -16,7 +16,7 @@ type middlewareKey struct{}
 // the value's own fields, the active span from the session chain, and a
 // middleware value, with the cancellation, from the request. A span started
 // from the binding context lands on the session's trace and nests below the
-// active region, so a database call inside a traced request stays under the
+// active region and a database call inside a traced request stays under the
 // request's own span.
 func TestBindingContextDerivesFromTheRequest(t *testing.T) {
 	t.Parallel()
@@ -89,7 +89,7 @@ func TestBindingContextDerivesFromTheRequest(t *testing.T) {
 
 // TestBindingContextIgnoreUserAbortDetaches covers the handler that asked to
 // finish: the binding context keeps the request's values and drops its
-// cancellation, so a disconnect ends no binding work.
+// cancellation and a disconnect ends no binding work.
 func TestBindingContextIgnoreUserAbortDetaches(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

@@ -64,7 +64,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 		t.Fatalf("traces = %+v", traces)
 	}
 
-	// A routed request groups by its pattern, so /users/1 and /users/2 are one
+	// A routed request groups by its pattern and /users/1 and /users/2 are one
 	// row in the statistics and never two.
 	trace := traces[0]
 	if trace.Name != "GET /users/{id}" || trace.HTTP.Route != "/users/{id}" {
@@ -80,7 +80,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 		t.Fatalf("front end status = %d, body = %q", front.Code, front.Body.String())
 	}
 
-	// The front end is not traffic: it does not record itself.
+	// The front end is not traffic and does not record itself.
 	if traces := module.Tracer().Traces(); len(traces) != 1 {
 		t.Fatalf("the front end was traced: %+v", traces)
 	}
@@ -135,7 +135,7 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 		t.Fatalf("traces = %+v", traces)
 	}
 
-	// Startup work did not arrive over the network, so it lands on a
+	// Startup work did not arrive over the network and it lands on a
 	// background trace, and no request without a method.
 	trace := traces[0]
 	if trace.Name != "@startup boot.php" || trace.HTTP != nil || TraceHost(trace) != BackgroundHost {
@@ -158,7 +158,7 @@ func TestInstrumentationWithoutATraceDoesNothing(t *testing.T) {
 		t.Fatalf("span = %+v, want nil without a trace", span)
 	}
 
-	// Every method tolerates it, so a binding can instrument
+	// Every method tolerates it and a binding can instrument
 	// unconditionally.
 	span.SetAttribute("key", "value")
 	span.RecordError(errors.New("ignored"))

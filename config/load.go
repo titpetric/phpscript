@@ -18,7 +18,7 @@ func Load(filename string) (Config, error) {
 		return base, fmt.Errorf("read config %q: %w", filename, err)
 	}
 
-	// The overlay forbids the operator nothing: server and virtualhost are
+	// The overlay leaves every key to the operator: server and virtualhost are
 	// theirs to set, and a site may set neither.
 	result, _, err := OverlayBytes(base, filename, data, nil, "")
 	if err != nil {

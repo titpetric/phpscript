@@ -13,12 +13,12 @@
 // image.Decode reads whichever formats the process registered, and the
 // registration is an init: png and jpeg arrive with the encoders this package
 // calls by name, and gif has nothing here to reach for. A program decides what
-// it links, so the phpscript main package names all three and a host embedding
+// it links and the phpscript main package names all three and a host embedding
 // this one answers imagecreatefromgif() once it does the same.
 //
 // A GD image reaches a script as a *Image, the way fopen returns a stream.
 // A colour reaches it as an int packed the way libgd packs one,
-// 0xAARRGGBB with alpha in the top byte, so a script holds a colour in a
+// 0xAARRGGBB with alpha in the top byte and a script holds a colour in a
 // variable and passes it to any drawing call.
 package gd
 
@@ -124,7 +124,7 @@ func registerConstants(rt *runner.Runtime) {
 }
 
 // root maps a path a script supplied onto the host filesystem, the same way
-// stdlib/files does, so an image read and a file read agree on what a relative
+// stdlib/files does and an image read and a file read agree on what a relative
 // path means.
 type root struct {
 	dir      string
@@ -187,7 +187,7 @@ func registerCreate(rt *runner.Runtime, r root) {
 	// false when the read fails.
 	rt.RegisterFunc("imagecreatefromgif", decoder(r, "gif"))
 	// imagedestroy frees $image. The garbage collector reclaims the memory
-	// here, so it only drops the pixels and returns true.
+	// here and it only drops the pixels and returns true.
 	rt.RegisterFunc("imagedestroy", func(im *Image) bool {
 		if im == nil {
 			return false
@@ -199,7 +199,7 @@ func registerCreate(rt *runner.Runtime, r root) {
 
 // decoder builds imagecreatefrom<format>. PHP's decoders are format specific
 // and this keeps that contract: naming the wrong one is an error, not a
-// silent success, so a script that branches on the return sees what PHP sees.
+// silent success and a script that branches on the return sees what PHP sees.
 func decoder(r root, want string) func(string) any {
 	return func(filename string) any {
 		f, err := os.Open(r.resolve(filename))
@@ -217,7 +217,7 @@ func decoder(r root, want string) func(string) any {
 
 // wrap turns a decoded image into a handle, copying into RGBA when the decoder
 // produced something the drawing calls cannot touch. Every paletted or YCbCr
-// image takes this path, so a decoded JPEG or GIF is writable.
+// image takes this path and a decoded JPEG or GIF is writable.
 func wrap(src image.Image) *Image {
 	if d, ok := src.(Drawable); ok {
 		if _, paletted := src.(*image.Paletted); !paletted {

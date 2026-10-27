@@ -79,7 +79,7 @@ func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
 }
 
 // TestDirectoryWithoutAnIndexIsNotFound pins that a directory's index page
-// answers it and nothing else does. A site never asked to publish a listing
+// answers it and no other page does. A site never asked to publish a listing
 // of the files below it, and a site with a 404 page answers a missing index
 // the same way it answers any other dead link.
 func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
@@ -106,7 +106,7 @@ func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 
 // TestDirectoryWithoutASlashRedirects pins that the redirect adds the trailing
 // slash before the index page answers. The page's relative links resolve
-// against its serving URL, so /docs must become /docs/ or every link in it
+// against its serving URL and /docs must become /docs/ or every link in it
 // points a directory too high.
 func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 	t.Parallel()

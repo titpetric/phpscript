@@ -7,7 +7,7 @@ import (
 // TestRuneOffsetsByteOffset covers the conversion regexp2 needs and RE2 does
 // not, the one part of the offset work an ASCII fixture cannot see: rune
 // index and byte offset are the same number until the subject holds a
-// multibyte character, so a missing conversion looks correct everywhere else.
+// multibyte character and a missing conversion looks correct everywhere else.
 func TestRuneOffsetsByteOffset(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

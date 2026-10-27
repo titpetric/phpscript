@@ -30,7 +30,7 @@ func Compare(x, y any) int {
 	}
 
 	// null against a string is the one pairing PHP does not decide on
-	// truthiness: the null becomes "", so null is less than "a" but equal to "".
+	// truthiness: the null becomes "" and null is less than "a" but equal to "".
 	if x == nil {
 		if s, ok := y.(string); ok {
 			return strings.Compare("", s)
@@ -55,7 +55,7 @@ func Compare(x, y any) int {
 
 // comparableArray reports whether v is an array for a comparison,
 // returning it as an *Array. A binding that returns a native Go collection
-// is one too, so it sorts where a *model.Array would.
+// is one too and it sorts where a *model.Array would.
 func comparableArray(v any) (*model.Array, bool) {
 	switch x := v.(type) {
 	case *model.Array:
@@ -173,7 +173,7 @@ func phpNumeric(v any) (phpNum, bool) {
 // an optional sign, digits with an optional fraction and an optional exponent.
 // scanNumeric checks the syntax, and strconv never does: it also accepts
 // hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
-// numeric, so "0x1A" has to sort as a string.
+// numeric and "0x1A" has to sort as a string.
 func numericString(s string) (phpNum, bool) {
 	text := strings.Trim(s, " \t\n\r\v\f")
 	isInt, ok := scanNumeric(text)
@@ -249,9 +249,9 @@ func compareNumbers(x, y phpNum) int {
 	}
 	// Equal as float64 is not always equal to PHP: two integer strings past
 	// int64, and two exponents past float64, round to the same value, and PHP
-	// compares their digits instead. It only does so for two strings, so
+	// compares their digits instead. It only does so for two strings and
 	// "9223372036854775808" stays equal to the int 9223372036854775807, and
-	// only for two integers, so "1e20" stays equal to "100000000000000000000".
+	// only for two integers and "1e20" stays equal to "100000000000000000000".
 	if x.text == "" || y.text == "" {
 		return 0
 	}

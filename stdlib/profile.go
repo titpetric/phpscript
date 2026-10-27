@@ -8,7 +8,7 @@ import (
 )
 
 // Profile selects which contributed binding areas Mount installs. Every area
-// that reaches outside the sandbox is its own bit, so a host's call site names
+// that reaches outside the sandbox is its own bit and a host's call site names
 // each insecure area it enables: Mount(rt, stdlib.Secure|stdlib.Exec).
 type Profile = runner.Profile
 
@@ -20,7 +20,7 @@ const (
 	Exec = runner.ProfileExec
 
 	// Default is the profile for a host running untrusted scripts: the secure
-	// surface and nothing else.
+	// surface alone.
 	Default = Secure
 )
 

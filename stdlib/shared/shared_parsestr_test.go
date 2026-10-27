@@ -184,7 +184,7 @@ func TestParseStrVarLimit(t *testing.T) {
 	}
 }
 
-// flatten renders a decoded array as sorted, space-separated `path=value`, so
+// flatten renders a decoded array as sorted, space-separated `path=value` and
 // a test states its expectation on one line. Nested paths join with a dot; no
 // test uses a dot inside a key.
 func flatten(arr *model.Array) string {

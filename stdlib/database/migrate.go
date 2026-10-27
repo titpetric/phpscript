@@ -25,12 +25,12 @@ type DatabaseMigrate struct {
 }
 
 // Load selects the migrations to run, as a glob against the runtime source
-// filesystem. Load itself reads nothing: mig reads the files it applies, and a
-// pattern matching nothing shows up as wrong only once Run looks.
+// filesystem. Load itself opens no file: mig reads the files it applies, and a
+// pattern matching no file shows up as wrong only once Run looks.
 //
-// A script names its migrations relative to itself ("./schema/*.up.sql"), so
+// A script names its migrations relative to itself ("./schema/*.up.sql") and
 // Load joins the work directory in. What the pattern matched is what mig
-// records, so a database migrated by the older binding - which recorded the
+// records and a database migrated by the older binding - which recorded the
 // base name under no project - applies every file again.
 func (m *DatabaseMigrate) Load(pattern string) error {
 	pattern = strings.TrimPrefix(path.Clean(strings.TrimPrefix(pattern, "./")), "/")
@@ -59,7 +59,7 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	// A pattern matching nothing is ErrNoMigrations from mig, on the grounds
 	// that a project pointed at the wrong directory otherwise looks like a
 	// clean run. A script can hold a schema directory it has not filled yet,
-	// and this binding has always let it start, so the empty set returns here.
+	// and this binding has always let it start and the empty set returns here.
 	if len(files) == 0 {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (m *DatabaseMigrate) observe(ctx context.Context, span *telemetry.Span, app
 		}
 
 		// The logger fails the span in its context, which is this span,
-		// so the trace keeps the error with the file named in it.
+		// and the trace keeps the error with the file named in it.
 		log.Error("failed", "file", item.Filename, "statement", item.StatementIndex, "error", err)
 	}
 }

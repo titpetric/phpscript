@@ -32,7 +32,7 @@ function walk(string $dir): void {
 walk(".");`
 
 // TestOpendirWalksTheSourceFilesystem is the branch an embedded application
-// takes. There is nothing on disk to open a descriptor on, so a walk that
+// takes. No file exists on disk to open a descriptor on and a walk that
 // answers at all proves the handle carries the listing and no file.
 func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 	t.Parallel()
@@ -94,7 +94,7 @@ var_dump(opendir("missing"));`)
 }
 
 // TestClosedirExhaustsTheHandle states what a closed handle answers. There is
-// no descriptor to invalidate, so closedir drops the listing and a further read
+// no descriptor to invalidate and closedir drops the listing and a further read
 // reports the end of it; php throws a TypeError there. A value readdir never
 // issued answers the same way, which keeps a foreign one from walking
 // anything.
@@ -113,7 +113,7 @@ var_dump(readdir("not a handle"));`)
 
 // TestOpendirIsJailedToTheRoot holds the handle functions to the rule every
 // path in this package follows: "/" is the source filesystem's root, and the
-// runtime cleans a path that climbs against it, so it escapes nothing.
+// runtime cleans a path that climbs against it and it escapes nothing.
 func TestOpendirIsJailedToTheRoot(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}

@@ -28,7 +28,7 @@ type Options struct {
 
 // NewCommand creates a new `info` command. The verbosity dial is the shared
 // -v: here it lists every bound function, class and method under the summary.
-// The configuration is what every command constructor takes, so one
+// The configuration is what every command constructor takes and one
 // signature covers them all. This command reads it through globals, which
 // main fills from the configuration before it builds any command.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {

@@ -15,7 +15,7 @@ import (
 //
 // The order is the one every host uses: the host registers the standard library
 // once, then seeds the request. These functions resolve the request at call
-// time, so registration cannot have captured it.
+// time and registration cannot have captured it.
 func runRequest(t *testing.T, request runner.Context, src string) string {
 	t.Helper()
 	return runRequestSAPI(t, request, "", src)
@@ -43,7 +43,7 @@ func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string) stri
 
 // TestGetAllHeadersReadsTheRequest covers the three spellings of one function.
 // Ported code reaches for getallheaders, get_all_headers or
-// apache_request_headers depending on its target server, so
+// apache_request_headers depending on its target server and
 // all three answer the same array.
 func TestGetAllHeadersReadsTheRequest(t *testing.T) {
 	t.Parallel()
@@ -65,7 +65,7 @@ echo count($headers) . " " . $headers["X-Token"] . " " . $headers["Accept"];
 
 // TestRequestFunctionsAreInertWithoutARequest covers the cli SAPI and a fixture
 // that seeds no request. PHP's own cli SAPI accepts header() and does nothing
-// with it, so a script written for the web runs on the command line without
+// with it and a script written for the web runs on the command line without
 // being rewritten.
 func TestRequestFunctionsAreInertWithoutARequest(t *testing.T) {
 	t.Parallel()
@@ -93,7 +93,7 @@ var_export(setrawcookie("session", "abc"));
 
 // TestHeaderStagesTheResponse covers the two shapes header() takes. A
 // "Name: value" pair stages a header, and a status line such as
-// "HTTP/1.0 404 Not Found" carries a status with no name and no value, so it
+// "HTTP/1.0 404 Not Found" carries a status with no name and no value and it
 // stages the status it names.
 func TestHeaderStagesTheResponse(t *testing.T) {
 	t.Parallel()
@@ -111,11 +111,11 @@ header("HTTP/1.1 418 I am a teapot");
 	if got := response.Get("Content-Type"); got != "application/json" {
 		t.Errorf("Content-Type = %q, want application/json", got)
 	}
-	// $replace defaults to true, so the second X-Count wins.
+	// $replace defaults to true and the second X-Count wins.
 	if got := response.Values("X-Count"); len(got) != 1 || got[0] != "2" {
 		t.Errorf("X-Count = %v, want [2]", got)
 	}
-	// $replace false appends, so the response carries Set-Cookie twice.
+	// $replace false appends and the response carries Set-Cookie twice.
 	if got := response.Values("X-Trace"); len(got) != 2 {
 		t.Errorf("X-Trace = %v, want two values", got)
 	}
@@ -126,9 +126,9 @@ header("HTTP/1.1 418 I am a teapot");
 
 // TestHTTPResponseCode covers PHP's two answers. Called with a status it stages
 // it and returns the one it replaced; called with none it reports the status
-// the response will carry, so a template can branch on it.
+// the response will carry and a template can branch on it.
 //
-// On a web SAPI a request starts out answering 200, so there is always a
+// On a web SAPI a request starts out answering 200 and there is always a
 // previous number to return.
 func TestHTTPResponseCode(t *testing.T) {
 	t.Parallel()
@@ -165,7 +165,7 @@ var_dump(http_response_code());
 }
 
 // TestSetCookie covers the header both the positional and the array call stage.
-// The value is url-encoded as PHP's setcookie() encodes it, so a space is a
+// The value is url-encoded as PHP's setcookie() encodes it and a space is a
 // plus, and an expiry of 0 carries no Expires attribute: the cookie dies with
 // the browser session.
 func TestSetCookie(t *testing.T) {
@@ -226,7 +226,7 @@ func TestSetCookie(t *testing.T) {
 }
 
 // TestSetRawCookie covers the spelling that writes the value as it stands. A
-// value carrying a space or a semicolon is the caller's to handle, so the
+// value carrying a space or a semicolon is the caller's to handle and the
 // encoder does nothing with it and a script holding a pre-encoded value keeps
 // it byte for byte.
 func TestSetRawCookie(t *testing.T) {
@@ -251,7 +251,7 @@ func TestSetRawCookie(t *testing.T) {
 }
 
 // TestSetCookieStagesSeveralCookies covers the header that arrives more than
-// once. Each call appends, so a login response that sets a session and a
+// once. Each call appends and a login response that sets a session and a
 // preference sends two Set-Cookie headers and never one that replaced the
 // other.
 func TestSetCookieStagesSeveralCookies(t *testing.T) {

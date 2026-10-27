@@ -27,7 +27,7 @@ func TestPHPBase64Encode(t *testing.T) {
 //
 // Lenient mode drops every character outside the alphabet, padding included,
 // and decodes the rest even when its length is not divisible by four.
-// Strict mode reports a character outside the alphabet by answering false, so
+// Strict mode reports a character outside the alphabet by answering false and
 // the return type is any: php's contract is string|false.
 func TestPHPBase64Decode(t *testing.T) {
 	t.Parallel()
@@ -78,7 +78,7 @@ func TestPHPBin2hex(t *testing.T) {
 }
 
 // TestURLEncode covers the two tables the encoders keep. Go's url.QueryEscape
-// leaves '~' literal where php escapes it in the form spelling, so neither
+// leaves '~' literal where php escapes it in the form spelling and neither
 // encoder passes through the standard library: urlencode writes a space as '+'
 // and '~' as '%7E', rawurlencode writes '%20' and leaves '~' alone.
 func TestURLEncode(t *testing.T) {
@@ -120,7 +120,7 @@ func TestURLDecode(t *testing.T) {
 }
 
 // TestPHPHTTPBuildQuery covers joining pairs into a query string: the encoder
-// urlencodes both halves, so a nested key arrives as the escaped key%5Bsub%5D,
+// urlencodes both halves and a nested key arrives as the escaped key%5Bsub%5D,
 // and the insertion order of the array is the order of the pairs. It drops a
 // null entry, writing no empty value for it.
 func TestPHPHTTPBuildQuery(t *testing.T) {
@@ -146,10 +146,10 @@ func TestPHPHTTPBuildQuery(t *testing.T) {
 
 // TestPHPParseStr covers the inverse of http_build_query, and the decoder
 // behind $_GET and $_POST. php's bracket syntax nests, and every value decodes
-// as a string, so a=1 reads back as the string "1".
+// as a string and a=1 reads back as the string "1".
 //
 // The setter is nil when a script omitted the by-reference argument. php raises
-// an ArgumentCountError for that call; this runtime pads a short call, so
+// an ArgumentCountError for that call; this runtime pads a short call and
 // phpParseStr skips the decode and writes nothing.
 func TestPHPParseStr(t *testing.T) {
 	t.Parallel()

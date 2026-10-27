@@ -9,7 +9,7 @@ import (
 
 // TestMatrixRowLabel covers what a cell shows for a row. The label is the
 // basename the table prints; a row built without one falls back to the display
-// path, so a cell is never blank.
+// path and a cell is never blank.
 func TestMatrixRowLabel(t *testing.T) {
 	t.Parallel()
 	labelled := matrixRow{DisplayPath: "tests/fixtures/arrays/a.phpt", Label: "a.phpt"}
@@ -65,7 +65,7 @@ func TestMatrixRowFailed(t *testing.T) {
 // TestEngineOrder covers the order every table and summary line prints the
 // per-engine durations in, which is the run's own runner order and never the
 // map's. A runner whose fixtures all opted out reports 0ms and stays in the
-// report, so a column does not appear and vanish between folders.
+// report and a column does not appear and vanish between folders.
 func TestEngineOrder(t *testing.T) {
 	t.Parallel()
 	runners := []tests.Runner{tests.RunnerFlatstack, tests.RunnerRuntime, tests.RunnerPHP}

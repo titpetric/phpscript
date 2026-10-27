@@ -4,9 +4,9 @@
 // ServeMux with PHP callables as its handlers, and HTTP\Server::listen forks
 // the workers.
 //
-// A handler starts on a clean stack holding $w and $r. No superglobal is
-// decoded, nothing carries over from the last request, and two requests
-// answered at the same moment run on a runtime each, so neither can see the
+// A handler starts on a clean stack holding $w and $r. The runtime decodes no
+// superglobal, nothing carries over from the last request, and two requests
+// answered at the same moment run on a runtime each, and neither can see the
 // other.
 //
 //	phpscript run testdata/phpscript-http-bridge/server.php
@@ -47,7 +47,7 @@ class Server {
 		$mux = new HTTP\Mux;
 
 		// '{$}' anchors the root. A bare 'GET /' is a net/http subtree and
-		// would answer for every path nothing else claimed.
+		// would answer for every path no other route claimed.
 		$mux->handle('GET /{$}', $this->index);
 		$mux->handle("GET /hello", $this->hello);
 		$mux->handle("GET /users/{id}", $this->showUser);
@@ -74,7 +74,7 @@ class Server {
 
 	function hello(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 		$w->header()->set("Content-Type", "text/plain; charset=utf-8");
-		// query() is net/http's url.Values, so get() answers the first value
+		// query() is net/http's url.Values, and get() answers the first value
 		// under a name, or "" for a name that is not there. form_value() is
 		// the same answer over the query and a form body together.
 		$name = $r->url->query()->get("name");
@@ -85,8 +85,8 @@ class Server {
 		$w->write("hello " . $name . "\n");
 	}
 
-	// The encoder writes straight to the response, so no string of the
-	// document stands between the two, and it converts a PHP array the way
+	// The encoder writes straight to the response with no string of the
+	// document between the two, and it converts a PHP array the way
 	// json_encode() does.
 	function showUser(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 		$w->header()->set("Content-Type", "application/json");
@@ -94,7 +94,7 @@ class Server {
 	}
 
 	// form_value reads the query and the body, parsing the body on the first
-	// call, so parse_form() is not needed first.
+	// call, and parse_form() is not needed first.
 	function echoRequest(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 		$w->header()->set("Content-Type", "application/json");
 		(new JSON\Encoder($w))->encode(array(
@@ -155,7 +155,7 @@ class Server {
 		$http->listen();
 
 		// Stopping the server is the script's own business. The shutdown pass
-		// runs with the clock off, so this still runs when the time limit is
+		// runs with the clock off, and this still runs when the time limit is
 		// what ended the script.
 		register_shutdown_function(function() use ($http) {
 			$http->shutdown();
@@ -165,7 +165,7 @@ class Server {
 		echo "serving on http://" . $http->addr() . " until the time limit is up\n";
 
 		// Returns when the script runs out of time, and stands last in the
-		// file: the limit is a fatal, as php's is, so anything after it
+		// file: the limit is a fatal, as php's is, and anything after it
 		// would leave the process exiting non-zero. Ending here lets the
 		// shutdown callback have the last word and the process exit 0.
 		$http->wait();

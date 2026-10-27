@@ -84,7 +84,7 @@ func TestFromRequestPost(t *testing.T) {
 }
 
 // TestFromRequestRepeatedValues pins the flattening rule for a key sent more
-// than once. PHP's parser assigns each repetition over the one before it, so
+// than once. PHP's parser assigns each repetition over the one before it and
 // the last value is the one a script sees.
 func TestFromRequestRepeatedValues(t *testing.T) {
 	t.Parallel()
@@ -166,7 +166,7 @@ echo read_job();
 }
 
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
-// asserts the key is absent, so PHP says "not this kind of request":
+// asserts the key is absent and PHP says "not this kind of request":
 // no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
 func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()
@@ -241,7 +241,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 }
 
 // TestServerVarsContentHeaders covers the two keys that describe a body. PHP
-// mirrors the headers and not the body, so a GET that sent a content type
+// mirrors the headers and not the body and a GET that sent a content type
 // has CONTENT_TYPE, and a body of zero bytes that announced its length has
 // CONTENT_LENGTH "0".
 func TestServerVarsContentHeaders(t *testing.T) {
@@ -376,7 +376,7 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 	ctx := runner.NewContext()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	// header() is a standard-library binding that finds this Context through
-	// the runtime context, so this test registers the library the way a host
+	// the runtime context and this test registers the library the way a host
 	// does: stdlib first, request second.
 	stdlib.Register(rt)
 	ctx.Register(rt)
@@ -394,7 +394,7 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 
 // TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
 // "HTTP/1.0 404 Not Found" carries a status alone, with no name and no value,
-// so without this branch it falls out for want of a name:value shape.
+// and without this branch it falls out for want of a name:value shape.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -426,9 +426,9 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 }
 
 // TestHTTPResponseCode pins PHP's two answers. A web request starts out
-// answering 200, so there is always a status to report and always a previous
+// answering 200 and there is always a status to report and always a previous
 // one to return. On the command line a script starts with none, which is
-// what the false and the true are: nothing to report, and no previous status to
+// what the false and the true are: no status to report, and no previous status to
 // return for the first one set.
 //
 // json_encode keeps the types visible; phpscript has no var_dump.
@@ -449,7 +449,7 @@ echo json_encode([
 		{sapi: "cgi-phpscript", want: "[200,200,404,404]"},
 		{sapi: "http", want: "[200,200,404,404]"},
 		{sapi: "cli", want: "[false,true,404,404]"},
-		// A host that named no SAPI is not serving a request, so it starts out
+		// A host that named no SAPI is not serving a request and it starts out
 		// the way the command line does.
 		{sapi: "", want: "[false,true,404,404]"},
 	}
@@ -492,7 +492,7 @@ echo json_encode([
 
 // TestStatusArgumentIsCoerced pins PHP's coercion of the int parameter both
 // functions take. It matters for an error page: $_SERVER holds every value as
-// a string, so a page handing REDIRECT_STATUS back is handing over "404".
+// a string and a page handing REDIRECT_STATUS back is handing over "404".
 func TestStatusArgumentIsCoerced(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -619,7 +619,7 @@ func TestFromRequestInputLimits(t *testing.T) {
 
 // TestWithRoutePattern covers which pattern the path values come from: the
 // one the route's author declared, and not the one the router matched. chi
-// registers /c/{tail...} as /c/* and reports that back, so a value exported
+// registers /c/{tail...} as /c/* and reports that back and a value exported
 // under a name would have no name at all with r.Pattern as the only source.
 func TestWithRoutePattern(t *testing.T) {
 	t.Parallel()
@@ -633,7 +633,7 @@ func TestWithRoutePattern(t *testing.T) {
 	}
 
 	// Without the declared pattern the router's own spelling is all there is,
-	// and * is not a name, so there is nothing to export the value under.
+	// and * is not a name and the value has no name to export under.
 	bare := httptest.NewRequest("GET", "/c/deep/path", nil)
 	bare.Pattern = "/c/*"
 	bare.SetPathValue("*", "deep/path")
@@ -642,7 +642,7 @@ func TestWithRoutePattern(t *testing.T) {
 	}
 
 	// A declared pattern wins over a matched one that names the same parameter
-	// differently, so one route reads the same under either router.
+	// differently and one route reads the same under either router.
 	mux := httptest.NewRequest("GET", "/users/42", nil)
 	mux.Pattern = "GET /users/{id}"
 	mux.SetPathValue("id", "42")
@@ -655,7 +655,7 @@ func TestWithRoutePattern(t *testing.T) {
 // TestRequestContext covers how a request-aware Go binding reaches the request:
 // Register puts the Context on the runtime's context, and the binding reads it
 // back off the context it holds. A context with no request answers false, which
-// is what a session binding gets on a CLI run, so it reports the absence and
+// is what a session binding gets on a CLI run and it reports the absence and
 // reads no zero Context as an empty request.
 func TestRequestContext(t *testing.T) {
 	t.Parallel()
@@ -689,7 +689,7 @@ func TestContext_AddResponseHeader(t *testing.T) {
 	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 2 {
 		t.Fatalf("Set-Cookie = %v, want both values", got)
 	}
-	// header() replaces unless told not to, so the two are not one call under
+	// header() replaces unless told not to and the two are not one call under
 	// two names: what a script writes through header() drops the earlier value.
 	ctx.Header("Set-Cookie: c=3")
 	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 1 || got[0] != "c=3" {
@@ -698,9 +698,8 @@ func TestContext_AddResponseHeader(t *testing.T) {
 }
 
 // TestContext_GetAllHeaders covers the array getallheaders() answers with. A
-// host-built context carries no request and answers an empty array and never
-// nothing, so a script indexing the result on a CLI run reads a missing key and
-// no error.
+// host-built context carries no request and answers an empty array, and a
+// script indexing the result on a CLI run reads a missing key and no error.
 func TestContext_GetAllHeaders(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
@@ -736,7 +735,7 @@ func TestContext_GetAllHeaders(t *testing.T) {
 
 // TestContext_HTTPResponseCode covers the Go-facing call behind
 // http_response_code(), which takes the SAPI as an argument. A web SAPI starts
-// out answering 200; the command line starts with no status at all, so php
+// out answering 200; the command line starts with no status at all and php
 // answers false until something sets one and true for that first call, having
 // no previous number to report.
 func TestContext_HTTPResponseCode(t *testing.T) {
@@ -763,7 +762,7 @@ func TestContext_HTTPResponseCode(t *testing.T) {
 		t.Errorf("the reporting call after one was set = %v, want 404", got)
 	}
 
-	// The parameter is an int, so php coerces the argument, and $_SERVER
+	// The parameter is an int and php coerces the argument, and $_SERVER
 	// holds every value as a string: a page handing REDIRECT_STATUS straight
 	// back is handing over "503" and means 503.
 	if got := cli.HTTPResponseCode("cli", "503"); got != int64(404) {
@@ -773,7 +772,7 @@ func TestContext_HTTPResponseCode(t *testing.T) {
 		t.Errorf("staged status = %d, want 503", got)
 	}
 
-	// A zero, a null and a false name no status, so each is the reporting call
+	// A zero, a null and a false name no status and each is the reporting call
 	// and stages nothing.
 	for _, arg := range []any{int64(0), nil, false} {
 		if got := cli.HTTPResponseCode("cli", arg); got != int64(503) {

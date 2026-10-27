@@ -7,12 +7,12 @@ import (
 )
 
 // TestNode covers the two marker interfaces the runner switches on. A statement
-// runs for its side effects and an expression evaluates to a value, so a node
+// runs for its side effects and an expression evaluates to a value and a node
 // reaches the interpreter through one marker or the other, and a type carrying
 // neither is unreachable.
 //
 // Include carries both. PHP writes an include as a standalone statement and as
-// a value-producing expression, so one node stands in both positions.
+// a value-producing expression and one node stands in both positions.
 func TestNode(t *testing.T) {
 	t.Parallel()
 	statements := map[string]Node{
@@ -65,10 +65,10 @@ func TestNode(t *testing.T) {
 }
 
 // TestSourceSpan covers the line range of a statement and the map the formatter
-// reads it from. The range is inclusive, so a one-line statement records the
+// reads it from. The range is inclusive and a one-line statement records the
 // same number twice.
 //
-// The key is the statement node, so two statements of one kind need two
+// The key is the statement node and two statements of one kind need two
 // addresses: Go assigns every zero-sized allocation the same one, and Break and
 // Continue carry their source line so neither is zero-sized.
 func TestSourceSpan(t *testing.T) {
@@ -113,10 +113,10 @@ func TestSourceSpan(t *testing.T) {
 
 // TestUnwrapParenthesized covers reading an expression's shape without
 // evaluating it. A consumer that switches on the node type needs grouping to be
-// transparent, so `($a)` and `((($a)))` both read as the variable.
+// transparent and `($a)` and `((($a)))` both read as the variable.
 //
 // The grouping stays on the tree. The formatter rewrites files in place and
-// prints the parentheses an author wrote, so peeling them copies nothing and
+// prints the parentheses an author wrote and peeling them copies nothing and
 // edits nothing.
 func TestUnwrapParenthesized(t *testing.T) {
 	t.Parallel()
@@ -188,7 +188,7 @@ func TestArrayItem(t *testing.T) {
 }
 
 // TestUse covers what survives parsing. The parser resolves an import to a
-// fully-qualified name while it reads the file, so the statement has no runtime
+// fully-qualified name while it reads the file and the statement has no runtime
 // effect; the node stays because the formatter rewrites files in place, and a
 // node the printer cannot see is a node it deletes.
 //
@@ -225,11 +225,11 @@ func TestUse(t *testing.T) {
 }
 
 // TestDeclare covers the spelling a consumer has to tell apart. The runtime has
-// one set of semantics and no directive varies them, so the node carries the
+// one set of semantics and no directive varies them and the node carries the
 // directives for printing.
 //
 // A `declare(...) { ... }` still runs its body, and Block marks the spelling
-// even where that body is empty: the statement form has no body at all, so the
+// even where that body is empty: the statement form has no body at all and the
 // flag is the only thing separating the two.
 func TestDeclare(t *testing.T) {
 	t.Parallel()
@@ -270,7 +270,7 @@ func TestDeclare(t *testing.T) {
 }
 
 // TestStaticVar covers the per-entry initializer of `static $x = 1, $y;`. Each
-// initializer runs once per function lifetime, so an entry with no initializer
+// initializer runs once per function lifetime and an entry with no initializer
 // has to read apart from one initialized to null: Default is nil for `static
 // $y;` and a literal for `static $y = null;`.
 func TestStaticVar(t *testing.T) {
@@ -306,11 +306,11 @@ func TestStaticVar(t *testing.T) {
 // TestCatch covers the clause a Try selects on. Type is the declared filter,
 // `Exception` or the union form `A|B`, and PHP requires it: a catch clause
 // printed without one is a syntax error. Var is the bound name without its
-// sigil, so `echo $e` reads the caught error.
+// sigil and `echo $e` reads the caught error.
 //
 // Matching walks the clauses in source order, because it compares Go error
 // types and no PHP class hierarchy: the first clause whose type matches handles
-// the error, so the order the parser recorded is the order a consumer reads.
+// the error and the order the parser recorded is the order a consumer reads.
 func TestCatch(t *testing.T) {
 	t.Parallel()
 	try := &Try{
@@ -355,7 +355,7 @@ func TestCatch(t *testing.T) {
 // keyword, which the formatter places comments by.
 //
 // An arm with an empty body falls through to the next one under PHP's
-// semantics, so an empty Body is a written arm and no missing one. Default
+// semantics and an empty Body is a written arm and no missing one. Default
 // sits apart from Cases because it matches no value.
 func TestSwitchCase(t *testing.T) {
 	t.Parallel()
@@ -397,11 +397,11 @@ func TestSwitchCase(t *testing.T) {
 }
 
 // TestClosureUse covers a closure's capture list. ByRef records the `&$name`
-// spelling; the runtime has no reference values, so both spellings bind the
+// spelling; the runtime has no reference values and both spellings bind the
 // same value, and the marker stays so the formatter prints the source back
 // and the linter can report it.
 //
-// A capture binds into the closure's own frame, so a write through one is
+// A capture binds into the closure's own frame and a write through one is
 // invisible to the enclosing scope: AssignsTo reports nothing for a body
 // assigning to a captured name.
 func TestClosureUse(t *testing.T) {

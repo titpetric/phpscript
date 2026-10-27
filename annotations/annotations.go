@@ -26,7 +26,7 @@
 //
 // Specific HTTP methods like PUT are only reachable when explicitly stated.
 //
-// The handler merges the extracted path parameters into `$_REQUEST`, so a
+// The handler merges the extracted path parameters into `$_REQUEST` and a
 // route declared `/users/{id}` answers `$_REQUEST['id']`.
 //
 // The Go standard library does the extracting.
@@ -34,7 +34,7 @@
 // # Startup jobs
 //
 // A file carrying `@startup` runs once, in path order, before the server
-// listens. It executes with the CLI SAPI, so it can migrate a schema or warm a
+// listens. It executes with the CLI SAPI and it can migrate a schema or warm a
 // cache. An error aborts startup.
 //
 // # Scheduled jobs
@@ -48,7 +48,7 @@
 //
 // # Discovery
 //
-// The scan reads .php files recursively, so a tree may keep them in a single
+// The scan reads .php files recursively and a tree may keep them in a single
 // folder or spread them over subfolders. The scan passes over a file with no
 // annotation, and over a `vendor` directory: a composer dependency does not get
 // to publish routes into the application, or to run at startup.
@@ -60,7 +60,7 @@ import (
 
 // comment returns the text of a single-line or docblock comment, reporting
 // whether line is a comment at all. Both annotations must appear in a comment,
-// so a PHP string holding what looks like an annotation stays inert.
+// and a PHP string holding what looks like an annotation stays inert.
 func comment(line string) (string, bool) {
 	text := strings.TrimSpace(line)
 	switch {

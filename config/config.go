@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultRuntimeConfig is the `config/config.yml` compiled into the binary.
-// Every default lives in that file and nowhere else, so the decoder reads a
+// Every default lives in that file and nowhere else and the decoder reads a
 // file passed with -f on top of this one and that file only has to name what
 // it changes.
 //
@@ -57,7 +57,7 @@ type Config struct {
 // platform builds the tracer, wraps every module in the tracing middleware and
 // mounts the debug front end under Telemetry.Path. phpscript registers no
 // recorder of its own, and observes the interpreter onto the trace that
-// middleware started, so interpreter spans show up on the same front end as
+// middleware started and interpreter spans show up on the same front end as
 // the request behind them.
 func (c Config) PlatformOptions() (*PlatformOptions, error) {
 	options, err := c.Telemetry.Resolved()
@@ -128,7 +128,7 @@ type Routes struct {
 }
 
 // New returns the default configuration: the `config/config.yml` the build
-// compiled into the binary. Defaults live in that file and nowhere else, so
+// compiled into the binary. Defaults live in that file and nowhere else and
 // the decoder reads a file passed with -f on top of it and that file only has
 // to name what it changes.
 func New() Config {
@@ -141,7 +141,7 @@ func New() Config {
 
 // NewTestConfig returns the default configuration with the parts a test has no
 // use for turned off: a port picked by the kernel, no lifecycle logging, and no
-// recorder, so parallel tests neither collide on a port nor record into each
+// recorder and parallel tests neither collide on a port nor record into each
 // other.
 func NewTestConfig() Config {
 	result := New()
@@ -152,7 +152,7 @@ func NewTestConfig() Config {
 }
 
 // Value is the configuration a pointer holds, and the zero configuration for a
-// nil one, so no command repeats the nil check.
+// nil one and no command repeats the nil check.
 func Value(c *Config) Config {
 	if c == nil {
 		return Config{}

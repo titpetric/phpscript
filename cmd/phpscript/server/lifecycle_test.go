@@ -64,7 +64,7 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 }
 
 // A module that starts cleanly records as a successful trace and still returns
-// nil, so the wrapper is not something to reach for only when things break.
+// nil and the wrapper is not something to reach for only when things break.
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
@@ -103,7 +103,7 @@ func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
 	}
 }
 
-// The wrapper delegates everything else, so the platform still sees the module
+// The wrapper delegates everything else and the platform still sees the module
 // it registered.
 func TestNonFatalKeepsTheModuleName(t *testing.T) {
 	t.Parallel()

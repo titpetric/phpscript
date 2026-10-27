@@ -94,7 +94,7 @@ func (p *printer) printStmt(s model.Stmt) {
 }
 
 // use renders an import statement. The parser resolves imports while parsing,
-// so the statement is inert, but dropping it would rewrite a file into one
+// and the statement is inert, but dropping it would rewrite a file into one
 // that states none of its dependencies.
 func (p *printer) use(n *model.Use) string {
 	out := "use "
@@ -146,7 +146,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 			// Write "} elseif ..." without a blank close line.
 			p.ensurePHP()
 			p.buf.WriteString(p.indent() + "} ")
-			// printIf for elseif writes the full line including indent, so trim.
+			// printIf for elseif writes the full line including indent and trim.
 			p.printElseIf(nested)
 			return
 		}
@@ -290,7 +290,7 @@ func (p *printer) printSwitch(n *model.Switch) {
 			p.lastLine = c.Line
 		}
 		p.line("case " + p.expr(c.Value) + ":")
-		// A comment between two arms belongs to the arm below it, so the
+		// A comment between two arms belongs to the arm below it and the
 		// bodies leave their trailing comments to the flush above.
 		p.body(c.Body, 0)
 	}

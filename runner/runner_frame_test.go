@@ -85,8 +85,8 @@ func TestBindParams(t *testing.T) {
 }
 
 // TestCombineErrors covers what a frame's unwind reports. One error travels
-// unchanged, so errors.As still reaches its type; two or more travel
-// together, so a failing defer does not hide the failure that ran it.
+// unchanged and errors.As still reaches its type; two or more travel
+// together and a failing defer does not hide the failure that ran it.
 func TestCombineErrors(t *testing.T) {
 	t.Parallel()
 	if err := combineErrors(nil, nil); err != nil {
@@ -136,7 +136,7 @@ func TestInvokeClosureCaptures(t *testing.T) {
 		t.Fatalf("invokeClosure: %v", err)
 	}
 	// The parameter wins over the capture of the same name, and the enclosing
-	// frame's unlisted variable is unreachable, so it reads as null.
+	// frame's unlisted variable is unreachable and it reads as null.
 	if value != "hello ada" {
 		t.Errorf("the closure answered %#v, want %q", value, "hello ada")
 	}

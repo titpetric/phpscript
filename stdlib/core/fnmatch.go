@@ -40,9 +40,9 @@ func phpFnmatch(pattern, str string, flags ...any) bool {
 
 // fnmatchBytes matches pattern against str.
 //
-// The walk is iterative with one saved backtrack point per star, so a run of
+// The walk is iterative with one saved backtrack point per star and a run of
 // consecutive stars costs the same as one and the match is linear in the common
-// case. Nothing recurses.
+// case. The walk makes no recursive call.
 //
 // start tracks whether the current position in str is one where a leading
 // period is special, which is the test FNM_PERIOD makes: the beginning of the
@@ -128,7 +128,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 		}
 		if pathname && str[next] == '/' {
 			// A star does not cross a separator under
-			// FNM_PATHNAME, so there is no further resume point.
+			// FNM_PATHNAME and there is no further resume point.
 			return false
 		}
 		if period && starStart && next == starPos && str[next] == '.' {
@@ -137,7 +137,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 			return false
 		}
 		next++
-		// The star has consumed at least one byte, so the resume point
+		// The star has consumed at least one byte and the resume point
 		// is never a leading-period position.
 		p, s, start = star, next, false
 	}
@@ -154,7 +154,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 // is the '['. It reports the offset just past the closing ']', whether b is in
 // the set, and whether the expression closes at all.
 //
-// PHP accepts both [!...] and [^...] for a negated class, so this function
+// PHP accepts both [!...] and [^...] for a negated class and this function
 // reads both. A ']' in the first position is a literal, as POSIX has it.
 func fnmatchClass(pattern string, open int, b byte, noescape bool) (end int, in, closed bool) {
 	i := open + 1

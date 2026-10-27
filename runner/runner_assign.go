@@ -13,7 +13,7 @@ import (
 // go through assign_go.go.
 
 // execAssign mutates a variable, property or array element. expr-lang cannot do
-// this, so it lives entirely here.
+// this and it lives entirely here.
 func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	rhs, err := rt.Eval(n.Value, scope)
 	if err != nil {
@@ -33,7 +33,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 
 	case *model.ListExpr:
 		// list($a, $b) = $arr destructures by position (integer keys). The
-		// loop below reads the source through helperIndex, so a binding
+		// loop below reads the source through helperIndex and a binding
 		// returning a native []string destructures like an *Array.
 		if !model.IsCollection(rhs) {
 			return fmt.Errorf("assign: list() target requires an array")
@@ -143,7 +143,7 @@ func bindConstructorID(target, value model.Expr, op string, result any) {
 // the slot that held null, or the write would land in a value nothing holds.
 //
 // Only an assignable base is auto-vivified. A function result or a literal has
-// nowhere to write the array back to, so container returns it as it stands and
+// nowhere to write the array back to and container returns it as it stands and
 // the caller reports the assignment as unsupported.
 func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
 	value, err := rt.Eval(base, scope)
@@ -211,7 +211,7 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 				keyed.Delete(keyString(key))
 				continue
 			}
-			// A reindexed slice is a new value, so it goes back to where the
+			// A reindexed slice is a new value and it goes back to where the
 			// base reads from. A map deleted in place answers nothing.
 			if replacement, changed := unsetGoIndex(base, key); changed {
 				if err := rt.assignTo(tgt.Base, replacement, scope); err != nil {
@@ -333,7 +333,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 }
 
 // applyAssignOp resolves compound-assignment operators against the current
-// value. It reports an error for the same inputs the binary operator does, so
+// value. It reports an error for the same inputs the binary operator does and
 // `$x <<= -1` fails where `$x = $x << -1` fails, with no silent assignment.
 func applyAssignOp(op string, cur, rhs any) (any, error) {
 	switch op {

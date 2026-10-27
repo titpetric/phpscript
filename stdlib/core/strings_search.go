@@ -22,7 +22,7 @@ func phpStrpos(haystack, needle string, offset ...int64) any {
 }
 
 // phpStripos implements stripos($haystack, $needle[, $offset]). It folds both
-// operands over A-Z only, which keeps their byte length, so the offset still
+// operands over A-Z only, which keeps their byte length and the offset still
 // indexes the original haystack; PHP folds no wider than that either.
 func phpStripos(haystack, needle string, offset ...int64) any {
 	return phpStrpos(asciiLower(haystack), asciiLower(needle), offset...)
@@ -93,7 +93,7 @@ func searchLast(haystack, needle string, offset []int64) int {
 		last = 0
 	}
 	// A match inside the prefix that ends one needle past the cap starts at
-	// or before it, so LastIndex over that prefix answers directly.
+	// or before it and LastIndex over that prefix answers directly.
 	end := last + int64(len(needle))
 	if end > int64(len(haystack)) {
 		end = int64(len(haystack))

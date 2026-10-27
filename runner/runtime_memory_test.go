@@ -39,7 +39,7 @@ func TestRuntime_CompiledTree(t *testing.T) {
 
 // TestRuntimeMemoryReporting covers the figures memory_get_usage() and
 // memory_get_peak_usage() answer with. Both come off a walk of the live roots,
-// so the usage is what is reachable now and the peak is the highest a walk has
+// and the usage is what is reachable now and the peak is the highest a walk has
 // seen: an allocation made and released between two walks does not raise it,
 // and php's allocator-level peak counts it.
 func TestRuntimeMemoryReporting(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRuntimeMemoryReporting(t *testing.T) {
 		t.Errorf("MemoryPeak() = %d, below the %d in use", got, base)
 	}
 
-	// A host folds the request's own cost into the baseline, so the walk starts
+	// A host folds the request's own cost into the baseline and the walk starts
 	// from what the request already weighs.
 	rt.AccountRequest(strings.Repeat("x", 4096))
 	grown := rt.MemoryWalk()

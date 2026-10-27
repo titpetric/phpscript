@@ -45,8 +45,8 @@ function load() { return 1; }
 }
 
 // The check leaves a chain that ends in a literal alone. A scalar is
-// immutable, so neither name can reach the other through it, and the parser
-// splits an array literal into one allocation per name, so there is nothing
+// immutable and neither name can reach the other through it, and the parser
+// splits an array literal into one allocation per name, with no value
 // left to share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
 func TestFileAcceptsChainedLiterals(t *testing.T) {
 	t.Parallel()

@@ -153,7 +153,7 @@ echo $info[0] . "x" . $info[1] . " " . $info[2];
 }
 
 // TestImage covers the handle a script holds between calls. imagedestroy drops
-// the pixels and keeps the handle itself valid, so the size functions report
+// the pixels and keeps the handle itself valid and the size functions report
 // false afterwards where they reported a number.
 func TestImage(t *testing.T) {
 	t.Parallel()
@@ -173,7 +173,7 @@ var_export(imagesx($im));
 }
 
 // TestImage_Bounds covers the rectangle a Go host embedding this package reads
-// off a handle a script produced. A created image starts at the origin, so the
+// off a handle a script produced. A created image starts at the origin and the
 // bounds are the width and height the script named.
 func TestImage_Bounds(t *testing.T) {
 	t.Parallel()
@@ -188,7 +188,7 @@ func TestImage_Bounds(t *testing.T) {
 }
 
 // TestImage_Underlying covers the drawable the handle wraps. A host writes
-// through it, so the value is the same drawable the script's own calls paint
+// through it and the value is the same drawable the script's own calls paint
 // on, and a pixel set here is the pixel the next call reads.
 func TestImage_Underlying(t *testing.T) {
 	t.Parallel()

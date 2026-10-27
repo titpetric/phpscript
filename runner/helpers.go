@@ -49,7 +49,7 @@ func helperIndex(base, idx any) any {
 	case model.Keyed:
 		return b.Read(keyString(idx))
 	case string, []byte:
-		// String offset: $s[$i] is the byte at position i, as PHP's is, so it
+		// String offset: $s[$i] is the byte at position i, as PHP's is and it
 		// agrees with strlen and with the offsets strpos and
 		// PREG_OFFSET_CAPTURE report. A negative offset counts from the end.
 		// mb_substr($s, $i, 1) is the character read.
@@ -72,7 +72,7 @@ func helperIndex(base, idx any) any {
 	switch rv.Kind() {
 	case reflect.Map:
 		// coerceArg converts the key to the map's own type first. A script
-		// index is an int64 or a string, so reading a map[int]T with the value
+		// index is an int64 or a string and reading a map[int]T with the value
 		// passed straight to MapIndex panics and answers nothing.
 		mapKey, ok := coerceArg(rv.Type().Key(), normalizeKey(idx))
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
@@ -102,7 +102,7 @@ func helperIndex(base, idx any) any {
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
 		// A bound callable produced here can outlive the expression that read it,
-		// so the closure copies the scope by value and not through the reference.
+		// and the closure copies the scope by value and not through the reference.
 		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:
@@ -154,7 +154,7 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 
 // exprHelpers returns the typed helper implementations the engine installs.
 // Package-level because the helpers are stateless: a compiled closure chain
-// is shareable across runtimes. PanicError mirrors invokeAny's recover, so
+// is shareable across runtimes. PanicError mirrors invokeAny's recover and
 // a host panic surfaces as the same catchable error either way.
 var exprHelpers = &expr.Helpers{
 	Truthy:     phpTruthy,

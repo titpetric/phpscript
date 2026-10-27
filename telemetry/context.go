@@ -4,9 +4,9 @@ import (
 	"context"
 )
 
-// PHP has no lexical scope a Go caller can read, so the interpreter publishes
+// PHP has no lexical scope a Go caller can read and the interpreter publishes
 // the file and line of the statement it runs into the binding's context.
-// Spans started from such a context record that location, so
+// Spans started from such a context record that location and
 // a span in the front end point back at the line of PHP that caused it.
 
 type spanFilenameKey struct{}
@@ -30,7 +30,7 @@ func WithSpanLine(ctx context.Context, line int) context.Context {
 }
 
 // SourceValue answers the two span-source keys from location fields a foreign
-// context value type carries, so a host folds the file and the line into one
+// context value type carries and a host folds the file and the line into one
 // allocation beside its own keys. A false sends the caller down its parent
 // chain, matching WithSpanFilename and WithSpanLine declining an empty value.
 func SourceValue(key any, filename string, line int) (any, bool) {
@@ -56,7 +56,7 @@ func SpanSource(ctx context.Context) (string, int) {
 }
 
 // withSource records the source location ctx carries on a span, and answers a
-// nil span unchanged, so the caller does not have to check.
+// nil span unchanged and the caller does not have to check.
 func withSource(ctx context.Context, span *Span) *Span {
 	if span == nil {
 		return nil

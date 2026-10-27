@@ -6,7 +6,7 @@ import (
 )
 
 // Overlay reads filename over base and returns the configuration it describes
-// with the keys the file itself named, so a caller can tell a key the file set
+// with the keys the file itself named and a caller can tell a key the file set
 // from one it inherited. A missing file is an error, with no fall back to
 // base; forbidden names the keys it may not set and owned says who does.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
@@ -42,11 +42,11 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 		return base, declared, fmt.Errorf("%s: %w", filename, err)
 	}
 
-	// A mapping decoded into a map replaces it, so a file that names servers
+	// A mapping decoded into a map replaces it and a file that names servers
 	// holds only the ones it named and a site cannot inherit the operator's
 	// credentials. The one spelling that does not behave that way is `mail:`
-	// with nothing under it: that is a null node, which the decoder leaves as
-	// the inherited value, so a file declaring it had no servers would
+	// with no key under it reads as a null node, which the decoder leaves as
+	// the inherited value and a file declaring it had no servers would
 	// inherit the operator's. Naming the key with nothing under it means no
 	// servers.
 	//

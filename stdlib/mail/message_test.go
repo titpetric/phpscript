@@ -12,7 +12,7 @@ import (
 )
 
 // TestBuildMessage_Plain pins the message mail() has always sent, byte for
-// byte: a message with no HTML part takes none of the multipart rendering, so a
+// byte: a message with no HTML part takes none of the multipart rendering and a
 // script that never passes $html sees no change on the wire.
 func TestBuildMessage_Plain(t *testing.T) {
 	t.Parallel()
@@ -158,7 +158,7 @@ func TestBuildMessage_Encoding(t *testing.T) {
 
 // TestBuildMessage_HeaderInjection covers every header a script or a host
 // supplies. A CR or LF in any of them would start a header of the script's
-// choosing, a Bcc being the one that turns a contact form into a relay, so
+// choosing, a Bcc being the one that turns a contact form into a relay and
 // header strips both and the value stays on its own line.
 func TestBuildMessage_HeaderInjection(t *testing.T) {
 	t.Parallel()

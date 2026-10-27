@@ -9,7 +9,7 @@ import (
 //
 // ParseRoutePath accepts three spellings: {name} for one segment, {name...}
 // for the rest of them joined, {name:regex} for one matching a regex. Neither
-// router takes all three as written, so RenderPath translates per router and
+// router takes all three as written and RenderPath translates per router and
 // this grammar is the one an author writes against.
 type RouteParam struct {
 	Name string
@@ -38,7 +38,7 @@ const (
 
 // ParseRoutePath returns the parameters declared in an @route path, in order.
 //
-// An error names the offending segment, so a caller can report it against the
+// An error names the offending segment and a caller can report it against the
 // annotation's line. Every rejected spelling is one a router
 // would otherwise accept and answer wrongly: chi registers {module=users} as a
 // parameter of that literal name, matches every request to the segment and
@@ -137,7 +137,7 @@ func closingBrace(path string, open int) int {
 // RenderRoutePath rewrites an @route path into the dialect a router reads.
 //
 // The one rewrite chi needs is {name...} to *, its only multi-segment
-// placeholder; the name is not recoverable from the rendered pattern, so the
+// placeholder; the name is not recoverable from the rendered pattern and the
 // runner reads the declared path for the path values $_REQUEST carries.
 //
 // ServeMux drops a regex constraint, because it has none: the parameter still

@@ -19,7 +19,7 @@ class Status
 echo Status::READY;
 ```
 
-One class declaration can hold more than one constant. Nothing enforces visibility on class constants.
+One class declaration can hold more than one constant. Class constants carry no visibility check.
 
 ## Runtime constants
 
@@ -37,7 +37,7 @@ const APP_VERSION = "1.0";
 echo defined("APP_ENV") ? constant("APP_ENV") : "unset";
 ```
 
-A constant is visible in every scope, including inside functions and methods. A bare identifier resolves from the current scope first and the constant table second, so a variable of the same name shadows one.
+A constant is visible in every scope, including inside functions and methods. A bare identifier resolves from the current scope first and the constant table second and a variable of the same name shadows one.
 
 A bare identifier nothing defines throws:
 
@@ -46,13 +46,13 @@ echo MISSING;         // RuntimeException: Undefined constant "MISSING"
 echo $missing;        // null, and the script continues
 ```
 
-The two are separate lookups, so an unset variable is still the null PHP reads it as.
+The two are separate lookups and an unset variable is still the null PHP reads it as.
 
-PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so `catch (Exception $e)`, `catch (RuntimeException $e)` and `catch (Throwable $e)` take it and `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle, and a name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
+PHP 8 raises `Error` for the same expression. This raises `RuntimeException` and `catch (Exception $e)`, `catch (RuntimeException $e)` and `catch (Throwable $e)` take it and `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle, and a name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
 
 ## Magic constants
 
-The compiler resolves each one as it reads the file, the way php resolves them, and leaves a literal in the parsed program. Nothing looks one up while the script runs.
+The compiler resolves each one as it reads the file, the way php resolves them, and leaves a literal in the parsed program. The runtime looks none up while the script runs.
 
 The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) lists them.
 
@@ -65,15 +65,15 @@ The table is php's own list, in the order the [language reference](https://www.p
 | `__CLASS__`     | Compatibility | The enclosing class, namespace-qualified. Empty outside one.                                                                    |
 | `__METHOD__`    | Compatibility | `Class::method` inside a class, the function's own name outside one.                                                            |
 | `__NAMESPACE__` | Compatibility | The namespace the file declares, empty in a file that declares none.                                                            |
-| `__TRAIT__`     | Won't build   | Nothing. There are no traits, so there is no name to answer. See [Design](../../design.md).                                     |
-| `__PROPERTY__`  | Won't build   | Nothing. There are no property hooks for it to name.                                                                            |
+| `__TRAIT__`     | Won't build   | No answer. There are no traits, and there is no name to answer. See [Design](../../design.md).                                  |
+| `__PROPERTY__`  | Won't build   | No answer. There are no property hooks for it to name.                                                                          |
 | `::class`       | Partial       | The class name, namespace-qualified. `Name::class`, `self::class` and `static::class` resolve; `$object::class` does not parse. |
 
 A name in the last three rows is an ordinary undefined constant: reading `__TRAIT__` throws `Undefined constant "__TRAIT__"`, the same as any name nothing declares.
 
 ### What defined() sees
 
-Nothing. None of these is in the constant table, and php reports the same:
+None of these is in the constant table, and php reports the same:
 
 ```php
 echo __LINE__;                  // the line this is written on
@@ -112,7 +112,7 @@ At the top level all three are empty strings. The fixture that holds every one o
 
 Registering the standard library installs the platform constants a PHP library branches on: `PHP_VERSION` and `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` and its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS` and `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `INF` and `NAN`, `DIRECTORY_SEPARATOR` and `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, and the `T_*` tokenizer ids.
 
-`INF` and `NAN` are the two float values with no numeric spelling. `NAN` compares equal to nothing, itself included, so `$x !== $x` is the test for one; `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
+`INF` and `NAN` are the two float values with no numeric spelling. `NAN` compares equal to nothing, itself included and `$x !== $x` is the test for one; `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
 
 `PHP_VERSION` reports the PHP language version whose semantics the fixtures hold phpscript to. The number claims no full compatibility with that release; library code reads it to decide which language features it may use.
 
@@ -120,6 +120,6 @@ Registering the standard library installs the platform constants a PHP library b
 
 `TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()` and `DateTime::parse()`. A layout is an ordinary string and a script can spell any of them out; these are the ones worth naming.
 
-`TIME_RFC3339` is the one to reach for by default. Alone among the layouts here it carries the UTC offset, so it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
+`TIME_RFC3339` is the one to reach for by default. Alone among the layouts here it carries the UTC offset and it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
 
 The names are flat because a namespaced constant does not parse in this runtime: the classes are `Time\Duration` and `Time\Location`, but a constant spells that prefix `TIME_`.

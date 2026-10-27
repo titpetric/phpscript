@@ -18,7 +18,7 @@ import (
 // ordinary PHP that a Go slice cannot serve (a slice cannot grow through the
 // interface value holding it). Since model.Array gained its list mode, a
 // merged list costs one struct allocation more than the slice and no map at
-// all, so the appendability is close to free. Measured: 8 allocs either way.
+// all and the appendability is close to free. Measured: 8 allocs either way.
 func phpArrayMerge(arrs ...any) any {
 	size := 0
 	for _, a := range arrs {
@@ -42,7 +42,7 @@ func phpArrayMerge(arrs ...any) any {
 
 // phpArraySplice removes (and optionally replaces) a run of elements, returning
 // the removed ones as a []any. It resizes its argument, which a Go slice cannot
-// do through the interface holding it, so this is one of the few shims that
+// do through the interface holding it and this is one of the few shims that
 // genuinely requires a *model.Array. Passing anything else is an error rather
 // than a silent no-op.
 func phpArraySplice(array any, offset int64, optional ...any) ([]any, error) {
@@ -126,15 +126,15 @@ func phpArraySpliceReplacement(rep any) []any {
 }
 
 // arrayEntry is one key/value pair of a snapshot taken before the array is
-// rewritten, so the replay is never iterating the storage it overwrites.
+// rewritten and the replay is never iterating the storage it overwrites.
 type arrayEntry struct {
 	key any
 	val any
 }
 
 // arrayTarget is the shared guard of the four mutators. They resize their
-// argument, and a Go slice cannot grow through the interface value holding it,
-// so - like array_splice, whose precedent this follows - they require the one
+// argument, and a Go slice cannot grow through the interface value holding it.
+// Like array_splice, whose precedent this follows, they require the one
 // shape that can: a *model.Array. This refuses a native slice from a binding
 // (explode(), array_keys()) loudly, and never mutates one into a copy the
 // script never sees. See "Known divergences from PHP" in docs/README.md.
@@ -194,7 +194,7 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 	}
 	entries := arrayEntries(a)
 	a.Clear()
-	// Appending the new values first leaves them holding keys 0..n-1, so the
+	// Appending the new values first leaves them holding keys 0..n-1 and the
 	// replay continues the numbering and never starts over.
 	for _, v := range values {
 		a.Append(v)
@@ -205,7 +205,7 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 
 // phpArrayPop removes the last element, keeping the keys of the rest. Unlike
 // shift and unshift it does not renumber: PHP leaves the surviving keys alone,
-// so popping 9 from [5 => a, 9 => c] leaves [5 => a], keeping the key 5.
+// and popping 9 from [5 => a, 9 => c] leaves [5 => a], keeping the key 5.
 //
 // The append index is Array.Pop's business, the one piece of state a shim
 // cannot reach.

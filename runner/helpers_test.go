@@ -7,7 +7,7 @@ import (
 )
 
 // TestHelperConcat covers `.`, which renders both operands the way PHP renders
-// them in a string context, so a concatenation of an int and a bool spells
+// them in a string context and a concatenation of an int and a bool spells
 // them as echo spells them.
 func TestHelperConcat(t *testing.T) {
 	t.Parallel()
@@ -61,7 +61,7 @@ func TestHelperArray(t *testing.T) {
 
 // TestHelperIndex covers `base[idx]` over every container a script can index. A
 // missing key answers nil, PHP's forgiving access, and raises nothing. A string
-// offset is the byte at that position, so it agrees with strlen and with the
+// offset is the byte at that position and it agrees with strlen and with the
 // offsets strpos reports, and a negative offset counts from the end.
 func TestHelperIndex(t *testing.T) {
 	t.Parallel()

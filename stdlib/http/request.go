@@ -8,10 +8,10 @@ import (
 )
 
 // NewRequest builds a request from $method and $url, with an optional $body.
-// Building a request sends nothing: pass it to a client with
+// Building a request sends no bytes: pass it to a client with
 // $client->send($request).
 //
-// The value is a net/http request, so a script reads and writes it the way Go
+// The value is a net/http request and a script reads and writes it the way Go
 // does: $request->method, $request->host, and $request->header->set($name,
 // $value) for headers. Methods go uppercase, "GET" and "POST"; a lowercase
 // one is upper-cased and never sent as written, because a server treats the
@@ -30,7 +30,7 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 	}
 
 	// A nil *strings.Reader held in an io.Reader is not a nil io.Reader, and
-	// net/http would then read from it, so the call below passes the two cases
+	// net/http would then read from it and the call below passes the two cases
 	// separately and not through one variable.
 	var (
 		request *nethttp.Request

@@ -6,11 +6,11 @@ import (
 )
 
 // TestWithWorker covers how a fixture run finds its caches. Go has no
-// goroutine-local storage, so the worker id rides the run's own context,
+// goroutine-local storage and the worker id rides the run's own context,
 // already threaded from the command down.
 //
 // A context nothing marked answers worker zero, which is a worker like any
-// other, so a single-threaded run and a Go test calling RunFixture directly
+// other and a single-threaded run and a Go test calling RunFixture directly
 // both land there.
 func TestWithWorker(t *testing.T) {
 	plain := context.Background()
@@ -26,7 +26,7 @@ func TestWithWorker(t *testing.T) {
 		t.Errorf("the marked context carries worker %v, want 3", marked.Value(workerKey))
 	}
 
-	// The same id answers the same worker, so two runs on one goroutine share
+	// The same id answers the same worker and two runs on one goroutine share
 	// its caches and build no second set.
 	if currentWorker(marked) != currentWorker(WithWorker(plain, 3)) {
 		t.Error("two contexts naming worker 3 answered different workers")

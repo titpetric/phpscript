@@ -160,9 +160,9 @@ func scratchName(name string) bool {
 }
 
 // scratchCall is baseCall over the environment's arena: it pushes the
-// arguments, borrows the region for the call, and the pop returns it, so a
+// arguments, borrows the region for the call, and the pop returns it and a
 // covered call boxes no slice per invocation. The three-index expression caps
-// the borrowed region, so an append inside the callee reallocates away from
+// the borrowed region and an append inside the callee reallocates away from
 // the arena in place of writing over it.
 func scratchCall(name string, args []closure) closure {
 	return func(env *Env) (any, error) {

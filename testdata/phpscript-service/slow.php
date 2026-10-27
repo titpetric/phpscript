@@ -6,7 +6,7 @@
 // response, because nobody remains to read it. ignore_user_abort(true) keeps
 // the endpoint running long enough to make that choice, and without it the
 // disconnect ends it where it next looks. connection_aborted() reads the
-// request's context, so no tick writes a byte to find out who is waiting.
+// request's context, and no tick writes a byte to find out who is waiting.
 
 ignore_user_abort(true);
 

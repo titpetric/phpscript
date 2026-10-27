@@ -54,7 +54,7 @@ func NewManager(storage Storage, users ...auth.Storage) (*Manager, error) {
 // This is the setter half of the constructor: a script that took the
 // manager's defaults and then needs memory storage says so here, and the rest
 // of the manager holds. It wraps the storage for tracing as the constructor
-// does, so the trace names whichever backend answered.
+// does and the trace names whichever backend answered.
 func (s *Manager) SetStorage(storage Storage) error {
 	if storage == nil {
 		return errors.New("session storage is nil")
@@ -76,7 +76,7 @@ func (s *Manager) SetAuth(users auth.Storage) error {
 // session for the user it names. It reports whether the credential held; a
 // wrong password is false and no error.
 //
-// The session carries the user's primary key, so a row written during the
+// The session carries the user's primary key and a row written during the
 // session references the user the way any other table does. The username
 // stays in the user database, and a caller that needs it reads it there.
 func (s *Manager) Login(ctx context.Context, key, secret string) (bool, error) {
@@ -133,7 +133,7 @@ func (s *Manager) Destroy(ctx context.Context) error {
 }
 
 // DeleteByUser signs one user out of every client, answering how many sessions
-// it took. It clears this manager's own session when the sweep took it, so
+// it took. It clears this manager's own session when the sweep took it and
 // valid() answers false in the same request the account went away in.
 func (s *Manager) DeleteByUser(ctx context.Context, userID string) (int, error) {
 	if current, err := s.Get(ctx); err == nil && current == userID {
@@ -212,7 +212,7 @@ func (s *Manager) currentID(ctx context.Context) (string, bool) {
 		}
 	}
 	// CookieMap and not the Cookie field: a request decodes its cookies on the
-	// first read through the accessor, so the field is empty until something
+	// first read through the accessor and the field is empty until something
 	// asks. The same call covers a host that fills the field itself.
 	return validSessionID(request.CookieMap()[s.SessionCookieName])
 }

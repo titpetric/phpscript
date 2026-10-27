@@ -1,6 +1,6 @@
 # Error handling
 
-An error in phpscript differs from an error in PHP. phpscript is a go runtime, so error handling at a call site takes this form:
+An error in phpscript differs from an error in PHP. phpscript is a go runtime and error handling at a call site takes this form:
 
 ```go
 storage, err := NewStorage()
@@ -52,7 +52,7 @@ try {
 }
 ```
 
-The class a clause names selects what it takes, so `catch (Exception $e)` leaves a `TypeError` for a later clause. See [Exceptions](../reference/exceptions/README.md).
+The class a clause names selects what it takes and `catch (Exception $e)` leaves a `TypeError` for a later clause. See [Exceptions](../reference/exceptions/README.md).
 
 A script can create a fallback with `finally`.
 
@@ -66,7 +66,7 @@ try {
 }
 ```
 
-The caught exception is also an `error` type, so PHP code can pass it along to a Go function like `func(err error)`.
+The caught exception is also an `error` type and PHP code can pass it along to a Go function like `func(err error)`.
 
 ## Handing exceptions in Go
 
@@ -80,7 +80,7 @@ rt.OnError(func(err error) {
 
 The callback consumes each non-exit statement error and execution continues. It can prevent an enclosing PHP `try`/`catch` from receiving the error; omit `OnError` when PHP code should control propagation.
 
-The runtime context is accessible over `rt.Context()`, and carries the running span. `SpanFromContext` returns nil outside a trace and every span method tolerates that, so the callback needs no guard.
+The runtime context is accessible over `rt.Context()`, and carries the running span. `SpanFromContext` returns nil outside a trace and every span method tolerates that and the callback needs no guard.
 
 ## Errors over HTTP
 
@@ -98,7 +98,7 @@ An uncaught exception sets one too. The code carried by the exception becomes th
 throw new Exception("The article moved", 503);
 ```
 
-Any other code is the script's own numbering and no HTTP status, so a `new Exception("connection refused")` fails the request with a 500. `exit()` and `die()` are not failures: a script that ends early answers with the status it set, as it does in PHP.
+Any other code is the script's own numbering and no HTTP status and a `new Exception("connection refused")` fails the request with a 500. `exit()` and `die()` are not failures: a script that ends early answers with the status it set, as it does in PHP.
 
 They are also not catchable, which matters more than it sounds. This is the redirect every application writes:
 
@@ -114,11 +114,11 @@ try {
 
 The `exit()` ends the request there. A runtime where a catch clause could swallow it would carry on into the error branch and render a page under a `Location` header already staged. `finally` does not run either, for the same reason it does not in PHP.
 
-A response that failed carries the status and nothing else. What went wrong is in the server log and on the request trace, both addressed by the request id the response carries, and not in a body the client reads back.
+A response that failed carries the status alone. What went wrong is in the server log and on the request trace, both addressed by the request id the response carries, and not in a body the client reads back.
 
 ### Error pages
 
-A site puts up its own page for a status by writing a file named after it in the document root. There is nothing to configure and nothing to enable:
+A site puts up its own page for a status by writing a file named after it in the document root. No configuration turns it on:
 
 ```text
 public/
@@ -136,7 +136,7 @@ The server tries four names for a status, in this order:
 | `error.php`  | Any status the two above do not name     |
 | `error.html` | The same, for a site with no PHP in it   |
 
-The server prefers the `.php` name at each step, so a site that adds a `404.php` beside a hand written `404.html` starts serving the new one by writing it. Deleting the file is how a site stops using one.
+The server prefers the `.php` name at each step and a site that adds a `404.php` beside a hand written `404.html` starts serving the new one by writing it. Deleting the file is how a site stops using one.
 
 `error.php` reads the status it answers for out of `$_SERVER["REDIRECT_STATUS"]`. `error.html` cannot name it, and is the one page a site of static files has to answer every failure with.
 
@@ -154,7 +154,7 @@ $body  = "<p>" . htmlspecialchars($path) . " is not here.</p>";
 include "templates/layout.php";
 ```
 
-An `include` resolves against the application root and not the document root, so a page shares the layout the rest of the site uses. The keys are absent on a direct request for `/404.php`, so the example reads `REDIRECT_URL` through `isset`.
+An `include` resolves against the application root and not the document root and a page shares the layout the rest of the site uses. The keys are absent on a direct request for `/404.php` and the example reads `REDIRECT_URL` through `isset`.
 
 | Key                     | Holds                                                |
 |-------------------------|------------------------------------------------------|
@@ -167,8 +167,8 @@ An `include` resolves against the application root and not the document root, so
 
 Whether the page also gets `$_POST`, `$_FILES` and `php://input` depends on which of the two things went wrong, and the rule is not a policy:
 
-- **The request matched nothing.** No file answered for it and no script ran, so nothing read the body and the page gets it whole. This is what lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives the way its target endpoint would see it, and the page answers `http_response_code(200)` and includes what it routes to.
-- **A script failed.** It had already read the body by the time it threw, so there is nothing left to hand on. `$_POST` and `$_FILES` are empty and `php://input` reads nothing.
+- **The request matched nothing.** No file answered for it and no script ran and nothing read the body and the page gets it whole. This is what lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives the way its target endpoint would see it, and the page answers `http_response_code(200)` and includes what it routes to.
+- **A script failed.** It had already read the body by the time it threw, and it has no body left to hand on. `$_POST` and `$_FILES` are empty and `php://input` reads nothing.
 
 ```php
 <?php
@@ -185,7 +185,7 @@ if ($path === "/article" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
 ### Who gets one
 
-An error page is a website's answer, and an API on the same server wants no part of it. Nothing about the path can tell the two apart: `phpscript server` mounts one catch-all, so an unrouted `/api/users/99` and an unrouted `/blog/old-post` arrive the same way. The server reads the request and the script instead, and renders a page only when all three hold:
+An error page is a website's answer, and an API on the same server wants no part of it. The path cannot tell the two apart: `phpscript server` mounts one catch-all and an unrouted `/api/users/99` and an unrouted `/blog/old-post` arrive the same way. The server reads the request and the script instead, and renders a page only when all three hold:
 
 1. **The request carries an HTML accept header.** A browser navigating sends `text/html` in `Accept` and `Sec-Fetch-Dest: document`. A `fetch()`, an XHR, curl, an `<img>` and a stylesheet do not, and neither does a `HEAD` request. `*/*` matches everything and is not a request for HTML.
 2. **The script wrote no body.** A script that echoed something has answered, and its answer stands.
@@ -204,7 +204,7 @@ echo json_encode(["error" => "no such user"]);
 
 There is no path prefix to configure, no list to keep in step with the routes, and an API that moves from `/api` to `/v1` needs no change.
 
-Two things never get a page. A `Host` no virtual host claims gets a bare 404, because there is no site and so no document root to look in. And the server serves a `.php` file in a `writable_paths` directory as bytes and never runs it, error pages included, so a `404.php` that arrived by upload cannot execute.
+Two things never get a page. A `Host` no virtual host claims gets a bare 404, because there is no site and so no document root to look in. And the server serves a `.php` file in a `writable_paths` directory as bytes and never runs it, error pages included and a `404.php` that arrived by upload cannot execute.
 
 ## References
 

@@ -150,7 +150,7 @@ func writeComment(b *strings.Builder, lines []string, indent string) {
 }
 
 // Signature renders the function as a script would declare it. A Class::method
-// name is not declarable with the function keyword, so the line reads the way
+// name is not declarable with the function keyword and the line reads the way
 // a script calls it.
 func (f Func) Signature() string {
 	if strings.Contains(f.Name, "::") {

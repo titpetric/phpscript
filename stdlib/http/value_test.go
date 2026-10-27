@@ -8,7 +8,7 @@ import (
 )
 
 // TestToString covers how an option reaches a header value. PHP is dynamically
-// typed and an option arrives as whatever the script wrote, so toString renders
+// typed and an option arrives as whatever the script wrote and toString renders
 // a number written where the header takes a string the way PHP renders it in a
 // string context, and null is the empty string.
 func TestToString(t *testing.T) {
@@ -70,7 +70,7 @@ func TestToBool(t *testing.T) {
 
 // TestToInt covers the numeric shapes an option arrives as. A script writes a
 // literal and the parser emits an int64, a computed value arrives as a
-// float64, and a value read out of a configuration file arrives as a string, so
+// float64, and a value read out of a configuration file arrives as a string and
 // all three read as the same number.
 func TestToInt(t *testing.T) {
 	t.Parallel()
@@ -100,7 +100,7 @@ func TestToInt(t *testing.T) {
 
 // TestToDuration covers how a script spells a timeout. A bare number is
 // seconds, the spelling PHP's own timeouts use, and toDuration parses a string
-// carrying a unit the way Go spells one, so a sub-second timeout needs no
+// carrying a unit the way Go spells one and a sub-second timeout needs no
 // fraction.
 func TestToDuration(t *testing.T) {
 	t.Parallel()
@@ -128,7 +128,7 @@ func TestToDuration(t *testing.T) {
 
 // TestToHeaders covers the headers option, which a script writes as an
 // associative array of name to value. toHeaders walks every PHP array shape
-// the runtime returns through model.RangeValues, so a native map and a
+// the runtime returns through model.RangeValues and a native map and a
 // *model.Array read the same, and NewClient reports a value that is no array
 // at all.
 func TestToHeaders(t *testing.T) {

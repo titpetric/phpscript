@@ -8,7 +8,7 @@ import (
 // InterfaceViolation is one method an interface names and a class declaring
 // `implements` did not declare.
 //
-// Decl is the class declaration carrying it, so a caller holding the
+// Decl is the class declaration carrying it and a caller holding the
 // program's source spans can report the class's line.
 type InterfaceViolation struct {
 	Decl      *ClassDecl
@@ -25,13 +25,13 @@ func (v InterfaceViolation) String() string {
 }
 
 // InterfaceContractError is the failure both backends raise for a violated
-// contract. It reaches a script as a RuntimeException, so a `catch
+// contract. It reaches a script as a RuntimeException and a `catch
 // (RuntimeException $e)` written around an include takes it.
 type InterfaceContractError struct {
 	Violations []InterfaceViolation
 }
 
-// Error lists every violation, one per line, so a class missing three methods
+// Error lists every violation, one per line and a class missing three methods
 // produces one error and not three.
 func (e *InterfaceContractError) Error() string {
 	parts := make([]string, 0, len(e.Violations))
@@ -43,7 +43,7 @@ func (e *InterfaceContractError) Error() string {
 
 // CheckInterfaceContracts reports the contract violations in stmts as one
 // error, or nil when every class declaring `implements` declares what it
-// promised. Both backends call it where they register classes, so a program
+// promised. Both backends call it where they register classes and a program
 // fails the same way whichever one runs it.
 func CheckInterfaceContracts(prog *Program) error {
 	violations := CheckInterfaces(prog.Stmts, prog.AnonClasses...)
@@ -100,7 +100,7 @@ func CheckInterfaces(stmts []Stmt, extra ...*ClassDecl) []InterfaceViolation {
 
 // interfaceIndex maps the lower-cased name of every interface declared in
 // stmts to its declaration. PHP compares a class or interface name without
-// regard to case, so this index lower-cases every key.
+// regard to case and this index lower-cases every key.
 func interfaceIndex(stmts []Stmt) map[string]*InterfaceDecl {
 	var index map[string]*InterfaceDecl
 	for _, s := range stmts {

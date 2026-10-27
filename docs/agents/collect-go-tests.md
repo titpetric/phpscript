@@ -20,7 +20,7 @@ The database fixtures read their connection strings from `.env.testing`:
 set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
 
-Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, so `env: include: .env.testing` works where the shell does not. Leave the file alone.
+Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses and bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser and `env: include: .env.testing` works where the shell does not. Leave the file alone.
 
 The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression; report it as a missing precondition.
 

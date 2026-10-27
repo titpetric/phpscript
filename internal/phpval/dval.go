@@ -5,7 +5,7 @@ import (
 )
 
 // Bounds of the int64 range as float64. A double at or above 2^63 does not fit,
-// and 2^63 is exactly representable, so the test is a half-open interval.
+// and 2^63 is exactly representable and the test is a half-open interval.
 const (
 	twoPow63 = 9223372036854775808.0  // 2^63
 	twoPow64 = 18446744073709551616.0 // 2^64
@@ -18,7 +18,7 @@ const (
 // as zend_dval_to_lval does: (int)1.0e20 is 7766279631452241920 in php.
 // NaN and both infinities are zero, as PHP 8 answers them.
 //
-// A value inside the range takes a plain conversion, so only a float that does
+// A value inside the range takes a plain conversion and only a float that does
 // not fit reaches the arithmetic below.
 func ToInt64(f float64) int64 {
 	if f >= -twoPow63 && f < twoPow63 {
@@ -30,7 +30,7 @@ func ToInt64(f float64) int64 {
 
 	// Reduce modulo 2^64, then fold the upper half of the unsigned range onto
 	// the negative half of the signed one. ToInt64 needs both branches: fmod
-	// keeps the sign of its argument, so a negative input lands in (-2^64, 0].
+	// keeps the sign of its argument and a negative input lands in (-2^64, 0].
 	mod := math.Mod(f, twoPow64)
 	if mod < 0 {
 		mod += twoPow64

@@ -23,13 +23,13 @@ type StorageDisk struct {
 // newRootedStorageDisk is the Session\Storage\Disk constructor a rooted host
 // registers.
 //
-// The runtime's own rule resolves a path the script named against the root, so
+// The runtime's own rule resolves a path the script named against the root and
 // it names the same file file_get_contents would and cannot climb out, and the
 // constructor then holds it to writable_paths. The directory it creates is one
 // the script could have written a file into by hand.
 //
 // With no path it falls through to the host's temporary directory, which is
-// outside the root by decision: no script can name it, so no tenant chose it.
+// outside the root by decision: no script can name it and no tenant chose it.
 // That is the spelling tests/fixtures/bindings/session_manager.phpt uses, and
 // DefaultStoragePath keeps two roots out of one directory there.
 func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string) (*StorageDisk, error) {
@@ -57,7 +57,7 @@ func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string
 // DefaultStoragePath answers the directory a Session\Storage\Disk named no path
 // writes to, for an application rooted at dir.
 //
-// The leaf is a digest of the absolute root, so two roots cannot collide and
+// The leaf is a digest of the absolute root and two roots cannot collide and
 // the same root answers the same directory across restarts. An empty dir keeps
 // the bare directory, and prune() skips subdirectories.
 //
@@ -78,8 +78,8 @@ func DefaultStoragePath(dir string) string {
 // NewStorageDisk creates the storage folder and verifies it accepts a write.
 // With no path, it uses DefaultStoragePath for no application root.
 //
-// NewStorageDisk takes the path as given. A Go host chooses it, so there is
-// nothing to confine it against; the path a PHP script names resolves through
+// NewStorageDisk takes the path as given. A Go host chooses it and no root
+// confines it; the path a PHP script names resolves through
 // newRootedStorageDisk.
 func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
 	storagePath := DefaultStoragePath("")
@@ -176,7 +176,7 @@ func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 
 // DeleteByUser removes every session file holding userID, counting what it
 // took. The walk reads each session because the payload is the only place the
-// user appears: a file carries its session id as its name and nothing more.
+// user appears: a file carries its session id as its name alone.
 func (s *StorageDisk) DeleteByUser(ctx context.Context, userID string) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err

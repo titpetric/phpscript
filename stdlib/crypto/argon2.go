@@ -32,7 +32,7 @@ const (
 )
 
 // argon2MaxLanes is a limit of this implementation; argon2 itself allows more.
-// x/crypto takes the parallelism as a uint8 and php accepts larger values, so a
+// x/crypto takes the parallelism as a uint8 and php accepts larger values and a
 // threads option above this is an error. Truncating it would store a hash at a
 // parallelism the script did not name.
 const argon2MaxLanes = 255
@@ -83,7 +83,7 @@ func argon2Encode(salt, sum []byte, p params) string {
 
 // argon2Decode reads the PHC string form back into the parameters, the salt
 // and the stored tag. The version field is mandatory: a string without one is
-// argon2 1.0, which derives a different tag from the same inputs, so reading
+// argon2 1.0, which derives a different tag from the same inputs and reading
 // one as 1.3 would report a mismatch as a match.
 func argon2Decode(hash string) (params, []byte, []byte, error) {
 	fields := strings.Split(hash, "$")
@@ -140,7 +140,7 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 	return p, salt, sum, nil
 }
 
-// isArgon2 reports whether a stored hash is one of the two variants, so
+// isArgon2 reports whether a stored hash is one of the two variants and
 // password_verify picks a derivation from the hash itself.
 func isArgon2(hash string) bool {
 	return strings.HasPrefix(hash, "$"+algoArgon2i+"$") || strings.HasPrefix(hash, "$"+algoArgon2id+"$")

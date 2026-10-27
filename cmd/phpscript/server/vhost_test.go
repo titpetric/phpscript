@@ -127,7 +127,7 @@ func TestVirtualHostsServeTheirOwnTree(t *testing.T) {
 		// An include reaching above the document root still resolves inside
 		// the application root.
 		{host: "shop.example.com", path: "/include.php", body: "greeted", code: http.StatusOK},
-		// blog names web as its document root, so public is not a thing it has.
+		// blog names web as its document root and public is not a thing it has.
 		{host: "blog.example.com", path: "/style.css", code: http.StatusNotFound},
 		{host: "other.example.com", path: "/", code: http.StatusNotFound},
 	} {
@@ -176,7 +176,7 @@ func TestVirtualHostTelemetryIsItsOwn(t *testing.T) {
 }
 
 // TestVirtualHostRecordsIntoItsOwnTracer pins that a request on one domain
-// lands on that domain's recorder, so the front ends are separate and
+// lands on that domain's recorder and the front ends are separate and
 // never two views of one buffer.
 func TestVirtualHostRecordsIntoItsOwnTracer(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
@@ -246,7 +246,7 @@ func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 		})
 	}
 
-	// A further name registers no second site, so the module count holds:
+	// A further name registers no second site and the module count holds:
 	// two sites, one startup and one schedule module each.
 	if len(modules) != 4 {
 		t.Fatalf("modules = %d, want 4; a second name must not build a second site", len(modules))
@@ -462,7 +462,7 @@ func named(name string) http.Handler {
 // store one process holds for every tenant answers with the wrong value. The
 // three tests below are what would see either.
 //
-// Both sites precompile, which is `config.New`'s default, so the include cache
+// Both sites precompile, which is `config.New`'s default and the include cache
 // answers for entrypoints as well as for includes and a second request reads
 // back what the first one parsed. A lazy site parses per request and would
 // prove nothing about the cache.
@@ -515,7 +515,7 @@ func confusableServer(t *testing.T, one, two string) http.Handler {
 // same relative path each run their own.
 //
 // The include cache keys on the path a script wrote, resolved against that
-// site's source root, so "lib/secret.php" is the key on both sites. What keeps
+// site's source root and "lib/secret.php" is the key on both sites. What keeps
 // them apart is the cache object, one per handler. Hand two sites one and the
 // first request decides what the second one executes, this test's negative
 // control and the reason for having it.
@@ -545,9 +545,9 @@ func TestVirtualHostIncludeCacheIsItsOwn(t *testing.T) {
 // TestVirtualHostSharedMemoryIsNotShared is the store half: a key one site
 // writes is not readable on another.
 //
-// The writer prints what it just read back, so the empty answer on the other
+// The writer prints what it just read back and the empty answer on the other
 // site is isolation and not a binding that does nothing. The server binds no
-// store, so `new SharedMemory` answers a fresh one per construction and nothing
+// store and `new SharedMemory` answers a fresh one per construction and nothing
 // crosses; a host that pooled one per site would pass this for the stronger
 // reason, and one that pooled a single store for the process would not pass it
 // at all.
@@ -570,7 +570,7 @@ func TestVirtualHostSharedMemoryIsNotShared(t *testing.T) {
 }
 
 // TestVirtualHostHandlersOwnTheirCaches pins the structure the two tests above
-// observe from the outside: the caches belong to the handler, so two sites never
+// observe from the outside: the caches belong to the handler and two sites never
 // hold the same pair.
 //
 // A site's annotated endpoints do read the handler's caches, by decision: one

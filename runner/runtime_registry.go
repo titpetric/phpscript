@@ -99,11 +99,11 @@ func (rt *Runtime) Const(name string) (any, bool) {
 
 // entrypointConst answers __FILE__ and __DIR__ for source that named no file.
 //
-// parser.ParseFile compiles both to literals, so a program read from the
+// parser.ParseFile compiles both to literals and a program read from the
 // filesystem never asks. That leaves Runtime.Load, which takes source with
-// nothing behind it, and there the entrypoint is the best answer there is.
+// no file behind it, and there the entrypoint is the best answer there is.
 //
-// They are not in the constant table. php resolves them when it compiles, so
+// They are not in the constant table. php resolves them when it compiles and
 // defined("__FILE__") is false there and get_defined_constants() omits them;
 // holding them as constants reported the opposite, and cost a copy of the whole
 // table per run because the first write after FreezeStdlib clones it.
@@ -124,9 +124,9 @@ func (rt *Runtime) entrypointConst(name string) (any, bool) {
 // This is the shim mechanism: e.g. rt.RegisterFunc("strlen", func(s string) int
 // { return len(s) }) makes `strlen($x)` work in script expressions.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
-	// This invalidates nothing: evaluation environments resolve the table per
+	// This invalidates no entry: evaluation environments resolve the table per
 	// call (see installFunc), the direct compiler reads no type env, and the
-	// entry builds its invoker on first dispatch, so a re-registration is a
+	// entry builds its invoker on first dispatch and a re-registration is a
 	// fresh entry with a fresh invoker.
 	rt.funcs[name] = &funcEntry{fn: fn}
 }

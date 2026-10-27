@@ -554,7 +554,7 @@ echo outer(2) . "|" . $local;`)
 
 // TestLazyEnvInstallsFunctionsOnDemand covers the environments' on-demand
 // population. The runtime wraps a registered function into an environment the
-// first time an expression evaluated with that environment calls it, so the
+// first time an expression evaluated with that environment calls it and the
 // places a call can hide from a naive "top-level expressions only" scan are
 // what matters: a closure body, a user function body, a method body, a
 // nested/recursive call and a by-reference call.
@@ -662,7 +662,7 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 }
 
 // TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList drives evaluation deeper
-// than the pooled environment free list, so the runtime builds, nests,
+// than the pooled environment free list and the runtime builds, nests,
 // discards and reuses environments while a call to a lazily installed function
 // is live at every level.
 func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
@@ -746,7 +746,7 @@ echo "unreachable";`)
 }
 
 // A class satisfying its contract runs on either backend, and gains no member
-// from the interface: the interface declares no body, so the class answers only
+// from the interface: the interface declares no body and the class answers only
 // with what it wrote. `instanceof` does consult the list of names the class
 // declared, which is a name comparison and no inherited member.
 func TestInterfaceContractSatisfied(t *testing.T) {

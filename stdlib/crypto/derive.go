@@ -8,7 +8,7 @@ import (
 )
 
 // The bcrypt cost x/crypto runs between. params.check refuses anything outside
-// the range, so a script naming a cost the library would reject hears it in
+// the range and a script naming a cost the library would reject hears it in
 // php's wording before a derivation starts.
 const (
 	bcryptMinCost = bcrypt.MinCost
@@ -42,7 +42,7 @@ func bcryptVerify(password, hash string) bool {
 // bcryptRevision reports whether a stored hash opens with a revision marker
 // php's crypt reads: $2a$, $2b$, $2x$ or $2y$. The 1997 "$2$" spelling with
 // no minor revision parses in x/crypto and answers the failure string "*0"
-// from php's crypt, as does a marker outside the four, so every bcrypt reader
+// from php's crypt, as does a marker outside the four and every bcrypt reader
 // here requires one and refuses what php refuses:
 //
 //	php -r 'var_dump(password_verify("hunter2hunter2", "$2$04$..."));'  // bool(false)
@@ -60,14 +60,14 @@ func bcryptCost(hash string) (int, error) {
 
 // bcryptEncoded reports whether a stored hash is one a comparison could match.
 //
-// bcrypt.Cost reads the revision and the cost digits and stops, so a hash whose
+// bcrypt.Cost reads the revision and the cost digits and stops and a hash whose
 // body is not bcrypt's base64 parses, reports a cost and then refuses every
 // password. Checking the body tells a user database that such a line carries
 // damage, where the cost alone would read as a wrong password.
 //
 // The width is exact because the format is: 7 bytes of prefix, 22 of salt and
 // 31 of tag, over an alphabet that is bcrypt's own and not standard base64.
-// The prefix carries a revision marker bcryptRevision reads, so a line the
+// The prefix carries a revision marker bcryptRevision reads and a line the
 // parse accepts is one the dispatch would also verify.
 func bcryptEncoded(hash string) bool {
 	const (

@@ -6,7 +6,7 @@
 
 Reference to an object that does not prevent PHP from destroying the object.
 
-Holding one does not raise the object's reference count, so a cache built from weak references does not keep its entries alive. Once PHP destroys the object, `get()` answers null.
+Holding one does not raise the object's reference count, and a cache built from weak references does not keep its entries alive. Once PHP destroys the object, `get()` answers null.
 
 ## Class synopsis
 

@@ -25,7 +25,7 @@ func TestTrimSides(t *testing.T) {
 	if got := both("xxhelloxx", "x"); got != "hello" {
 		t.Errorf("trim with a named list = %q, want hello", got)
 	}
-	// A NUL is in the default list, so a C string trims.
+	// A NUL is in the default list and a C string trims.
 	if got := both("x\x00"); got != "x" {
 		t.Errorf("trim of a trailing NUL = %q, want x", got)
 	}

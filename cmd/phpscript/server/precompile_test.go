@@ -87,7 +87,7 @@ func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 }
 
 // TestSharedCaches covers the pair a site's routed endpoints run off: the ones
-// its file handler holds, so the one walk of the tree covers both. The proof is
+// its file handler holds and the one walk of the tree covers both. The proof is
 // an endpoint answering out of the cache after its file leaves the disk.
 func TestSharedCaches(t *testing.T) {
 	t.Parallel()
@@ -168,7 +168,7 @@ foreach ($rows as $row) {
 // expression closures and the bytecode keyed by the AST it produced.
 func BenchmarkServeEntrypoint(b *testing.B) {
 	// The two flatstack rows are only flatstack numbers if the page compiles to
-	// bytecode. Fallback is per-program and silent, so without this the rows
+	// bytecode. Fallback is per-program and silent and without this the rows
 	// would report the interpreter's cost under the flatstack name and read as
 	// the two engines performing alike. Fail and never skip: a page that
 	// stopped compiling is the finding.

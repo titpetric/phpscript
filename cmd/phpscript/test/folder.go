@@ -31,7 +31,7 @@ type folderCover struct {
 }
 
 // files renders the file column: "4/50 (8%)". The header says what the column
-// counts, so the cell carries the counts and nothing else.
+// counts and the cell carries the counts alone.
 func (f folderCover) files() string {
 	if f.FilesTotal == 0 {
 		return noCoverage

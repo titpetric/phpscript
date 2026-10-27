@@ -14,7 +14,7 @@ import (
 // trace is what a trace has a place for, that the work went wrong.
 //
 // The context it holds is the one the work runs under: a caller passes a logger
-// to a library for the length of one call, so it lives as long as that context.
+// to a library for the length of one call and it lives as long as that context.
 type Logger struct {
 	ctx  context.Context
 	log  *slog.Logger
@@ -56,7 +56,7 @@ func (l *Logger) Info(msg string, args ...any) {
 
 // Warn logs a message at warning level and records nothing on the span, for a
 // degradation the work survives: a session store that fell back to memory
-// still serves the request, so failing its trace would report an outage.
+// still serves the request and failing its trace would report an outage.
 func (l *Logger) Warn(msg string, args ...any) {
 	if l == nil {
 		return
@@ -67,7 +67,7 @@ func (l *Logger) Warn(msg string, args ...any) {
 
 // Error logs a message at error level and records it on the logger's own span,
 // which fails that span and the trace with it. The error is the first one among
-// the values where the caller passes one, so the span keeps the failure itself
+// the values where the caller passes one and the span keeps the failure itself
 // and never only its message. The span is not ended: it belongs to
 // whoever opened it, and the work it measures is still theirs to finish.
 func (l *Logger) Error(msg string, args ...any) {
@@ -80,7 +80,7 @@ func (l *Logger) Error(msg string, args ...any) {
 }
 
 // slog returns the logger to write the message to. A logger holding none writes
-// to the default logger, and reads it per call and not at construction, so a
+// to the default logger, and reads it per call and not at construction and a
 // process that configures logging after the fact still gets the output.
 func (l *Logger) slog() *slog.Logger {
 	if l.log != nil {

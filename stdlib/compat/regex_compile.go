@@ -10,13 +10,13 @@ import (
 )
 
 // pattern is one compiled PCRE, held by whichever engine can express it. The
-// shims above work only through this type, so which engine ran a match is not
+// shims above work only through this type and which engine ran a match is not
 // visible in their results.
 //
 // A pattern RE2 compiled still keeps its body and flags, because a non-zero
 // $offset has to run on the backtracking engine whatever compiled it (see the
 // file header). That second compile happens once, on the first call that needs
-// it, so patterns nobody passes an offset to never pay for it.
+// it and patterns nobody passes an offset to never pay for it.
 type pattern struct {
 	re2   *regexp.Regexp
 	body  string
@@ -124,8 +124,8 @@ func (p *pattern) replaceAll(subject, repl string) string {
 }
 
 // backtrackIndex flattens a regexp2 match into the byte index pairs RE2
-// returns. regexp2 counts in runes, so every index passes through offsets; a
-// group with no captures did not match, so its pair is -1, -1.
+// returns. regexp2 counts in runes and every index passes through offsets; a
+// group with no captures did not match and its pair is -1, -1.
 func backtrackIndex(match *regexp2.Match, groups int, offsets runeOffsets) []int {
 	idx := make([]int, 2*(groups+1))
 	for g := 0; g <= groups; g++ {
@@ -141,7 +141,7 @@ func backtrackIndex(match *regexp2.Match, groups int, offsets runeOffsets) []int
 }
 
 // runeOffsets converts the rune indexes regexp2 reports into the byte offsets
-// PHP reports. PHP's offsets are byte offsets even under the /u modifier, so
+// PHP reports. PHP's offsets are byte offsets even under the /u modifier and
 // the two agree only while the subject is ASCII, and a match after a two-byte
 // character is off by one per preceding multibyte character otherwise.
 type runeOffsets struct {
@@ -240,9 +240,9 @@ func compilePCRE(source string) (*pattern, error) {
 			return p, nil
 		}
 	}
-	// Nothing else can run this pattern, so compile the backtracking engine
-	// now: a syntax error has to reach the caller as a compile failure, not as
-	// the no-match a first-use compile would look like.
+	// Compiling the backtracking engine here turns a syntax error into a
+	// compile failure for the caller; a first-use compile would report a
+	// no-match instead.
 	if _, err := p.backtracker(); err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func translateFlags(flags string) string {
 
 // backtrackOptions maps PCRE modifiers to regexp2 options. PCRE's `s` makes the
 // dot match a newline, which regexp2 spells Singleline; regexp2 has no option
-// for `U` (ungreedy), so the switch drops it: a pattern needing both it and a
+// for `U` (ungreedy) and the switch drops it: a pattern needing both it and a
 // backreference matches greedily.
 func backtrackOptions(flags string) regexp2.RegexOptions {
 	options := regexp2.RegexOptions(0)
@@ -315,7 +315,7 @@ func backtrackOptions(flags string) regexp2.RegexOptions {
 
 // needsBacktracking reports whether the pattern uses a construct RE2 cannot
 // express: a \1..\9 backreference, or a lookahead/lookbehind group. Both are
-// RE2 omissions by decision and no gaps, so detecting them up front avoids
+// RE2 omissions by decision and no gaps and detecting them up front avoids
 // a compile attempt that is certain to fail.
 func needsBacktracking(body string) bool {
 	for i := 0; i < len(body); i++ {

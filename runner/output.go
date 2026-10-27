@@ -4,7 +4,7 @@ import (
 	"io"
 )
 
-// Output redirection. The runtime writes all script output through Output(), so
+// Output redirection. The runtime writes all script output through Output() and
 // a capture returns something else from there: push a writer, and everything
 // echo would emit lands in it until the matching pop.
 //
@@ -13,7 +13,7 @@ import (
 // of it, and pushes the buffers a script reads back.
 
 // PushOutput redirects script output to w until the matching PopOutput. Pushes
-// nest: the innermost writer receives the output, so a captured region can
+// nest: the innermost writer receives the output and a captured region can
 // itself capture.
 func (rt *Runtime) PushOutput(w io.Writer) {
 	if w == nil {
@@ -26,7 +26,7 @@ func (rt *Runtime) PushOutput(w io.Writer) {
 }
 
 // PopOutput ends the innermost redirection, reporting whether one is active.
-// Output resumes going to the enclosing writer, so nested
+// Output resumes going to the enclosing writer and nested
 // captures compose.
 func (rt *Runtime) PopOutput() bool {
 	if len(rt.outStack) == 0 {

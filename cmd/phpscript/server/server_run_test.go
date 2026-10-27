@@ -38,7 +38,7 @@ echo "hello " . $_REQUEST["name"];
 
 // TestNewCommand covers what the constructor closes over. The configuration
 // arrives as a pointer so one signature covers all nine commands, and the
-// server reads it, so a nil pointer resolves to the zero configuration before
+// server reads it and a nil pointer resolves to the zero configuration before
 // the Run closure captures it. The command declares no flags of its own: the
 // listen address and the document root come from the configuration file, and
 // the rest are the shared flags.
@@ -62,7 +62,7 @@ func TestNewCommand(t *testing.T) {
 
 // TestModule covers the module serving one application root. The root is a
 // directory on disk and the document root is the subdirectory below it that
-// HTTP reaches, so the handler serves a file inside the document root and
+// HTTP reaches and the handler serves a file inside the document root and
 // never one beside it.
 func TestModule(t *testing.T) {
 	t.Parallel()
@@ -105,7 +105,7 @@ func TestModule(t *testing.T) {
 }
 
 // TestModule_Mount covers the pattern the module claims. "/*" is the last
-// route a router resolves, so a module mounted this way answers every path the
+// route a router resolves and a module mounted this way answers every path the
 // routes registered ahead of it left alone, and the annotated routes of the
 // same application keep their own paths.
 func TestModule_Mount(t *testing.T) {

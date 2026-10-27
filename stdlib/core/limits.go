@@ -32,7 +32,7 @@ func registerLimits(rt *runner.Runtime) {
 	// set_time_limit bounds the rest of this script to $seconds and answers
 	// true; the clock restarts from the call, as a second call in PHP does,
 	// and 0 removes the limit. The limit is a deadline on the context the
-	// interpreter checks and every binding receives, so it ends a Go call
+	// interpreter checks and every binding receives and it ends a Go call
 	// that is waiting as well as a PHP loop that is spinning.
 	rt.RegisterFunc("set_time_limit", func(seconds int64) bool {
 		rt.SetTimeLimit(limitFor(seconds))
@@ -47,7 +47,7 @@ func registerLimits(rt *runner.Runtime) {
 	rt.RegisterFunc("ignore_user_abort", func(enable ...bool) {
 		// Variadic so that the read-only spelling php has, ignore_user_abort()
 		// with no argument, leaves the setting alone. A plain bool parameter is
-		// zero-padded when the argument is missing, so `if
+		// zero-padded when the argument is missing and `if
 		// (ignore_user_abort())` would turn off the thing it reads. It still
 		// answers nothing; docs/README.md records that.
 		if len(enable) == 0 {
@@ -57,7 +57,7 @@ func registerLimits(rt *runner.Runtime) {
 	})
 
 	// connection_aborted returns true once the client has closed the
-	// connection, so a script can stop doing work nobody is waiting for:
+	// connection and a script can stop doing work nobody is waiting for:
 	// commit the transaction, skip rendering the page. It keeps answering
 	// after ignore_user_abort(true) detached the run from the disconnect,
 	// which is the only arrangement in which a script is still running to

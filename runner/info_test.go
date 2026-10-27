@@ -10,9 +10,9 @@ import (
 )
 
 // TestInfoSection covers when a registered section runs and where its rows
-// print. It runs at the call and not at registration, so a section reports a
+// print. It runs at the call and not at registration and a section reports a
 // count the process reached since; and sections print under their own heading
-// in registration order, so a report reads the same way twice.
+// in registration order and a report reads the same way twice.
 func TestInfoSection(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -67,7 +67,7 @@ func TestPHPInfoLeavesOutASectionWithNothingToSay(t *testing.T) {
 	if strings.Contains(report, "Quiet") {
 		t.Fatalf("a section reporting no rows printed its heading:\n%s", report)
 	}
-	// A runtime that loaded nothing has an empty cache, so the built-in
+	// A runtime that loaded nothing has an empty cache and the built-in
 	// section is absent for the same reason.
 	if strings.Contains(report, "OPcache") {
 		t.Fatalf("an empty cache printed a section:\n%s", report)
@@ -96,7 +96,7 @@ func TestPHPInfoReportsTheCompiledTree(t *testing.T) {
 	if !strings.Contains(report, "Cached Files => 1") {
 		t.Fatalf("the cached file is not reported:\n%s", report)
 	}
-	// Nothing measured a size, so the section claims none.
+	// The section claims no size because the pass measured none.
 	if strings.Contains(report, "Cached Size") {
 		t.Fatalf("a size was reported with no precompile pass behind it:\n%s", report)
 	}

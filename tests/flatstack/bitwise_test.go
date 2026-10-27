@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackBitwiseOperators proves the bitwise operators compile to
 // bytecode and never reaches the interpreter fallback. A fixture cannot tell
-// the two apart when they agree, so every case asserts Supports first.
+// the two apart when they agree, and every case asserts Supports first.
 func TestFlatstackBitwiseOperators(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

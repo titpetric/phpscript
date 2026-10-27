@@ -8,8 +8,8 @@ import (
 // authentication returns: a key to store, and a name to print.
 //
 // The two methods are the spellings a record already has elsewhere. GetID is
-// what a table's model answers, so a user reaching a column reads like any
-// other row; String is what a string context calls, so `echo $user` prints the
+// what a table's model answers and a user reaching a column reads like any
+// other row; String is what a string context calls and `echo $user` prints the
 // username and a `string` parameter takes it without a cast
 // (internal/phpval.GoString takes a fmt.Stringer).
 type User interface {
@@ -21,9 +21,9 @@ type User interface {
 // resolved, and the id computed from that name.
 //
 // The id is no column: crypto.ULIDFrom over the username makes the key a pure
-// function of the name. A user the file drops takes the row and nothing else
-// with them, and adding the same name back answers the same key, so every row
-// that referenced it still resolves.
+// function of the name. A user the file drops takes the row alone with them,
+// and adding the same name back answers the same key and every row that
+// referenced it still resolves.
 type user struct {
 	username string
 	id       string

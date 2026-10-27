@@ -31,7 +31,7 @@ func newAutoindexHandler(t *testing.T, files fstest.MapFS) *handler {
 }
 
 // TestAutoindexIsOffUnlessTheSiteAsksForIt pins the default. Publishing every
-// file below the document root is a decision, so a directory with no index page
+// file below the document root is a decision and a directory with no index page
 // is a 404 until the configuration says otherwise.
 func TestAutoindexIsOffUnlessTheSiteAsksForIt(t *testing.T) {
 	t.Parallel()

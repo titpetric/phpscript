@@ -50,7 +50,7 @@ type Thing struct{}
 		t.Errorf("upper comment = %q", got)
 	}
 	// areaName takes "register" off the installer's name and spells the rest
-	// in words, so registerFake installs the fake area.
+	// in words and registerFake installs the fake area.
 	if upper.area != "fake" {
 		t.Errorf("upper area = %q, want fake", upper.area)
 	}
@@ -148,7 +148,7 @@ func register(rt *Runtime) {
 // TestScanReadsNoRegistrations covers the two empty results the generator has
 // to survive: a tree with no registration in it, and the empty set Reflect
 // passes when there is no source to read at all. Both leave every lookup
-// answering nil, so build falls back to reflection for each entry.
+// answering nil and build falls back to reflection for each entry.
 func TestScanReadsNoRegistrations(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

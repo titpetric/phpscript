@@ -19,7 +19,7 @@ func TestJSONObjectKeepsInsertionOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The expected key and value come from json.Marshal, so the HTML escapes
+	// The expected key and value come from json.Marshal and the HTML escapes
 	// are the library's and no literal in this file.
 	key, _ := json.Marshal("html <key>")
 	value, _ := json.Marshal("a&b")

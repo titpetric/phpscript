@@ -5,7 +5,7 @@ import (
 )
 
 // TestMultibyteLength covers the whole reason the family exists: mb_strlen
-// counts characters where strlen counts bytes, so "héllo" is five to one and
+// counts characters where strlen counts bytes and "héllo" is five to one and
 // six to the other.
 func TestMultibyteLength(t *testing.T) {
 	t.Parallel()
@@ -50,7 +50,7 @@ var_dump(mb_strpos("héllo", "h"), mb_strpos("héllo", "é"), mb_strrpos("héllo
 }
 
 // TestMultibyteStrSplit covers the chunking, which is in characters: a
-// multibyte character is never cut in half, so the last chunk is short rather
+// multibyte character is never cut in half and the last chunk is short rather
 // than the first being wrong.
 func TestMultibyteStrSplit(t *testing.T) {
 	t.Parallel()
@@ -67,7 +67,7 @@ var_dump(mb_str_split("abc", 1));`)
 
 // TestMultibyteStrPad covers the padding, measured in characters, and the three
 // directions. Padding to a width the string already exceeds leaves it alone,
-// and mb_str_pad cuts a pad string longer than the gap to fit, so the result is
+// and mb_str_pad cuts a pad string longer than the gap to fit and the result is
 // exactly the width the call names.
 func TestMultibyteStrPad(t *testing.T) {
 	t.Parallel()
@@ -83,7 +83,7 @@ var_dump(mb_strlen(mb_str_pad("hé", 5, "-")), mb_str_pad("héllo", 2, "-"), mb_
 }
 
 // TestMultibyteCaseOfTheFirstCharacter covers mb_ucfirst and mb_lcfirst, which
-// change one character and leave the rest: the character is multibyte, so a
+// change one character and leave the rest: the character is multibyte and a
 // byte-wise ucfirst would write a broken sequence where this writes É.
 func TestMultibyteCaseOfTheFirstCharacter(t *testing.T) {
 	t.Parallel()

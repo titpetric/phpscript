@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackRejectsAnonymousClass pins the anonymous class as a form the
 // compiler declines. The bytecode carries a class name where an anonymous class
-// carries a declaration, so the whole program goes to the interpreter instead;
+// carries a declaration, and the whole program goes to the interpreter instead;
 // this asserts the rejection and not the output, because a fixture cannot
 // tell a fallback from a compiled run that agreed with it.
 func TestFlatstackRejectsAnonymousClass(t *testing.T) {

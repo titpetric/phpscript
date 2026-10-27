@@ -63,7 +63,7 @@ class UserStorage {
 }
 ```
 
-This makes any request use database APIs that stay small and explicit: each method on `UserStorage` is one query or one transaction, so a test can cover it alone. A complex request may perform hundreds of database interactions based on what the page renders.
+This makes any request use database APIs that stay small and explicit: each method on `UserStorage` is one query or one transaction and a test can cover it alone. A complex request may perform hundreds of database interactions based on what the page renders.
 
 For example, for a news CMS website, you may fetch more than one section of news articles, get their comment counts, their images, the journalist which posted the article, and the sections sorted by editorial system of weights. Using the PHPscript runtime makes such code much shorter than Go with its type safety and explicit error handling.
 

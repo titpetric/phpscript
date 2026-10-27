@@ -30,7 +30,7 @@ const (
 // raw carries a value for string literals alone. val holds the decoded value, which is
 // what the runtime needs, but the decoding is lossy: it cannot tell `'$a'`
 // from `"\$a"`, and re-encoding the value picks one spelling for both. The
-// formatter rewrites files in place, so it prints the literal from raw, which
+// formatter rewrites files in place and it prints the literal from raw, which
 // is a slice of the source and costs no allocation.
 type token struct {
 	kind tokKind
@@ -63,7 +63,7 @@ var multiCharOps = []string{
 	"<<", ">>", "&=", "|=", "^=",
 }
 
-// singleCharOps lists every one-byte operator. A constant, so slicing it
+// singleCharOps lists every one-byte operator. A constant and slicing it
 // (singleOpText below) produces a string header pointing into the binary's
 // read-only data. Emitting an operator token allocates nothing, where
 // `string(c)` allocated a fresh 1-byte string per token (rule 7).
@@ -79,7 +79,7 @@ var singleOpText = func() [utf8.RuneSelf]string {
 	return out
 }()
 
-// multiOpsByFirst buckets multiCharOps by their first byte, longest first, so
+// multiOpsByFirst buckets multiCharOps by their first byte, longest first and
 // lexOperator compares against the two or three candidates that can match
 // and never walks the whole table. Longest-first ordering keeps the lexer from
 // cutting "===" into "==" and "=".
@@ -98,7 +98,7 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 
 // bytesPerToken estimates how many source bytes one token consumes, used to
 // presize the token slice (rule 6). Measured over the in-tree PHP fixtures the
-// ratio is 3.7 to 5.2 bytes per token (the lexer drops whitespace and comments, so the
+// ratio is 3.7 to 5.2 bytes per token (the lexer drops whitespace and comments and the
 // count is well below the tokenizer's). Four is the conservative end: it costs
 // a little slack on comment-heavy files and avoids the doubling, which copies
 // the whole slice, on dense ones.
@@ -119,7 +119,7 @@ var tokenPool sync.Pool
 
 // takeTokens returns an empty token slice, recycled when one is free.
 //
-// A recycled slice keeps whatever capacity it grew to, so the pool converges on
+// A recycled slice keeps whatever capacity it grew to and the pool converges on
 // the largest file the process has parsed and later parses stop growing
 // altogether. The hint is only used when the pool is empty.
 func takeTokens(hint int) []token {
@@ -152,7 +152,7 @@ func (l *lexer) run() ([]token, error) {
 			continue
 		}
 		if err := l.lexPHP(); err != nil {
-			// The caller receives no slice to return, so the failed lex
+			// The caller receives no slice to return and the failed lex
 			// returns its own.
 			releaseTokens(l.tokens)
 			l.tokens = nil
@@ -292,11 +292,11 @@ func (l *lexer) lexNumber() {
 // underscore digit separator. numLit decides which base a prefix means;
 // this only decides where the literal ends.
 //
-// The lexer and the token_get_all tokenizer both call it, so the two agree on
+// The lexer and the token_get_all tokenizer both call it and the two agree on
 // what one number token is.
 func scanNumber(src string, pos int) (end int, isFloat bool) {
 	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
-	// digit and no exponent, so this matches a prefix ahead of anything else.
+	// digit and no exponent and this matches a prefix ahead of anything else.
 	if src[pos] == '0' && pos+1 < len(src) {
 		var isBaseDigit func(byte) bool
 		switch src[pos+1] {
@@ -365,7 +365,7 @@ func (l *lexer) lexString(quote byte) error {
 	l.advanceRune() // opening quote
 
 	// Fast path: a literal with neither an escape sequence nor a dollar is a
-	// substring of the source, so it needs neither a Builder nor a copy. A
+	// substring of the source and it needs neither a Builder nor a copy. A
 	// dollar only leaves the fast path for a double-quoted literal, since a
 	// single-quoted one never interpolates.
 	start := l.pos
@@ -385,7 +385,7 @@ func (l *lexer) lexString(quote byte) error {
 
 	// A double-quoted literal may embed expressions. Scanning decides that and
 	// costs one pass over a literal that already left the fast path; a literal
-	// that turns out to hold none falls through to the decode below, so the
+	// that turns out to hold none falls through to the decode below and the
 	// common `"a\nb"` keeps producing one plain string token.
 	if quote == '"' {
 		_, end, interp, err := scanInterp(l.src, l.pos, l.line)
@@ -402,7 +402,7 @@ func (l *lexer) lexString(quote byte) error {
 	// Slow path: the literal contains at least one escape. Presize the builder
 	// (rule 6): the decoded string is never longer than the raw source up to
 	// the next unescaped quote, and the first quote found is a lower bound for
-	// that, so one Grow replaces the 8/16/32 doubling.
+	// that and one Grow replaces the 8/16/32 doubling.
 	var b strings.Builder
 	if end := strings.IndexByte(l.src[start:], quote); end > 0 {
 		b.Grow(end)
@@ -436,12 +436,12 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 //
 // The two quote styles have different rules, as they do in PHP. A single-quoted
 // literal recognises only `\\` and `\'`; every other backslash stands for
-// itself, so `'C:\path'` and a single-quoted regex work. A
+// itself and `'C:\path'` and a single-quoted regex work. A
 // double-quoted literal recognises the C-style escapes plus the numeric forms
 // (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.
 //
-// The lexer and the interpolation scanner both call it, so a literal run
+// The lexer and the interpolation scanner both call it and a literal run
 // between two embedded expressions decodes the way a literal with no
 // interpolation does.
 func decodeEscape(src string, i int, quote byte, b *strings.Builder) int {
@@ -540,7 +540,7 @@ func octalRun(s string, limit int) int {
 }
 
 // lexOperator emits one operator token, matching multi-character operators
-// greedily. Every token text comes from a package-level table, so no operator
+// greedily. Every token text comes from a package-level table and no operator
 // allocates.
 func (l *lexer) lexOperator() bool {
 	c := l.src[l.pos]
@@ -551,7 +551,7 @@ func (l *lexer) lexOperator() bool {
 	for _, op := range multiOpsByFirst[c] {
 		if strings.HasPrefix(rest, op) {
 			l.emit(tOp, op)
-			// Operator text never contains a newline, so the line counter
+			// Operator text never contains a newline and the line counter
 			// does not need advanceRune's per-byte check.
 			l.pos += len(op)
 			return true

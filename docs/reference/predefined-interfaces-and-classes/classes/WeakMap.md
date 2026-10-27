@@ -45,4 +45,4 @@ public function offsetUnset(object $object): void
 
 - phpscript has no `WeakMap`. The name is not declared.
 - It rests on three things that are unavailable: reference-count semantics, as described for [WeakReference](WeakReference.md), plus [ArrayAccess](ArrayAccess.md) and [IteratorAggregate](IteratorAggregate.md), neither of which dispatches here.
-- An object cannot be an array key in either language, so a map keyed by object needs the host. Use an array keyed by an identifier the script already has.
+- An object cannot be an array key in either language, and a map keyed by object needs the host. Use an array keyed by an identifier the script already has.

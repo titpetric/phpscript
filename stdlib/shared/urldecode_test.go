@@ -41,7 +41,7 @@ func TestURLDecode(t *testing.T) {
 }
 
 // TestRawURLDecode covers rawurldecode(): RFC 3986, where `+` is a plus and
-// only `%20` is a space. That is the one difference from urldecode(), so a
+// only `%20` is a space. That is the one difference from urldecode() and a
 // path segment holding a plus sign survives the decode.
 func TestRawURLDecode(t *testing.T) {
 	t.Parallel()

@@ -8,7 +8,7 @@ import (
 )
 
 // TestRedeclareIsFatal covers the severity: PHP refuses a file declaring one
-// name twice and so does this runtime, so the finding fails the lint run. The
+// name twice and so does this runtime and the finding fails the lint run. The
 // message names the first declaration's line, which is the half a
 // reader needs to find the pair.
 func TestRedeclareIsFatal(t *testing.T) {
@@ -35,7 +35,7 @@ function helper() { return 2; }`)
 }
 
 // TestRedeclareOverAHostName covers declaring over a name the runtime itself
-// registers: the standard library installs strlen, so a file declaring it
+// registers: the standard library installs strlen and a file declaring it
 // draws the same fatal finding, with no earlier line to name.
 func TestRedeclareOverAHostName(t *testing.T) {
 	t.Parallel()
@@ -56,7 +56,7 @@ function strlen($s) { return 0; }`)
 
 // TestRedeclareSkipsAGuardedName covers the polyfill idiom: declaring over an
 // absent built-in is what function_exists guards, and the author has written
-// both branches, so the check reports neither the duplicate nor the host name.
+// both branches and the check reports neither the duplicate nor the host name.
 func TestRedeclareSkipsAGuardedName(t *testing.T) {
 	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php
@@ -69,7 +69,7 @@ if (!function_exists("str_contains")) {
 }
 
 // TestRedeclareCountsAMethodApart covers the one name that is not a function
-// name: a method belongs to its class, so two classes declaring render() are
+// name: a method belongs to its class and two classes declaring render() are
 // two methods and no collision.
 func TestRedeclareCountsAMethodApart(t *testing.T) {
 	t.Parallel()

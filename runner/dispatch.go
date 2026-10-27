@@ -23,7 +23,7 @@ import (
 // call takes the runtime doing the calling because two runtimes share an
 // entry: a fork copies the table, and a binding's *Callable argument has to
 // bind to the runtime the call is on and not to the one that built the value.
-// Only the reflect path reads it, where coerceArg needs it, so one wrapper
+// Only the reflect path reads it, where coerceArg needs it and one wrapper
 // covers the specialised signatures below and none of them takes it.
 type invoker struct {
 	call     func(rt *Runtime, args []any) (any, error)

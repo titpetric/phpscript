@@ -18,7 +18,7 @@ func discard(l *Logger) *Logger {
 
 // TestLoggerFailsSpanOnError covers what the logger has to do with the trace and
 // the extent of it: an error fails the span the work runs in, and the trace
-// records nothing else the logger writes.
+// records no other line the logger writes.
 func TestLoggerFailsSpanOnError(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")

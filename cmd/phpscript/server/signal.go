@@ -38,7 +38,7 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 	}
 
 	// FindProcess never fails on unix. The send is what reports a dead
-	// process, so probing first would add a race without removing one.
+	// process and probing first would add a race without removing one.
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		fmt.Fprintf(errOut, "-s: %v\n", err)
@@ -54,7 +54,7 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 		return ErrReported
 	}
 
-	// Nothing on success, as nginx prints nothing: a signal carries no way
+	// The success path prints no line, matching nginx: a signal carries no way
 	// to answer back, and what the reload did is in the server's log.
 	return nil
 }

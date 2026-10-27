@@ -12,7 +12,7 @@ import (
 )
 
 // The coverage vocabulary is the runner's; these names are what the test
-// command's own code reads, so the two spell the same thing.
+// command's own code reads and the two spell the same thing.
 const (
 	DefaultCoverFile = coverage.DefaultCoverFile
 	CoverLine        = coverage.ModeLine
@@ -51,7 +51,7 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 		return coverage.WriteReport(os.Stdout, coverage.FileRows(reportBlocks(blocks), coverFiles(fixtures)))
 	default:
 		// The folder table is the fuller answer and the run printed it
-		// already, so this line would only invite a comparison between two
+		// already and this line would only invite a comparison between two
 		// numbers measuring different things: the profile counts the .phpt
 		// entrypoints, which run by definition, and the table does not.
 		if !opts.JSON && opts.Verbose {
@@ -63,7 +63,7 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 
 // mergeCoverBlocks folds every fixture's collected blocks into one profile.
 // A statement more than one fixture reached is one block whose counts add up,
-// so a folder's total is independent of how it splits its fixtures.
+// and a folder's total is independent of how it splits its fixtures.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
 	for _, fx := range fixtures {
@@ -79,7 +79,7 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 				continue
 			}
 			// A statement more than one fixture counted ran once per fixture,
-			// so the counts add up; the shape of the block does not change.
+			// and the counts add up; the shape of the block does not change.
 			at.Count += b.Count
 			if b.NumStmt > at.NumStmt {
 				at.NumStmt = b.NumStmt
@@ -96,7 +96,7 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 }
 
 // profileKey identifies a block across fixtures. Columns come from the same
-// source lines everywhere, so the line range is the identity.
+// source lines everywhere and the line range is the identity.
 type profileKey struct {
 	file      string
 	startLine int
@@ -107,7 +107,7 @@ type profileKey struct {
 // from, as seen from the invocation directory. Includes resolve through a
 // union: the fixture's directory answers first, then the application root,
 // which is the invocation directory itself. The profile must name the file the
-// union served, so the same order decides here: the fixture-joined path when
+// union served and the same order decides here: the fixture-joined path when
 // it exists, the bare path otherwise.
 func coverFilePath(fx *tests.Fixture, file string) string {
 	joined := filepath.ToSlash(filepath.Join(fx.RootDir(), file))
@@ -121,7 +121,7 @@ func coverFilePath(fx *tests.Fixture, file string) string {
 }
 
 // fixtureCoverBlocks renders one fixture's collected coverage: include paths
-// resolve the way the fixture's include union resolved them, so the profile
+// resolve the way the fixture's include union resolved them and the profile
 // names files as they sit below the invocation directory, and the columns come
 // from the source text.
 func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
@@ -146,7 +146,7 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 	for _, b := range fx.Coverage().Blocks() {
 		// The collector keys a file the way a script reads it, from the source
 		// filesystem's root. A profile names files as they sit below the
-		// invocation directory, so the root comes back off here.
+		// invocation directory and the root comes back off here.
 		name := strings.TrimPrefix(b.File, "/")
 		block := profileBlock{
 			File:      name,
@@ -196,7 +196,7 @@ func coverFixtures(fixtures []*tests.Fixture) {
 
 // coverFuncs merges every fixture's declaration spans, resolved to the paths
 // the profile names. Fixture entrypoints do not declare application functions
-// worth reporting, and reportBlocks drops their rows wholesale below, so this
+// worth reporting, and reportBlocks drops their rows wholesale below and this
 // drops their spans too.
 func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 	type key struct {

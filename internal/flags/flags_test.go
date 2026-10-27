@@ -74,7 +74,7 @@ func TestPre(t *testing.T) {
 
 // TestHoist covers the reordering that lets a global flag precede the command.
 // The cli library reads the command out of the leading arguments and stops at
-// the first flag, so without this `phpscript --cover server` runs a file called
+// the first flag and without this `phpscript --cover server` runs a file called
 // "server".
 func TestHoist(t *testing.T) {
 	isCommand := func(name string) bool { return name == "server" || name == "test" }
@@ -123,7 +123,7 @@ func TestHoist(t *testing.T) {
 	}
 }
 
-// TestSplit covers the cut between phpscript's arguments and the script's, so
+// TestSplit covers the cut between phpscript's arguments and the script's and
 // a shebang script reads its own flags as $argv.
 func TestSplit(t *testing.T) {
 	isCommand := func(name string) bool { return name == "run" || name == "test" }
@@ -195,7 +195,7 @@ func TestOptions_Covering(t *testing.T) {
 }
 
 // TestOptions_Report pins which modes own stdout with a per-symbol report on
-// top of writing the profile, so one of those modes rules out --json.
+// top of writing the profile and one of those modes rules out --json.
 func TestOptions_Report(t *testing.T) {
 	for mode, want := range map[string]bool{
 		"":                false,
@@ -248,7 +248,7 @@ func TestOptions_Bind(t *testing.T) {
 			t.Errorf("--%s has no usage text", name)
 		}
 	}
-	// A bare --cover is --cover=line, so an operator may write it with no
+	// A bare --cover is --cover=line and an operator may write it with no
 	// value in front of a command name.
 	if got := fs.Lookup("cover").NoOptDefVal; got != coverage.ModeLine {
 		t.Errorf("--cover NoOptDefVal = %q, want %q", got, coverage.ModeLine)
@@ -296,7 +296,7 @@ func TestOptions_Check(t *testing.T) {
 }
 
 // TestOptions_FromConfig pins the precedence: a configuration describes a tree and a
-// flag is what an operator typed about this run of it, so the flag wins.
+// flag is what an operator typed about this run of it and the flag wins.
 func TestOptions_FromConfig(t *testing.T) {
 	appConfig := config.New()
 	appConfig.Runner.Include = "vendor/autoload.php"
@@ -315,7 +315,7 @@ func TestOptions_FromConfig(t *testing.T) {
 }
 
 // TestOptions_ResolveCoverFile covers the {time} placeholder and the directory it
-// writes into, so cover/phpscript.{time}.cov works against a
+// writes into and cover/phpscript.{time}.cov works against a
 // tree that has no cover directory.
 func TestOptions_ResolveCoverFile(t *testing.T) {
 	dir := t.TempDir()
@@ -409,7 +409,7 @@ func TestOptions_RunWith(t *testing.T) {
 }
 
 // TestOptions_Chdir covers -w, which moves the process before the
-// configuration read, so one name serves a tree and no path inside a
+// configuration read and one name serves a tree and no path inside a
 // configuration repeats it.
 func TestOptions_Chdir(t *testing.T) {
 	dir := t.TempDir()
@@ -427,7 +427,7 @@ func TestOptions_Chdir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// macOS returns a symlinked temporary directory, so the comparison is on
+	// macOS returns a symlinked temporary directory and the comparison is on
 	// the resolved path and not the one passed in.
 	want, err := filepath.EvalSymlinks(dir)
 	if err != nil {
@@ -476,7 +476,7 @@ func TestPreControlFlags(t *testing.T) {
 			args: []string{"--signal=reload"}, signal: "reload", remaining: []string{},
 		},
 		// The collision this rule exists for: -t is the test command's
-		// shorthand for --time, so after a command name it belongs to the
+		// shorthand for --time and after a command name it belongs to the
 		// command.
 		"-t after a command name is the command's": {
 			args:      []string{"test", "-t", "10s", "./..."},

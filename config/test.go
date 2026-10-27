@@ -14,7 +14,7 @@ var runKeys = []string{"parallel", "cache", "skip_php"}
 const runKeysOwner = "is set by the run, not by a suite"
 
 // Test configures `phpscript test`. The block holds the defaults a fixture
-// tree carries for itself, so a suite describes what it needs and no command
+// tree carries for itself and a suite describes what it needs and no command
 // line repeats it on every invocation. A flag still wins: the file describes a
 // tree, and a flag is what an operator typed about this run of it.
 //
@@ -56,7 +56,7 @@ type TestSuite struct {
 	// Config is the file read over the configuration the run started with.
 	Config Config
 
-	// Declared holds the keys the file itself named, so a caller can tell a
+	// Declared holds the keys the file itself named and a caller can tell a
 	// setting the suite named from one it inherited.
 	Declared map[string]any
 }

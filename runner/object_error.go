@@ -6,10 +6,10 @@ import (
 
 // objectError carries an instance of a declared class that a script threw.
 //
-// An object is not an error, so throwing one needs a wrapper to travel through
+// An object is not an error and throwing one needs a wrapper to travel through
 // the same path a built-in throwable takes. The wrapper records the one class
 // the object declares, the name a clause filters on and what
-// get_class() reports. It records nothing else: a class declaring `extends` is
+// get_class() reports. It records no other class: a class declaring `extends` is
 // still only its own class here, because there is no inheritance.
 type objectError struct {
 	object *model.Object
@@ -43,7 +43,7 @@ func (e *objectError) ThrowableClass() string {
 	return e.object.Class.Name
 }
 
-// Value returns the object a catch clause binds, so a script gets back what it
+// Value returns the object a catch clause binds and a script gets back what it
 // threw and never the wrapper.
 func (e *objectError) Value() any { return e.object }
 

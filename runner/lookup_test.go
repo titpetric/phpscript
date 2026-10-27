@@ -122,7 +122,7 @@ func TestLookupReportsMissingSymbol(t *testing.T) {
 	}
 }
 
-// TestLookupRejectsSignature checks the shape at the bind, not at the call, so
+// TestLookupRejectsSignature checks the shape at the bind, not at the call and
 // a host wiring a handler wrong hears about it at startup.
 func TestLookupRejectsSignature(t *testing.T) {
 	t.Parallel()
@@ -258,7 +258,7 @@ function spread() { return implode("+", func_get_args()); }
 }
 
 // TestLookupPassesRequest is the issue's worked example: the *http.Request the
-// Go caller serves is the script's HTTP\Request, so the method, the
+// Go caller serves is the script's HTTP\Request and the method, the
 // headers, the query and the body all read off the value itself and not off
 // superglobals nothing seeded.
 func TestLookupPassesRequest(t *testing.T) {
@@ -330,8 +330,8 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 	}
 }
 
-// TestLookupCarriesOnlyItsArguments holds the lightweight contract: nothing
-// decodes a request, so the superglobals stay undefined and never empty.
+// TestLookupCarriesOnlyItsArguments holds the lightweight contract: the
+// context decodes no request and the superglobals stay undefined and never empty.
 func TestLookupCarriesOnlyItsArguments(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"scope.php": {Data: []byte(`<?php
@@ -420,7 +420,7 @@ function boom() {
 }
 
 // TestLookupResolvesWithoutPrecompiling covers the runtime a host built and did
-// nothing else with: the first lookup that needs the tree walks it.
+// no more than that: the first lookup that needs the tree walks it.
 func TestLookupResolvesWithoutPrecompiling(t *testing.T) {
 	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
@@ -565,7 +565,7 @@ echo $g->say("bob");
 
 // TestLookupError_Error covers the two renderings of the one error. A name
 // that matched too much lists what it matched, because the host's next move is
-// to spell one of them; every other reason has nothing to list, so Error drops
+// to spell one of them; every other reason has nothing to list and Error drops
 // the clause and never prints it empty.
 func TestLookupError_Error(t *testing.T) {
 	t.Parallel()
@@ -584,7 +584,7 @@ func TestLookupError_Error(t *testing.T) {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
 
-	// The text a host actually sees comes through Lookup, so this checks the
+	// The text a host actually sees comes through Lookup and this checks the
 	// rendering against one the resolver raised and not only a built value.
 	rt := lookupRuntime(t, nil, lookupTree)
 	if _, err := runner.Lookup[func(int) string](rt, "handle"); err == nil {

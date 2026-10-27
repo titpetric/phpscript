@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/lint"
 )
 
-// messages collects the findings of one source, so a case asserts on text and
+// messages collects the findings of one source and a case asserts on text and
 // never on index positions a new check shifts.
 func messages(t *testing.T, src string) []string {
 	t.Helper()
@@ -35,7 +35,7 @@ func has(found []string, want string) bool {
 // TestReassignReportsADriftingType covers the convention the flat VM's typed
 // operator selection leans on: the first literal assigned to a name declares
 // its type, and a later literal of another type is the drift. It stays
-// advisory, so the finding is never fatal and the program still runs.
+// advisory and the finding is never fatal and the program still runs.
 func TestReassignReportsADriftingType(t *testing.T) {
 	t.Parallel()
 	found, err := lint.File("index.php", `<?php
@@ -122,7 +122,7 @@ function render() {
 }
 
 // TestReassignReportsAStringOffset covers the second finding this file
-// produces: $s[$i] on a name declared as a string counts bytes, so a
+// produces: $s[$i] on a name declared as a string counts bytes and a
 // multi-byte character reads as one of its bytes. The check stays silent for
 // an array under the same syntax, where indexing is what arrays are for.
 func TestReassignReportsAStringOffset(t *testing.T) {

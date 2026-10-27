@@ -57,7 +57,7 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 	// and this runs once per fixture per runner - 1368 pauses over a 342-file
 	// matrix: for two numbers nothing prints without --profile.
 	// The GC count comes from runtime/metrics either way, which does not stop
-	// anything, so the column stays.
+	// anything and the column stays.
 	var before, after runtime.MemStats
 	if opts.Profile {
 		runtime.ReadMemStats(&before)
@@ -88,7 +88,7 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 	if opts.Profile {
 		runtime.ReadMemStats(&after)
 		// Per op, not per fixture: --count and --time run the fixture N times
-		// inside the one pair of readings, so the loop divides the totals by
+		// inside the one pair of readings and the loop divides the totals by
 		// the runs and never samples per iteration.
 		n := uint64(out.Runs)
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n

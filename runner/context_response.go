@@ -11,7 +11,7 @@ import (
 // AcceptsHTML reports whether an Accept header explicitly names HTML.
 //
 // Explicitly, and no wildcard. "*/*" is what curl and fetch() send and it
-// matches every type there is, so reading it as a request for HTML would put a
+// matches every type there is and reading it as a request for HTML would put a
 // website's error page in front of every program that talks to the server. Only
 // text/html and application/xhtml+xml, written out and not weighted to zero,
 // count; so does neither a "text/*" wildcard nor an absent header.
@@ -67,7 +67,7 @@ type statusCoder interface{ GetCode() int }
 // error it returned. Zero means nothing chose one and the host's default stands.
 //
 // An uncaught exception is the interesting case. Its code is the script's own
-// number, which need not be a status at all, so StatusFor takes only a code in
+// number, which need not be a status at all and StatusFor takes only a code in
 // the 4xx and 5xx range as one; anything else is an application code and the
 // request failed with a 500. exit() and die() are not failures: a script that
 // ended early still answers with the status it staged, as it does in PHP.
@@ -93,8 +93,8 @@ func (c Context) Answered(body []byte) bool {
 }
 
 // WriteResponse flushes one response: the headers the script staged with
-// header(), the status, and the body it produced. Nothing reaches the
-// ResponseWriter before this, so a host can look at a finished
+// header(), the status, and the body it produced. No byte reaches the
+// ResponseWriter before this and a host can look at a finished
 // response and answer with something else instead.
 //
 // A status of zero writes none, leaving net/http its 200. So does a status
@@ -147,7 +147,7 @@ func (c Context) Header(header string, opts ...any) {
 	if strings.EqualFold(name, "Location") && c.ResponseStatus() == 0 {
 		*c.status = http.StatusFound
 	}
-	// $code is an int parameter, so PHP coerces whatever the call passes, and
+	// $code is an int parameter and PHP coerces whatever the call passes, and
 	// zero is the value that means the call named no status.
 	if len(opts) > 1 {
 		if code := toInt(opts[1]); code != 0 {
@@ -161,7 +161,7 @@ func (c Context) Header(header string, opts ...any) {
 //
 // Neither the protocol nor the reason phrase reaches the response. Go writes
 // the protocol it actually serves and the reason phrase that belongs to the
-// code, so all the line can contribute is the number in the middle.
+// code and all the line can contribute is the number in the middle.
 func parseStatusLine(header string) (int, bool) {
 	if !strings.HasPrefix(header, "HTTP/") {
 		return 0, false
@@ -193,7 +193,7 @@ func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 		previous = http.StatusOK
 	}
 
-	// The parameter is an int, so PHP coerces whatever the call passes, and
+	// The parameter is an int and PHP coerces whatever the call passes, and
 	// $_SERVER holds every value as a string: a page passing REDIRECT_STATUS
 	// straight back is passing "404" and means 404.
 	code := 0

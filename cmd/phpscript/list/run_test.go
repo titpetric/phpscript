@@ -48,10 +48,10 @@ func TestRunListsBindings(t *testing.T) {
 }
 
 // TestNewCommand covers the one flag this command owns. --bindings switches
-// the subject from a tree to the binary, so it defaults off: a bare `phpscript
+// the subject from a tree to the binary and it defaults off: a bare `phpscript
 // list` scans paths. The constructor takes the configuration and the global
 // options because one signature covers all nine commands, and this command
-// reads neither, so both arguments are nil here.
+// reads neither and both arguments are nil here.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -78,7 +78,7 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestRun covers the exported entry point: run() pointed at stdout.
-// The markdown table is the same one a redirected run writes, so the one
+// The markdown table is the same one a redirected run writes and the one
 // assertion worth making here is that os.Stdout is where it lands.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
@@ -112,7 +112,7 @@ func TestRun(t *testing.T) {
 }
 
 // TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer about
-// different things, so a caller that named both named one of them by mistake,
+// different things and a caller that named both named one of them by mistake,
 // and the error names which one it drops, never leaving them to guess.
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()

@@ -6,7 +6,7 @@ import (
 )
 
 // TestApplyAssignOp covers the compound-assignment operators. Each resolves
-// through the same table its binary operator reads, so `$x <<= -1` fails
+// through the same table its binary operator reads and `$x <<= -1` fails
 // where `$x = $x << -1` fails, with no silent assignment.
 func TestApplyAssignOp(t *testing.T) {
 	t.Parallel()

@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-// TestMailProvider covers the promise the interface's shape carries: nothing
-// here answers a credential. Every method answers an error alone, so a host
+// TestMailProvider covers the promise the interface's shape carries: no
+// method here answers a credential. Every method answers an error alone and a host
 // reads the host name, the username and the password inside Send, uses them for
 // the one delivery and drops them; a getter would put them on the runtime,
 // where a script could reach them.
 //
 // Configured is separate from Send so `new Mail` reports a server nobody
 // configured at construction, ahead of the first send some hours later. A
-// provider fixes its servers at construction, so the verdict and the
+// provider fixes its servers at construction and the verdict and the
 // resolution Send makes read one set.
 func TestMailProvider(t *testing.T) {
 	t.Parallel()

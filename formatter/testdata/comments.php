@@ -10,7 +10,7 @@ try {
 } catch (\RuntimeException $e) {
 	echo $e->getMessage();
 } catch (Exception | Error $e) {
-	// nothing to show
+	// no output to show
 }
 
 class Report {
@@ -39,7 +39,7 @@ class Report {
 				break;
 		}
 	}
-	// nothing follows
+	// the class ends here
 }
 
 // end of file

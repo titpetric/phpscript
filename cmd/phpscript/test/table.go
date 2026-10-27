@@ -12,7 +12,7 @@ import (
 )
 
 // terminalTable writes one padded row at a time. It fixes the column widths
-// before the tests start, so a completed fixture prints immediately.
+// before the tests start and a completed fixture prints immediately.
 type terminalTable struct {
 	w       io.Writer
 	headers []string
@@ -50,7 +50,7 @@ func newTerminalTable(w io.Writer, opts Options) *terminalTable {
 }
 
 // sizeColumns rebuilds the header row and the column widths for one folder.
-// The folder name is the header of the filename column, so a table says which
+// The folder name is the header of the filename column and a table says which
 // area it covers without spending a line on a title.
 func (t *terminalTable) sizeColumns(dir string, labels []string) {
 	if dir == "" {
@@ -210,7 +210,7 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 	t.writeMarkdownRow(row)
 }
 
-// writeSummary closes the report with the per-folder totals, so the reader
+// writeSummary closes the report with the per-folder totals and the reader
 // need not add up the tables above it.
 func (t *markdownTable) writeSummary(passed, failed, total int, duration time.Duration) {
 	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.lat || t.loop || t.profile, nil)
@@ -218,7 +218,7 @@ func (t *markdownTable) writeSummary(passed, failed, total int, duration time.Du
 
 // writeMarkdownSummary renders the per-folder totals table that closes a
 // report. The Total row is the sum of the folder rows and equals the counts
-// the caller passed, so the report checks itself.
+// the caller passed and the report checks itself.
 //
 // The duration column appears only when the run named cost columns. Every
 // pipeline run regenerates a checked-in report, and a timing that differs by a

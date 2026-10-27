@@ -5,7 +5,7 @@ import (
 )
 
 // TestVarIdent covers the slot spelling of a PHP variable. `$this` keeps the
-// bare name and every other variable takes the `v_` prefix, so a variable and
+// bare name and every other variable takes the `v_` prefix and a variable and
 // a bare constant of the same spelling are two slots: `define("x", 1); echo x;`
 // reads one, `echo $x;` reads the other.
 func TestVarIdent(t *testing.T) {

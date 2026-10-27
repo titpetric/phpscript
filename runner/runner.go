@@ -35,7 +35,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 			return
 		}
 		// exit(0) is how a PHP page ends early, not how it fails. The state
-		// feeds the recorded SLA, so only a non-zero code is an error.
+		// feeds the recorded SLA and only a non-zero code is an error.
 		if exit, ok := IsExit(err); ok {
 			if exit.Code != 0 {
 				rt.UpdateStatus(telemetry.StateError)
@@ -49,7 +49,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		return err
 	}
 	// Coverage forces the interpreter: flatstack carries no coverage support,
-	// and the fallback is atomic, so the whole program runs where exec counts it.
+	// and the fallback is atomic and the whole program runs where exec counts it.
 	if rt.flat && rt.coverage == nil {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
@@ -64,7 +64,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
 
 // RecordError reports err on the trace of the request this runtime serves,
-// unwinding nothing, so no try/catch in the script sees it.
+// unwinding nothing and no try/catch in the script sees it.
 func (rt *Runtime) RecordError(err error) {
 	if err == nil {
 		return
@@ -77,7 +77,7 @@ func (rt *Runtime) RecordError(err error) {
 
 // recordTraceError is the trace half of RecordError, and the whole of what Run
 // does with the error a script ended with: that one is already on its way to
-// the host as a return value, so routing it to the error handler as well would
+// the host as a return value and routing it to the error handler as well would
 // report it twice.
 func (rt *Runtime) recordTraceError(err error) {
 	rt.UpdateStatus(telemetry.StateError)
@@ -122,7 +122,7 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 // hoistOnce hoists a top-level program the first time this runtime sees it
 // and is a no-op after. Re-running a compiled program on one runtime is the
 // embedding reuse pattern, not PHP's redeclaration, which a single program
-// cannot express at this seam; includes keep calling hoist directly, so a
+// cannot express at this seam; includes keep calling hoist directly and a
 // file included twice still raises the error PHP raises.
 func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
 	if _, done := rt.hoisted[p]; done {
@@ -139,12 +139,12 @@ func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
 //
 // model.CheckInterfaceContracts holds a class declaring `implements` to the
 // contract first: the class itself must declare every method the listed
-// interfaces name. The check is a name comparison over the AST, so it happens
+// interfaces name. The check is a name comparison over the AST and it happens
 // before anything runs and copies no member onto the class either way. The
-// bytecode backend runs the same check where it collects classes, so both
+// bytecode backend runs the same check where it collects classes and both
 // raise the same RuntimeException.
 // hoist registers an anonymous class here too. The parser reads its
-// declaration inside an expression and not as a statement, so it collects the
+// declaration inside an expression and not as a statement and it collects the
 // class on the program; from there on the class is ordinary, under the name the
 // parser gave it.
 func (rt *Runtime) hoist(prog *model.Program, filename string) error {
@@ -152,7 +152,7 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 	if err := model.CheckInterfaceContracts(prog); err != nil {
 		return NewRuntimeException(err.Error(), 0)
 	}
-	// First pass: classes, so a method has a class to attach to.
+	// First pass: classes and a method has a class to attach to.
 	classes := map[string]*model.Class{}
 	declare := func(cd *model.ClassDecl) {
 		c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
@@ -222,7 +222,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	outer := rt.currentStmt
 	// On entry as well as per statement. A loop body can be empty - `while
 	// (true) {}` is the shortest way to write one - and a check that only ran
-	// per statement would never run for it, so the limit would not hold.
+	// per statement would never run for it and the limit would not hold.
 	if rt.deadlineArmed {
 		if err := rt.checkDeadline(); err != nil {
 			return nil, flowNormal, err
@@ -240,7 +240,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 				return nil, flowNormal, err
 			}
 		}
-		// Memory is a walk of the live values, so it stays on a counter.
+		// Memory is a walk of the live values and it stays on a counter.
 		if rt.opts.MemoryLimit > 0 {
 			if rt.memTick++; rt.memTick >= memCheckStatements {
 				rt.memTick = 0
@@ -344,7 +344,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		return nil, flowNormal, rt.execStaticVar(n, scope)
 
 	case *model.ConstDecl:
-		// Each entry declares through the same table define() writes to, so
+		// Each entry declares through the same table define() writes to and
 		// the two spellings of a global constant behave identically.
 		for _, c := range n.Consts {
 			v, err := rt.Eval(c.Default, scope)
@@ -374,13 +374,13 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		if err != nil {
 			return nil, flowNormal, err
 		}
-		// A built-in throwable is an error already, so it propagates as
+		// A built-in throwable is an error already and it propagates as
 		// itself and a catch binds the object a script threw and not a
 		// rendering of it.
 		if thrown, ok := v.(error); ok {
 			return nil, flowNormal, thrown
 		}
-		// An instance of a declared class is not an error, so it travels
+		// An instance of a declared class is not an error and it travels
 		// wrapped. The wrapper carries its declared class, which is
 		// what a clause filters on and what get_class() reports.
 		if obj, ok := v.(*model.Object); ok {
@@ -404,7 +404,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 
 	case *model.InterfaceDecl:
 		// An interface is a contract checked by hoist, not a value: it declares
-		// no storage and no body, so there is nothing to register or run.
+		// no storage and no body and the runtime has no value to register or run.
 		return nil, flowNormal, nil
 
 	default:
@@ -413,11 +413,11 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 }
 
 // noopTrace is the span closer trace returns when rt.observers is empty. It
-// captures nothing, so returning it costs no allocation.
+// captures nothing and returning it costs no allocation.
 func noopTrace() {}
 
 // trace measures one region of interpreter work: a call, an include, a
-// template. The returned closer ends the span, so callers defer it where the
+// template. The returned closer ends the span and callers defer it where the
 // region begins.
 func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) func() {
 	if len(rt.observers) == 0 {
@@ -428,7 +428,7 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 		return noopTrace
 	}
 
-	// Spans started while the region runs nest below it, so a
+	// Spans started while the region runs nest below it and a
 	// flat list of calls and includes into the shape of the request.
 	restore := rt.ctx
 	rt.ctx = span.Context(rt.ctx)
@@ -455,7 +455,7 @@ func (rt *Runtime) currentSourceLine() int {
 }
 
 // setScopeFile binds __FILE__ and __DIR__ into a fresh call frame. The frame
-// is new, so the bind shadows nothing and needs no restore; includeFile,
+// is new and the bind shadows nothing and needs no restore; includeFile,
 // which layers onto a live scope, resolves through pushScopeFile.
 func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
 	scope.Set("__FILE__", rt.boxed(filename))
@@ -464,7 +464,7 @@ func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
 
 // boxed answers s as an interface value, boxing each distinct string once.
 //
-// A string does not fit in an interface word, so every `any(s)` is a heap
+// A string does not fit in an interface word and every `any(s)` is a heap
 // cell. The strings this covers are the magic constants and the class name a
 // frame binds, which come from the declarations a program holds: the set is
 // the size of the source and every call binds the same members of it.
@@ -487,7 +487,7 @@ func (rt *Runtime) boxed(s string) any {
 
 // fileDir caches path.Dir per filename: every invocation of a function binds
 // its declaring file's directory, and the set of filenames is the set of
-// loaded scripts, so the split happens once per file and not once per call.
+// loaded scripts and the split happens once per file and not once per call.
 func (rt *Runtime) fileDir(filename string) string {
 	if d, ok := rt.fileDirs[filename]; ok {
 		return d
@@ -501,7 +501,7 @@ func (rt *Runtime) fileDir(filename string) string {
 }
 
 // scopeFileState is what pushScopeFile shadowed; a value and not a
-// closure, so the caller's deferred restore stays on the stack.
+// closure and the caller's deferred restore stays on the stack.
 type scopeFileState struct {
 	file, dir       any
 	hadFile, hadDir bool

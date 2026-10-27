@@ -77,7 +77,7 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 // watchEnd answers the channel that closes when ctx ends, nil for a context
 // that cannot end.
 //
-// One read takes the channel and the runtime keeps it, so the per-statement
+// One read takes the channel and the runtime keeps it and the per-statement
 // check is a non-blocking select on a field and no call through a context. A
 // channel and not a flag an AfterFunc sets, because an AfterFunc runs on
 // its own goroutine: a sleep that returned the instant its context ended would
@@ -104,7 +104,7 @@ func ended(done <-chan struct{}) bool {
 }
 
 // bindContext builds the context this session's bindings take. SetContext
-// calls it and nothing else does, so a binding can block on it
+// calls it and no other code does and a binding can block on it
 // across a script changing its own limit.
 //
 // It does not cancel the one it replaces. A host layering onto the context it
@@ -128,7 +128,7 @@ func (rt *Runtime) bindContext() {
 }
 
 // armTimer restarts the clock. The timer sets the flag before it cancels the
-// context, so a check that finds the context ended can tell whether the limit
+// context and a check that finds the context ended can tell whether the limit
 // did it.
 func (rt *Runtime) armTimer() {
 	if rt.scriptTimer != nil {
@@ -211,7 +211,7 @@ func (rt *Runtime) resetLimits() {
 	used := rt.scriptTimer != nil || rt.timedOut.Load()
 	rt.releaseDeadline()
 	if used && rt.stopCtx != nil {
-		// The program is over, so this drops the context it holds and builds
+		// The program is over and this drops the context it holds and builds
 		// a fresh one from the same host: a runtime the host reuses without
 		// setting a context again must not start the next program on a
 		// cancelled one.
@@ -228,7 +228,7 @@ func (rt *Runtime) resetLimits() {
 	rt.refreshDeadlineArmed()
 }
 
-// releaseDeadline stops the timers a limit installed, so a host reusing a
+// releaseDeadline stops the timers a limit installed and a host reusing a
 // runtime does not leave one alive per program until it fires.
 func (rt *Runtime) releaseDeadline() {
 	if rt.scriptTimer != nil {

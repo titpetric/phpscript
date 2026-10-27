@@ -42,7 +42,7 @@ func (l Limits) maxVars() int {
 // ParseStr decodes an application/x-www-form-urlencoded string into the nested
 // array PHP builds from it. It backs parse_str(), $_GET and $_POST.
 //
-// ParseStr decodes before it reads the brackets, so `k%5Ba%20b%5D=1` nests
+// ParseStr decodes before it reads the brackets and `k%5Ba%20b%5D=1` nests
 // under the key `a b`.
 func ParseStr(raw string, limits Limits) *model.Array {
 	if raw == "" {
@@ -91,12 +91,12 @@ func ParsePairs(limits Limits, pairs []Pair) *model.Array {
 // final return is false for a name PHP drops: empty, or nested past maxNesting.
 //
 // Two behaviours here look like bugs and are not. Mangling applies to the
-// top-level name only, so `a.b` is the key `a_b` while `e[f.g]` nests under
+// top-level name only and `a.b` is the key `a_b` while `e[f.g]` nests under
 // `f.g`. And parseKey discards anything after the last well-formed bracket
-// and keeps the name valid, so `a[b]c` and `a[b]]` are both `a[b]`.
+// and keeps the name valid and `a[b]c` and `a[b]]` are both `a[b]`.
 //
 // An unterminated *first* bracket is the exception: the name has no path at
-// all and parseKey mangles it whole, so `a[b` is the flat key `a_b`.
+// all and parseKey mangles it whole and `a[b` is the flat key `a_b`.
 func parseKey(name string, maxNesting int) (string, []string, bool) {
 	open := strings.IndexByte(name, '[')
 	if open < 0 || strings.IndexByte(name[open:], ']') < 0 {
@@ -124,7 +124,7 @@ func parseKey(name string, maxNesting int) (string, []string, bool) {
 
 // mangle substitutes in a top-level name. The set is exactly space, `.` and
 // `[`; `a-b`, `a:b` and `a$b` survive as written. A `+` is already a space by
-// now, so `a+b=1` is `a_b`.
+// now and `a+b=1` is `a_b`.
 func mangle(name string) string {
 	if !strings.ContainsAny(name, " .[") {
 		return name

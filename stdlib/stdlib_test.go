@@ -29,7 +29,7 @@ func runScript(t *testing.T, src string) string {
 }
 
 // TestExceptionSemantics covers what returning *Exception in place of a struct
-// value buys: the instance the script holds is addressable, so its fields are
+// value buys: the instance the script holds is addressable and its fields are
 // writable and a write is visible through the accessors.
 func TestExceptionSemantics(t *testing.T) {
 	t.Parallel()
@@ -221,7 +221,7 @@ func TestRandomBindingsScript(t *testing.T) {
 		},
 		{
 			name: "random_bytes length is honoured",
-			// strlen counts characters, so this case reads a binary length
+			// strlen counts characters and this case reads a binary length
 			// through its hex spelling; see docs/README.md, known divergences.
 			php:  `<?php echo strlen(bin2hex(random_bytes(1))) / 2, " ", strlen(bin2hex(random_bytes(64))) / 2;`,
 			want: "1 64",

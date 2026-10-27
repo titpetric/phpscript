@@ -4,7 +4,7 @@ package tests
 //
 // A panic raised inside a registered Go function has to surface as a catchable
 // PHP exception, not unwind the VM. invokeAny has two dispatch paths and only
-// one of them is reflective, so both need a binding here: a signature the fast
+// one of them is reflective and both need a binding here: a signature the fast
 // type switch recognises, and one that falls through to reflect.Value.Call.
 
 // hostPanicFast has a signature invokeAny dispatches without reflection.

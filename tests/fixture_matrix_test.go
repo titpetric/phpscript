@@ -53,7 +53,7 @@ func TestFixtureRunsMetadata(t *testing.T) {
 			if got := fx.Runs(RunnerPHP); got != c.php {
 				t.Errorf("Runs(php) = %v, want %v", got, c.php)
 			}
-			// The runtime defines the expected output, so nothing opts out
+			// The runtime defines the expected output and nothing opts out
 			// of it.
 			if !fx.Runs(RunnerRuntime) {
 				t.Error("Runs(runtime) = false, want true")

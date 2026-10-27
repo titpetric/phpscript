@@ -9,7 +9,7 @@
 // the surface whose behaviour is the interpreter's (output buffering, preg_*,
 // the date functions), core holds the surface whose behaviour is its own.
 //
-// Every file registers its own area from its own init(), so adding, moving or
+// Every file registers its own area from its own init() and adding, moving or
 // dropping an area touches no other file. Importing the package is what wires
 // them in, the way a program imports a database/sql driver:
 //

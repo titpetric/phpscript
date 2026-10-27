@@ -205,7 +205,7 @@ func primaryClassName(names []string, src *sources) string {
 // this just as much as structs: time.Duration would otherwise render as int.
 //
 // Two constructors may build the same type, as Regexp\Compile and
-// Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins, so a
+// Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins and a
 // method returning that type lands under one class and not under whichever
 // registration the scan reads last.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
@@ -264,7 +264,7 @@ func constructorResultType(ctor any) (reflect.Type, bool) {
 
 // ctorDecl resolves a constructor value to its scanned declaration through
 // the symbol name the Go runtime holds for it. Function literals resolve to
-// nothing: their synthesised names (Register.func1) have no declaration.
+// no declaration: their synthesised names (Register.func1) have none.
 func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	fn := goruntime.FuncForPC(reflect.ValueOf(ctor).Pointer())
 	if fn == nil {
@@ -285,7 +285,7 @@ func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 }
 
 // reflectMethods lists the PHP-callable surface of the Go type a constructor
-// returns. Method dispatch is case-insensitive with underscores accepted, so
+// returns. Method dispatch is case-insensitive with underscores accepted and
 // the PHP spelling is the Go name in snake_case.
 func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]string) []Method {
 	typeName := t.Name()
@@ -326,7 +326,7 @@ var infraMethods = map[string]bool{
 }
 
 // returnType folds a Go result list into one PHP type. A trailing error
-// reaches the script as a throw and never as a return, so it never shows.
+// reaches the script as a throw and never as a return and it never shows.
 func returnType(results []string) string {
 	kept := make([]string, 0, len(results))
 	seen := map[string]bool{}

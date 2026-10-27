@@ -14,7 +14,7 @@ import (
 type Storage interface {
 	// Authenticate reports the user key names when secret is theirs. A nil
 	// user refuses, with no error: a wrong password, an unknown key and a
-	// malformed key all answer the same way, so neither a caller nor a
+	// malformed key all answer the same way and neither a caller nor a
 	// caller's timing tells them apart.
 	//
 	// An error names a store nothing could read: a misconfiguration, where a
@@ -24,7 +24,7 @@ type Storage interface {
 	// Exists reports whether there is a user database to ask: the store is
 	// there, and it holds at least one account.
 	//
-	// A manager takes a default store on this answer, so the default fails no
+	// A manager takes a default store on this answer and the default fails no
 	// tree that has no user database: construction resolves where the store
 	// would sit, and this says whether any account sits there. A login page
 	// prints that state, and an installer asks it first.

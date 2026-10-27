@@ -59,14 +59,14 @@ func File(name, src string) ([]Diagnostic, error) {
 
 // lintJSONFlags reports a JSON_* constant.
 //
-// Nothing here defines a JSON_* constant, so the name evaluates to null and
-// json_encode ignores the argument. The call runs and encodes correctly, so
-// this is a warning: nothing fails, and the author named a formatting the
+// The runtime defines no JSON_* constant and the name evaluates to null and
+// json_encode ignores the argument. The call runs and encodes correctly and
+// this is a warning: the call still runs, and the author named a formatting the
 // encoder does not vary. See docs/design.md.
 //
 // The scan is over tokens and not the AST: a constant can appear in any
 // expression, and T_STRING already tells a bare name apart from the same text
-// inside a string literal, so defined("JSON_PRETTY_PRINT") is not a use.
+// inside a string literal and defined("JSON_PRETTY_PRINT") is not a use.
 func lintJSONFlags(file, src string, out *[]Diagnostic) {
 	for _, token := range parser.TokenGetAll(src) {
 		triple, ok := token.([]any)
@@ -96,7 +96,7 @@ func lintJSONFlags(file, src string, out *[]Diagnostic) {
 // segment may say, and neither refuses the spellings the other does not
 // understand in a way an author sees: chi takes {module=users} as a parameter
 // of that literal name, matches every request to the segment and exports
-// nothing. Registration skips such a route; this is the diagnostic that names
+// no value. Registration skips such a route; this is the diagnostic that names
 // the file and the line before it gets that far.
 func lintRoutes(file, src string, out *[]Diagnostic) {
 	for _, route := range annotations.ParseRoutes([]byte(src)) {
@@ -108,7 +108,7 @@ func lintRoutes(file, src string, out *[]Diagnostic) {
 
 // lintInterfaces reports a class that declares `implements` and does not
 // declare a method the interface names. The runtime raises a RuntimeException
-// for the same condition, so the finding is the warning that arrives before
+// for the same condition and the finding is the warning that arrives before
 // the program runs.
 func lintInterfaces(file string, prog *model.Program, out *[]Diagnostic) {
 	for _, v := range model.CheckInterfaces(prog.Stmts) {

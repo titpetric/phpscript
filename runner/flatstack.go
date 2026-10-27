@@ -26,7 +26,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 			// bytecode subset does not cover yet, and the interpreter runs it
 			// instead. A violated interface contract differs: the verdict is
 			// on the program, and the interpreter would reach the same one,
-			// so this path throws.
+			// and this path throws.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
 				return true, NewRuntimeException(err.Error(), 0)
@@ -37,7 +37,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 	}
 	if err := rt.hoistOnce(ast, rt.entrypoint); err != nil {
 		// A redeclaration is a verdict on the program, like a violated
-		// interface contract above: the interpreter would reach it too, so
+		// interface contract above: the interpreter would reach it too and
 		// falling back would only run the same hoist a second time, over a
 		// table the first pass already wrote into, and report the wrong
 		// declaration as the duplicate.
@@ -80,7 +80,7 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 
 // SetProperty writes an object property, the same way the interpreter does:
 // a PHP object carries the value in its property map, and a Go binding assigns
-// the struct field the name resolves to, so `$db->is_readonly = true` sets
+// the struct field the name resolves to and `$db->is_readonly = true` sets
 // IsReadonly.
 func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
 	if object, ok := receiver.(*model.Object); ok {
@@ -97,13 +97,13 @@ func (h flatHost) SetProperty(receiver any, name string, value any, op string) e
 }
 
 // Echo writes through the runtime output stack and not to the base writer,
-// so ob_start captures bytecode output the way it captures interpreted output.
+// and ob_start captures bytecode output the way it captures interpreted output.
 func (h flatHost) Echo(value any) error {
 	_, err := io.WriteString(h.runtime.Output(), phpString(value))
 	return err
 }
 
-// Globals returns the table runInterpreted seeds its global scope from, so the
+// Globals returns the table runInterpreted seeds its global scope from and the
 // bytecode engine's top-level frame starts with the same names. Lookup, which
 // every frame reads, answers none of them: a global belongs to the global
 // scope, and resolveVar does not reach one from a function either.
@@ -122,7 +122,7 @@ func (h flatHost) Lookup(name string) any {
 // Constant resolves a bare name: whatever the host knows under it, then the
 // constant table, and an Error when nothing does. PHP 8 raises the same for
 // the same expression, and an unset variable of that spelling stays null,
-// so this is separate from Lookup.
+// and this is separate from Lookup.
 func (h flatHost) Constant(name string) (any, error) {
 	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value, nil
@@ -147,7 +147,7 @@ func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
 // SetEntry implements the by-reference foreach write-back. Only a *model.Array
 // is script-owned storage; a native Go collection a binding returned belongs to
-// the host, so this drops the write and reports nothing. Runtime.execForeach
+// the host and this drops the write and reports nothing. Runtime.execForeach
 // takes the same view.
 func (h flatHost) SetEntry(container, key, value any) error {
 	array, ok := container.(*model.Array)
@@ -201,7 +201,7 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 }
 
 // MatchCatch answers the bytecode engine's clause selection with the rules the
-// interpreter uses, so `catch (Exception $e)` declines a TypeError on both
+// interpreter uses and `catch (Exception $e)` declines a TypeError on both
 // backends and not on one of them.
 func (h flatHost) MatchCatch(declaredType string, err error) bool {
 	return matchCatchType(declaredType, err)
@@ -318,8 +318,8 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 	for name, value := range vars {
 		scope.Set(name, value)
 	}
-	// The *_once dedupe lives in includeFile, so both engines answer it on the
-	// resolved path, so neither keeps its own scan over spellings.
+	// The *_once dedupe lives in includeFile and both engines answer it on the
+	// resolved path and neither keeps its own scan over spellings.
 	result, err := h.runtime.includeFile(phpString(path), once, scope)
 	if err != nil {
 		return nil, nil, err
@@ -376,7 +376,7 @@ func (h flatHost) UnsetProperty(receiver any, name string) error {
 }
 
 // StaticVarBag returns the persistent storage of one `static $x` statement,
-// the same per-node table the interpreter's named functions use, so the
+// the same per-node table the interpreter's named functions use and the
 // counts agree even when the two backends run the same program in turn.
 func (h flatHost) StaticVarBag(node *model.StaticVar) (map[string]any, bool) {
 	bag, seeded := h.runtime.funcStatics[node]

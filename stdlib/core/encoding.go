@@ -24,14 +24,14 @@ func registerEncoding(rt *runner.Runtime) {
 	// characters unless $strict is true, in which case it returns false for
 	// them and for misplaced padding.
 	rt.RegisterFunc("base64_decode", phpBase64Decode)
-	// urlencode encodes $string for application/x-www-form-urlencoded, so a
+	// urlencode encodes $string for application/x-www-form-urlencoded and a
 	// space becomes '+' and '~' becomes '%7E'.
 	rt.RegisterFunc("urlencode", phpURLEncode)
 	// urldecode decodes the application/x-www-form-urlencoded $string,
 	// turning '+' into a space and leaving an incomplete '%' sequence
 	// literal.
 	rt.RegisterFunc("urldecode", phpURLDecode)
-	// rawurlencode encodes $string per RFC 3986, so a space becomes '%20' and '~' stays literal.
+	// rawurlencode encodes $string per RFC 3986 and a space becomes '%20' and '~' stays literal.
 	rt.RegisterFunc("rawurlencode", phpRawURLEncode)
 	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and
 	// leaving an incomplete '%' sequence literal.
@@ -58,7 +58,7 @@ func phpBin2hex(str string) string {
 
 // phpHex2bin returns any because PHP's contract is string|false: it answers an
 // odd length or a character outside [0-9A-Fa-f] with false and never raises.
-// encoding/hex rejects both, so the whole contract is one decode.
+// encoding/hex rejects both and the whole contract is one decode.
 func phpHex2bin(str string) any {
 	out, err := hex.DecodeString(str)
 	if err != nil {
@@ -189,7 +189,7 @@ func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 // urlEncode percent-escapes str. In form mode a space becomes '+', matching
 // urlencode(); otherwise every escaped byte becomes '%XX', matching
 // rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP escapes
-// it, so the tables above take its place.
+// it and the tables above take its place.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
 	if form {
@@ -236,8 +236,8 @@ func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 // with register_globals in PHP 8.
 //
 // The setter is nil when a script omitted the argument. PHP raises an
-// ArgumentCountError for that call, and this runtime pads a short call instead,
-// so phpParseStr returns before the decode and writes nothing.
+// ArgumentCountError for that call, and this runtime pads a short call instead.
+// phpParseStr then returns before the decode and writes nothing.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
 		return
@@ -245,8 +245,8 @@ func phpParseStr(str string, result func(any)) {
 	result(shared.ParseStr(str, shared.Limits{}))
 }
 
-// phpHTTPBuildQuery takes data as any and reads it through model.RangeValues,
-// so a *model.Array keeps its insertion order and a map[string]any row from a
+// phpHTTPBuildQuery takes data as any and reads it through model.RangeValues.
+// A *model.Array keeps its insertion order and a map[string]any row from a
 // database binding arrives with no array conversion first.
 func phpHTTPBuildQuery(data any) string {
 	var b strings.Builder
@@ -258,8 +258,8 @@ func phpHTTPBuildQuery(data any) string {
 	return b.String()
 }
 
-// buildQuery appends data's pairs to b. prefix is the key path already walked,
-// so a nested value takes the name key[sub], and urlEncode escapes the
+// buildQuery appends data's pairs to b. prefix is the key path already walked.
+// A nested value takes the name key[sub], and urlEncode escapes the
 // brackets along with the rest of that name as it writes the pair.
 func buildQuery(b *strings.Builder, prefix string, data any) {
 	model.RangeValues(data, func(key, val any) bool {

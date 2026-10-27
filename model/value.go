@@ -1,7 +1,7 @@
 package model
 
 // This file is the mapping between a PHP value and the Go value that carries
-// it. PHP's types reach Go as native ones, so a value flows in and out of a
+// it. PHP's types reach Go as native ones and a value flows in and out of a
 // binding with no marshalling layer, and a registered Go function is callable
 // from a script:
 //

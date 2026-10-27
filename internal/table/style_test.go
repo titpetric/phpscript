@@ -9,7 +9,7 @@ import (
 
 // TestIsTerminal covers the choice between the box-drawing table and markdown
 // when the caller has not said which it wants. A writer that is not an
-// *os.File cannot be a tty, and a file on disk is not one either, so a
+// *os.File cannot be a tty, and a file on disk is not one either and a
 // redirected stdout and a report file both render as markdown.
 func TestIsTerminal(t *testing.T) {
 	t.Parallel()
@@ -38,7 +38,7 @@ func TestIsTerminal(t *testing.T) {
 }
 
 // TestBoxDrawing covers the two sets of constants a table draws with: every
-// box character is one column wide, so a border built by repeating one lines
+// box character is one column wide and a border built by repeating one lines
 // up with the cells above it, and every color is a 256-color code that ends
 // with the one reset sequence.
 func TestBoxDrawing(t *testing.T) {

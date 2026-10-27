@@ -15,11 +15,11 @@ func registerTokenizer(rt *runner.Runtime) {
 	// token_name returns the name of token $id, such as "T_VARIABLE"; an unknown id returns "UNKNOWN".
 	rt.RegisterFunc("token_name", func(id int64) string { return parser.TokenName(int(id)) })
 
-	// The T_* ids token_get_all reports. A script branches on them by name, so
+	// The T_* ids token_get_all reports. A script branches on them by name and
 	// the loop registers every id the tokenizer can emit, and not the handful
 	// one caller happened to need: a name that is not a constant reads as null,
 	// and comparing a token against null is a branch that never runs. They are
-	// constants, not globals, so they resolve inside methods and functions too.
+	// constants, not globals and they resolve inside methods and functions too.
 	for name, id := range parser.TokenIDs() {
 		rt.SetConst(name, int64(id))
 	}

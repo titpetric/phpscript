@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// telemetryRecorder is a runtime observer recording into a trace of its own, so
+// telemetryRecorder is a runtime observer recording into a trace of its own and
 // the tests can assert on what the interpreter reported without a server.
 type telemetryRecorder struct {
 	states    []telemetry.State
@@ -160,7 +160,7 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 
 // TestRuntimeContextLineAfterNestedCall covers a binding called in the same
 // statement as a PHP call that ran before it, the shape of
-// `$this->conn->db()->get(...)`: the call returns into that statement, so the
+// `$this->conn->db()->get(...)`: the call returns into that statement and the
 // binding's span belongs to its line and not to the last line the callee ran.
 func TestRuntimeContextLineAfterNestedCall(t *testing.T) {
 	t.Parallel()
@@ -489,7 +489,7 @@ func TestRuntime_Trace(t *testing.T) {
 	}
 
 	// A runtime nothing observes answers a nil span, and every method on one
-	// does nothing, so a host traces unconditionally.
+	// does nothing and a host traces unconditionally.
 	if span := New(io.Discard, Options{}).Trace("unobserved"); span != nil {
 		t.Errorf("Trace answered %v with no observer, want nil", span)
 	}
@@ -510,7 +510,7 @@ func TestRuntime_UpdateStatus(t *testing.T) {
 		t.Errorf("the observer was told %v, want %v", got, telemetry.StateWriting)
 	}
 
-	// The same state twice is one phase, so a host calling it per statement
+	// The same state twice is one phase and a host calling it per statement
 	// does not flood an observer with what it already knows.
 	rt.UpdateStatus(telemetry.StateWriting)
 	if len(recorder.states) != before+1 {

@@ -8,8 +8,8 @@ import (
 )
 
 // TestParseProfile covers the --stdlib values. An unknown name is an error
-// and no fallback, because falling back to every area would narrow
-// nothing while reading as a narrowed runtime.
+// and no fallback, because falling back to every area would narrow no area
+// while reading as a narrowed runtime.
 func TestParseProfile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -44,7 +44,7 @@ func TestParseProfile(t *testing.T) {
 }
 
 // TestSetProfileNarrowsRegister is what makes --stdlib one flag for the whole
-// process: Register reads the process profile, so narrowing it reaches every
+// process: Register reads the process profile and narrowing it reaches every
 // runtime built afterwards without a call site passing anything.
 func TestSetProfileNarrowsRegister(t *testing.T) {
 	t.Cleanup(func() { stdlib.SetProfile(stdlib.All) })

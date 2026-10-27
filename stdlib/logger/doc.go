@@ -4,7 +4,7 @@
 // It serves the steps a host runs on behalf of a script and does not want in
 // the script's output. Migrations are the case it covers: a migration
 // set runs at startup, where the script's output is an HTTP body or a rendered
-// page, so a per-file status line written there lands in what the script is
+// page and a per-file status line written there lands in what the script is
 // producing.
 //
 //	log := logger.New(ctx, "migrate")
@@ -25,6 +25,6 @@
 // to read. The span is not ended, because the caller that opened it ends it.
 //
 // Recording is nil safe the way the rest of the instrumentation is. With no
-// trace in the context the span is nil and its methods do nothing, so a CLI run
+// trace in the context the span is nil and its methods do nothing and a CLI run
 // pays nothing beyond the log line it wanted anyway.
 package logger

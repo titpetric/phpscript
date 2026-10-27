@@ -77,7 +77,7 @@ telemetry:
 }
 
 // TestVirtualHostAutoindexIsTheSitesOwn pins who decides directory listings.
-// They describe what one site publishes, not how the process listens, so the
+// They describe what one site publishes, not how the process listens and the
 // key is the site's to set, and stays off for a site that says nothing.
 func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 	t.Parallel()
@@ -450,7 +450,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.Telemetry.Enabled = false
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
-		// The root router carries no dashboard, so it shadows nothing.
+		// The root router carries no dashboard and it shadows nothing.
 		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
@@ -463,7 +463,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 // The rule is the one env is already held to: a site that names servers gets
 // only the ones it named. A table covers it where two assertions
 // because the previous shape, a single unnamed block, did not hold it. A
-// struct merges field by field, so a site setting only a host kept the
+// struct merges field by field and a site setting only a host kept the
 // operator's username and password and went on sending as the operator. The
 // test that covered it checked the host and the from address, which are
 // exactly the two fields the site did set, and passed throughout.
@@ -496,7 +496,7 @@ func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
 			want: config.Mail{},
 		},
 		// A null node is the spelling the decoder leaves as the inherited
-		// value, so without the guard in OverlayBytes this is the one way a
+		// value and without the guard in OverlayBytes this is the one way a
 		// site declaring it had no servers would inherit the operator's.
 		"naming the key with nothing under it is no servers": {
 			file: "mail:\n",

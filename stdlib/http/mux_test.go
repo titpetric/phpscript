@@ -19,8 +19,8 @@ import (
 // serveScript runs src, which must build a router and leave it in $mux, and
 // returns the runtime and the handler a Go test can drive.
 //
-// Nothing listens: a mux answers a request, so the routing half is testable
-// without a port, and only the listening tests take one.
+// This test starts no listener: a mux answers a request and the routing half
+// is testable without a port, and only the listening tests take one.
 func serveScript(t *testing.T, src string) (*runner.Runtime, nethttp.Handler) {
 	t.Helper()
 	_, rt, handler := serveScriptAll(t, src)
@@ -150,7 +150,7 @@ define("MUX", $mux);
 `)
 
 	// No Runtime.OnError here. Installing one means "report the
-	// error and carry on from the next statement" for every PHP error, so the
+	// error and carry on from the next statement" for every PHP error and the
 	// throw would never reach the handler wrapper and the mux would answer 200
 	// with an empty body. That is the runtime's contract, not this binding's,
 	// and the doc on Handle says so.
@@ -169,7 +169,7 @@ define("MUX", $mux);
 
 // TestMuxEchoThenThrowKeepsTheBody holds the 500 guard to its own comment: a
 // handler that has begun its response gets no second status. An echo is the
-// response beginning the way $w->write() is, so a throw after one leaves the
+// response beginning the way $w->write() is and a throw after one leaves the
 // truncated body as the signal and appends no "Internal Server Error".
 func TestMuxEchoThenThrowKeepsTheBody(t *testing.T) {
 	t.Parallel()
@@ -255,7 +255,7 @@ define("MUX", $mux);
 	}
 
 	// Waited for and never read straight off: the handler set ignore on the
-	// disconnect, so the handler runs on after ServeHTTP has stopped waiting
+	// disconnect and the handler runs on after ServeHTTP has stopped waiting
 	// for it. That is what ignore_user_abort does, and it means the
 	// report lands a moment after the request is over.
 	select {
@@ -333,7 +333,7 @@ define("MUX", $mux);
 
 // TestMuxIgnoreUserAbortKeepsBindingWork is the other half of the derivation:
 // after ignore_user_abort(true), a binding's context keeps the request's
-// values and drops its cancellation, so work the handler chose to finish
+// values and drops its cancellation and work the handler chose to finish
 // finishes.
 func TestMuxIgnoreUserAbortKeepsBindingWork(t *testing.T) {
 	t.Parallel()
@@ -436,7 +436,7 @@ define("MUX", $mux);
 }
 
 // TestMuxSkipsADeadConnection keeps the work off a request nobody is waiting
-// for: the client is already gone, so the handler never runs.
+// for: the client is already gone and the handler never runs.
 func TestMuxSkipsADeadConnection(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -616,7 +616,7 @@ define("B", $b);
 }
 
 // TestScriptDoesNotRaceItsOwnHandlers is the other half: listen() returns and
-// the script keeps interpreting, so the script's goroutine and net/http's both
+// the script keeps interpreting and the script's goroutine and net/http's both
 // run PHP on one runtime. wait() parks the runtime; everything before it holds
 // it.
 func TestScriptDoesNotRaceItsOwnHandlers(t *testing.T) {
@@ -705,7 +705,7 @@ define("SERVER", $server);
 
 // TestMuxTakesAHandlerFromAProperty is a server class holding its handlers in
 // properties and registering each as $this->fnName. The closure binds $this,
-// which comes along and every request shares it, so a handler reads its
+// which comes along and every request shares it and a handler reads its
 // configuration and writes to its arguments.
 func TestMuxTakesAHandlerFromAProperty(t *testing.T) {
 	t.Parallel()
@@ -812,7 +812,7 @@ function handle_root($w, $r) {
 $mux = new HTTP\Mux();
 $mux->handle("GET /hello", "Site::hello");
 $mux->handle("GET /greet", new Greeter);
-// The first-class spellings arrive as a Closure, so the router takes the form
+// The first-class spellings arrive as a Closure and the router takes the form
 // php itself writes for each of the three it accepts by name.
 $mux->handle("GET /static", Site::hello(...));
 $mux->handle("GET /bound", (new Greeter)(...));
@@ -934,7 +934,7 @@ define("MUX", $mux);
 	value, _ := rt.Const("MUX")
 	handler := value.(nethttp.Handler)
 
-	// Two workers, so six requests of 150ms are three rounds: over 300ms and
+	// Two workers and six requests of 150ms are three rounds: over 300ms and
 	// well under the 900ms they would take one at a time.
 	if mux, ok := value.(interface{ UsePoolForTest(*runner.Pool) }); ok {
 		mux.UsePoolForTest(runner.NewPool(rt, 2, 64, nil))
@@ -967,7 +967,7 @@ define("MUX", $mux);
 	}
 }
 
-// A handler answers on a runtime of its own, so every call it makes has to run
+// A handler answers on a runtime of its own and every call it makes has to run
 // on that runtime. A callable the script built before the server started is a
 // value like any other - it crosses into a worker as a capture, or a handler
 // reads it off a shared object - and calling one there must not reach back into
@@ -976,7 +976,7 @@ define("MUX", $mux);
 //
 // Each case below is one spelling of that call, and every callable in them
 // echoes. An echo is what proves which runtime ran the body: the tracker pushes
-// the response writer onto the worker only, so an echo that reaches the
+// the response writer onto the worker only and an echo that reaches the
 // response ran there, and one that reaches the process output ran on the parent.
 var reentrySpellings = []struct {
 	name  string

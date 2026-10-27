@@ -15,7 +15,7 @@ import (
 
 // benchLookupTree holds the two spellings of one handler: the function a lookup
 // calls, and the whole-file entrypoint a request runs. Both answer the same
-// string off the same request, so the two figures differ by what the host does
+// string off the same request and the two figures differ by what the host does
 // around the PHP and not by what the PHP does.
 var benchLookupTree = fstest.MapFS{
 	"handler.php": {Data: []byte(`<?php
@@ -43,7 +43,7 @@ var lookupBenchmarkSink int
 //   - invoke calls the closure. Paid per call, and the only figure that scales
 //     with traffic.
 //   - callable is the same call through rt.Callable, the untyped API that
-//     existed before this one, so the difference prices the signature bridge
+//     existed before this one and the difference prices the signature bridge
 //     and not the call.
 //   - runtime builds a runtime and registers the standard library onto it,
 //     running no PHP.
@@ -55,7 +55,7 @@ var lookupBenchmarkSink int
 // ready to run it, which is the part a lookup on a reused runtime skips.
 //
 // Run with -cpu 1,2,4 for the parallel scaling. No invocation shares what it
-// allocates, so the only contention is the two caches' read locks, while
+// allocates and the only contention is the two caches' read locks, while
 // request allocates ninety kilobytes a go and stops scaling where the
 // collector becomes the limit.
 func BenchmarkLookup(b *testing.B) {
@@ -80,7 +80,7 @@ func BenchmarkLookup(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
-			// Resolved once outside the loop, so the figure is what binding the
+			// Resolved once outside the loop and the figure is what binding the
 			// second handler of a tree costs, and not what installing the
 			// first one does.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
@@ -117,7 +117,7 @@ func BenchmarkLookup(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
-			// Callable resolves against the function table, so the declaration
+			// Callable resolves against the function table and the declaration
 			// has to be there; a lookup installs it, and this is the same
 			// install without the typed wrapper on top.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
@@ -146,7 +146,7 @@ func BenchmarkLookup(b *testing.B) {
 			for pb.Next() {
 				// No PHP at all: the runtime a request builds and the standard
 				// library registered onto it, which is the share of the figure
-				// below that has nothing to do with the script.
+				// below that the script does not touch.
 				lookupBenchmarkSink = len(newRuntime(io.Discard).Env)
 			}
 		})
@@ -174,7 +174,7 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	})
 
-	// This checks the control once and never per iteration, so the comparison
+	// This checks the control once and never per iteration and the comparison
 	// does not pay for the comparison.
 	verify := func(name, got string) {
 		if got != want {
@@ -237,7 +237,7 @@ function helper_b() { return 2; }
 			rt := runner.New(io.Discard, runner.Options{RootFS: tree, Precompile: true})
 			rt.SetIncludeCache(includes)
 
-			// The last package, so a resolution that scanned would scan the
+			// The last package anda resolution that scanned would scan the
 			// whole tree before reaching it.
 			name := fmt.Sprintf(`App\Pkg%03d\handle`, files-1)
 			if _, err := runner.Lookup[func(*http.Request) string](rt, name); err != nil {
@@ -261,7 +261,7 @@ function helper_b() { return 2; }
 }
 
 // lookupHandlerTree is one PHP handler answering through the net/http values it
-// holds, so the shapes below differ by what the host does around it.
+// holds and the shapes below differ by what the host does around it.
 var lookupHandlerTree = fstest.MapFS{"h.php": {Data: []byte(`<?php
 namespace App;
 function index($w, $r) {
@@ -312,7 +312,7 @@ func BenchmarkLookupHandler(b *testing.B) {
 	})
 
 	// Same pool, but ResetSession clears the session per request: script
-	// globals, class and function statics, constants and declarations go, so
+	// globals, class and function statics, constants and declarations go, and
 	// Lookup binds the symbol again per request.
 	rtPool := sync.Pool{New: func() any { return newRuntime() }}
 	reset := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

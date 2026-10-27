@@ -7,7 +7,7 @@ import (
 
 // TestYAMLDecode covers the shapes a document arrives in, which are the ones
 // json_decode answers with: a mapping is an array keyed by its field names and
-// a sequence is a list, so a settings file reads the same in either spelling.
+// a sequence is a list and a settings file reads the same in either spelling.
 func TestYAMLDecode(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -24,9 +24,9 @@ var_dump(yaml_decode("a: 1\nb: two\nc:\n  - 1\n  - 2\n"));`)
 }
 
 // TestYAMLDecodeKeysAreSorted covers a decision of this runtime's own.
-// The decoder answers a Go map and a Go map has no order, so reading one
+// The decoder answers a Go map and a Go map has no order and reading one
 // document twice would build two differently ordered arrays. A script reads a
-// settings file by name, so sorting costs nothing and the same input decodes
+// settings file by name and sorting costs nothing and the same input decodes
 // the same way every time.
 func TestYAMLDecodeKeysAreSorted(t *testing.T) {
 	t.Parallel()

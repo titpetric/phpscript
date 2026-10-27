@@ -8,14 +8,14 @@ import (
 )
 
 // keySep separates the fields of a composed map key. A filename may hold any
-// byte a path may hold, colons and commas included, so the separator is one
+// byte a path may hold, colons and commas included and the separator is one
 // that cannot appear in one.
 const keySep = "\x00"
 
 // Aggregator accumulates the counts of many collectors for the lifetime of a
 // process. Counts add: a statement two requests reached ran twice.
 //
-// A Collector keys statements by AST node, so one kept across requests grows
+// A Collector keys statements by AST node and one kept across requests grows
 // with every re-parse. The aggregator keys them by the profile line it writes
 // them as, and the size of the application bounds that.
 type Aggregator struct {
@@ -35,7 +35,7 @@ func NewAggregator() *Aggregator {
 }
 
 // Add folds one collector's counts in and returns, reading the collector and
-// keeping no reference, so the caller may drop it and the AST it keys on.
+// keeping no reference and the caller may drop it and the AST it keys on.
 func (a *Aggregator) Add(c *Collector) {
 	if c == nil {
 		return

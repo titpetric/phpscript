@@ -31,7 +31,7 @@ rt := runtime.New(os.Stdout)
 rt.RegisterConstructor("Exception", NewException)
 ```
 
-An `Exception` type also implements `error`. The `(T, error)` returns are implicitly handled by the VM to raise an exception. The constructor always returns a nil error, so we can differentiate from a value (T) and a thrown error (error). When creating an exception, you can use the value as any other type, and invoke `getCode` and `getMessage`.
+An `Exception` type also implements `error`. The `(T, error)` returns are implicitly handled by the VM to raise an exception. The constructor always returns a nil error and we can differentiate from a value (T) and a thrown error (error). When creating an exception, you can use the value as any other type, and invoke `getCode` and `getMessage`.
 
 ```php
 $ex1 = new Exception("Not found", 404);

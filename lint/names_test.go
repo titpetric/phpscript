@@ -12,8 +12,8 @@ import (
 
 // TestSetInclude covers what the flag buys and the ordering it carries. The
 // linter runs the recorded path against the name registry before it checks any
-// file, so the names an application declares resolve as well as the standard
-// library's. knownRuntime builds the registry once per process, so a caller
+// file and the names an application declares resolve as well as the standard
+// library's. knownRuntime builds the registry once per process and a caller
 // records the path before the first File.
 func TestSetInclude(t *testing.T) {
 	previous := includeFile

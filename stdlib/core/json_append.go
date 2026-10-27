@@ -17,14 +17,14 @@ import (
 // Each walk spells its loop out and calls Range directly, taking no function
 // value as a parameter. A closure appending to buf captures buf, and a closure
 // reaching a function value the compiler cannot see through escapes to the heap
-// along with everything it captured: that is an allocation per collection, paid
+// along with everything it captured. Each collection costs one allocation, paid
 // again per row of a list of rows.
 
 // appendJSONValue appends one value's encoding: the scalar and collection
 // shapes a handler's response carries directly, and json.Marshal for the
 // rest, floats included, whose spelling is encoding/json's own.
 //
-// The collections append in place, so a document reaches the stream without
+// The collections append in place and a document reaches the stream without
 // building the jsonEncodeValue tree first and walking it by reflection after.
 func appendJSONValue(buf []byte, v any) ([]byte, error) {
 	switch x := v.(type) {
@@ -55,7 +55,7 @@ func appendJSONValue(buf []byte, v any) ([]byte, error) {
 		}
 		return appendJSONObject(x, buf)
 	case model.Collection:
-		// A view over request data, keyed by name, so an object. The read
+		// A view over request data, keyed by name and an object. The read
 		// decodes the request behind it.
 		if x == nil {
 			return append(buf, "null"...), nil
@@ -181,8 +181,8 @@ func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 
 // appendJSONString appends a string's encoding. It takes the string itself and
 // no any, because an any parameter boxes the key, and a string does not fit an
-// interface word: that is one allocation per key of every object a response
-// carries.
+// interface word. Each key of every object a response carries costs one
+// allocation.
 func appendJSONString(buf []byte, s string) ([]byte, error) {
 	if jsonSafe(s) {
 		buf = append(buf, '"')

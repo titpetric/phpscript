@@ -9,7 +9,7 @@ import (
 
 // bindingCtx is the context one binding call receives: the calling frame, the
 // script environment and the source location, carried as fields of one value
-// in place of four context.WithValue layers. It embeds the parent, so
+// in place of four context.WithValue layers. It embeds the parent and
 // deadlines, cancellation and every other value pass through.
 //
 // The runtime builds one per call and never pools or reuses it. A binding may
@@ -86,13 +86,13 @@ func (c *bindingCtx) Deadline() (time.Time, bool) {
 // bindingContext builds the context injected into a binding whose first
 // parameter declares one.
 //
-// The base is the request in flight while one is live, so a value middleware
+// The base is the request in flight while one is live and a value middleware
 // attached to r.Context(), its deadline and its cancellation all reach the
 // binding. runner/runtime_deadline.go states why rt.ctx itself is never
 // rebuilt; deriving a value per call is compatible with a binding parked on
 // the one it holds. Outside a request the base is the session context, and
 // a handler that called ignore_user_abort(true) keeps the request's values
-// and drops its cancellation, so a disconnect does not end binding work the
+// and drops its cancellation and a disconnect does not end binding work the
 // handler chose to finish.
 func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 	c := &bindingCtx{Context: rt.ctx, scope: scope, env: rt.Env}
@@ -106,7 +106,7 @@ func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 
 // fillSource records the file and the line spans started from the context
 // attribute to. The line belongs to the runtime and to no scope: the parser
-// compiles __LINE__ to a literal, so no frame carries it, and writing it into
+// compiles __LINE__ to a literal and no frame carries it, and writing it into
 // one per statement for a read back here costs a map write on every statement
 // executed. fillSource resolves it here and records nothing, for the reason
 // currentStmt states.

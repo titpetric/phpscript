@@ -9,7 +9,7 @@ import (
 // of DatabaseProvider.
 //
 // The connection is not instrumented. Query level spans belong to the driver,
-// not to the provider, so a caller that wants them supplies an instrumented
+// not to the provider and a caller that wants them supplies an instrumented
 // open function instead.
 func Open(driver, dsn string) (*DB, error) {
 	pool, err := sql.Open(driver, dsn)

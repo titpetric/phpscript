@@ -17,7 +17,7 @@ func hashRuntime(t *testing.T) *runner.Runtime {
 }
 
 // TestRegisterHash covers the digest names a script calls and what they answer.
-// Every hex vector below is the published digest of its input, so a change to
+// Every hex vector below is the published digest of its input and a change to
 // the table or to the rendering fails here. The return is a string and never a
 // []byte: a PHP string is a Go string in this runtime, and a []byte would reach
 // a script as a foreign value that strlen and concatenation do not recognise.
@@ -61,7 +61,7 @@ func TestRegisterHash(t *testing.T) {
 }
 
 // TestRegisterHash_binary covers the raw-bytes tail. A digest requested as binary
-// output answers the sum itself, so its length is the algorithm's digest size
+// output answers the sum itself and its length is the algorithm's digest size
 // and the hex form is twice that.
 func TestRegisterHash_binary(t *testing.T) {
 	t.Parallel()
@@ -94,8 +94,8 @@ func TestRegisterHash_binary(t *testing.T) {
 }
 
 // TestRegisterHash_unknownAlgorithm covers a name this build does not carry.
-// There is nothing to clamp to, so the call fails with PHP 8's ValueError
-// wording and a script that catches it reads a familiar message.
+// No nearest answer exists and the call fails with PHP 8's ValueError wording
+// and a script that catches it reads a familiar message.
 func TestRegisterHash_unknownAlgorithm(t *testing.T) {
 	t.Parallel()
 	rt := hashRuntime(t)
@@ -117,7 +117,7 @@ func TestRegisterHash_unknownAlgorithm(t *testing.T) {
 }
 
 // TestRegisterHash_algos covers the list a script reads before it lets a user
-// pick an algorithm. It answers this build's table and not PHP's, so every
+// pick an algorithm. It answers this build's table and not PHP's and every
 // name it reports is one hash() accepts, and the names arrive sorted.
 func TestRegisterHash_algos(t *testing.T) {
 	t.Parallel()
@@ -154,7 +154,7 @@ func TestRegisterHash_algos(t *testing.T) {
 
 // TestRegisterHash_equals covers hash_equals(). Strings of different lengths
 // are never equal, and the comparison of equal-length strings runs in time
-// that does not depend on how far along they first differ, so a token check
+// that does not depend on how far along they first differ and a token check
 // leaks nothing but the length of the guess.
 func TestRegisterHash_equals(t *testing.T) {
 	t.Parallel()

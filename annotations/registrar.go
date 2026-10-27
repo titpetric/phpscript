@@ -23,7 +23,7 @@ func (r serveMuxRegistrar) Handle(method string, path string, handler http.Handl
 		// path, turning a 404 into an index page.
 		path = "/{$}"
 	}
-	// ServeMux panics on a pattern it cannot parse, so an unrendered
+	// ServeMux panics on a pattern it cannot parse and an unrendered
 	// {id:[0-9]+} takes the process down at registration.
 	r.ServeMux.Handle(method+" "+model.RenderRoutePath(path, model.RouteServeMux), handler)
 }

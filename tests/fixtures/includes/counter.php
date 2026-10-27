@@ -1,6 +1,6 @@
 <?php
 
-// Support file for once.phpt: it announces itself on every execution, so the
+// Support file for once.phpt: it announces itself on every execution, and the
 // number of lines it prints is how many times it ran.
 echo "counter ran\n";
 

@@ -44,7 +44,7 @@ func parse(src, file string) (*model.Program, error) {
 	// whichever way the parse ends.
 	defer releaseTokens(toks)
 
-	// One span per statement; statements run around one per sixteen tokens, so
+	// One span per statement; statements run around one per sixteen tokens and
 	// the hint saves the map's rehash-and-copy cycle (rule 6).
 	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan, len(toks)/16+8)}
 	if file != "" {
@@ -178,10 +178,10 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 				p.topSeen = true
 			}
 			// An include of a namespaced file reads the symbols it
-			// declares and never runs it, so resolving a name stays
+			// declares and never runs it and resolving a name stays
 			// cheap. The restriction is a policy and no omission;
 			// docs/README.md lists it under "Known divergences from PHP",
-			// so the message says why and not only what.
+			// and the message says why and not only what.
 			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.InterfaceDecl, *model.FuncDecl:
@@ -250,7 +250,7 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 		// `global $x;` and `static $x = ...;` are statements only when a
 		// variable follows the keyword; `static function () {}`, `static::m()`
 		// and a stray bare `global` keep parsing as expressions. PHP keywords
-		// are case-insensitive, so `GLOBAL $x;` matches too.
+		// are case-insensitive and `GLOBAL $x;` matches too.
 		if p.peek(1).kind == tVar {
 			if strings.EqualFold(t.val, "global") {
 				return p.parseGlobal()
@@ -296,9 +296,9 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 			}
 			return p.parseFunction()
 		case "abstract", "final", "readonly":
-			// `readonly` is not a reserved word in PHP, so `readonly(...)` has
+			// `readonly` is not a reserved word in PHP and `readonly(...)` has
 			// to keep parsing as a call; the run it starts means modifiers only
-			// when it ends in `class`. PHP reserves `abstract` and `final`, so
+			// when it ends in `class`. PHP reserves `abstract` and `final` and
 			// anything else after them is a parse error worth reporting.
 			if t.val == "readonly" && !p.classFollowsModifiers() {
 				break
@@ -369,10 +369,10 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 
 // parseUse records an import: `use A\B\C;` or `use A\B\C as D;`. Imports are a
 // compile-time alias table, where the short name (or the alias) resolves to
-// the fully-qualified one, so the statement itself produces no AST node.
+// the fully-qualified one and the statement itself produces no AST node.
 //
 // `use function f;` and `use const C;` name symbols and not classes; both
-// alias the same way, so the leading keyword is simply consumed.
+// alias the same way and the leading keyword is simply consumed.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
 	kind := ""
@@ -426,7 +426,7 @@ func aliasSpelling(path, alias string) string {
 }
 
 // parseDeclare parses `declare(directive=value, ...)`. The runtime has one set
-// of semantics, and neither `strict_types` nor `ticks` varies it, so the
+// of semantics, and neither `strict_types` nor `ticks` varies it and the
 // parser records the directives for printing and otherwise ignores them.
 func (p *parser) parseDeclare() (model.Stmt, error) {
 	p.next() // declare
@@ -554,7 +554,7 @@ func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
 		return "", absolute, fmt.Errorf("expected name, got %s", p.cur())
 	}
 	first := p.next().val
-	// Unqualified name (the common case): the token text is the whole name, so
+	// Unqualified name (the common case): the token text is the whole name and
 	// this path skips the parts slice and the Join copy.
 	if !p.isOp("\\") {
 		return first, absolute, nil
@@ -582,7 +582,7 @@ func (p *parser) qualify(name string, absolute bool) string {
 		if !ok {
 			// PHP reads a class or function through a `use` alias in any
 			// case: `use App\SomeClass;` answers `someclass::get()`. The
-			// table stores the declared spelling, so a miss retries it
+			// table stores the declared spelling and a miss retries it
 			// case-insensitively, the same exact-then-EqualFold order the
 			// runtime's class table uses.
 			for alias, path := range p.imports {
@@ -878,7 +878,7 @@ func (p *parser) parseThrow() (model.Stmt, error) {
 }
 
 // parseTry parses `try { ... } catch (Type $var) { ... } [finally { ... }]`.
-// The VM has no exception class hierarchy, so the parser keeps a catch type
+// The VM has no exception class hierarchy and the parser keeps a catch type
 // filter for printing only; the first catch clause handles any error.
 func (p *parser) parseTry() (model.Stmt, error) {
 	p.next() // try
@@ -894,7 +894,7 @@ func (p *parser) parseTry() (model.Stmt, error) {
 			return nil, err
 		}
 		// Exception type filter: `Type`, `A|B` or a qualified `\Ns\Type`.
-		// The runtime ignores it, but PHP requires it, so the parser keeps it.
+		// The runtime ignores it, but PHP requires it and the parser keeps it.
 		catchType := p.parseTypeHint()
 		// Optional bound variable: `catch (Exception $e)` or PHP8 `catch (Exception)`.
 		var name string
@@ -1030,7 +1030,7 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 	fd.Params = params
 	fd.ReturnType = p.parseReturnType()
 
-	// The parser reads the body under this function's name, so __FUNCTION__ and
+	// The parser reads the body under this function's name and __FUNCTION__ and
 	// __METHOD__ compile to it. fd.Name is already what php answers: the
 	// namespace-qualified name of a free function, the bare name of a method.
 	wasFunction := p.function
@@ -1098,10 +1098,10 @@ func (p *parser) parseParamDecoration(pr *model.Param) {
 
 // parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
 // `A|B` unions, and returns its spelling. It stops at the first token that
-// cannot continue a type, so a parameter list with no hints costs one
+// cannot continue a type and a parameter list with no hints costs one
 // comparison.
 //
-// The runtime ignores types, but the formatter rewrites files in place, so a
+// The runtime ignores types, but the formatter rewrites files in place and a
 // type it cannot see is a type it deletes.
 func (p *parser) parseTypeHint() string {
 	var b strings.Builder
@@ -1147,7 +1147,7 @@ func (p *parser) parseReturnType() string {
 }
 
 // classModifiers are the keywords that may precede a `class` declaration. PHP
-// accepts them in any order, so parseModifiedClass collects them in a loop up
+// accepts them in any order and parseModifiedClass collects them in a loop up
 // to the class keyword and never matches a fixed prefix.
 type classModifiers struct {
 	abstract bool
@@ -1193,7 +1193,7 @@ func (p *parser) parseModifiedClass() (model.Stmt, error) {
 		}
 		*seen = true
 	}
-	// `abstract final` is a contradiction: nothing could ever instantiate the
+	// `abstract final` is a contradiction: no value could ever instantiate the
 	// class. PHP rejects it at compile time and so does this.
 	if mods.abstract && mods.final {
 		return nil, fmt.Errorf("line %d: cannot use the final modifier on an abstract class", line)
@@ -1206,7 +1206,7 @@ func (p *parser) parseModifiedClass() (model.Stmt, error) {
 
 // parseClassHeritage consumes `extends Name` and `implements A, B` and records
 // the names on cd. Recording is all it does: the runtime has no inheritance,
-// so a parent contributes no members, and the runtime checks no interface
+// and a parent contributes no members, and the runtime checks no interface
 // either - model.CheckInterfaceContracts does that for the linter. The parser
 // keeps the names because the formatter rewrites files in place and would
 // otherwise drop them.
@@ -1340,7 +1340,7 @@ func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 				fields[i].Type = fieldType
 			}
 			// A static property is storage on the class, shared by every
-			// instance, so it lands in cd.Statics and not in the fields.
+			// instance and it lands in cd.Statics and not in the fields.
 			if isStatic {
 				cd.Statics = append(cd.Statics, fields...)
 				continue
@@ -1389,7 +1389,7 @@ func (p *parser) parseInterface() (model.Stmt, error) {
 		isStatic := false
 		// PHP accepts only `public` on an interface member, and rejects
 		// `abstract` outright, but the parser records the modifiers and
-		// enforces nothing: the spelling in the source has to print back.
+		// enforces no rule: the spelling in the source has to print back.
 		for p.isKw("public", "private", "protected", "static", "final") {
 			switch {
 			case p.isKw("public"), p.isKw("private"), p.isKw("protected"):
@@ -1582,13 +1582,13 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 // name, each with its own copy of the literal, and returns nil for every other
 // statement.
 //
-// PHP arrays are values, so that statement leaves each name holding an array of
-// its own; phpscript arrays are handles, so binding the one array the chain
+// PHP arrays are values and that statement leaves each name holding an array of
+// its own; phpscript arrays are handles and binding the one array the chain
 // builds to both names would let a later write through either show through the
-// other. The literal describes a fresh array and names no existing one, so the
+// other. The literal describes a fresh array and names no existing one and the
 // fix is one array per name, what PHP's copy amounts to here. The statements
 // share the literal node and never copy it: an ArrayLit builds a new array
-// every time it runs, so one node still produces one array per assignment.
+// every time it runs and one node still produces one array per assignment.
 //
 // The rewrite leaves a chain alone unless it ends in a literal that can run
 // more than once without the program noticing. `$a = $b = array(next($rows))`
@@ -1598,7 +1598,7 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 // see docs/reference/types/value-semantics.md.
 //
 // A `for` clause is not lowered either: model.For holds one statement for its
-// init and one for its post, so there is nowhere to put the second assignment.
+// init and one for its post and there is nowhere to put the second assignment.
 // The chain keeps its old meaning there and the lint rule reports it.
 func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 	outer, ok := s.(*model.Assign)
@@ -1626,7 +1626,7 @@ func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 		return nil
 	}
 
-	// PHP assigns right to left, so the innermost assignment runs first. The
+	// PHP assigns right to left and the innermost assignment runs first. The
 	// order is observable when the targets overlap, as in `$r["k"] = $r =
 	// array()`, which clears $r and then puts an array under "k".
 	out := make([]model.Stmt, 0, len(inner)+1)
@@ -1640,7 +1640,7 @@ func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 }
 
 // repeatableExpr reports whether running e a second time always produces the
-// same value and no side effect, so one literal node can stand in for the one
+// same value and no side effect and one literal node can stand in for the one
 // array per name a chained assignment would otherwise build.
 //
 // The walk is a whitelist: it rejects a call, a `new`, a closure, an assignment

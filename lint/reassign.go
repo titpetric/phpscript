@@ -10,7 +10,7 @@ import (
 // type and whose later literal assignment spells a different one. The rule
 // reads the first literal as the declaration of the variable's type, the
 // convention the flat VM's typed operator selection leans on; a reassignment
-// at another type is legal PHP and runs unchanged here too, so the finding is
+// at another type is legal PHP and runs unchanged here too and the finding is
 // advisory and never fatal.
 //
 // Tracking is per function body (methods included), and the whole body is one
@@ -168,7 +168,7 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 		File:    w.file,
 		Line:    w.prog.SourceSpans[n].Start,
 		Message: fmt.Sprintf("no reassignment: $%s previously declared as %s", target.Name, previous),
-		// Advisory: the runtime follows PHP and retypes the variable, so the
+		// Advisory: the runtime follows PHP and retypes the variable and the
 		// program runs. The finding flags the drift without failing the lint
 		// run; keeping one type per name is the convention, which nothing enforces.
 	})
@@ -176,7 +176,7 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 
 // literalClass names the type a literal spells, "" for anything that is not
 // a literal. null fixes no type: PHP initialises with null and assigns the
-// real value later, and the rule has nothing to say about that.
+// real value later, and the rule stays quiet about that.
 func literalClass(e model.Expr) string {
 	switch v := e.(type) {
 	case *model.Interp:

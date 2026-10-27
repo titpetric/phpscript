@@ -2,7 +2,7 @@ package tests
 
 // This file is the reference set of *binding return shapes*. Every function
 // here answers the same question, "how does a forwarded Go function return a
-// collection back to the PHP VM?", with a different Go type, so that
+// collection back to the PHP VM?", with a different Go type and that
 // bindings_test.go can assert both semantics (does the VM understand it?) and
 // cost (how many allocations did it take?).
 //
@@ -22,7 +22,7 @@ package tests
 //	*model.Array        struct + map[any]any + keys slice, boxes keys AND values
 //
 // *model.Array is the only shape with PHP array semantics (ordered, hybrid
-// int/string keys, mutable in place), so it stays the right answer for values
+// int/string keys, mutable in place) and it stays the right answer for values
 // PHP will mutate or key by string in insertion order. A function returning a
 // list the script iterates has no use for it.
 
@@ -45,7 +45,7 @@ func toString(v any) string {
 
 // BindingRecord is a plain Go struct handed to PHP as an object. Property
 // access resolves through runner.helperGet, which reads exported fields by
-// reflection (case-insensitively), so `$r->name` and `$r->Name` both resolve.
+// reflection (case-insensitively) and `$r->name` and `$r->Name` both resolve.
 type BindingRecord struct {
 	ID   int64
 	Name string
@@ -56,7 +56,7 @@ func (r BindingRecord) Label() string {
 	return r.Name
 }
 
-// bindingWords is the fixed input used by every list-returning binding, so the
+// bindingWords is the fixed input used by every list-returning binding and the
 // benchmarks compare representations and not workloads.
 var bindingWords = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
@@ -82,7 +82,7 @@ func BindingFuncs() map[string]any {
 	return funcs
 }
 
-// collector captures RegisterFunc calls without a Runtime, so the same binding
+// collector captures RegisterFunc calls without a Runtime and the same binding
 // definitions serve both the VM tests and the raw-call benchmarks.
 type collector struct {
 	funcs map[string]any
@@ -121,7 +121,7 @@ func registerBindings(rt registrar) {
 		return out
 	})
 	// bind_list_shared returns the backing slice with no copy at all: zero
-	// allocations for a read-only result. PHP arrays are value types, so this
+	// allocations for a read-only result. PHP arrays are value types and this
 	// is only correct when the script does not mutate the result, which also
 	// holds for every *model.Array a binding returns today, each one by
 	// pointer.
@@ -129,8 +129,8 @@ func registerBindings(rt registrar) {
 
 	// --- the `any` question ------------------------------------------------
 	//
-	// Declaring the return type as `any` in place of a concrete type costs
-	// nothing: callResult calls reflect.Value.Interface() either way, and a
+	// Declaring the return type as `any` in place of a concrete type costs no
+	// allocation: callResult calls reflect.Value.Interface() either way, and a
 	// slice header already lives behind an interface once returned. These two
 	// exist so the benchmark can prove that, and assert nothing.
 
@@ -188,7 +188,7 @@ func registerBindings(rt registrar) {
 	//
 	// A struct pointer is the cheapest possible object: one allocation, no
 	// property map. Returning a value (not a pointer) costs one boxing
-	// allocation, and the copy makes field writes silently useless, so prefer
+	// allocation, and the copy makes field writes silently useless and prefer
 	// pointers for anything PHP might assign to.
 
 	rt.RegisterFunc("bind_record", func() *BindingRecord {
@@ -282,14 +282,14 @@ func registerBindings(rt registrar) {
 		}
 		return "dropped"
 	})
-	// bind_callback_void declares no result at all, so nothing reads or
+	// bind_callback_void declares no result at all and nothing reads or
 	// coerces the value the callable returns.
 	rt.RegisterFunc("bind_callback_void", func(s string, fn func(string)) string {
 		fn(s)
 		return "done"
 	})
 	// bind_callback_two_results declares a shape a PHP callable cannot fill: a
-	// closure answers one value, so the second result has nothing to come from.
+	// closure answers one value and the second result has nothing to come from.
 	rt.RegisterFunc("bind_callback_two_results", func(fn func(string) (string, bool)) string {
 		s, _ := fn("alpha")
 		return s

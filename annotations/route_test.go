@@ -156,7 +156,7 @@ func TestRouteMountsOnPlatformRouter(t *testing.T) {
 // TestRouteErrorPagesAreOfferedOnlyAnUnansweredError pins what a host's error
 // page may replace. An endpoint that put a payload in the body, or
 // declared what it answers with, has answered, and its answer stands; an
-// endpoint that set a status and said nothing else has left a hole a page may
+// endpoint that set a status and wrote no body has left a hole a page may
 // fill. None of it depends on the endpoint sitting under /api, which is the
 // point: the routes here do, and the prefix decides nothing.
 func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {

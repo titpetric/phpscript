@@ -74,7 +74,7 @@ func TestReturnType(t *testing.T) {
 }
 
 // TestReflect covers what a shipped binary can answer about itself. No Go
-// source sits on disk, so there are no doc comments and no PHP-spelled
+// source sits on disk and there are no doc comments and no PHP-spelled
 // parameter names; the names, types and returns are the same ones render
 // turns into the committed reference, and the placeholder parameter names
 // come from the types.
@@ -131,7 +131,7 @@ func TestReflect(t *testing.T) {
 	for name, want := range map[string]string{
 		"add": "public function add(int $num): Time",
 		// reflectParams sees the receiver as the first parameter and numbers
-		// the names before reflectMethods drops it, so $value2 survives.
+		// the names before reflectMethods drops it and $value2 survives.
 		"sub":      `public function sub(object $value2): Time\Duration`,
 		"location": "public function location(): object",
 	} {

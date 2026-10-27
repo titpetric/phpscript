@@ -11,7 +11,7 @@ import (
 // TestRecordable covers which errors fail a span. A query that found no rows
 // and a request the client hung up on are control flow, and failing a span over
 // one would fail the trace and the SLA computed from it. A deadline that
-// elapsed is a failure: the work did not finish. The test is errors.Is, so a
+// elapsed is a failure: the work did not finish. The test is errors.Is and a
 // sentinel wrapped by a caller reads the same as a bare one.
 func TestRecordable(t *testing.T) {
 	t.Parallel()

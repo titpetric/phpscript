@@ -6,9 +6,9 @@
 // Two consequences of dispatching to Go's own methods are worth stating, since
 // no wrapper is there to soften them:
 //
-//   - A duration argument is nanoseconds when written as an integer, so
+//   - A duration argument is nanoseconds when written as an integer and
 //     $t->add(86400) advances by 86.4 microseconds. The runtime coerces a
-//     string to a time.Duration, so $t->add("24h") is the spelling that means
+//     string to a time.Duration and $t->add("24h") is the spelling that means
 //     what a PHP author reading time()+86400 expects.
 //   - A method Go declares with two or more results returns a PHP list, read with
 //     list($year, $week) = $t->iso_week(). The short [$a, $b] = spelling does
@@ -41,10 +41,10 @@ func Register(rt *runner.Runtime) {
 
 	// The layouts worth naming, under Go's own names for them. A layout is an
 	// ordinary string and a script can write any of them out; a constant spells
-	// the one a script reaches for by default, so nobody has to remember it.
-	// TIME_RFC3339 is the only layout here that carries the offset, so it
+	// the one a script reaches for by default and nobody has to remember it.
+	// TIME_RFC3339 is the only layout here that carries the offset and it
 	// survives a round trip through a database column or a JSON payload. A
-	// namespaced constant does not parse in this runtime, so the Time\ prefix
+	// namespaced constant does not parse in this runtime and the Time\ prefix
 	// the classes use becomes TIME_ here.
 	rt.SetConst("TIME_RFC3339", stdtime.RFC3339)
 	rt.SetConst("TIME_RFC3339_NANO", stdtime.RFC3339Nano)

@@ -84,7 +84,7 @@ func TestFileModeYAML(t *testing.T) {
 
 // TestFileMode_UnmarshalYAML covers the decoder hook on its own. The quotes a
 // document may carry are not part of the mode, and an unreadable mode leaves
-// the field alone, so a bad document cannot make a stored upload 0000.
+// the field alone and a bad document cannot make a stored upload 0000.
 func TestFileMode_UnmarshalYAML(t *testing.T) {
 	t.Parallel()
 	for _, text := range []string{`"0640"`, "0640", " 0640 ", `'0640'`, "640", "0o640"} {
@@ -108,7 +108,7 @@ func TestFileMode_UnmarshalYAML(t *testing.T) {
 }
 
 // TestFileMode_MarshalYAML covers the quoting MarshalYAML writes the mode back
-// under. A YAML parser reads a mode written as a bare number as decimal, so an
+// under. A YAML parser reads a mode written as a bare number as decimal and an
 // unquoted 0644 would come back as 1204 somewhere; the quotes keep a round
 // trip octal.
 func TestFileMode_MarshalYAML(t *testing.T) {

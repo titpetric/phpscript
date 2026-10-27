@@ -54,7 +54,7 @@ func TestEscapeshellarg(t *testing.T) {
 }
 
 // TestLastLine covers what system() answers with. The output has already gone
-// to the page by then, so lastLine keeps the last line as the stream passes
+// to the page by then and lastLine keeps the last line as the stream passes
 // and buffers nothing before it, and a stream that ended without a newline
 // still has a last line.
 func TestLastLine(t *testing.T) {

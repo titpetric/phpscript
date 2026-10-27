@@ -147,7 +147,7 @@ func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
 	}
 }
 
-// A folded store still passes the value to the host first, so a superglobal
+// A folded store still passes the value to the host first and a superglobal
 // write stays request state exactly as opStore keeps it.
 func TestFusedStoreOffersSetGlobal(t *testing.T) {
 	t.Parallel()

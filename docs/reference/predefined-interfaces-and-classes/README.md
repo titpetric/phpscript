@@ -6,7 +6,7 @@
 | `Closure`                                        | Partial compatibility | Anonymous functions produce callable runtime values, without the PHP class API.                                          |
 | `stdClass`                                       | Compatibility         | `new stdClass` and the `(object)` cast both produce one; it declares nothing and a script assigns every property.        |
 | `Throwable`                                      | Partial compatibility | `catch (Throwable $e)` takes any failure. `instanceof Throwable` is false, and the name is not declared as an interface. |
-| `Traversable`, `Iterator`, `Countable`           | Not implemented       | The names are not declared, so the parser accepts `implements Countable` unchecked, and nothing dispatches through them. |
+| `Traversable`, `Iterator`, `Countable`           | Not implemented       | The names are not declared, the parser accepts `implements Countable` unchecked, and nothing dispatches through them.    |
 | `ArrayAccess`, `Serializable`, `Stringable`      | Not implemented       | As above: the names are not declared. Write the methods and call them by name.                                           |
 | `Generator`, `Fiber`, `WeakReference`, `WeakMap` | Not implemented       | Corresponding language/runtime features are unavailable.                                                                 |
 | Enum interfaces and predefined attributes        | Not implemented       | Enums and attributes are unavailable.                                                                                    |

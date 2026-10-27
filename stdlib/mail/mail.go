@@ -7,7 +7,7 @@
 // model.MailProvider the host builds from its configuration, which reads them
 // at the moment of a delivery and returns the outcome alone.
 //
-// SMTP is the protocol the package speaks, not the subject it models, so it
+// SMTP is the protocol the package speaks, not the subject it models and it
 // names the conversation in provider.go and nothing a script types.
 package mail
 
@@ -56,7 +56,7 @@ func Register(rt *runner.Runtime) {
 
 // serverName reads the one optional argument `new Mail` takes.
 //
-// The parameter is any and not a string, so this refuses a settings array and
+// The parameter is any and not a string and this refuses a settings array and
 // coerces nothing. A string parameter turns that array into the empty name,
 // which resolves to "default": a script written against the old binding would
 // go on sending, silently, through whatever server the host configured first.
@@ -82,10 +82,10 @@ func serverName(names []any) (string, error) {
 	return name, nil
 }
 
-// send is the one delivery path both bindings take, so the span records every
+// send is the one delivery path both bindings take and the span records every
 // message exactly once, whichever way the script spelled it.
 //
-// Mail leaves the process and is the slowest thing most scripts do, so the span
+// Mail leaves the process and is the slowest thing most scripts do and the span
 // marks it external work and no internal step. It carries the recipient and the
 // subject; the body and its HTML stay out of it and only their size goes in. A
 // body is the one part of a delivery that is certain to be private, and a size
@@ -125,7 +125,7 @@ type messageSender interface {
 }
 
 // replyAddress reads the Reply-To a script passed as one address, a display
-// name allowed. header strips CR and LF first, as from every header, so a
+// name allowed. header strips CR and LF first, as from every header and a
 // smuggled header leaves one malformed address behind, which this refuses and
 // never sends. A bare address stays bare; one with a name is re-rendered, which
 // quotes the name and encodes a name outside ASCII.
@@ -147,8 +147,8 @@ func replyAddress(value string) (string, error) {
 
 // Mail is the handle a script holds on one configured server.
 //
-// Both fields stay unexported, so the object is opaque from PHP: a binding
-// publishes its exported methods and fields, so $mail->password, var_dump,
+// Both fields stay unexported and the object is opaque from PHP: a binding
+// publishes its exported methods and fields and $mail->password, var_dump,
 // print_r, get_object_vars and json_encode all find nothing. The only thing it
 // can do is send, and the only thing it knows is a name.
 type Mail struct {
@@ -160,7 +160,7 @@ type Mail struct {
 // text; a non-empty $html travels beside it as the alternative a mail client
 // prefers, and a non-empty $reply_to, one address, is where a reply goes. It
 // throws, sending nothing, when $reply_to is not one address. The runtime
-// injects the context, so a script calls
+// injects the context and a script calls
 // `$mail->send($to, $subject, $body, $html, $reply_to)`, the last two optional.
 func (m *Mail) Send(ctx context.Context, recipient, subject, body, html, reply_to string) error {
 	replyTo, err := replyAddress(reply_to)

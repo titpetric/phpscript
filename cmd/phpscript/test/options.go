@@ -85,14 +85,14 @@ func (o Options) runners() []tests.Runner {
 // expression travel.
 //
 // There is no "shared" mode because a worker loop already is one: run without
-// --parallel there is a single worker, so a single set of caches serves the
+// --parallel there is a single worker and a single set of caches serves the
 // whole run. Sharing them across workers on top of that only adds contention
 // for a hit the worker's own cache already has.
 const (
 	// CacheOff builds caches per fixture run and drops the runtime
-	// after it. Nothing one run parsed is visible to the next, so a run pays
-	// the parsing its own includes cost - and drops what it held when it
-	// ends, with nothing kept for the length of the suite.
+	// after it. A parse from one run stays invisible to the next, and a run
+	// pays the parsing its own includes cost - and drops what it held when it
+	// ends, with no state kept for the length of the suite.
 	CacheOff = "off"
 	// CacheWorker keeps one set per worker, reused by the fixtures that
 	// worker runs serially. What a worker holds scales with --parallel and

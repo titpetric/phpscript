@@ -8,7 +8,7 @@ import (
 
 // TestLimitFor covers turning set_time_limit's count of seconds into a
 // duration without wrapping. The multiply overflows past roughly 292 years of
-// nanoseconds, so a count above that saturates: an absurd limit stays a long
+// nanoseconds and a count above that saturates: an absurd limit stays a long
 // one, where a wrapped product would cut the script off early.
 func TestLimitFor(t *testing.T) {
 	t.Parallel()

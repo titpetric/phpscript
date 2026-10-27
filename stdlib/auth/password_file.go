@@ -23,8 +23,8 @@ const DefaultPasswordFile = ".htpasswd"
 // PasswordFile authenticates against an apache-format password file: one
 // `username:hash` per line, in the application root.
 //
-// It holds the path and nothing else. Every call reads the file and drops the
-// parse on return, so a hash stays a local the way a decrypted mail credential
+// It holds the path alone. Every call reads the file and drops the
+// parse on return and a hash stays a local the way a decrypted mail credential
 // does (docs/security.md, "Credentials a script cannot spell"), and an edited
 // file takes effect at the next login with nothing to invalidate. One small
 // file read against a key derivation costing milliseconds leaves no cache
@@ -36,9 +36,9 @@ type PasswordFile struct {
 // NewPasswordFileRoot is the Auth\Storage\PasswordFile constructor a rooted
 // host registers.
 //
-// The path resolves against the root through the runtime's own rule, so it
-// names the file file_get_contents would and cannot climb out. Nothing here
-// writes, so writable_paths does not apply.
+// The path resolves against the root through the runtime's own rule and it
+// names the file file_get_contents would and cannot climb out. This type
+// performs no write and writable_paths does not apply.
 //
 // A file that is not there is no error - Exists answers that - and this
 // constructor refuses an unreadable one, ahead of the login it would break.
@@ -86,8 +86,8 @@ func DefaultPasswordFileRoot(rt *runner.Runtime, dir string) (*PasswordFile, err
 }
 
 // NewPasswordFile is the constructor a Go host calls. It takes the path as
-// given, because a host chooses it and there is nothing to confine it against;
-// a path a script names resolves through NewPasswordFileRoot.
+// given, because a host chooses it and no root confines it; a path a script
+// names resolves through NewPasswordFileRoot.
 func NewPasswordFile(path string) (*PasswordFile, error) {
 	if path == "" {
 		return nil, errors.New("password file path is empty")
@@ -102,7 +102,7 @@ func NewPasswordFile(path string) (*PasswordFile, error) {
 
 // Authenticate reports the user $key names when $secret is theirs.
 //
-// A missing user and a wrong password are one answer, so nothing a caller can
+// A missing user and a wrong password are one answer and nothing a caller can
 // see distinguishes them. What does distinguish them is time: a key the file
 // does not carry costs no derivation, and one it carries costs whatever that
 // line's format does. Closing that gap belongs to rate limiting, which bounds
@@ -126,7 +126,7 @@ func (p *PasswordFile) Authenticate(ctx context.Context, key, secret string) (Us
 
 // Exists reports whether there is a user database to ask: the password file
 // is there, and at least one of its lines is an account. A file of comments
-// and blank lines alone answers false, so a login page says there are no
+// and blank lines alone answers false and a login page says there are no
 // accounts where a form refusing every password would name no cause.
 func (p *PasswordFile) Exists() (bool, error) {
 	info, err := os.Stat(p.path)
@@ -149,7 +149,7 @@ func (p *PasswordFile) Exists() (bool, error) {
 
 // Users is every record in the file, ordered by username.
 //
-// It carries no hash, so a script may hold it: everything above here sees a
+// It carries no hash and a script may hold it: everything above here sees a
 // table of two columns, and the third column never leaves this package. A
 // caller writes the rows into a table of its own and rebuilds it when the file
 // changes.
@@ -189,11 +189,11 @@ func (p *PasswordFile) Users(ctx context.Context) ([]User, error) {
 //
 // The messages compose with %v and not %w, which is the reflex. The runtime
 // unwraps a caught error to its root cause before a catch clause sees it
-// (runner/runner.go:741), so a wrapped chain reaches a script as its innermost
+// (runner/runner.go:741) and a wrapped chain reaches a script as its innermost
 // message alone - "unreadable password hash" with no file and no line number.
 // The whole sentence has to be the leaf, because the whole sentence is what an
 // operator acts on. The one errors.Is in this file reads the filesystem error
-// before anything composes it, so nothing depends on a cause surviving.
+// before anything composes it and nothing depends on a cause surviving.
 func (p *PasswordFile) read() (map[string]string, error) {
 	file, err := os.Open(p.path)
 	if err != nil {
@@ -207,7 +207,7 @@ func (p *PasswordFile) read() (map[string]string, error) {
 		text := scanner.Text()
 		// An editor that writes a byte order mark puts it ahead of the first
 		// username, TrimSpace leaves it there, and that account then matches
-		// nothing a login types. The refusal names what silence would hide.
+		// no password a login types. The refusal names what silence would hide.
 		if line == 1 && strings.HasPrefix(text, "\ufeff") {
 			return nil, errors.New("line 1: a utf-8 byte order mark precedes the first username; save the file without one")
 		}
@@ -240,7 +240,7 @@ func (p *PasswordFile) read() (map[string]string, error) {
 
 // validName holds a username to the shape the primary key derives from.
 //
-// The key follows from the name, so two spellings of one name are two
+// The key follows from the name and two spellings of one name are two
 // users with two keys and two sets of rows. The rule is lowercase, and not a
 // folded comparison: folding at the comparison would leave the key depending
 // on whichever spelling the file carries first.

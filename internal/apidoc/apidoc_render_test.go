@@ -6,8 +6,8 @@ import (
 )
 
 // TestFunc_Signature covers Signature's two forms. A plain name is
-// declarable, so the line carries the function keyword. A Class::method name
-// is not, so the line reads the way a script calls it, and pasting the line
+// declarable and the line carries the function keyword. A Class::method name
+// is not and the line reads the way a script calls it, and pasting the line
 // into a .php file would be a parse error either way round.
 func TestFunc_Signature(t *testing.T) {
 	t.Parallel()
@@ -196,7 +196,7 @@ func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 		}
 	}
 
-	// The page ends on exactly one newline. The file lives in git, so a run
+	// The page ends on exactly one newline. The file lives in git and a run
 	// that found no change has to write the same bytes.
 	if !strings.HasSuffix(page, "\n") || strings.HasSuffix(page, "\n\n") {
 		t.Errorf("rendered page ends with %q, want one newline", page[max(0, len(page)-8):])

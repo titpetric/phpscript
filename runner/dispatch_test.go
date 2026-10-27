@@ -8,7 +8,7 @@ package runner
 // callGoMethod and the public API, never through the shortcut directly.
 //
 // The one lever the tests use is Go's type identity: fastInvoker's type switch
-// matches concrete unnamed signatures only, so a defined func type with the
+// matches concrete unnamed signatures only and a defined func type with the
 // same underlying signature is invisible to it and always takes the reflect
 // path. Calling the same behaviour through both spellings is what turns
 // "fast equals reflect" into an assertion.
@@ -71,7 +71,7 @@ type (
 )
 
 // dispatchPinErr is the error the error-returning probe bindings return
-// when asked to, so a test can watch both dispatch paths surface it.
+// when asked to and a test can watch both dispatch paths surface it.
 var dispatchPinErr = errors.New("dispatch pin: forced failure")
 
 // dispatchPinSink is the func value the func(string) func(any) probe returns.
@@ -79,7 +79,7 @@ var dispatchPinErr = errors.New("dispatch pin: forced failure")
 // comparison can be by pointer and not by an unobservable closure.
 var dispatchPinSink = func(any) {}
 
-// dispatchPinArgs spells out each argument as value and dynamic type, so a
+// dispatchPinArgs spells out each argument as value and dynamic type and a
 // probe's return value records exactly what the binding received: "65(string)"
 // proves the coercion of the int64, "<nil>(<nil>)" proves the padding arrives.
 func dispatchPinArgs(vs ...any) string {
@@ -94,7 +94,7 @@ func dispatchPinArgs(vs ...any) string {
 func dispatchPinBoom(v any) bool { return fmt.Sprint(v) == "boom" }
 
 // dispatchPinArray builds the array the *model.Array probes return, one
-// stringified element per argument, so two runs of the same probe build
+// stringified element per argument and two runs of the same probe build
 // structurally equal arrays.
 func dispatchPinArray(vs ...any) *model.Array {
 	arr := model.NewArraySize(len(vs))
@@ -374,7 +374,7 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 		},
 		{
 			// sprintf's shape. The error slot is what distinguishes it from
-			// the case above, so the forced failure is the half that matters:
+			// the case above and the forced failure is the half that matters:
 			// a fast-path error has to surface exactly as the reflect path's.
 			name: "func(string, ...any) (string, error)",
 			fast: func(s string, rest ...any) (string, error) {
@@ -553,7 +553,7 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 
 // A call passing more arguments than the callable declares fails with an
 // ArgumentCountError carrying the declared and passed counts, on both paths:
-// the check runs before dispatch. Direct invocation carries no PHP name, so
+// the check runs before dispatch. Direct invocation carries no PHP name and
 // Name stays empty and the message says "call()".
 func TestDispatchPinArgumentCount(t *testing.T) {
 	t.Parallel()
@@ -965,7 +965,7 @@ echo probe(65), "\n";
 
 	// Inside a namespace an unqualified call falls back to the global name,
 	// which is the __func dispatch with its fallback argument. A namespaced
-	// file may only declare, so the call sits in a function invoked from a
+	// file may only declare and the call sits in a function invoked from a
 	// second, namespace-free program on the same runtime.
 	declare := "<?php\nnamespace App;\nfunction caller() { return probe(66); }\n"
 	if got := dispatchPinRun(t, rt, &out, declare); got != "" {

@@ -67,7 +67,7 @@ func (v VirtualHost) Domains() []string {
 }
 
 // Name is the first name the entry lists. Errors and the modules the site
-// registers all carry it, so a site answering to four names stays one
+// registers all carry it and a site answering to four names stays one
 // identifiable site.
 func (v VirtualHost) Name() string {
 	domains := v.Domains()
@@ -123,7 +123,7 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 }
 
 // CheckVirtualHosts checks the whole list before the server builds a site,
-// so a bad entry fails the server and not one request. The check loads every
+// and a bad entry fails the server and not one request. The check loads every
 // entry, because the document root and the telemetry block two of the checks
 // need come from the site's phpscript.yml and not from the entry.
 func (c Config) CheckVirtualHosts() error {
@@ -182,7 +182,7 @@ func (c Config) CheckVirtualHosts() error {
 		}
 
 		// The platform mounts its dashboard on the root router, which shadows
-		// that path prefix on every host, so a site that names the same
+		// that path prefix on every host and a site that names the same
 		// path gets a dashboard nothing can reach. A site that names no path
 		// of its own gets none, and this check passes it over.
 		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
@@ -194,7 +194,7 @@ func (c Config) CheckVirtualHosts() error {
 }
 
 // CheckRoot checks a single application root the way CheckVirtualHosts
-// checks an entry: fs.Sub does not stat, so a missing document root is
+// checks an entry: fs.Sub does not stat and a missing document root is
 // otherwise a 404 on the first request.
 func (c Config) CheckRoot(root string) error {
 	if err := statDir(root); err != nil {

@@ -17,7 +17,7 @@ import (
 // The embedding API is runner's, aliased and never wrapped: a host that swaps
 // runner for flatstack changes its import alone, and a value built
 // here is the same value either package returns. Only New differs, and
-// this package decides nothing else.
+// this package decides that choice alone.
 
 // Runtime is runner.Runtime.
 type Runtime = runner.Runtime

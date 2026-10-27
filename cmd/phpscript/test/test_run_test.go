@@ -55,7 +55,7 @@ func TestRunCommandJSON(t *testing.T) {
 
 // TestRunCommandEmptySelectionFails pins the exit code of a mis-scoped
 // invocation in both report modes. A path matching no fixture is a pipeline
-// pointed at the wrong directory, so it fails and reports no success
+// pointed at the wrong directory and it fails and reports no success
 // over nothing. --json keeps that and adds the empty
 // report on stdout for whatever is parsing it.
 func TestRunCommandEmptySelectionFails(t *testing.T) {
@@ -85,7 +85,7 @@ func TestRunCommandEmptySelectionFails(t *testing.T) {
 			t.Fatal("empty selection with --json returned nil, want an error")
 		}
 
-		// The report is still well formed, so a consumer parsing stdout is not
+		// The report is still well formed and a consumer parsing stdout is not
 		// left with an empty stream to explain.
 		var report struct {
 			Total   int   `json:"total"`
@@ -215,7 +215,7 @@ hello
 }
 
 // TestNewCommand covers the command main registers, and the flags that
-// configure a run. Run reads each off the set, so a flag missing from Bind is
+// configure a run. Run reads each off the set and a flag missing from Bind is
 // a documented option the command silently ignores, and the generated cli
 // reference comes off the same set.
 func TestNewCommand(t *testing.T) {

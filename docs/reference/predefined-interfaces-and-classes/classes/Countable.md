@@ -29,4 +29,4 @@ public function count(): int
 ## Status
 
 - phpscript has no `Countable`. The parser accepts `implements Countable` and checks nothing, because no `interface` declaration in the same file defines the name.
-- Nothing dispatches through it: `count()` does not call a `count()` method on an object. Call the method by name, or count the array the object holds.
+- The runtime dispatches none of it: `count()` does not call a `count()` method on an object. Call the method by name, or count the array the object holds.

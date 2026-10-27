@@ -6,7 +6,7 @@ import (
 )
 
 // TestObject covers constructing an instance and reading a property back.
-// NewObject takes the class and leaves Props unallocated, so the first SetProp
+// NewObject takes the class and leaves Props unallocated and the first SetProp
 // is what builds the map.
 func TestObject(t *testing.T) {
 	t.Parallel()
@@ -37,7 +37,7 @@ func TestObject(t *testing.T) {
 }
 
 // TestObject_SetID covers the name a constructed object records. The runtime
-// writes the receiving variable there, so a value printed back names its
+// writes the receiving variable there and a value printed back names its
 // assignment site.
 func TestObject_SetID(t *testing.T) {
 	t.Parallel()
@@ -62,7 +62,7 @@ func TestObject_SetID(t *testing.T) {
 // added it. json_encode, print_r, the (array) cast and foreach all read this.
 //
 // A property written straight into Props bypasses the record and sorts after
-// the rest, so a missed SetProp degrades to a stable order and never a random
+// the rest and a missed SetProp degrades to a stable order and never a random
 // one.
 func TestObject_Names(t *testing.T) {
 	t.Parallel()
@@ -85,7 +85,7 @@ func TestObject_Names(t *testing.T) {
 
 // TestObject_DeleteProp covers unset on a property. A declared field assigned
 // again lands back in its declared position, and SetProp appends a dynamic one,
-// so the order survives the round trip the way PHP's does.
+// and the order survives the round trip the way PHP's does.
 func TestObject_DeleteProp(t *testing.T) {
 	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}

@@ -9,7 +9,7 @@ import (
 
 // TestStdlibReportsWhatTheRuntimeRegisters checks the listing against names the
 // runtime binds, one per kind, and against the counts the runtime reports for
-// itself, so this listing and the `info` command answer the same question
+// itself and this listing and the `info` command answer the same question
 // about the same build.
 func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
 	t.Parallel()
@@ -71,7 +71,7 @@ func TestStdlibSignatures(t *testing.T) {
 	}
 
 	// The runner's by-reference setter fills preg_match's $matches, and it has
-	// no type to publish, so the ampersand carries the meaning.
+	// no type to publish and the ampersand carries the meaning.
 	if got := index["function preg_match"]; !strings.Contains(got, "&$") {
 		t.Errorf("preg_match = %q, want a by-reference parameter", got)
 	}
@@ -92,7 +92,7 @@ func TestStdlibMarkdownIsATable(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "  |---") {
 		t.Errorf("separator = %q", lines[1])
 	}
-	// Every row carries the same width, so the table lines up in a terminal
+	// Every row carries the same width and the table lines up in a terminal
 	// as well as in a markdown renderer.
 	for i, line := range lines[1:] {
 		if len(line) != len(lines[0]) {

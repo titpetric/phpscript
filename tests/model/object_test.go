@@ -70,7 +70,7 @@ func TestObjectOrdersDeclaredFieldsFirst(t *testing.T) {
 }
 
 // A property written straight into the map, bypassing SetProp, is still
-// reported and never lost, so a call site that misses the accessor degrades
+// reported and never lost and a call site that misses the accessor degrades
 // to a stable order and drops no data.
 func TestObjectReportsUnrecordedProperties(t *testing.T) {
 	t.Parallel()

@@ -58,7 +58,7 @@ func write(t *testing.T, name string, lines ...string) string {
 
 // TestRegisterReadsTheDefaultFile covers the spelling a site uses: no
 // argument, meaning .htpasswd in the application root. Session\Manager takes
-// the same spelling by default, so the whole of a login is the manager.
+// the same spelling by default and the whole of a login is the manager.
 func TestRegisterReadsTheDefaultFile(t *testing.T) {
 	t.Parallel()
 
@@ -123,7 +123,7 @@ echo $users->authenticate("admin", "hunter2hunter2");
 }
 
 // TestRegisterMissingFile covers a tree with no user database. The store
-// constructs, so a default one cannot fail a site that has no login at all,
+// constructs and a default one cannot fail a site that has no login at all,
 // and exists() is the question that answers for it.
 func TestRegisterMissingFile(t *testing.T) {
 	t.Parallel()

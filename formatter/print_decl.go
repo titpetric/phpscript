@@ -48,7 +48,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 // order PHP style guides settle on.
 //
 // groupSignature is the interface counterpart of groupMethod: a body-less
-// declaration is one line, so the printer keeps consecutive ones together the
+// declaration is one line and the printer keeps consecutive ones together the
 // way it keeps properties, with no blank line between each.
 const (
 	groupConst = iota
@@ -163,7 +163,7 @@ func (p *printer) printMembers(members []classMember, end int) {
 
 // printInterface renders an `interface Name extends A, B { ... }` declaration:
 // its constants, then its method signatures, each closed with a semicolon
-// because an interface method has no body. PHP rejects `abstract` on one, so
+// because an interface method has no body. PHP rejects `abstract` on one and
 // the keyword is never printed here even though the shared FuncDecl can carry
 // it for an abstract class method.
 func (p *printer) printInterface(n *model.InterfaceDecl) {
@@ -325,7 +325,7 @@ func (p *printer) typeName(name string) string {
 		return shortName(name)
 	}
 	// An imported name prints as the file imported it. The parser resolves a
-	// use statement while parsing, so by here the reference carries the full
+	// use statement while parsing and by here the reference carries the full
 	// name and the alias is only recoverable from the imports - without this,
 	// formatting rewrites every `Config::get()` in the body to
 	// `\Common\Config::get()` and its import goes dead.

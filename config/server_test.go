@@ -65,14 +65,14 @@ telemetry:
 		t.Errorf("ring_buffer_size = %d, want 10", options.Telemetry.RingBufferSize)
 	}
 	// Keys the file left out keep what `config.yml` says and not the Go zero
-	// value, so a partial block is usable.
+	// value and a partial block is usable.
 	if options.Telemetry.ServiceName != "phpscript" || options.Telemetry.SampleRate != 100 {
 		t.Errorf("service name = %q, sample rate = %v", options.Telemetry.ServiceName, options.Telemetry.SampleRate)
 	}
 }
 
 // TestServer covers the four keys a file gets to say about the platform. The
-// recorder is not among them: that one is the top level telemetry block, so a
+// recorder is not among them: that one is the top level telemetry block and a
 // site cannot move the dashboard by writing a server block.
 func TestServer(t *testing.T) {
 	t.Parallel()
@@ -86,7 +86,7 @@ func TestServer(t *testing.T) {
 }
 
 // TestServer_Options covers the platform options the block describes. The
-// block carries no recorder: Config.PlatformOptions adds one, so a caller
+// block carries no recorder: Config.PlatformOptions adds one and a caller
 // reading the block alone starts a server that records nothing.
 func TestServer_Options(t *testing.T) {
 	t.Parallel()
@@ -113,7 +113,7 @@ func TestServer_Options(t *testing.T) {
 }
 
 // TestNewTestConfig pins what a test inherits: a port the kernel picks and no
-// recorder, so tests neither collide on a port nor record into each other.
+// recorder and tests neither collide on a port nor record into each other.
 func TestNewTestConfig(t *testing.T) {
 	t.Parallel()
 	result := config.NewTestConfig()

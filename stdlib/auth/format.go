@@ -11,7 +11,7 @@ import (
 )
 
 // shaPrefix is what `htpasswd -s` writes: the literal {SHA} and the base64 of
-// one sha1 of the password. No salt and no cost parameter, so a stolen file
+// one sha1 of the password. No salt and no cost parameter and a stolen file
 // costs a wordlist lookup per row. This build reads it because deployments
 // carry such files; docs/security.md prices it against the rest.
 const shaPrefix = "{SHA}"
@@ -34,7 +34,7 @@ func verify(secret, stored string) bool {
 }
 
 // formatError reports a stored value this build will not read, naming what to
-// write it with instead. The parse refuses such a file whole, so an operator
+// write it with instead. The parse refuses such a file whole and an operator
 // acts on this message.
 func formatError(stored string) error {
 	if strings.HasPrefix(stored, "$1$") {
@@ -51,7 +51,7 @@ func formatError(stored string) error {
 }
 
 // readable reports whether a stored value is a format verify can decide. The
-// parse runs it per line, so the constructor refuses a bad file and no login
+// parse runs it per line and the constructor refuses a bad file and no login
 // discovers one.
 func readable(stored string) bool {
 	return isSHA(stored) || crypto.IsAPR1(stored) || crypto.IsPasswordHash(stored)
@@ -70,7 +70,7 @@ func isSHA(stored string) bool {
 
 // shaVerify compares one sha1 of the secret against the stored digest. The
 // comparison is constant time for the form's sake; the derivation it protects
-// is one digest, so an attacker does not need the comparison.
+// is one digest and an attacker does not need the comparison.
 func shaVerify(secret, stored string) bool {
 	want, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(stored, shaPrefix))
 	if err != nil {

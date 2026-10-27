@@ -19,7 +19,7 @@ import (
 // result; a write the configuration never allowed is a mistake worth raising.
 // PHP's file_put_contents flag values. file_put_contents takes LOCK_EX so
 // ported code keeps its spelling, and then does nothing with it: none of the
-// writers here lock, so honouring it would promise an exclusion the rest of
+// writers here lock and honouring it would promise an exclusion the rest of
 // the package does not keep.
 const (
 	fileAppend = 8 // FILE_APPEND
@@ -98,7 +98,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 	})
 
 	// rename modifies both ends: it removes the source as well as creating the
-	// destination, so both have to be writable.
+	// destination and both have to be writable.
 	rt.RegisterFunc("rename", func(from, to string) (bool, error) {
 		src, err := r.resolveWrite("rename", from)
 		if err != nil {
@@ -110,7 +110,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return moveFile(src, dst) == nil, nil
 	})
-	// copy only reads the source, so it checks only the destination.
+	// copy only reads the source and it checks only the destination.
 	rt.RegisterFunc("copy", func(from, to string) (bool, error) {
 		dst, err := r.resolveWrite("copy", to)
 		if err != nil {
@@ -158,7 +158,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 
 // moveFile renames src to dst, copying instead when the two are on different
 // filesystems, where rename stops working. PHP's rename() crosses that
-// boundary, so this one has to as well.
+// boundary and this one has to as well.
 func moveFile(src, dst string) error {
 	if err := os.Rename(src, dst); err == nil {
 		return nil

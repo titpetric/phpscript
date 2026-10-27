@@ -112,7 +112,7 @@ func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 	if len(details) != 1 {
 		t.Fatalf("want one continuation row naming the failed runner:\n%s", output)
 	}
-	// The fixture column of a continuation row is empty, so the row reads as
+	// The fixture column of a continuation row is empty and the row reads as
 	// part of the fixture above it.
 	if fixture := strings.Split(details[0], "│")[1]; strings.TrimSpace(fixture) != "" {
 		t.Errorf("continuation row fixture column = %q, want empty", fixture)
@@ -120,7 +120,7 @@ func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 	if !strings.Contains(output, "want: \"y\"") {
 		t.Errorf("continuation rows dropped part of the reason:\n%s", output)
 	}
-	// A skipped runner is not a failure, so it contributes no detail.
+	// A skipped runner is not a failure and it contributes no detail.
 	if strings.Contains(output, "opted out") {
 		t.Errorf("skip reason printed as a failure:\n%s", output)
 	}
@@ -185,7 +185,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 		t.Errorf("detail width = %d, want it unchanged at %d", tbl.detailWidth(), before)
 	}
 	// A second folder re-fits from the header widths and never compounds:
-	// fit adds to the last column, so a writeGroup that forgot to reset the
+	// fit adds to the last column and a writeGroup that forgot to reset the
 	// widths would grow the table past the terminal on every folder.
 	buf.Reset()
 	tbl.writeGroup("strings", []string{"b.phpt"})

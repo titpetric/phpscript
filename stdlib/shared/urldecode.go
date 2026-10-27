@@ -11,7 +11,7 @@ func RawURLDecode(s string) string {
 }
 
 func decode(s string, plusIsSpace bool) string {
-	// The common case for a key, so scan before allocating.
+	// The common case for a key and scan before allocating.
 	if !needsDecoding(s, plusIsSpace) {
 		return s
 	}

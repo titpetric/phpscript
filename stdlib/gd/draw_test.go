@@ -5,7 +5,7 @@ import (
 )
 
 // gridHelper is a PHP function the drawing tests echo their result through. A
-// grid of packed colours reads as one string, so a test names the whole image
+// grid of packed colours reads as one string and a test names the whole image
 // it expected and the failure shows which pixel moved.
 const gridHelper = `<?php
 function grid($im, $w, $h) {
@@ -21,7 +21,7 @@ function grid($im, $w, $h) {
 `
 
 // TestDrawFilledRectangle covers the corner convention. GD rectangles include
-// the far corner where Go's exclude it, so a fill from 0,0 to 1,1 paints four
+// the far corner where Go's exclude it and a fill from 0,0 to 1,1 paints four
 // pixels and a ported script keeps the area it drew under GD.
 func TestDrawFilledRectangle(t *testing.T) {
 	t.Parallel()
@@ -41,7 +41,7 @@ echo grid($im, 3, 3);
 }
 
 // TestDrawFilledRectangleNormalisesCorners covers a rectangle named from its
-// far corner back. GD accepts either order, so a script computing coordinates
+// far corner back. GD accepts either order and a script computing coordinates
 // does not have to sort them.
 func TestDrawFilledRectangleNormalisesCorners(t *testing.T) {
 	t.Parallel()
@@ -59,7 +59,7 @@ echo grid($im, 2, 2);
 
 // TestDrawLine covers the Bresenham walk. The standard library draws no lines
 // and an axis-aligned shortcut is not enough, because ported border code names
-// arbitrary endpoints, so the test reads back both an axis-aligned and a
+// arbitrary endpoints and the test reads back both an axis-aligned and a
 // diagonal line.
 func TestDrawLine(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ echo grid($im, 3, 3);
 }
 
 // TestDrawLineClipsToTheImage covers endpoints past an edge. GD draws the part
-// that lands and reports success, so a script computing coordinates from input
+// that lands and reports success and a script computing coordinates from input
 // does not have to clip them itself.
 func TestDrawLineClipsToTheImage(t *testing.T) {
 	t.Parallel()
@@ -121,7 +121,7 @@ echo grid($im, 2, 2);
 }
 
 // TestDrawFill covers the scanline flood fill. It replaces the connected region
-// sharing the starting pixel's colour, so filling a blank image from a corner
+// sharing the starting pixel's colour and filling a blank image from a corner
 // paints the whole image and the fill leaves a region walled off by another
 // colour alone.
 func TestDrawFill(t *testing.T) {
@@ -147,7 +147,7 @@ echo grid($im, 3, 3);
 
 // TestDrawFillOutsideTheImage covers a starting point the image does not hold.
 // There is no region to walk, and GD treats the call as done and never
-// failed, so the return stays true and imagefill paints nothing.
+// failed and the return stays true and imagefill paints nothing.
 func TestDrawFillOutsideTheImage(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`

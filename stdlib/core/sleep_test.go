@@ -10,7 +10,7 @@ import (
 // early.
 //
 // A sleep that ran past a cancelled context would be the one place nothing
-// could stop a script, so both contexts end it: the client's ends when the
+// could stop a script and both contexts end it: the client's ends when the
 // client goes away, and the script's own when it runs out of time. A duration
 // at or below zero returns without arming a timer.
 func TestWait(t *testing.T) {

@@ -15,7 +15,7 @@ var _ model.MailProvider = (*Memory)(nil)
 // delivers none. A host binds one through runner.Options.Mail to capture
 // what scripts send: tests, local runs, dry runs.
 //
-// Memory is a provider and no sender spliced in further down, so a test using
+// Memory is a provider and no sender spliced in further down and a test using
 // it still resolves a name and still exercises the refusal a script reads for
 // a server nobody configured.
 type Memory struct {

@@ -19,7 +19,7 @@ var isolationTree = fstest.MapFS{
 	"sub/dir.keep": {Data: []byte("")},
 }
 
-// stateRecorder records the last lifecycle state published to it, so a test
+// stateRecorder records the last lifecycle state published to it and a test
 // can see what a pooled runtime announces between requests.
 type stateRecorder struct {
 	state telemetry.State
@@ -49,7 +49,7 @@ func runPooled(t *testing.T, rt *runner.Runtime, src string) (string, error) {
 // asserts the second sees nothing of the first: one case per kind of state a
 // script can set, each written so that a reset that stops clearing that state
 // fails the case. The pool holds one runtime, and each case asserts it got the
-// same one back, so the isolation under test is the reset's and never a second
+// same one back and the isolation under test is the reset's and never a second
 // runtime's.
 func TestSessionPoolIsolation(t *testing.T) {
 	recorder := &stateRecorder{}
@@ -182,7 +182,7 @@ func TestSessionPoolIsolation(t *testing.T) {
 			want:     "clean",
 			between: func(t *testing.T, rt *runner.Runtime) {
 				// What a pooled runtime announces at the start of the next
-				// request is whatever SetContext publishes, so the probe is
+				// request is whatever SetContext publishes and the probe is
 				// the same call the handler makes.
 				rt.SetContext(context.Background())
 				if recorder.state == telemetry.StateError {

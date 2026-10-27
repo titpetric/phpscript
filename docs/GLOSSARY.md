@@ -6,13 +6,13 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 | Term         | What it means                                                                                                                                                                                          |
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Request      | One HTTP exchange. A server builds one `runner.Runtime` for it, executes the entrypoint, and drops the runtime when it has written the response. Nothing a request declared outlives it.               |
+| Request      | One HTTP exchange. A server builds one `runner.Runtime` for it, executes the entrypoint, and drops the runtime when it has written the response. No declaration by a request outlives it.              |
 | Entrypoint   | The one PHP file a request executes. Everything else it runs arrives through `include` or `require` from there. `phpscript run app.php` has one too; the file named on the command line.               |
-| Prelude      | The file `runner.include` or `--include` names, included ahead of every entrypoint. A composer autoloader or a bootstrap goes here, so the entrypoint and everything it includes see what it declared. |
+| Prelude      | The file `runner.include` or `--include` names, included ahead of every entrypoint. A composer autoloader or a bootstrap goes here and the entrypoint and everything it includes see what it declared. |
 | Superglobal  | A variable php binds in every scope without a `global` declaration: `$_GET`, `$_POST`, `$_SERVER`, `$_FILES`, `$_COOKIE`, `$_REQUEST`, `$_ENV`, `$_SESSION`. One binding per request.                  |
 | SAPI         | Server API, the php name for what is running the interpreter. `php_sapi_name()` answers `cli` for a command line run and `cgi-phpscript` for a served request.                                         |
 | Session      | php's `$_SESSION`, a per-visitor bag keyed by a cookie and stored by `Session\Manager`. It spans many requests.                                                                                        |
-| ResetSession | A Go method on `runner.Runtime`, and a different thing: it clears one runtime's declarations and globals so the runtime can execute another program. It has nothing to do with `$_SESSION`.            |
+| ResetSession | A Go method on `runner.Runtime`, and a different thing: it clears one runtime's declarations and globals so the runtime can execute another program. It plays no part in `$_SESSION`.                  |
 
 ## Where files live
 
@@ -57,7 +57,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                   |
 | Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` names `default`, `new Mail($name)` the rest. Compared lowercased.                                                |
-| Mail provider | What resolves a name to a credential, `model.MailProvider`. A site has one; it holds the servers that site configured and declares no method that returns one, so a password never reaches the runtime scope. |
+| Mail provider | What resolves a name to a credential, `model.MailProvider`. A site has one; it holds the servers that site configured and declares no method that returns one and a password never reaches the runtime scope. |
 | Delivery      | The transport a provider passes a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                               |
 
 ## Running the code
@@ -74,9 +74,9 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 | Term       | What it means                                                                                                                                                                                                        |
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Statement  | The unit counted. Declarations are not executable and are not counted; a compound statement counts for its header line only, so an untaken branch does not read as covered because the interpreter reaches its `if`. |
+| Statement  | The unit counted. Declarations are not executable and are not counted; a compound statement counts for its header line only and an untaken branch does not read as covered because the interpreter reaches its `if`. |
 | Block      | One line range of a profile, with how many statements it holds and how many times it ran. Statements sharing a line range merge into one.                                                                            |
-| Profile    | The `.cov` file, in the format `go test -coverprofile` writes. `mode: count` and one line per block, so `go tool cover -html` renders it.                                                                            |
-| Collector  | What one run reports statements to. It keys them by the syntax tree node the parser builds, so it belongs to one program.                                                                                            |
-| Aggregator | What a server folds each request's collector into. It keys blocks by the profile line that will hold them, so the size of the application bounds it no matter how often the parser reads a file.                     |
+| Profile    | The `.cov` file, in the format `go test -coverprofile` writes. `mode: count` and one line per block and `go tool cover -html` renders it.                                                                            |
+| Collector  | What one run reports statements to. It keys them by the syntax tree node the parser builds and it belongs to one program.                                                                                            |
+| Aggregator | What a server folds each request's collector into. It keys blocks by the profile line that will hold them and the size of the application bounds it no matter how often the parser reads a file.                     |
 | Mode       | `--cover=line` writes the profile, `func` and `file` also print a per-symbol report in the format `go tool cover -func` prints.                                                                                      |

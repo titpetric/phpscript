@@ -8,9 +8,9 @@ import (
 
 // phpRange builds the inclusive sequence from start to end. It counts the
 // elements up front and derives every one of them from the start, the way PHP
-// does, so a float step never accumulates rounding error across the range.
+// does and a float step never accumulates rounding error across the range.
 //
-// The result is a presized []any: a range is a dense list by construction, so
+// The result is a presized []any: a range is a dense list by construction and
 // there is no key information for an *model.Array to carry (rule 4).
 func phpRange(start, end any, step ...any) []any {
 	var by any = int64(1)
@@ -74,7 +74,7 @@ func rangeIsFloat(v any) bool {
 }
 
 // rangeStepIsFloat is the same question for $step, where PHP is laxer: a step
-// with no fractional part leaves an integer range integral, so range(0, 4, 2.0)
+// with no fractional part leaves an integer range integral and range(0, 4, 2.0)
 // is a list of ints while range(0, 10, 2.5) is a list of floats.
 func rangeStepIsFloat(v any) bool {
 	f, ok := phpval.Number(v).(float64)

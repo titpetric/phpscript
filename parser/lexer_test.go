@@ -17,7 +17,7 @@ func lexAll(t *testing.T, src string) []token {
 
 // singleCharOperators lists every one-byte operator lexOperator accepts. The
 // list sits here in full and reads nothing from the implementation constant,
-// so the test fails where that set changes silently.
+// and the test fails where that set changes silently.
 const singleCharOperators = "+-*/%.,;()[]{}=<>!&|?:@\\"
 
 func TestLexSingleCharOperators(t *testing.T) {
@@ -51,7 +51,7 @@ func TestLexMultiCharOperators(t *testing.T) {
 }
 
 // TestLexOperatorGreedy pins the boundaries between operators that share a
-// prefix, so a table reordering cannot silently split "===" into "==" + "=".
+// prefix and a table reordering cannot silently split "===" into "==" + "=".
 func TestLexOperatorGreedy(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

@@ -13,7 +13,7 @@ import (
 // Observer receives lifecycle updates for a Runtime. Implementations must be
 // safe for use by concurrent runtimes. Trace returns a span so the interpreter
 // can measure the region it just reported; a nil span is valid and every
-// method on it does nothing, so an observer with no trace in the context can
+// method on it does nothing and an observer with no trace in the context can
 // return one.
 type Observer interface {
 	UpdateStatus(context.Context, telemetry.State)

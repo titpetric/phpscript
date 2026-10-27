@@ -78,7 +78,7 @@ func TestInvokeStringArgumentCoercion(t *testing.T) {
 
 // Both dispatch paths refuse a call passing more arguments than the binding
 // declares, as PHP refuses it for an internal function. reflect.Value
-// .Call panics on the same call, so the check has to run before either path.
+// .Call panics on the same call, and the check has to run before either path.
 func TestInvokeTooManyArguments(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -105,7 +105,7 @@ func TestInvokeTooManyArguments(t *testing.T) {
 // The two numbers in the refusal are the ones a script can act on: the
 // parameters it may fill and the arguments it wrote. A binding declaring the
 // runtime context arrives with it prepended, and the Go signature is one longer
-// for it, so a count carrying it names a limit the signature does not accept
+// for it, and a count carrying it names a limit the signature does not accept
 // and a call at that limit fails with the same message.
 func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
 	t.Parallel()
@@ -167,7 +167,7 @@ type counter struct{}
 
 func (counter) Add(a, b string) string { return a + b }
 
-// Tally declares a runtime context, so the method path counts its argument
+// Tally declares a runtime context, and the method path counts its argument
 // numbers and positions against a signature one parameter longer than the one
 // a script calls.
 func (counter) Tally(_ context.Context, a string, _ int64) string { return a }
@@ -235,7 +235,7 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 // runInstant runs src with the standard library registered and $t bound to a
 // known instant, and returns what the script printed.
 //
-// The prelude builds the instant with the bindings a script uses, so the PHP
+// The prelude builds the instant with the bindings a script uses, and the PHP
 // spelling in these tests is the spelling the runtime actually ships. A
 // test-only class would name a Go symbol that does not exist, and the point of
 // these tests is that the mapping between the two languages holds.
@@ -255,13 +255,13 @@ func runInstant(t *testing.T, src string) string {
 	return out.String()
 }
 
-// instant is what runInstant's prelude constructs, as a Go value, so a test can
-// state its expectation as time.Time's own rendering, and never by copying a
+// instant is what runInstant's prelude constructs, as a Go value, and a test
+// can state its expectation as time.Time's own rendering, and never by copying
 // string out of a previous run.
 var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
 
 // A string passed to a Go API that declares time.Duration uses Go's duration
-// syntax. The rule lives at the shared reflection boundary, so automatically
+// syntax. The rule lives at the shared reflection boundary, and automatically
 // exposed methods such as time.Time.Add need no PHP-specific adapter.
 func TestInvokeMethodParsesDurationString(t *testing.T) {
 	t.Parallel()
@@ -523,7 +523,7 @@ func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
 	rt := runner.New(&out, runner.Options{})
 
 	// The runtime compiles and runs the call site while the name is unknown,
-	// so the environment holds the stub before the declaration below runs.
+	// and the environment holds the stub before the declaration below runs.
 	miss, err := parser.Parse(`<?php try { greet(); } catch (Throwable $e) { echo "undefined\n"; }`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

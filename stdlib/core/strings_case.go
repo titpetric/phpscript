@@ -43,7 +43,7 @@ func asciiUpper(s string) string {
 const ucwordsDefaultSeparators = " \t\r\n\f\v"
 
 // phpUcfirst maps the first byte up when that byte is a-z and leaves every
-// other first byte alone, so ucfirst("ábc") returns "ábc". mbUcfirst converts
+// other first byte alone and ucfirst("ábc") returns "ábc". mbUcfirst converts
 // the first character, ASCII or not.
 func phpUcfirst(str string) string {
 	if str == "" || str[0] < 'a' || str[0] > 'z' {
@@ -74,7 +74,7 @@ func phpUcwords(str string, separators ...string) string {
 	for i := 0; i < len(str); i++ {
 		c := str[i]
 		if start && c >= 'a' && c <= 'z' {
-			// The copy starts at the first byte that changes, so phpUcwords
+			// The copy starts at the first byte that changes and phpUcwords
 			// returns a string already in the wanted case as it arrived.
 			if b == nil {
 				b = []byte(str)

@@ -2,7 +2,7 @@
 
 This walkthrough builds a complete phpscript application from an empty directory: a bookmark list with a database, migrations, routed endpoints, compiled templates and an integration test suite.
 
-The finished application is [demos/example](../../demos/example). Every snippet below comes from it, and its [venom suite](../../demos/example/tests/venom.yml) runs in CI, so the code here stays true.
+The finished application is [demos/example](../../demos/example). Every snippet below comes from it, and its [venom suite](../../demos/example/tests/venom.yml) runs in CI and the code here stays true.
 
 ## 1. The layout
 
@@ -75,7 +75,7 @@ Migration files are append only. [Run migrations](database.md#run-migrations) co
 
 ## 4. Share setup between endpoints
 
-Every endpoint needs the same database handle and template engine, so they live in one file that each endpoint includes. `bootstrap.php` is not routed and is outside `public/`, so no request reaches it on its own:
+Every endpoint needs the same database handle and template engine and they live in one file that each endpoint includes. `bootstrap.php` is not routed and is outside `public/` and no request reaches it on its own:
 
 ```php
 <?php
@@ -161,7 +161,7 @@ Keep all `$_GET` and `$_POST` reads in the annotated files. Shared code that rea
 
 ## 6. Render the output
 
-The bundled engine compiles templates to PHP, so a template carries the engine's own syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
+The bundled engine compiles templates to PHP and a template carries the engine's own syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
 
 ```php
 $tpl->load("list.tpl");
@@ -169,7 +169,7 @@ $tpl->assign(array("title" => "Bookmarks", "bookmarks" => $bookmarks));
 $tpl->render();
 ```
 
-A template addresses assigned values by name in braces and array elements with a dot. The engine runs a printed value through `htmlspecialchars` on the way out, so a bookmark titled `<script>alert(1)</script>` renders as text:
+A template addresses assigned values by name in braces and array elements with a dot. The engine runs a printed value through `htmlspecialchars` on the way out and a bookmark titled `<script>alert(1)</script>` renders as text:
 
 ```html
 <h1>{title}</h1>
@@ -219,11 +219,11 @@ phpscript list ./...
 
 A file with no entry point is only reachable through an `include`. If an endpoint is missing from this table, its annotation is wrong. The scan skips `vendor/`: a composer dependency does not publish routes into the application.
 
-The server parses PHP when it boots, so restart it after editing a source file.
+The server parses PHP when it boots and restart it after editing a source file.
 
 ## 8. Test it
 
-Endpoints are HTTP, so test them over HTTP. The application's suite is a [venom](https://github.com/ovh/venom) testsuite:
+Endpoints are HTTP and test them over HTTP. The application's suite is a [venom](https://github.com/ovh/venom) testsuite:
 
 ```yaml
 testcases:
@@ -241,7 +241,7 @@ testcases:
           - result.body ShouldContainSubstring Venom
 ```
 
-venom follows the redirect, so the assertions for a `POST` that succeeds read the page it lands on.
+venom follows the redirect and the assertions for a `POST` that succeeds read the page it lands on.
 
 Write the suite so it can run twice. No case depends on which row ids exist: each one that adds a bookmark reads back the id the application returned and deletes it again:
 
@@ -253,7 +253,7 @@ Write the suite so it can run twice. No case depends on which row ids exist: eac
         url: "{{.host}}/bookmarks/{{.added}}/delete"
 ```
 
-A named capture group in `extracts` becomes a variable for the steps that follow, so the suite cleans up after itself and stays independent of what a previous run left behind.
+A named capture group in `extracts` becomes a variable for the steps that follow and the suite cleans up after itself and stays independent of what a previous run left behind.
 
 Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead; see [Testing](../testing.md).
 

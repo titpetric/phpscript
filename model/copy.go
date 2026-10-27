@@ -4,14 +4,14 @@ package model
 // `foreach` needs: what copying an array means, and whether a loop body would
 // notice the difference.
 //
-// PHP arrays are values. `foreach ($rows as $row)` binds a copy, so
+// PHP arrays are values. `foreach ($rows as $row)` binds a copy and
 // `$row["x"] = 1` edits the copy and leaves `$rows` alone; `foreach ($rows as
-// &$row)` binds the element itself. phpscript's arrays are pointers, so a
+// &$row)` binds the element itself. phpscript's arrays are pointers and a
 // by-value loop copies up front and never defers: there is no refcount to make
 // it lazy the way PHP's copy-on-write does.
 //
 // Copying every element of every loop would be a large price for a semantic
-// almost no loop uses, so a loop copies only when the body actually assigns
+// almost no loop uses and a loop copies only when the body actually assigns
 // through the loop variable. AssignsTo answers that, once per loop and not
 // once per iteration, and the flatstack compiler asks it once per program.
 
@@ -41,11 +41,11 @@ func CopyArray(a *Array) *Array {
 
 // AssignsTo reports whether any statement in body writes through target's
 // root name, matching that name and no exact shape: a write to `$v["k"]`
-// reaches inside the value, so a by-value loop must have copied it.
+// reaches inside the value and a by-value loop must have copied it.
 func AssignsTo(target Expr, body []Stmt) bool {
 	root := RootName(target)
 	if root == "" {
-		// A target with no name to root on matches nothing, so treat it as a
+		// A target with no name to root on matches nothing and treat it as a
 		// write the body makes.
 		return true
 	}
@@ -205,7 +205,7 @@ func exprAssignsTo(e Expr, root string) bool {
 	case *ListExpr:
 		return exprsAssignTo(n.Elems, root)
 	case *Closure:
-		// A closure captures by value, so its body cannot write to this frame.
+		// A closure captures by value and its body cannot write to this frame.
 		return false
 	case *Include:
 		return true

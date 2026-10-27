@@ -6,12 +6,12 @@ import (
 
 // patternOrder fills $matches with one entry per capture group: $matches[0]
 // holds every whole match and $matches[g] every capture of group g. The
-// columns are present even when nothing matched, so a caller may index
+// columns are present even when nothing matched and a caller may index
 // $matches[1] before it checks the count.
 //
 // Without a flag that changes the entries, the columns are []string. The VM
 // indexes and iterates both levels exactly like nested PHP arrays, and the
-// columns are plain string slices, so a match set of g groups over n matches
+// columns are plain string slices and a match set of g groups over n matches
 // costs g+1 allocations where an *model.Array pair would cost 2(g+1) plus 2n
 // interface boxes. PREG_OFFSET_CAPTURE boxes every entry anyway and takes the
 // []any branch.
@@ -48,7 +48,7 @@ func setOrder(subject string, all [][]int, groups int, flags int64) []any {
 
 // matchOffset resolves preg_match's $offset argument to a byte offset into
 // subject. A negative offset counts from the end. An offset outside the
-// subject is a failed call: PHP returns false, so the second result reports
+// subject is a failed call: PHP returns false and the second result reports
 // whether the offset is usable at all.
 func matchOffset(subject string, offset any) (int, bool) {
 	if offset == nil {
@@ -111,7 +111,7 @@ func (s *splitPieces) result() any {
 // matchGroups renders one match as the row a script reads: index 0 is the
 // whole match and index g is group g.
 //
-// PHP drops the trailing groups that did not match, so count($m) is smaller
+// PHP drops the trailing groups that did not match and count($m) is smaller
 // for a match that ended before the last optional group;
 // PREG_UNMATCHED_AS_NULL turns those into nulls instead and then they all
 // stay. The flagless case is a []string for the reason patternOrder states.

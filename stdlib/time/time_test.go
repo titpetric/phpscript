@@ -11,7 +11,7 @@ import (
 )
 
 // run executes src against a runtime carrying this package's bindings and
-// nothing else, so what resolves is what Register installed.
+// no other binding, and what resolves is what Register installed.
 func run(t *testing.T, src string) string {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -28,7 +28,7 @@ func run(t *testing.T, src string) string {
 }
 
 // TestRegister covers the layout constants and the names a script reaches the
-// clock through. A namespaced constant does not parse in this runtime, so the
+// clock through. A namespaced constant does not parse in this runtime and the
 // constants carry the classes' Time\ prefix as TIME_, and the value under each
 // name is Go's own layout string.
 func TestRegister(t *testing.T) {
@@ -80,7 +80,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterDispatchesToGoMethods covers the decision this package rests on:
-// the constructors return Go values and no facade, so every method a script
+// the constructors return Go values and no facade and every method a script
 // calls is Go's own method under the name PHP spells it with. A facade would
 // need one wrapper per method, the place a method goes missing.
 func TestRegisterDispatchesToGoMethods(t *testing.T) {
@@ -137,7 +137,7 @@ echo DateTime::date(2026, 10, 13, 8, 0, 0, 0)->format(TIME_RFC3339);`)
 		t.Errorf("output = %q, want the instant in UTC", moved)
 	}
 
-	// A second runtime registers its own clock, so it still reads the
+	// A second runtime registers its own clock and it still reads the
 	// location the host started in and never the one the first script set.
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	phptime.Register(rt)

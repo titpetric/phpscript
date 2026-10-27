@@ -32,7 +32,7 @@ echo $w->instance(), "\n";
 echo Widget::statically(), "\n";
 echo $w->line(), "\n";
 
-// A name resolves where it sits, so a method returning __CLASS__
+// A name resolves where it sits, and a method returning __CLASS__
 // answers its own class whoever calls it.
 function ask(Widget $w) {
 	return $w->instance() . "|" . __FUNCTION__;

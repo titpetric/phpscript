@@ -21,7 +21,7 @@ func newRecordingTracer(t *testing.T) *Tracer {
 }
 
 // TestTrace covers what one recorded unit of work holds. The alias is for
-// oida.Trace, so a span recorded through this package lands on the value the
+// oida.Trace and a span recorded through this package lands on the value the
 // debug front end renders: a root span opened under the name of the trace,
 // with one span per instrumented call below it.
 func TestTrace(t *testing.T) {
@@ -57,9 +57,9 @@ func TestTrace(t *testing.T) {
 }
 
 // TestDo covers a call wrapped in a span. Do records what fn returned on the
-// span and ends it, and returns the error unchanged, so the error handling of
+// span and ends it, and returns the error unchanged and the error handling of
 // an instrumented caller reads the same as an uninstrumented one. The
-// context fn runs under carries the span, so work below it nests.
+// context fn runs under carries the span and work below it nests.
 func TestDo(t *testing.T) {
 	t.Parallel()
 	tracer := newRecordingTracer(t)
@@ -103,7 +103,7 @@ func TestDo(t *testing.T) {
 
 // TestTraceFromContext covers reading a trace back out of a context. A context
 // with no trace in it answers nil, and every method on a nil trace does
-// nothing, so instrumented code runs unchanged where telemetry is off. A
+// no work and instrumented code runs unchanged where telemetry is off. A
 // context the tracer did not derive carries one once WithTrace put it there,
 // the spelling a host uses to pass an existing trace to the interpreter.
 func TestTraceFromContext(t *testing.T) {
@@ -129,7 +129,7 @@ func TestTraceFromContext(t *testing.T) {
 
 // TestSpanFromContext covers which span a nested call records under: the
 // innermost one in the context. Start derives a context carrying the span it
-// opened, so work below it nests; StartSpan derives none, so a leaf span
+// opened and work below it nests; StartSpan derives none and a leaf span
 // leaves the context naming its parent, and nothing nests under a span whose
 // End has run.
 func TestSpanFromContext(t *testing.T) {
@@ -163,7 +163,7 @@ func TestSpanFromContext(t *testing.T) {
 }
 
 // TestTraceID covers the correlation key a log line carries: the value of the
-// Request-Id header on an HTTP trace, so one string matches a log line with its
+// Request-Id header on an HTTP trace and one string matches a log line with its
 // own trace, and the empty string where no trace exists.
 func TestTraceID(t *testing.T) {
 	t.Parallel()
@@ -184,7 +184,7 @@ func TestTraceID(t *testing.T) {
 // TestNewStorageDisk covers the retention a site naming `driver: disk` gets:
 // completed traces written as JSON documents under the named
 // folder, bounded by the limit, and readable by a process that did not record
-// them. Restore is what fills the read path of a fresh process, so a restart
+// them. Restore is what fills the read path of a fresh process and a restart
 // keeps what the last one recorded.
 func TestNewStorageDisk(t *testing.T) {
 	t.Parallel()

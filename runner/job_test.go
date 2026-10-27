@@ -6,7 +6,7 @@ import (
 )
 
 // TestJobFunc_Run covers the adapter: a function submitted through it reaches
-// the worker's runtime as the Job the pool runs, so a caller with nothing to
+// the worker's runtime as the Job the pool runs and a caller with nothing to
 // hang the work on keeps the plain shape. Pool.Submit holds the paths that
 // matter for the interface itself.
 func TestJobFunc_Run(t *testing.T) {
@@ -23,7 +23,7 @@ func TestJobFunc_Run(t *testing.T) {
 }
 
 // TestJobFuncSatisfiesJobAlone covers which of the three a bare function
-// answers: Job, and never DoneJob. A JobFunc lends no channel, so Submit
+// answers: Job, and never DoneJob. A JobFunc lends no channel and Submit
 // builds one, and a type assertion deciding that has to read false here.
 func TestJobFuncSatisfiesJobAlone(t *testing.T) {
 	t.Parallel()

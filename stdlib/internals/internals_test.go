@@ -13,7 +13,7 @@ import (
 // TestRegister covers the two names this package installs and the signature
 // they carry. PHP passes $real_usage to split the allocator's own footprint
 // from the script's; the estimate here is one walk of the live values and has
-// no such split, so the binding takes the argument and reports the same number.
+// no such split and the binding takes the argument and reports the same number.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -151,7 +151,7 @@ echo "unreachable";
 	}
 }
 
-// TestFrameRelease: a returned function's locals stop being roots, so
+// TestFrameRelease: a returned function's locals stop being roots and
 // usage falls back to its pre-call level and leaks nothing per call.
 func TestFrameRelease(t *testing.T) {
 	t.Parallel()

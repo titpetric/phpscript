@@ -48,10 +48,10 @@ func TestRequestScopesOnlyItsConnection(t *testing.T) {
 }
 
 // TestRuntime_ClientContext covers which of the two contexts a binding waits
-// on. Inside a handler the request's, so a call that should end when the caller
+// on. Inside a handler the request's and a call that should end when the caller
 // hangs up does; outside one there is no request and the script's own serves,
-// so the same binding still has something to wait on. Leaving the handler puts
-// the previous one back, so one request's disconnect stays off the next.
+// and the same binding still has something to wait on. Leaving the handler puts
+// the previous one back and one request's disconnect stays off the next.
 func TestRuntime_ClientContext(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -72,7 +72,7 @@ func TestRuntime_ClientContext(t *testing.T) {
 	if err := rt.ClientContext().Err(); err == nil {
 		t.Error("the client context did not end with the connection")
 	}
-	// The disconnect leaves the script's own context alone, so a serving
+	// The disconnect leaves the script's own context alone and a serving
 	// script answers the next request after one caller hangs up.
 	if err := rt.Context().Err(); err != nil {
 		t.Errorf("the disconnect ended the script's context: %v", err)
@@ -87,14 +87,14 @@ func TestRuntime_ClientContext(t *testing.T) {
 	}
 
 	// The host ending is the connection ending for a script outside a handler,
-	// with nothing else serving it.
+	// with no other server behind it.
 	hangUp()
 	if err := rt.ClientContext().Err(); err == nil {
 		t.Error("the host ending did not reach the client context")
 	}
 
 	// With no connection recorded at all the script's own context is the
-	// answer, so a binding always has something to wait on.
+	// answer and a binding always has something to wait on.
 	rt.client = nil
 	if got := rt.ClientContext(); got != rt.Context() {
 		t.Error("with no connection the client context is not the script's")

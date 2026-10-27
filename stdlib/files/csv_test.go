@@ -7,7 +7,7 @@ import (
 )
 
 // TestFPutCSVOutputStream pins the php://output handle: it writes through the
-// runtime's output seam, so a buffer ob_start() pushes captures it even when
+// runtime's output seam and a buffer ob_start() pushes captures it even when
 // the handle opens first, and fclose() leaves the stream usable.
 func TestFPutCSVOutputStream(t *testing.T) {
 	t.Parallel()
@@ -28,7 +28,7 @@ echo "after-close";`)
 }
 
 // TestFGetCSVKeepsThePosition pins the property the byteReader buys: a record
-// read consumes exactly the record, so the rest of the file is still there for
+// read consumes exactly the record and the rest of the file is still there for
 // whatever reads next.
 func TestFGetCSVKeepsThePosition(t *testing.T) {
 	t.Parallel()

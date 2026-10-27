@@ -4,7 +4,7 @@
 // PHP's password_hash() is one of the few standard functions with no
 // implementation in the language: it needs a key derivation function and a
 // CSPRNG, and phpscript exposes neither. Everything else the family does
-// (parsing options, choosing an algorithm) is arithmetic a script could do, so
+// (parsing options, choosing an algorithm) is arithmetic a script could do and
 // the binding is narrow: the password functions here, and the CSPRNG pair in
 // random.go, which returns the same entropy to scripts directly.
 package crypto
@@ -18,7 +18,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8, so it
+// The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8 and it
 // carries the same value as PASSWORD_BCRYPT and a script that passes either
 // gets the same hash; argon2id is the stronger choice per millisecond spent and
 // is not the default here for the same reason php does not default to it: it
@@ -30,7 +30,7 @@ const (
 
 	// defaultCost is PHP 8.5's PASSWORD_BCRYPT_DEFAULT_COST, not x/crypto's
 	// bcrypt.DefaultCost, which is still 10. The constant reports the number to
-	// scripts and every hash records it, so a difference here is a difference a
+	// scripts and every hash records it and a difference here is a difference a
 	// script can see; matching PHP is what lets the .phpt fixture run against
 	// the php binary.
 	defaultCost = 12
@@ -40,7 +40,7 @@ const (
 // x/crypto's GenerateFromPassword writes. Both name the same derivation.
 //
 // Reading needs no rewrite: x/crypto refuses only a major version above '2'
-// and carries the minor through the comparison, so a stored `$2y$`, `$2a$` or
+// and carries the minor through the comparison and a stored `$2y$`, `$2a$` or
 // `$2b$` verifies as it stands. Writing does need one, because the prefix is
 // script-visible: derive swaps goPrefix for phpPrefix on the way out, and a
 // hash written here reads byte for byte like php's.
@@ -75,7 +75,7 @@ func defaultParams(algo string) params {
 }
 
 // check refuses a parameter set the algorithm cannot run. The argon2 bounds
-// are libargon2's, so php refuses the same values with the same meaning: at
+// are libargon2's and php refuses the same values with the same meaning: at
 // least one lane, at least one pass, and at least eight KiB per lane.
 func (p params) check() error {
 	if p.algo == algoBcrypt {
@@ -154,7 +154,7 @@ func Register(rt *runner.Runtime) {
 		}
 		got, ok := paramsOf(hash)
 		if !ok {
-			// Not a hash this build can read, so anything else is an upgrade.
+			// Not a hash this build can read and anything else is an upgrade.
 			return true, nil
 		}
 		return got != want, nil
@@ -189,9 +189,9 @@ func Register(rt *runner.Runtime) {
 
 // PasswordVerify answers password_verify, and is what stdlib/auth reads a
 // stored password file line with: a user database holds what password_hash
-// wrote, so the dispatch has one home.
+// wrote and the dispatch has one home.
 //
-// The stored hash names the algorithm and the work factors, so a login costs
+// The stored hash names the algorithm and the work factors and a login costs
 // what that hash carries. A value no derivation could match reads false in
 // the time its first byte takes, as in php, which keeps a wrong-shaped cookie
 // from costing a core.
@@ -208,11 +208,11 @@ func PasswordVerify(password, hash string) bool {
 
 // IsPasswordHash reports whether PasswordVerify can read a stored value: one
 // of the formats it dispatches on, with the parameters inside it readable. A
-// value this refuses matches no password, so a user database asks it when it
+// value this refuses matches no password and a user database asks it when it
 // reads a file and stops there, ahead of the login that would fail.
 //
 // It runs the parse and no prefix test. The shape checks the dispatch uses are
-// loose by design, so that a hash php wrote and this build cannot read answers
+// loose by design and that a hash php wrote and this build cannot read answers
 // false from password_verify; here a loose answer would accept a damaged line.
 func IsPasswordHash(stored string) bool {
 	if isArgon2(stored) {
@@ -260,7 +260,7 @@ func paramsOf(hash string) (params, bool) {
 // The revision marker is the one place this is stricter than x/crypto, which
 // parses the 1997 "$2$" spelling php refuses; bcryptRevision names the four
 // markers php reads. The cost digits and the base64 stay x/crypto's to read,
-// so it can still refuse a hash this accepts.
+// and it can still refuse a hash this accepts.
 func isBcrypt(hash string) bool {
 	return len(hash) >= 59 && bcryptRevision(hash)
 }

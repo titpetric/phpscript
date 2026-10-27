@@ -24,7 +24,7 @@ type Column struct {
 }
 
 // Cell is one value and the color the terminal prints it in. Markdown drops
-// the color, so a caller sets it once and branches on no output format.
+// the color and a caller sets it once and branches on no output format.
 type Cell struct {
 	Text  string
 	Color string
@@ -42,7 +42,7 @@ func Colored(color, value string) Cell {
 
 // Table buffers rows and renders them once it has the widest cell of every
 // column. A check that collects its findings before reporting them gains
-// nothing from streaming, and a buffered table sizes its columns from the data
+// no advantage from streaming, and a buffered table sizes its columns from the data
 // and never guesses at them up front.
 type Table struct {
 	w        io.Writer
@@ -68,7 +68,7 @@ func New(w io.Writer, markdown bool, columns ...Column) *Table {
 }
 
 // Row appends a row. It drops a cell past the last column and leaves a missing
-// one empty, so a caller never pads a short row itself.
+// one empty and a caller never pads a short row itself.
 func (t *Table) Row(cells ...Cell) {
 	row := make([]Cell, len(t.columns))
 	for i := range row {
@@ -94,7 +94,7 @@ func (t *Table) Flush() {
 
 // Summary writes a line below the table, in the header color on a terminal.
 // The blank line before it carries meaning: markdown ends a table at the
-// first line that is not a row, so a reader takes a summary butted against one
+// first line that is not a row and a reader takes a summary butted against one
 // for part of the table.
 func (t *Table) Summary(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
@@ -174,7 +174,7 @@ func (t *Table) flushMarkdown() {
 }
 
 // pad widens value to its column. The printed value carries color escapes that
-// occupy no cell, so Width reads plain.
+// occupy no cell and Width reads plain.
 func (t *Table) pad(column int, value, plain string) string {
 	padding := strings.Repeat(" ", max(0, t.widths[column]-Width(plain)))
 	if t.columns[column].Align == Right {

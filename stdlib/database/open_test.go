@@ -5,7 +5,7 @@ import (
 )
 
 // TestOpen covers the pool DatabaseProvider builds by default. sql.Open
-// records the driver and the DSN and connects to nothing, so a pool exists
+// records the driver and the DSN and connects to nothing and a pool exists
 // before any server has answered, and a provider holding ten connection
 // strings opens no sockets at startup. The sqlx wrapper keeps the driver
 // name, and sqlx reads it there to rebind placeholders for the dialect.

@@ -8,7 +8,7 @@ import (
 
 // TestBoundClosure covers what Eval binds a callable from. The declaration is
 // AST and the identifier is synthetic: a closure literal has no name a script
-// typed, so the compiler invents one and the slot is where the callable lands.
+// typed and the compiler invents one and the slot is where the callable lands.
 func TestBoundClosure(t *testing.T) {
 	t.Parallel()
 	decl := &model.Closure{Params: []model.Param{{Name: "n"}}}

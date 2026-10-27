@@ -7,7 +7,7 @@ import (
 )
 
 // docs/design.md documents global and extends as won't-builds that parse and
-// do nothing, so the linter is where a port hears about them before the
+// do nothing and the linter is where a port hears about them before the
 // behaviour goes wrong at a distance.
 func TestFileReportsGlobalAndExtends(t *testing.T) {
 	t.Parallel()
@@ -46,7 +46,7 @@ function f() {
 }
 
 // Interface extends widens the declaration contract, which instanceof does
-// follow, so the interface form lints clean where the class form reports.
+// follow and the interface form lints clean where the class form reports.
 func TestFileAcceptsInterfaceExtends(t *testing.T) {
 	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\ninterface Store extends Reader {\n\tfunction put($key, $value);\n}\n"
@@ -60,7 +60,7 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 }
 
 // A magic method other than __construct and __invoke is never called
-// implicitly (docs/design.md), so a class relying on one holds dead code that
+// implicitly (docs/design.md) and a class relying on one holds dead code that
 // reads as if something depended on it. The two that run lint clean.
 func TestFileReportsMagicMethods(t *testing.T) {
 	t.Parallel()

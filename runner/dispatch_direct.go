@@ -16,13 +16,13 @@ import (
 //
 // Each case is one method name with one signature, because a Go interface
 // encodes both. The assertion runs per call and the runtime caches the itab
-// lookup, so the per-call cost is a type check. A receiver or an
+// lookup and the per-call cost is a type check. A receiver or an
 // argument shape a case does not cover answers handled=false, which sends the
 // call down the planned reflect path with its coercion and its errors intact;
-// nothing here may answer differently than that path would.
+// no case here may answer differently than that path would.
 
 // directGoMethod returns the typed call for a resolved method, nil when no
-// shape matches. base is the receiver the method resolved on, so a cache
+// shape matches. base is the receiver the method resolved on and a cache
 // entry only carries a direct call its own receiver type answers.
 func directGoMethod(base any, goName string) func(any, []any) (any, bool, error) {
 	switch goName {
@@ -41,7 +41,7 @@ func directGoMethod(base any, goName string) func(any, []any) (any, bool, error)
 				if len(args) > 1 {
 					return nil, true, &ArgumentCountError{Want: 1, Got: len(args)}
 				}
-				// A string takes io.StringWriter where the writer has one, so
+				// A string takes io.StringWriter where the writer has one and
 				// $w->write($s) pays no clone; the []byte conversion is what
 				// the reflect path's coercion makes anyway. Any other
 				// argument keeps the reflect path's coercion and errors.

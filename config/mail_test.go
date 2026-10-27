@@ -13,7 +13,7 @@ import (
 // never the first delivery: on a site whose only sender is a @schedule job,
 // that delivery is the middle of the night.
 //
-// The check walks names in sorted order, so a file with two bad servers
+// The check walks names in sorted order and a file with two bad servers
 // reports the same one on every run.
 func TestMail_Validate(t *testing.T) {
 	t.Parallel()
@@ -71,7 +71,7 @@ func TestMail_Validate(t *testing.T) {
 // neither the key nor the fix.
 //
 // The check walks keys in the order flatMailKeys lists them and names in
-// sorted order, so one file fails on one line every time.
+// sorted order and one file fails on one line every time.
 func TestValidateMailDeclaration(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -133,7 +133,7 @@ func TestValidateMailDeclaration(t *testing.T) {
 }
 
 // TestValidateMailDeclaration_flatKeyOrder covers the key the refusal names
-// when a flat block sets four. flatMailKeys fixes the order, so the refusal
+// when a flat block sets four. flatMailKeys fixes the order and the refusal
 // names host ahead of password whatever order the decoder walked the map in.
 func TestValidateMailDeclaration_flatKeyOrder(t *testing.T) {
 	t.Parallel()

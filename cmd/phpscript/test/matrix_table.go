@@ -33,7 +33,7 @@ type matrixTable interface {
 }
 
 // terminalMatrix writes the ansi table. sizeColumns rebuilds the column
-// widths per folder, so a row prints as soon as its fixture completes.
+// widths per folder and a row prints as soon as its fixture completes.
 type terminalMatrix struct {
 	w         io.Writer
 	headers   []string
@@ -65,7 +65,7 @@ func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
 // status columns leaves too little of a reason to read.
 //
 // writeGroup calls it after sizeColumns rebuilt a folder's widths, never
-// before: fit adds to the last column, so a second call on already-fitted
+// before: fit adds to the last column and a second call on already-fitted
 // widths would compound across folders.
 func (t *terminalMatrix) fit(width int) {
 	if !t.verbose || width == 0 {
@@ -100,7 +100,7 @@ func (t *terminalMatrix) metrics() bool {
 }
 
 // sizeColumns rebuilds the header row and column widths for one folder. The
-// folder name is the header of the fixture column, so a table says which area
+// folder name is the header of the fixture column and a table says which area
 // it covers without spending a line on a title.
 func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 	if dir == "" {
@@ -275,7 +275,7 @@ func (t *markdownMatrix) writeRow(row matrixRow) {
 	if !t.verbose {
 		return
 	}
-	// Markdown has no fixed width to wrap into, so a reason only breaks where
+	// Markdown has no fixed width to wrap into and a reason only breaks where
 	// it already carries a newline.
 	for _, cell := range row.Cells {
 		if cell.Status != matrixFail || cell.Reason == "" {
@@ -294,7 +294,7 @@ func (t *markdownMatrix) closeGroup(totals groupTotals) {
 	fmt.Fprintln(t.w)
 }
 
-// writeSummary closes the report with the per-folder totals, so the reader
+// writeSummary closes the report with the per-folder totals and the reader
 // need not add up the tables above it.
 func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
 	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics(), engines)

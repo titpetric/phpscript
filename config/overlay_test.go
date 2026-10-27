@@ -60,7 +60,7 @@ func TestOverlay(t *testing.T) {
 }
 
 // TestOverlayBytes covers Overlay over source a caller already read. The build
-// compiles a fixture tree into the test binary, so the bytes arrive from an
+// compiles a fixture tree into the test binary and the bytes arrive from an
 // fs.FS with no path on disk; filename is only what errors name.
 func TestOverlayBytes(t *testing.T) {
 	t.Parallel()
@@ -76,7 +76,7 @@ func TestOverlayBytes(t *testing.T) {
 		if err.Error() != want {
 			t.Errorf("err = %q, want %q", err.Error(), want)
 		}
-		// The keys the file named come back beside the refusal, so a caller
+		// The keys the file named come back beside the refusal and a caller
 		// reporting it can say what else the file set.
 		if _, ok := declared["server"]; !ok {
 			t.Errorf("declared = %+v, want it to name server", declared)
@@ -109,7 +109,7 @@ func TestOverlayBytes(t *testing.T) {
 		operator.Mail = config.Mail{"default": mail.Config{Host: "mail.operator.example", From: "operator@example.com"}}
 
 		// A null node is the one spelling the decoder leaves as the inherited
-		// value, so the guard in OverlayBytes is what empties it.
+		// value and the guard in OverlayBytes is what empties it.
 		result, _, err := config.OverlayBytes(operator, "site.yml", []byte("mail:\n"), nil, "")
 		if err != nil {
 			t.Fatal(err)

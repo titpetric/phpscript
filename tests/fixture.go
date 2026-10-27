@@ -75,9 +75,9 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 
 // sourceName names the file the runtime reads a fixture's PHP section from.
 //
-// A fixture is a document and no file the runtime can open, so sourceFS
+// A fixture is a document and no file the runtime can open and sourceFS
 // serves its body as one. The name carries the .phpt through, which no real
-// file in the tree ends in, so it shadows nothing the fixture includes.
+// file in the tree ends in and it shadows nothing the fixture includes.
 //
 // It keeps the fixture's whole path and not its base, because the parser
 // compiles __DIR__ from the name the runtime reads a file under: served at the
@@ -96,7 +96,7 @@ func (f *Fixture) sourceName() string {
 // fsName turns a path as the caller spelled it into one an fs.FS accepts,
 // keeping as much of the directory as it can.
 //
-// FindFixtures names a fixture from the working directory, so the path arrives
+// FindFixtures names a fixture from the working directory and the path arrives
 // absolute or with leading ".." segments, and fs.ValidPath rejects both.
 // Dropping the leading segments keeps the folder the fixture sits in, and the
 // parser compiles __DIR__ from that.
@@ -114,7 +114,7 @@ func fsName(p string) string {
 
 // sourceFS lays the fixture bodies over the tree they belong to, as the second
 // layer and not the first: unionFS resolves a name to the first layer that
-// opens it and does not merge directory listings, so a leading layer holding
+// opens it and does not merge directory listings and a leading layer holding
 // only the bodies would answer "." with a directory holding only those, and
 // scandir would stop seeing the tree.
 func (f *Fixture) sourceFS(root fs.FS) fs.FS {
@@ -165,7 +165,7 @@ func (f *Fixture) RootDir() string {
 
 // realRoot reports whether the fixture named a directory on disk rather
 // than the embedded tree. Such a fixture gets its own include caches: those
-// key on the path as the script wrote it, so a fixture reaching a different
+// key on the path as the script wrote it and a fixture reaching a different
 // tree must not read back a program cached for the embedded one.
 func (f *Fixture) realRoot() bool {
 	return f.Root != "" || f.appRoot != ""
@@ -174,7 +174,7 @@ func (f *Fixture) realRoot() bool {
 // unionFS resolves a path against each layer in order, first hit wins: a
 // fixture keeps its own directory as the include root while the application
 // root the test command ran in answers for everything the fixture directory
-// does not hold. fs.Stat and fs.ReadFile both fall back to Open, so Open is
+// does not hold. fs.Stat and fs.ReadFile both fall back to Open and Open is
 // the whole contract.
 type unionFS []fs.FS
 
@@ -216,7 +216,7 @@ func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 // harness-owned fields filled in.
 func (f *Fixture) runnerOptions() runner.Options {
 	options := f.Options
-	// The php column executes the php cli binary, so the runtime column
+	// The php column executes the php cli binary and the runtime column
 	// speaks as the same SAPI: a fixture probing php_sapi_name() must read
 	// the same answer from both.
 	options.SAPI = "cli"
@@ -231,7 +231,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 		options.RootFS = os.DirFS(f.RootDir())
 	}
 	if f.appRoot != "" {
-		// The fixture directory answers first, so a fixture's own relative
+		// The fixture directory answers first and a fixture's own relative
 		// include keeps meaning what it always meant; the application root
 		// answers second, for the prelude include, the files it pulls in, and
 		// the autoload folder, which all sit outside every fixture directory.

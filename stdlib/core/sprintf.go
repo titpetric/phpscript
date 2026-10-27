@@ -43,7 +43,7 @@ const argNext = -1
 // phpSprintf formats args into format the way php's sprintf does.
 //
 // The conversion is php's, not Go's: phpval coerces an argument before the
-// renderer writes it, so %s of 42 is "42" where fmt writes %!s(int64=42), and
+// renderer writes it and %s of 42 is "42" where fmt writes %!s(int64=42), and
 // width, precision and padding count bytes, which is the unit the str*
 // functions use.
 // docs/reference/extensions/strings.md owns the table of specifiers.
@@ -68,7 +68,7 @@ func phpSprintf(format string, args ...any) (string, error) {
 			return "", err
 		}
 		i = next
-		// php reads the argument before it looks at the specifier, so a format
+		// php reads the argument before it looks at the specifier and a format
 		// that names an argument the call omits reports the count first.
 		arg, err := formatArg(spec, args, &taken)
 		if err != nil {
@@ -96,7 +96,7 @@ func phpSprintf(format string, args ...any) (string, error) {
 func parseFormatSpec(format string, i int) (formatSpec, int, error) {
 	spec := formatSpec{argnum: argNext, pad: ' '}
 	// An argument number is digits followed by '$'. Digits not followed by one
-	// are the width, so the scan rewinds and commits nothing.
+	// are the width and the scan rewinds and commits nothing.
 	j := i
 	for j < len(format) && format[j] >= '0' && format[j] <= '9' {
 		j++
@@ -159,7 +159,7 @@ func parseFormatSpec(format string, i int) (formatSpec, int, error) {
 
 // formatArg answers the argument a conversion names, advancing the implicit
 // counter only for a conversion that did not name one: php's own counter works
-// the same way, so `%1$s %s` reads the first argument twice.
+// the same way and `%1$s %s` reads the first argument twice.
 func formatArg(spec formatSpec, args []any, taken *int) (any, error) {
 	n := spec.argnum
 	if n == argNext {
@@ -255,7 +255,7 @@ func (spec formatSpec) float(f float64) string {
 	return trimExponent(s)
 }
 
-// trimExponent drops the leading zeros php does not write in an exponent, so
+// trimExponent drops the leading zeros php does not write in an exponent and
 // Go's 1.234500e+03 reads back as php's 1.234500e+3.
 func trimExponent(s string) string {
 	i := strings.IndexAny(s, "eE")
@@ -277,7 +277,7 @@ func trimExponent(s string) string {
 
 // pack pads a rendered conversion to the spec's width.
 //
-// Zero padding goes after the sign of a numeric conversion, so
+// Zero padding goes after the sign of a numeric conversion and
 // %05d of -42 read -0042; a padding character the format named goes before it,
 // and a left-aligned conversion pads with spaces where the zero flag named
 // zeros, both as php does.

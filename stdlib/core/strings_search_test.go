@@ -7,7 +7,7 @@ import (
 // TestStringSearchPositions covers the four position functions: an offset
 // counts bytes and the search starts there, a negative one counts back, the
 // reverse pair answers the last match, and the folded pair matches ASCII case.
-// A needle the haystack does not hold is false, so the return is any.
+// A needle the haystack does not hold is false and the return is any.
 //
 // An offset past the end answers false here, where php 8 raises a ValueError.
 func TestStringSearchPositions(t *testing.T) {

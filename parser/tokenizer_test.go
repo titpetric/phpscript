@@ -189,7 +189,7 @@ const benchTemplate = `<html>
 
 // TestTokenIDs covers the table that publishes the ids a host registers as PHP
 // constants. A script comparing a token against a name it did not read from
-// here would be comparing against nothing, so this table and the one
+// here would be comparing against nothing and this table and the one
 // token_get_all emits have to be each other's inverse, and no two names may
 // share an id.
 func TestTokenIDs(t *testing.T) {
@@ -199,7 +199,7 @@ func TestTokenIDs(t *testing.T) {
 		t.Fatal("TokenIDs() is empty")
 	}
 
-	// Every published name reads back as itself, so the pair is an inverse.
+	// Every published name reads back as itself and the pair is an inverse.
 	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon, and it
 	// is the name a script has to compare against.
 	for _, name := range []string{"T_VARIABLE", "T_STRING", "T_INLINE_HTML", "T_PAAMAYIM_NEKUDOTAYIM"} {
@@ -229,7 +229,7 @@ func TestTokenIDs(t *testing.T) {
 		t.Errorf("TokenName(-1) = %q, want %q", got, "UNKNOWN")
 	}
 
-	// The table is a copy per call, so a script that writes into what it read
+	// The table is a copy per call and a script that writes into what it read
 	// back cannot move the ids the next caller reads.
 	ids["T_VARIABLE"] = -99
 	if parser.TokenIDs()["T_VARIABLE"] == -99 {

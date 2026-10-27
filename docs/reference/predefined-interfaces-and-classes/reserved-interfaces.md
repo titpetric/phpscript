@@ -64,7 +64,7 @@ This holds of every row and is not repeated in each: **phpscript declares none o
 
 PHP declares four of the interfaces above with `extends`: [Iterator](classes/Iterator.md) and [IteratorAggregate](classes/IteratorAggregate.md) extend [Traversable](classes/Traversable.md), [Throwable](classes/Throwable.md) extends [Stringable](classes/Stringable.md), and [BackedEnum](classes/BackedEnum.md) extends [UnitEnum](classes/UnitEnum.md).
 
-`interface A extends B` parses here and the parser records the extended names, so `instanceof` answers them; what it does not do is carry a method across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
+`interface A extends B` parses here and the parser records the extended names, and `instanceof` answers them; what it does not do is carry a method across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
 
 ## See also
 

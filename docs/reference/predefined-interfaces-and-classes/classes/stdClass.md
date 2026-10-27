@@ -6,7 +6,7 @@
 
 Generic empty class with no methods and no properties of its own.
 
-An object takes this class when nothing else names one: `new stdClass`, a cast with `(object)`, and in PHP the object shape returned by `json_decode()` and by database fetch methods. `stdClass` is not a universal base class.
+An object takes this class when no other class names one: `new stdClass`, a cast with `(object)`, and in PHP the object shape returned by `json_decode()` and by database fetch methods. `stdClass` is not a universal base class.
 
 ## Class synopsis
 

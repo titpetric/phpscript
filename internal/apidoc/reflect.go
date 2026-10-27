@@ -12,7 +12,7 @@ var (
 )
 
 // reflectParams derives PHP parameters from a Go function type. Reflection
-// carries no parameter names, so nameParams invents them from the PHP type,
+// carries no parameter names and nameParams invents them from the PHP type,
 // with a numeric suffix when a type repeats.
 func reflectParams(t reflect.Type) []Param {
 	params := []Param{}
@@ -51,7 +51,7 @@ func nameParams(params []Param) []Param {
 	return dedupeParams(params)
 }
 
-// dedupeParams numbers repeated parameter names, so two ignored arguments
+// dedupeParams numbers repeated parameter names and two ignored arguments
 // render as $unused1 and $unused2, and never twice as $unused.
 func dedupeParams(params []Param) []Param {
 	counts := map[string]int{}
@@ -99,7 +99,7 @@ func typeParamName(p Param) string {
 // as a throw and never as a return.
 //
 // Two or more non-error results are one array and no union: the runtime packs
-// them into a PHP list for the script to destructure, so time.Time.ISOWeek's
+// them into a PHP list for the script to destructure and time.Time.ISOWeek's
 // (year, week) documents as array and not as int.
 func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}

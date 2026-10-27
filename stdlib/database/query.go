@@ -22,11 +22,11 @@ type queryInfo struct {
 }
 
 // readOnlyStatements are the statements a read-only client may run. The map is
-// an allowlist, so a client refuses a statement it does not name: a keyword
+// an allowlist and a client refuses a statement it does not name: a keyword
 // nobody thought about is far more likely to be a write than a read.
 //
 // EXPLAIN is not on it. `EXPLAIN ANALYZE insert ...` runs the statement it
-// reports on in postgres, so an explain is not reliably a read.
+// reports on in postgres and an explain is not reliably a read.
 var readOnlyStatements = map[string]bool{
 	"select":   true,
 	"show":     true,
@@ -35,12 +35,12 @@ var readOnlyStatements = map[string]bool{
 }
 
 // parseQuery classifies a statement by its leading text. It skips comments
-// preceding the statement and never treats one as the statement, so a query
+// preceding the statement and never treats one as the statement and a query
 // tagged for `show processlist`, as in `/* userGet */ select ...` and the
 // reason to tag one, still reads as a select.
 //
 // This is prefix classification and no SQL parser: it reads what the statement
-// begins with, and nothing more. A statement has to be one statement.
+// begins with, and stops there. A statement has to be one statement.
 func parseQuery(query string) queryInfo {
 	var info queryInfo
 	rest := query
@@ -86,7 +86,7 @@ func (i queryInfo) refusal() string {
 // record reports what the statement is onto the span measuring it. The type and
 // the tag are what group a trace by the query behind it, which the statement
 // text alone does not: two calls of the same query differ by their bound values
-// and by nothing else worth grouping on.
+// and by no other value worth grouping on.
 func (i queryInfo) record(span *telemetry.Span) {
 	if i.Type != "" {
 		span.SetAttribute("query_type", i.Type)

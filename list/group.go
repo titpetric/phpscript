@@ -6,7 +6,7 @@ import (
 
 // PathGroup is the paths of one folder: Dir holds the folder, "." when the
 // paths sit in the run directory, and Indexes the positions of its paths in
-// the input slice, so a caller can carry per-path data alongside without the
+// the input slice and a caller can carry per-path data alongside without the
 // group copying it.
 type PathGroup struct {
 	Dir     string

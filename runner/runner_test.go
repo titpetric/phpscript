@@ -10,7 +10,7 @@ import (
 // TestRuntime_RecordError covers the failure a script has no throw to catch:
 // one that happened around the script and no statement in it, a request body
 // refused for its size being the case it covers. It records and
-// returns, so the host sees it and PHP execution is not unwound.
+// returns and the host sees it and PHP execution is not unwound.
 func TestRuntime_RecordError(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -27,7 +27,7 @@ func TestRuntime_RecordError(t *testing.T) {
 		t.Fatalf("the handler received %v, want the one error", seen)
 	}
 
-	// A nil error is nothing to report, so it never reaches the handler.
+	// A nil error is nothing to report and it never reaches the handler.
 	rt.RecordError(nil)
 	if len(seen) != 1 {
 		t.Errorf("the handler received %d errors, want the nil to have been dropped", len(seen))

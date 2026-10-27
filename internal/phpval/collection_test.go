@@ -8,7 +8,7 @@ import (
 )
 
 // TestStrings covers the string context implode and str_replace read a
-// collection in. Each element converts the way `(string)$v` does, so php 8.5
+// collection in. Each element converts the way `(string)$v` does and php 8.5
 // prints "1,1,,2.5" for implode(",", ["1", true, null, 2.5]).
 func TestStrings(t *testing.T) {
 	t.Parallel()
@@ -47,7 +47,7 @@ func TestStrings(t *testing.T) {
 
 // TestStringsRefusesObject covers the one element with no string form. php 8.5
 // raises Error with the wording want pins below, and Strings reports the same
-// wording, so nothing invents a spelling for an object inside implode.
+// wording and nothing invents a spelling for an object inside implode.
 func TestStringsRefusesObject(t *testing.T) {
 	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "C"})
@@ -71,7 +71,7 @@ func TestStringsRefusesObject(t *testing.T) {
 }
 
 // TestValues covers the order a collection reads back in and the one case that
-// copies nothing: a []any is the storage the caller already holds, so Values
+// copies no value: a []any is the storage the caller already holds and Values
 // passes it through. Callers that write to the result copy first.
 func TestValues(t *testing.T) {
 	t.Parallel()
@@ -99,7 +99,7 @@ func TestValues(t *testing.T) {
 		})
 	}
 
-	// Values returns a []any as the same backing array, so a caller reading it
+	// Values returns a []any as the same backing array and a caller reading it
 	// sees the collection and no copy of it.
 	source := []any{int64(1), int64(2)}
 	returned := Values(source)

@@ -39,7 +39,7 @@ func runWorkdir(t *testing.T, src string) string {
 }
 
 // TestGetcwdIsWrittenFromTheSourceRoot pins the spelling php cannot match: the
-// source filesystem sits at "/", so a script starts there and names every path
+// source filesystem sits at "/" and a script starts there and names every path
 // it reads from there.
 func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 	t.Parallel()
@@ -81,7 +81,7 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 }
 
 // TestChdirRefusesWhatIsNotADirectory pins the false return. PHP warns and
-// answers false; there is no warning channel here, so the return value carries all
+// answers false; there is no warning channel here and the return value carries all
 // report and the working directory has to stay put.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 	t.Parallel()
@@ -122,7 +122,7 @@ echo file_get_contents("/note.txt");`)
 
 // TestIncludeCacheIsKeyedByTheResolvedFile is the bug a mutable working
 // directory would otherwise introduce. The server and the fixture harness
-// share the cache across runtimes, so a key holding the spelling in place of
+// share the cache across runtimes and a key holding the spelling in place of
 // the file would hand one request the file another request loaded.
 func TestIncludeCacheIsKeyedByTheResolvedFile(t *testing.T) {
 	t.Parallel()

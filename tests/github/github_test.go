@@ -2,7 +2,7 @@
 // the .phpt fixture runner cannot reach.
 //
 // A fixture runs a script. An issue about route registration, a server flag or
-// a host binding needs the machinery around the script, so a Go test here
+// a host binding needs the machinery around the script, and a Go test here
 // covers it, named Test_IssueNNN after the issue it closes.
 // tests/fixtures/github/NNN.yml keeps the reported transcript.
 package github_test
@@ -25,7 +25,7 @@ import (
 // routers registers routes on both routers the runtime supports and returns
 // them by name. Each entry of routes is a file name and its @route comment;
 // every endpoint echoes $_REQUEST, and these tests read that; the
-// requests carry no query, form or cookie fields, so what comes back is the
+// requests carry no query, form or cookie fields, and what comes back is the
 // path values alone.
 func routers(t *testing.T, routes map[string]string) map[string]http.Handler {
 	t.Helper()

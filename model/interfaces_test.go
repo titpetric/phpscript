@@ -26,7 +26,7 @@ func class(name string, implements []string, methods ...string) *model.ClassDecl
 }
 
 // TestCheckInterfaces pins what an interface is: a list of names a class has to
-// declare itself. Nothing here inherits, so the only question ever asked is
+// declare itself. No class here inherits and the only question ever asked is
 // whether a name is present.
 func TestCheckInterfaces(t *testing.T) {
 	t.Parallel()
@@ -122,7 +122,7 @@ func TestCheckInterfaces(t *testing.T) {
 }
 
 // TestInterfaceContractError covers the type a caller recovers the violations
-// through. Both backends raise it where they register classes, so a program
+// through. Both backends raise it where they register classes and a program
 // fails the same way whichever one ran it, and a caller holding the program's
 // source spans reads Decl to report the class's line.
 func TestInterfaceContractError(t *testing.T) {
@@ -158,7 +158,7 @@ func TestInterfaceContractError(t *testing.T) {
 }
 
 // TestInterfaceContractError_Error covers the message Error builds for a class
-// missing two methods: it joins the violations into one string, so three
+// missing two methods: it joins the violations into one string and three
 // missing methods are one error and no three.
 func TestInterfaceContractError_Error(t *testing.T) {
 	t.Parallel()
@@ -179,11 +179,11 @@ func TestInterfaceContractError_Error(t *testing.T) {
 
 // TestInterfaceNames covers the names `instanceof` answers an interface name
 // from: what the class declared, plus what those interfaces extend, lower-cased
-// and deduplicated. PHP compares a class name without regard to case, so the
+// and deduplicated. PHP compares a class name without regard to case and the
 // deduplication keys on the lower-cased name.
 //
 // InterfaceNames lists a name no interface declaration defines all the same.
-// Nothing checks such a class, because the name is a php built-in this runtime
+// Such a class goes unchecked, because the name is a php built-in this runtime
 // does not declare, and `$a instanceof Countable` still answers what the
 // author declared.
 func TestInterfaceNames(t *testing.T) {

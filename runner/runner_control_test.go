@@ -27,7 +27,7 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 		declared string
 		want     bool
 	}{
-		// matchCatchType compares the name, so a clause takes the class it names.
+		// matchCatchType compares the name and a clause takes the class it names.
 		{"Exception", "Exception", true},
 		{"Exception", "Throwable", true},
 		{"Exception", "", true},
@@ -68,7 +68,7 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 
 // TestMatchCatchTypeTakesAnyClauseForANonThrowable holds the contract a host
 // binding relies on: an error a Go function returned, and a panic recovered at
-// the call boundary, belong to no PHP class, so the catch a script already
+// the call boundary, belong to no PHP class and the catch a script already
 // wrote has to reach them whichever throwable class it names.
 func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 	t.Parallel()
@@ -121,7 +121,7 @@ func TestRunnerThrowablesNameTheirClass(t *testing.T) {
 // it; read that before changing this test.
 func TestNoInheritanceAtRuntime(t *testing.T) {
 	t.Parallel()
-	// model.Class may record what a declaration listed, so Implements stays:
+	// model.Class may record what a declaration listed and Implements stays:
 	// a list of names a class checks against, and no member arrives through
 	// it. A parent is different, and forbidden: a class that has one would
 	// start acquiring members it did not declare.

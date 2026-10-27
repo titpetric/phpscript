@@ -35,8 +35,8 @@ func runPHP(t *testing.T, src string) string {
 // The flags exist in PHP because its encoder makes choices a caller then has
 // to undo. Escaping a forward slash is the clearest: PHP writes "one\/two",
 // which is legal JSON that no other language emits, and JSON_UNESCAPED_SLASHES
-// exists to turn it off. Go's encoder does not escape it, so there is nothing
-// to turn off and the flag has no work to do here.
+// exists to turn it off. Go's encoder leaves it literal and the flag has no
+// work to do here.
 //
 // The rest are presentation. A consumer needing indented JSON runs it
 // through jq or its own pretty printer; a producer that indents its output is
@@ -53,7 +53,7 @@ func TestNoJSONFlagConstants(t *testing.T) {
 }
 
 // json_encode takes $flags and ignores it, as json_decode takes $depth and
-// $flags, so a literal one changes nothing.
+// $flags and a literal one changes nothing.
 func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	t.Parallel()
 	tests := []string{
@@ -70,9 +70,9 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	}
 }
 
-// A JSON_* name is not defined, so the constant lookup raises before
-// json_encode runs. phpscript lint reports it first: the argument changes
-// nothing.
+// A JSON_* name is not defined and the constant lookup raises before
+// json_encode runs. phpscript lint reports it first: the argument changes no
+// encoding.
 func TestJSONFlagConstantThrows(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)
@@ -95,7 +95,7 @@ func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 }
 
 // TestJSONEncoder covers the one difference between this encoder and Go's: the
-// encoder takes a PHP value, so a *model.Array converts the way json_encode()
+// encoder takes a PHP value and a *model.Array converts the way json_encode()
 // converts one. NewJSONEncoder needs a stream, because fopen() answers false
 // for a file it could not open and false is no stream.
 func TestJSONEncoder(t *testing.T) {
@@ -123,7 +123,7 @@ func TestJSONEncoder(t *testing.T) {
 
 // TestJSONEncoder_Encode covers the key order a PHP array keeps through the
 // stream. encoding/json sorts a Go map's keys; the encoder writes an array in
-// the order the script set its keys, so a row encoded for a client reads back
+// the order the script set its keys and a row encoded for a client reads back
 // in assembly order. Every value ends with a newline, separating one from the
 // next.
 func TestJSONEncoder_Encode(t *testing.T) {
@@ -183,7 +183,7 @@ func TestJSONEncoder_SetIndent(t *testing.T) {
 }
 
 // TestJSONDecoder covers UseNumber being on, as json_decode() has it: a whole
-// number decodes to an int and a fractional one to a float, so the 7 in a
+// number decodes to an int and a fractional one to a float and the 7 in a
 // document does not come back as 7.0.
 func TestJSONDecoder(t *testing.T) {
 	t.Parallel()
@@ -248,7 +248,7 @@ func TestJSONDecoder_Decode(t *testing.T) {
 }
 
 // TestJSONDecoder_More covers what ends a decode loop. A null is a value JSON
-// carries, so a loop testing what Decode answered would stop one value early;
+// carries and a loop testing what Decode answered would stop one value early;
 // More reads the stream and not the value.
 func TestJSONDecoder_More(t *testing.T) {
 	t.Parallel()

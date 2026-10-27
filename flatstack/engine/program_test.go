@@ -7,7 +7,7 @@ import (
 )
 
 // semanticHost records what the engine delegated. It carries every method the
-// test programs reach and leaves the rest to the embedded nil interface, so a
+// test programs reach and leaves the rest to the embedded nil interface and a
 // program reaching an unexpected one fails loudly and never silently.
 type semanticHost struct {
 	Host
@@ -18,7 +18,7 @@ type semanticHost struct {
 
 func (h *semanticHost) SetGlobal(string, any) bool { return false }
 
-// Truthy answers a bool as itself, so a comparison the VM computed drives the
+// Truthy answers a bool as itself and a comparison the VM computed drives the
 // jump, and reads "yes" as the one true string.
 func (h *semanticHost) Truthy(value any) bool {
 	switch typed := value.(type) {
@@ -30,7 +30,7 @@ func (h *semanticHost) Truthy(value any) bool {
 	return false
 }
 
-// Binary answers a tag naming itself, so a test tells a result the engine
+// Binary answers a tag naming itself and a test tells a result the engine
 // computed on its own from one the host returned.
 func (h *semanticHost) Binary(op string, left, right any) (any, error) {
 	h.binary = append(h.binary, op)
@@ -62,7 +62,7 @@ func runHost(t *testing.T, host Host, source string) {
 }
 
 // TestEntry covers the pair foreach walks. The engine owns iteration state
-// and no value semantics, so what a collection holds is the host's answer:
+// and no value semantics and what a collection holds is the host's answer:
 // Entries renders it to a key and a value per step, and the loop binds them
 // in the order the slice holds.
 func TestEntry(t *testing.T) {
@@ -85,7 +85,7 @@ func TestEntry(t *testing.T) {
 	}
 
 	// A key the source did not name is still a step: a list has an index per
-	// entry, so the loop binds the value alone and the engine reads the same
+	// entry and the loop binds the value alone and the engine reads the same
 	// pairs.
 	host.echoed = nil
 	runHost(t, host, `<?php $row = 0; foreach ($row as $value) { echo $value; }`)
@@ -96,9 +96,9 @@ func TestEntry(t *testing.T) {
 
 // TestHost covers the split the interface draws. The engine owns
 // compilation, operand storage, jumps and iteration state, and PHP value
-// semantics are the host's, so an operation on operand types the engine has
+// semantics are the host's and an operation on operand types the engine has
 // no path for arrives at Binary and the result it returns is what the script
-// sees. Both backends share one host, so a script reads the same semantics
+// sees. Both backends share one host and a script reads the same semantics
 // either way.
 func TestHost(t *testing.T) {
 	t.Parallel()

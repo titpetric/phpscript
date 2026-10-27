@@ -6,7 +6,7 @@
 
 Full-stack, interruptible function that a script can suspend from anywhere in the call stack.
 
-Execution inside a fiber pauses until something resumes it, so one call stack waits without blocking the one that started it.
+Execution inside a fiber pauses until something resumes it, and one call stack waits without blocking the one that started it.
 
 ## Class synopsis
 

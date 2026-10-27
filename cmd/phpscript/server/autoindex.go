@@ -18,7 +18,7 @@ import (
 // titpetric/exp/cmd/indexer, whose layout this borrows, loads bootstrap from a
 // CDN for the same page. A directory listing that fetches a third party asset
 // tells that third party what a visitor is browsing, and renders unstyled on a
-// machine with no route out, so this one fetches nothing. There is nowhere to
+// machine with no route out and this one fetches nothing. There is nowhere to
 // serve a separate asset from either: the document root belongs to the site.
 const autoindexStyle = `
 body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #222; }
@@ -52,7 +52,7 @@ var imageExtensions = map[string]bool{
 // when listings are off.
 //
 // dir names the directory relative to the document root, "." for the root
-// itself. Every entry links relative to the request's own path, so that path
+// itself. Every entry links relative to the request's own path and that path
 // has to carry a trailing slash; ServeHTTP redirects first.
 func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir string) bool {
 	if !h.autoindex {
@@ -78,7 +78,7 @@ func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir str
 // are what fs.ReadDir answers: already sorted by name.
 //
 // This writes the page directly and not with html/template. A listing is a
-// fixed shape with no user supplied markup in it, so a template buys nothing
+// fixed shape with no user supplied markup in it and a template buys nothing
 // but a parse and a reflect walk per request; escapeEntry does the escaping it
 // would, at the only two places a name reaches the page.
 //
@@ -156,7 +156,7 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 
 // escapeEntry returns the entry's name as text in the page and as the target of
 // a link to it, both escaped for where they go. A directory's name and its link
-// both carry a trailing slash, so following it lands on that directory's own
+// both carry a trailing slash and following it lands on that directory's own
 // listing and not on the redirect to it.
 //
 // The two escapings differ and the page needs both: URL escaping keeps a

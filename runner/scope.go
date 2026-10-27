@@ -27,9 +27,9 @@ type Scope struct {
 
 	// statics maps a name declared by a `static $x` statement in this frame to
 	// the persistent bag holding it (see Runtime.funcStatics). Reads and
-	// writes of a bound name resolve through the bag, so a later
+	// writes of a bound name resolve through the bag and a later
 	// `$x = ...` in the function persists across calls. Nil in every frame
-	// that declares no statics, so the common path pays one nil check.
+	// that declares no statics and the common path pays one nil check.
 	statics map[string]map[string]any
 }
 
@@ -83,7 +83,7 @@ func (s *Scope) Defer(callback any) {
 
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
-// variables, so the snapshot drops them. `this` goes with them: the call binds
+// variables and the snapshot drops them. `this` goes with them: the call binds
 // it and no body declares it, and php leaves it out of get_defined_vars() for
 // that reason.
 func (s *Scope) DefinedVars() map[string]any {

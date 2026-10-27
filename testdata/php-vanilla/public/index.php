@@ -2,10 +2,10 @@
 
 // testdata/phpscript-http-bridge/server.php on Slim, the same program with the
 // signatures changed: the same class, the same six handlers against the same
-// patterns, answering the same bytes, so one load generator drives both.
+// patterns, answering the same bytes, and one load generator drives both.
 //
 // The surface a handler writes against is the difference. Slim's router and PSR-7
-// force four substitutions, and a PSR-7 response is immutable, so a handler
+// force four substitutions, and a PSR-7 response is immutable, and a handler
 // returns the response it built where the bridge writes to the one its caller
 // passed in:
 //
@@ -47,7 +47,7 @@ class Server
     // reads, ahead of the first construction.
     //
     // The worker count is the web server's here and not the script's: apache
-    // forks VANILLA_WORKERS children and php-fpm starts that many, so conf/ is
+    // forks VANILLA_WORKERS children and php-fpm starts that many, and conf/ is
     // where each stack reads it and this reads it back for the record alone.
     public function config(): array
     {
@@ -84,7 +84,7 @@ class Server
         }
         $app->addRoutingMiddleware();
 
-        // An unrouted request answers what net/http's ServeMux answers, so the
+        // An unrouted request answers what net/http's ServeMux answers, and the
         // two sides agree on every path outside the route table. Slim has no
         // handler for either exception and both come back 500 without this.
         $plain = static function (int $status, string $body) use ($app): Response {
@@ -109,8 +109,8 @@ class Server
         );
 
         // '/' alone, where the bridge writes '{$}' to anchor it: Slim matches
-        // a route exactly and has no subtree patterns, so nothing extra keeps
-        // this off every path nothing else claimed.
+        // a route exactly and has no subtree patterns: '/' answers '/' alone,
+        // unlike the Go side.
         $app->get('/', $this->index(...));
         $app->get('/hello', $this->hello(...));
         $app->get('/users/{id}', $this->showUser(...));
@@ -164,8 +164,8 @@ class Server
         return $response;
     }
 
-    // getParsedBody() is the form, parsed by the time a handler runs, so the
-    // handler parses nothing itself. The body takes precedence over the
+    // getParsedBody() is the form, already parsed by the time a handler runs,
+    // and the handler does no parsing itself. The body takes precedence over the
     // query, the order net/http's FormValue and the bridge's form_value()
     // both answer in.
     public function echoRequest(Request $request, Response $response): Response
@@ -200,7 +200,7 @@ class Server
     //
     // The write and the flush per tick are what php needs here that the
     // phpscript side does not: connection_aborted() reports a write that
-    // failed, so a loop writing nothing never notices the client leaving. Over
+    // failed, and a loop writing nothing never notices the client leaving. Over
     // there the handler reads the request's context and its reply is the final
     // line alone. The response goes out directly and not through the PSR-7
     // body, because a body already on the wire carries no header set after it.

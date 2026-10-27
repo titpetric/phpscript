@@ -7,7 +7,7 @@ import (
 // TestVarDumpObject covers the visibility annotation, which is the one part of
 // a dump that reads the class and not the value: a private property carries
 // the declaring class, a protected one does not, and a public one carries
-// nothing.
+// no annotation.
 func TestVarDumpObject(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -24,7 +24,7 @@ var_dump(new Point());`)
 }
 
 // TestPrintRScalars covers what print_r makes of the three values that have no
-// text: true is "1", and false and null are both the empty string, so a
+// text: true is "1", and false and null are both the empty string and a
 // template printing one of them writes nothing, and never "false".
 func TestPrintRScalars(t *testing.T) {
 	t.Parallel()

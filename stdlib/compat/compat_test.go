@@ -12,7 +12,7 @@ import (
 
 // TestRegister covers the three families one call installs: the ob_* buffers,
 // the clock and date shims, and the preg_* functions. A host that builds its
-// own Runtime without stdlib calls this one function for all three, so a
+// own Runtime without stdlib calls this one function for all three and a
 // family this call omits is a family no script can reach.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -55,7 +55,7 @@ func runScript(t *testing.T, src string) string {
 }
 
 // TestOutputBufferingIsWiredByImport covers the blank import: stdlib installs
-// the ob_* family without naming this package, so a script can call it.
+// the ob_* family without naming this package and a script can call it.
 func TestOutputBufferingIsWiredByImport(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -140,7 +140,7 @@ func TestBuffersAreScopedToOneRuntime(t *testing.T) {
 	stdlib.Register(firstRT)
 	stdlib.Register(secondRT)
 
-	// The test leaves the first runtime mid-capture, so a shared stack would
+	// The test leaves the first runtime mid-capture and a shared stack would
 	// leak into the second one's level count and swallow its output.
 	firstRT.PushOutput(&strings.Builder{})
 

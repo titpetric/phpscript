@@ -7,7 +7,7 @@ import (
 )
 
 // registerUploads installs the pair of functions a script needs after $_FILES
-// arrives. The request runtime writes an uploaded part outside the root, so a
+// arrives. The request runtime writes an uploaded part outside the root and a
 // script reaches it by the absolute tmp_name in $_FILES; both functions refuse
 // a path this request did not produce, as PHP does.
 func registerUploads(rt *runner.Runtime, r root) {
@@ -25,7 +25,7 @@ func registerUploads(rt *runner.Runtime, r root) {
 		if !isUpload(from) {
 			return false, nil
 		}
-		// The temporary copy is outside the root by design, so writable_paths
+		// The temporary copy is outside the root by design and writable_paths
 		// constrains the destination alone: storing an upload is the write,
 		// and the one a configuration pins down.
 		dst, err := r.resolveWrite("move_uploaded_file", to)
@@ -35,7 +35,7 @@ func registerUploads(rt *runner.Runtime, r root) {
 		if err := moveFile(from, dst); err != nil {
 			return false, nil
 		}
-		// The temporary copy is private to the process that wrote it, so the
+		// The temporary copy is private to the process that wrote it and the
 		// stored file gets a mode of its own: the configured upload_file_mode,
 		// or 0644, the mode PHP's own umask lands on by default.
 		_ = os.Chmod(dst, rt.UploadFileMode().Mode())

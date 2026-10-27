@@ -46,7 +46,7 @@ Both Go runners, through `--matrix --skip-php`. `--skip-php` drops `php`: anothe
 
 `--cache` decides what the run times. `worker` amortises the parse across the fixtures a worker runs, which is the production shape. `off` re-parses per fixture, which measures the parser. Picking the wrong one is the common error, and the report names the mode it ran under.
 
-It also decides what the run costs in resident memory, so layer 3 runs one process per area under `GOMEMLIMIT`. The contract's memory section has the reasoning and the loop.
+It also decides what the run costs in resident memory and layer 3 runs one process per area under `GOMEMLIMIT`. The contract's memory section has the reasoning and the loop.
 
 ## The two memory numbers
 
@@ -61,7 +61,7 @@ Neither is ever labelled "memory" alone. A report carrying one number without na
 
 ## Combinations the command refuses
 
-The command errors where it would otherwise produce something misleading, so these are separate runs by construction.
+The command errors where it would otherwise produce something misleading and these are separate runs by construction.
 
 | Combination                                    | Why                                                                                    |
 |------------------------------------------------|----------------------------------------------------------------------------------------|
@@ -77,7 +77,7 @@ The sprint commits nothing it produces. `atkins.yml` already records the reasoni
 
 ## Reporting
 
-The run produces thousands of rows. The report carries three tables and nothing else:
+The run produces thousands of rows. The report carries three tables:
 
 - Per package: the five slowest, with `tests/runner`'s sleeps called out and excluded.
 - Per function: the twenty heaviest by cpu and the twenty heaviest by allocated objects, from `-diff_base` where there are two commits to compare.

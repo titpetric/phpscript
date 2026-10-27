@@ -27,7 +27,7 @@ The module root holds one package per responsibility. Each one is a stage of the
 
 `parser` and `runner` do not import each other; they meet in `model`. That split is why `model` is a package of its own, with the types on neither side.
 
-`internal/` is where a package goes when it has no callers outside this module and no API worth committing to. `internal/arrayi64` holds a generated integer sort used by `stdlib`; the compiler enforces that nothing outside the module can import it, so the package can change shape without a deprecation. Prefer it over a root package for anything a host would never call.
+`internal/` is where a package goes when it has no callers outside this module and no API worth committing to. `internal/arrayi64` holds a generated integer sort used by `stdlib`; the compiler enforces that nothing outside the module can import it and the package can change shape without a deprecation. Prefer it over a root package for anything a host would never call.
 
 ### Adding a package
 
@@ -37,14 +37,14 @@ A new root package has to answer four questions:
 
 1. What existing package would otherwise hold this, and what breaks if it does?
 2. Which packages import it? A package imported by exactly one other package is part of that package.
-3. Is it a boundary to something outside the process (a wire protocol, a provider library, a database driver)? `telemetry` is a root package because nothing else imports oida. That is the shape that earns one.
+3. Is it a boundary to something outside the process (a wire protocol, a provider library, a database driver)? `telemetry` is a root package because no other package imports oida. That is the shape that earns one.
 4. Does it name a responsibility, or a collection? `parser` is a responsibility. A package named for what it contains belongs somewhere else.
 
 An addition that cannot answer these is an area of an existing package, and gets a file there instead.
 
 ### Subcommands
 
-Every entry in `cmd/phpscript/` is a package named after the subcommand, with `run.go` exporting `NewCommand() *cli.Command` and a `Run` function holding the work. `main.go` imports each one and registers the command it returns. The subcommand package holds argument handling and output formatting only; the behaviour lives in a root package it calls, so `phpscript lint` is a few dozen lines over `lint`.
+Every entry in `cmd/phpscript/` is a package named after the subcommand, with `run.go` exporting `NewCommand() *cli.Command` and a `Run` function holding the work. `main.go` imports each one and registers the command it returns. The subcommand package holds argument handling and output formatting only; the behaviour lives in a root package it calls and `phpscript lint` is a few dozen lines over `lint`.
 
 ## Standard library layout
 
@@ -69,37 +69,37 @@ func Register(rt *runner.Runtime) {
 
 `stdlib/imports.go` blank-imports the standard set, the way a program imports a `database/sql` driver. A host needing a different set builds its runtime without `stdlib` and passes its own installers to `Register`.
 
-A binding that reaches outside the runtime's sandbox - a process, where the filesystem root and `writable_paths` cannot follow - registers under its own profile area instead, `runner.RegisterProfileBinding(runner.ProfileExec, Register)`, so `stdlib/pexec` does it. `stdlib.Register` installs every area; `stdlib.Mount(rt, stdlib.Secure|stdlib.Exec)` installs only what its bitmask names, so a host serving untrusted scripts mounts `stdlib.Default` (the secure surface) and spells every insecure area it grants at the call site. A name outside the mounted profile stays undefined and nothing refuses it: `function_exists` answers false, and a call, a callable or `call_user_func` reach nothing, on either engine.
+A binding that reaches outside the runtime's sandbox - a process, where the filesystem root and `writable_paths` cannot follow - registers under its own profile area instead, `runner.RegisterProfileBinding(runner.ProfileExec, Register)` and `stdlib/pexec` does it. `stdlib.Register` installs every area; `stdlib.Mount(rt, stdlib.Secure|stdlib.Exec)` installs only what its bitmask names and a host serving untrusted scripts mounts `stdlib.Default` (the secure surface) and spells every insecure area it grants at the call site. A name outside the mounted profile stays undefined and nothing refuses it: `function_exists` answers false, and a call, a callable or `call_user_func` reach nothing, on either engine.
 
 Inside a package, a file takes its name from the area it covers: `stdlib/compat/` holds `regex.go` and `buffers.go`, `stdlib/core/` holds `strings.go`, `arrays.go` and `shared_memory.go`. The pattern for a multi-file subject is `<subject>_<aspect>.go`, sorted together by the subject. A package that covers one subject drops the prefix, since the package name already carries it: `stdlib/database/` holds `query.go` and `migrate.go`, not `database_query.go`, and `stdlib/session/` holds `manager.go` and `storage_disk.go`.
 
 In `stdlib/core` each of those files also carries its own `init()`, registering only its own area. The files are independent: adding, moving or dropping an area touches no other file, and no file in the package depends on another. The coercion they all need lives in `internal/phpval` and not in a shared file beside them, because a shared file is the coupling the split exists to remove.
 
-`stdlib/shared` is the one exception, and not for sharing between stdlib packages. `stdlib` imports `runner` and never the reverse, so a behaviour both perform has nowhere to live in either: the form decoder builds `$_GET` in the runner and answers `parse_str()` in a script, and the two have to agree. That package imports `model` and `internal/phpval` alone, which keeps it importable from both sides. A helper only stdlib needs belongs in `internal/phpval`; one only the runner needs belongs in `runner`.
+`stdlib/shared` is the one exception, and not for sharing between stdlib packages. `stdlib` imports `runner` and never the reverse and a behaviour both perform has nowhere to live in either: the form decoder builds `$_GET` in the runner and answers `parse_str()` in a script, and the two have to agree. That package imports `model` and `internal/phpval` alone, which keeps it importable from both sides. A helper only stdlib needs belongs in `internal/phpval`; one only the runner needs belongs in `runner`.
 
 ## PHP-visible names
 
-A registered name is what a script types. The name is a compatibility surface and renaming it breaks scripts, so the decision comes before the binding lands.
+A registered name is what a script types. The name is a compatibility surface and renaming it breaks scripts and the decision comes before the binding lands.
 
 ### The rule
 
 **A name PHP already defines keeps PHP's spelling and behaviour.** `json_encode`, `preg_match`, `ob_get_clean`, `Exception`. These live in `stdlib/compat` or in `stdlib` itself. Where the implementation cannot match PHP, the reference records the difference under PHP's name: `preg_*` compiles with RE2 or a backtracking engine depending on the pattern, and is still called `preg_match`.
 
-Taking PHP's name is a claim about behaviour, so a `.phpt` fixture settles it, one whose expected output came from running the same source through `php`, not from running it through phpscript. Until that diff is empty the binding matches PHP only by intention. Where it cannot match, the fixture records what a script does see and the `description` says why, so the difference is on the record and not latent. `docs/testing.md` has the procedure.
+Taking PHP's name is a claim about behaviour and a `.phpt` fixture settles it, one whose expected output came from running the same source through `php`, not from running it through phpscript. Until that diff is empty the binding matches PHP only by intention. Where it cannot match, the fixture records what a script does see and the `description` says why and the difference is on the record and not latent. `docs/testing.md` has the procedure.
 
-A binding with no PHP counterpart has no second implementation to compare against, so its fixture is the definition of the behaviour. That is a reason to write the fixture carefully, not a reason to skip it: `Storage`, `Database` and `SharedMemory` are only specified by the fixtures that exercise them.
+A binding with no PHP counterpart has no second implementation to compare against and its fixture is the definition of the behaviour. That is a reason to write the fixture carefully, not a reason to skip it: `Storage`, `Database` and `SharedMemory` are only specified by the fixtures that exercise them.
 
 A PHP-named call still gets its own package when it needs one. `stdlib/info` registers `phpinfo` because that call reports on the runtime and computes nothing, and the package ships a PHP script beside the binding. The package is where the code lives; the name a script types does not change with it.
 
 **Everything else is a class named for the subject a script works with.** `Database`, `Session\Manager`, `SharedMemory`, `Mail`. The name says what a script uses, not what implements it: `Database` is the canonical database client because a database is what a script has a handle to, and nothing renames it after the Go package behind it or after the driver it connects through. There is no project-wide prefix on a registered name. The Go package is an implementation detail and does not appear: `Session\Manager` comes from a package called `session` and `SharedMemory` from one called `core`, without either name spelling its package, and `Database` kept its name when it moved to `stdlib/database`.
 
-A second segment is for a family under the subject, and only when there is one. `Session\Storage\Memory` and `Session\Storage\Disk` are two implementations of the same subject, so `Session\Storage` earns a segment; `Database\Migrate` is a distinct object obtained from the same subject. A subject with a single class stays flat, so `SharedMemory` is one word and not `Memory\Shared`.
+A second segment is for a family under the subject, and only when there is one. `Session\Storage\Memory` and `Session\Storage\Disk` are two implementations of the same subject and `Session\Storage` earns a segment; `Database\Migrate` is a distinct object obtained from the same subject. A subject with a single class stays flat and `SharedMemory` is one word and not `Memory\Shared`.
 
 A binding that is one call, with no object to hold, registers a function and no class: `mail`, `defer`, `register_shutdown_function`, `start_span`. These take PHP's naming style, lowercase with underscores, whether PHP defines them or not.
 
-Methods are the Go method spelled as PHP writes methods. Dispatch is case-insensitive, so a script calls Go's `Query` as `$db->query()` and `Incr` as `$shm->incr()`; a multi-word Go method takes underscores, as `$span->set_attribute()` does.
+Methods are the Go method spelled as PHP writes methods. Dispatch is case-insensitive and a script calls Go's `Query` as `$db->query()` and `Incr` as `$shm->incr()`; a multi-word Go method takes underscores, as `$span->set_attribute()` does.
 
-The two cases have an order: PHP compatibility comes first, so a call PHP already has does not get a class because the Go side models it as one.
+The two cases have an order: PHP compatibility comes first and a call PHP already has does not get a class because the Go side models it as one.
 
 Registering a namespace takes escaped Go strings: `rt.RegisterConstructor("Session\\Storage\\Disk", NewSessionStorageDisk)`.
 
@@ -121,7 +121,7 @@ The published entry cites the comment together with the PHP signature derived fr
 function strlen(string $str): int
 ```
 
-The comment describes what a script sees: the behaviour, the arguments as PHP variables, and any divergence from PHP. Implementation notes (allocation shapes, engine choices) stay in the godoc of the implementing function, with a one-line registration-site comment published over them. Go parameters carry the names of the PHP arguments, so the published signature reads as PHP does; a name Go predeclares (`string`) takes a close variant (`str`), and a parameter the runner fills as a by-reference setter takes the name of the PHP argument it writes, so `preg_match` publishes `&$matches`.
+The comment describes what a script sees: the behaviour, the arguments as PHP variables, and any divergence from PHP. Implementation notes (allocation shapes, engine choices) stay in the godoc of the implementing function, with a one-line registration-site comment published over them. Go parameters carry the names of the PHP arguments and the published signature reads as PHP does; a name Go predeclares (`string`) takes a close variant (`str`), and a parameter the runner fills as a by-reference setter takes the name of the PHP argument it writes and `preg_match` publishes `&$matches`.
 
 ### What the runtime registers today
 
@@ -157,10 +157,10 @@ No registered name has to change; the migration outstanding is on the Go side.
 
 **Move PHP's own library out of `stdlib/stdlib.go`.** The functions PHP defines split two ways on a behavioural line. `stdlib/compat` holds the surface whose behaviour is the interpreter's: output buffering, `preg_*`, the date functions, each one defined by what the engine does and not by what it computes. `stdlib/core` holds the surface that computes: `strlen`, `array_merge`, `json_encode`. Either way `stdlib` keeps only `Register`, `RegisterFS` and the exception type.
 
-The exception type stays because `Register` installs it before anything else, and `stdlib` blank-imports `core`, so moving the registration there would make a cycle.
+The exception type stays because `Register` installs it before anything else, and `stdlib` blank-imports `core` and moving the registration there would make a cycle.
 
-Some of PHP's surface stays in `runner`. `func_get_args` returns the current frame's arguments, which only the runtime holds, so `runner/runtime.go` installs it on the scope and never registers it as a shim. That is the test for staying: a function nobody can write against the public runtime API belongs in the runner. `compact` and `get_defined_vars` also read the calling scope, but they reach it through `runner.ScopeFromContext`, so they are ordinary registrations and move with the rest.
+Some of PHP's surface stays in `runner`. `func_get_args` returns the current frame's arguments, which only the runtime holds and `runner/runtime.go` installs it on the scope and never registers it as a shim. That is the test for staying: a function nobody can write against the public runtime API belongs in the runner. `compact` and `get_defined_vars` also read the calling scope, but they reach it through `runner.ScopeFromContext` and they are ordinary registrations and move with the rest.
 
 `stdlib/core` is the catch-all: the areas of PHP's own library that compute, plus the phpscript extensions each too small to be worth a package, `SharedMemory`, `defer` and `register_shutdown_function`. An area that grows past that gets its own package, as `stdlib/mail`, `stdlib/span` and `stdlib/http` did, as `Database` did when it moved to `stdlib/database`, and as `Session\*` did when it moved to `stdlib/session`. Moving one costs nothing a script can see, because the Go package a binding lives in is not part of what a script types.
 
-Renaming a registered class is the expensive change, so the rule applies before a binding lands. If one is ever needed, the change registers the new name first and keeps the old one as a second registration of the same constructor, with the removal a separate change after the fixtures and both demos move.
+Renaming a registered class is the expensive change and the rule applies before a binding lands. If one is ever needed, the change registers the new name first and keeps the old one as a second registration of the same constructor, with the removal a separate change after the fixtures and both demos move.

@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// coverageBlock finds the block starting at line in file, so a test asserts on
+// coverageBlock finds the block starting at line in file and a test asserts on
 // position and not on ordering.
 func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int) coverage.Block {
 	t.Helper()
@@ -72,7 +72,7 @@ echo $total;
 }
 
 // TestCoverageIncludedFiles covers the zero-count baseline: an included file
-// registers every statement, so a function body the fixture never calls shows
+// registers every statement and a function body the fixture never calls shows
 // up at zero under the include's own filename.
 func TestCoverageIncludedFiles(t *testing.T) {
 	t.Parallel()
@@ -124,7 +124,7 @@ echo used();
 }
 
 // TestCoverageForcesInterpreter holds the flatstack boundary: a runtime created
-// with NewFlatStack executes interpreted while it holds a collector, so the
+// with NewFlatStack executes interpreted while it holds a collector and the
 // counts exist and the bytecode backend needs no coverage support.
 func TestCoverageForcesInterpreter(t *testing.T) {
 	t.Parallel()
@@ -235,7 +235,7 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 		t.Errorf("WorkDirPath() = %q, want the path a script reads", got)
 	}
 
-	// WritablePaths answers a copy, so a binding that sorts or filters what
+	// WritablePaths answers a copy and a binding that sorts or filters what
 	// it holds does not edit the host's configuration.
 	paths := rt.WritablePaths()
 	if len(paths) != 2 {
@@ -247,7 +247,7 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 	}
 }
 
-// TestRuntime_SetWorkDir covers chdir(): per-runtime state, so a script moving
+// TestRuntime_SetWorkDir covers chdir(): per-runtime state and a script moving
 // it moves nothing another request sees and os.Chdir is never called. A
 // relative path resolves against the current directory, an absolute one
 // against the source root, and neither climbs out of it. A path naming no
@@ -265,7 +265,7 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 	if got := rt.WorkDir(); got != "app" {
 		t.Errorf("WorkDir() = %q, want app", got)
 	}
-	// A relative path resolves through the directory that is current now, so a
+	// A relative path resolves through the directory that is current now and a
 	// script's include and its file_get_contents name the same file.
 	if got := rt.ResolvePath("index.php"); got != "app/index.php" {
 		t.Errorf("ResolvePath(index.php) = %q, want app/index.php", got)
@@ -298,7 +298,7 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 	}
 
 	// SetWorkDir clamps a climb and never refuses it: the path resolves to the
-	// source root, so a script that walked up as far as it liked is standing at
+	// source root and a script that walked up as far as it liked is standing at
 	// the top of the tree the host gave it and never above one.
 	if !rt.SetWorkDir("../../..") {
 		t.Fatal("SetWorkDir refused to climb to the root")
@@ -314,7 +314,7 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 // TestRuntime_IncludeFile covers the include a host performs itself, the call
 // composer's autoloader pulls a declaration file in with: the file evaluates
 // in a fresh scope the way an `include` statement would, and the runtime
-// records it among the files it included, so the count a script reads and the
+// records it among the files it included and the count a script reads and the
 // count it publishes agree.
 func TestRuntime_IncludeFile(t *testing.T) {
 	t.Parallel()
@@ -341,7 +341,7 @@ func TestRuntime_IncludeFile(t *testing.T) {
 	if !slices.Contains(included, "/lib/site.php") {
 		t.Errorf("IncludedFiles = %v, want the file among them", included)
 	}
-	// The snapshot is a copy, so a caller walking it cannot edit the record.
+	// The snapshot is a copy and a caller walking it cannot edit the record.
 	included[0] = "edited"
 	if again := rt.IncludedFiles(); slices.Contains(again, "edited") {
 		t.Errorf("IncludedFiles = %v after the caller edited its copy", again)
@@ -375,7 +375,7 @@ func TestRuntime_Reset(t *testing.T) {
 			"lib.php": &fstest.MapFile{Data: []byte(`<?php class Site {}`)},
 		},
 	})
-	// The constants a host froze are what a reset returns to, so the bindings
+	// The constants a host froze are what a reset returns to and the bindings
 	// stay defined and whatever the program added does not. There is no
 	// define() to use here: the bindings that register one import this
 	// package.
@@ -410,7 +410,7 @@ func TestRuntime_Reset(t *testing.T) {
 		t.Error("a frozen constant was cleared by Reset, so the bindings would be undefined")
 	}
 
-	// Output goes to the writer Reset holds, so the next program's text
+	// Output goes to the writer Reset holds and the next program's text
 	// does not join the previous one's.
 	echo, err := rt.Load(`<?php echo "second";`)
 	if err != nil {
@@ -427,7 +427,7 @@ func TestRuntime_Reset(t *testing.T) {
 	}
 }
 
-// TestRuntime_Exit covers the value `exit` ends a script with: an error, so it
+// TestRuntime_Exit covers the value `exit` ends a script with: an error and it
 // unwinds the interpreter, and an ending and no failure, which a host reads
 // through IsExit without naming the type.
 func TestRuntime_Exit(t *testing.T) {
@@ -449,7 +449,7 @@ func TestRuntime_Exit(t *testing.T) {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
 
-	// A zero is the ordinary ending and still an ExitError, so a host reading
+	// A zero is the ordinary ending and still an ExitError and a host reading
 	// the status does not have to tell the two apart.
 	if exit, ok := IsExit(rt.Exit(0)); !ok || exit.Code != 0 {
 		t.Error("exit(0) is not recognised as an exit")
@@ -458,7 +458,7 @@ func TestRuntime_Exit(t *testing.T) {
 
 // TestScriptEnvironment covers what getenv() reads. A nil environment is the
 // process one, as a CLI run has it; a host that configured one passes it
-// instead, and a virtual host always does, so a site sees the variables it
+// instead, and a virtual host always does and a site sees the variables it
 // declared and none of the operator's. ScriptEnvironment holds the
 // infrastructure names back either way.
 func TestScriptEnvironment(t *testing.T) {
@@ -486,7 +486,7 @@ func TestScriptEnvironment(t *testing.T) {
 		t.Error("an entry with no name reached the script environment")
 	}
 
-	// A configured environment is the whole of what a script sees, so a
+	// A configured environment is the whole of what a script sees and a
 	// variable the process carries and the host did not declare is absent.
 	t.Setenv("PHPSCRIPT_TEST_ONLY_IN_PROCESS", "1")
 	if _, present := configured["PHPSCRIPT_TEST_ONLY_IN_PROCESS"]; present {

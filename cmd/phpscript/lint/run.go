@@ -29,9 +29,9 @@ type Options struct {
 }
 
 // NewCommand creates a new lint command. The file --include names is what puts
-// the application's own classes and functions in the name registry, so the same
+// the application's own classes and functions in the name registry and the same
 // flag that makes a request find them makes the checks know them.
-// The configuration is what every command constructor takes, so one
+// The configuration is what every command constructor takes and one
 // signature covers them all. This command reads it through globals, which
 // main fills from the configuration before it builds any command.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
@@ -79,7 +79,7 @@ func run(opts Options, args []string, out io.Writer) error {
 		return err
 	}
 
-	// run creates the report file before it prints anything, so an unwritable
+	// run creates the report file before it prints anything and an unwritable
 	// path fails the command and leaves no half report behind.
 	var report *os.File
 	if opts.Output != "" {
@@ -163,7 +163,7 @@ type sink struct {
 	markdown bool
 }
 
-// summary writes the run's closing line the way a table's summary prints, so
+// summary writes the run's closing line the way a table's summary prints and
 // the total reads like the per-folder lines above it.
 func (s sink) summary(format string, args ...any) {
 	text := fmt.Sprintf(format, args...)
@@ -174,7 +174,7 @@ func (s sink) summary(format string, args ...any) {
 }
 
 // collect lints every file and returns one result per finding, plus a passing
-// result for a file with no findings, so the table reports every file it checks
+// result for a file with no findings and the table reports every file it checks
 // and not only what went wrong.
 func collect(args []string, checkFlatstack bool) ([]result, error) {
 	files, err := list.ExpandFiles(args)
@@ -219,7 +219,7 @@ func collect(args []string, checkFlatstack bool) ([]result, error) {
 }
 
 // newTable returns one folder's findings table. The folder names the file
-// column, so a table says which area it covers without spending a line on a
+// column and a table says which area it covers without spending a line on a
 // title. The line number is right aligned as a number; everything else reads
 // as a label.
 func newTable(w io.Writer, markdown bool, dir string) *table.Table {
@@ -266,7 +266,7 @@ func line(n int) string {
 }
 
 // writeReportHeader opens a generated markdown report with its title and the
-// command that produced it, so a checked-in report says how to regenerate it.
+// command that produced it and a checked-in report says how to regenerate it.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
 

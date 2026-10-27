@@ -49,9 +49,9 @@ func TestAssignGoIndex(t *testing.T) {
 }
 
 // TestUnsetGoIndex covers unset($x[$k]) over a binding's Go collection. A map
-// deletes in place and answers nothing; a slice cannot hold a hole, so it
+// deletes in place and answers nothing; a slice cannot hold a hole and it
 // answers a reslice around the element for the caller to assign back; a miss
-// changes nothing, so the unset runs unconditionally.
+// changes nothing and the unset runs unconditionally.
 func TestUnsetGoIndex(t *testing.T) {
 	t.Parallel()
 	counts := map[string]int{"n": 1, "m": 2}

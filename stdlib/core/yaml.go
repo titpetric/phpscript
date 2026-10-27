@@ -61,7 +61,7 @@ func phpYAMLEncode(value any) (any, error) {
 // yamlMapping sorts a mapping's keys by decision: the decoder returns a Go
 // map, a Go map has no order, and reading the same document twice would
 // otherwise build two differently ordered arrays. A script reads a settings
-// file by name, so sorting costs nothing and the same input decodes the same
+// file by name and sorting costs nothing and the same input decodes the same
 // way every time.
 //
 // A whole number arrives as an int. `max_pages: 400` compared against a
@@ -114,7 +114,7 @@ func yamlMapping(in map[string]any) *model.Array {
 
 // yamlEncodeValue turns PHP values into what the YAML marshaller writes.
 //
-// A mapping becomes a yaml.MapSlice and not a map, so the marshaller writes
+// A mapping becomes a yaml.MapSlice and not a map and the marshaller writes
 // the keys in the order the array set them: a settings file a script wrote
 // should read the way the script built it, and a Go map would shuffle it on
 // every run.

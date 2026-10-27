@@ -32,7 +32,7 @@ func TestLoggerLeavesTheSpanOpen(t *testing.T) {
 	discard(New(ctx, "migrate")).Error("failed", "error", errors.New("syntax error"))
 
 	// Read before the caller ends it: the span carries the failure and is
-	// still open, so the duration it reports is the work and not the log line.
+	// still open and the duration it reports is the work and not the log line.
 	recorded := trace.Clone().Spans[1]
 	if recorded.Err() == nil {
 		t.Error("the span did not record the error the logger reported")
@@ -48,7 +48,7 @@ func TestLoggerLeavesTheSpanOpen(t *testing.T) {
 }
 
 // TestLoggerRecordsNothingForInfo covers the boundary between the log and the
-// trace: an Info line is log output, so it reaches slog alone. Recording every
+// trace: an Info line is log output and it reaches slog alone. Recording every
 // message would make the trace a second copy of the log and cost a write per
 // line on a request that logged a hundred of them.
 func TestLoggerRecordsNothingForInfo(t *testing.T) {

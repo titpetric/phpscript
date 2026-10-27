@@ -76,7 +76,7 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 }
 
 // lintGlobal reports the `global $x;` statement, a documented won't-build
-// (docs/design.md): it parses and binds nothing, so the variable reads as
+// (docs/design.md): it parses and binds nothing and the variable reads as
 // unset at a distance from the line that looks like it imports it.
 func (w *stmtWalker) lintGlobal(n *model.Global) {
 	*w.out = append(*w.out, Diagnostic{
@@ -88,7 +88,7 @@ func (w *stmtWalker) lintGlobal(n *model.Global) {
 
 // lintAbstract reports the abstract modifier, which has nothing to mean
 // without inheritance (docs/design.md): an abstract class instantiates like
-// any other, and an abstract method has no body, so calling it returns null
+// any other, and an abstract method has no body and calling it returns null
 // where PHP declines the class uncompleted. The parser takes both and the
 // formatter keeps them; the linter is where the author hears that nothing
 // enforces a contract. An interface is the contract the linter checks.
@@ -144,7 +144,7 @@ func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 
 // lintExtends reports `extends` on a class, a documented won't-build
 // (docs/design.md): the parser records the parent name and nothing arrives
-// through it, so the child answers only with the members it wrote and is not
+// through it and the child answers only with the members it wrote and is not
 // an instanceof the parent. An interface's extends is not reported: there it
 // widens the declaration contract, which instanceof does follow.
 func (w *stmtWalker) lintExtends(n *model.ClassDecl) {

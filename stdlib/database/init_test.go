@@ -10,7 +10,7 @@ import (
 
 // TestDatabaseBindingsAreContributed covers the wiring the package init does.
 // A binding package registers its installer through runner.RegisterBinding, and
-// stdlib.Register runs every contributed installer, so importing the package
+// stdlib.Register runs every contributed installer and importing the package
 // is the whole of what a host does to put the Database class within reach of a
 // script. A host that constructs a Runtime without stdlib has the installer
 // list and picks from it.

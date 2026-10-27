@@ -9,7 +9,7 @@ $http = new HTTP\Server($config["addr"], $mux, $config["workers"], $config["queu
 $http->listen();
 ```
 
-`$this->showUser` is the method read without parentheses, which is a callable bound to the object. A handler takes `$w` and `$r` and nothing else: the runtime decodes no superglobal, nothing carries over from the last request, and two requests in flight at one moment cannot see each other, each running on a runtime of its own.
+`$this->showUser` is the method read without parentheses, which is a callable bound to the object. A handler takes `$w` and `$r` alone: the runtime decodes no superglobal, nothing carries over from the last request, and two requests in flight at one moment cannot see each other, each running on a runtime of its own.
 
 ## Running it
 
@@ -26,14 +26,14 @@ go build -o bin/phpscript .
 TESTSERVER_ADDR=127.0.0.1:8095 TESTSERVER_LIMIT=600 bin/phpscript run testdata/phpscript-http-bridge/server.php
 ```
 
-`TESTSERVER_WORKERS` is how many requests the server answers at once and `TESTSERVER_LIMIT` is how long the script runs before `set_time_limit` ends it. The limit is a deadline on the whole run and not on a request, so a server that outlives a sweep takes a limit past the sweep's whole duration.
+`TESTSERVER_WORKERS` is how many requests the server answers at once and `TESTSERVER_LIMIT` is how long the script runs before `set_time_limit` ends it. The limit is a deadline on the whole run and not on a request and a server that outlives a sweep takes a limit past the sweep's whole duration.
 
 The compose file mounts the binary. A benchmark measures the build under test, and an image carrying its own phpscript would report on the binary baked into that image.
 
 ## This is Path B
 
-Nothing re-parses and nothing re-registers: one read takes the program, `$mux->handle()` resolves each handler, and `listen()` forks the workers once. `testdata/phpscript-service` is Path A, where `phpscript server` builds a runtime per request.
+The program parses once and registers its handlers once: one read takes it, `$mux->handle()` resolves each handler, and `listen()` forks the workers once. `testdata/phpscript-service` is Path A, where `phpscript server` builds a runtime per request.
 
 A number from one never belongs in a table with a number from the other. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule, [../../docs/use-cases/http-server.md](../../docs/use-cases/http-server.md) is the surface, and [../../docs/design.md](../../docs/design.md) is why both paths exist.
 
-`BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` reads this file by path, takes its class declaration, and mounts its router, so a change here reaches the allocation half of the harness directly. It fails when a route stops answering what it expects, so no 404 reaches the measurement.
+`BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` reads this file by path, takes its class declaration, and mounts its router and a change here reaches the allocation half of the harness directly. It fails when a route stops answering what it expects and no 404 reaches the measurement.

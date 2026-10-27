@@ -19,7 +19,7 @@ const Name = "List routes, files and classes"
 // NewCommand creates a new list command.
 //
 // The configuration and the global options are what every command constructor
-// takes, so one signature covers them all. This command reads neither.
+// takes and one signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	var bindings bool
 
@@ -41,9 +41,9 @@ func Run(args []string, bindings bool) error {
 }
 
 func run(out io.Writer, args []string, bindings bool) error {
-	// --bindings reports on the binary and no tree, so path arguments have
-	// nothing to select and the command refuses them, never ignores them: a
-	// caller that passed both meant one of the two.
+	// --bindings reports on the binary, and a tree or path argument selects no
+	// file, and the command refuses it: a caller that passed both meant one of
+	// the two.
 	if bindings {
 		if len(args) > 0 {
 			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))

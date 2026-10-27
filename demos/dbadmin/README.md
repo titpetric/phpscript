@@ -41,7 +41,7 @@ Every page is behind a login. The demo ships with two accounts:
 
 `.htpasswd` in this directory is the user database, in apache's format: one
 `username:hash` per line, with lowercase names. It sits in the application root
-and not under `public/`, so no request can reach it, and the application never
+and not under `public/`: no request can reach it, and the application never
 opens it either - `new Auth\Storage\PasswordFile` is what reads it, and a
 script gets a verdict, a username and an id. No password or hash appears in any
 PHP here, and the schema has no password column.
@@ -58,10 +58,10 @@ bcrypt (`-B`) is what to write. The runtime also reads apache's default
 has a cost parameter worth anything; see [security.md](../../docs/security.md).
 
 A reload re-runs the `@startup` jobs, and `users.php` is one: it rebuilds the
-`user` table from the file, so the accounts browse like any other table. That
+`user` table from the file, and the accounts browse like any other table. That
 table is a view of the file and no store of its own - nothing writes to it, and
-`schema/` leaves it out. Its primary key is a ULID the username determines, so
-removing an account takes its row and nothing else, and adding the same name
+`schema/` leaves it out. Its primary key is a ULID the username determines, and
+removing an account takes its row alone, while adding the same name
 back restores the same key. A reload signs nobody out: sessions are files,
 keyed by the application root.
 
@@ -75,7 +75,7 @@ states what that adds over the session cookie's `SameSite=Lax`.
 
 ## Schema
 
-`schema/` holds one `*.up.sql` migration per table, containing its `CREATE TABLE` statement and the demo rows to seed it with. `migrate.php` is an `@startup` file, so the migrations run to completion before the server accepts requests:
+`schema/` holds one `*.up.sql` migration per table, containing its `CREATE TABLE` statement and the demo rows to seed it with. `migrate.php` is an `@startup` file, and the migrations run to completion before the server accepts requests:
 
 ```php
 $migrate = new Database\Migrate("dbadmin");
@@ -83,11 +83,11 @@ $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
-Each file is append only. A `migrations` table records every applied statement by index, so a later change goes in as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
+Each file is append only. A `migrations` table records every applied statement by index, and a later change goes in as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
 
 ## Tests
 
-`tests/venom.yml` is a [venom](https://github.com/ovh/venom) suite covering every route the demo registers. It runs against the compose service, which has no published port, so `tests/atkins.yml` resolves the container address for it:
+`tests/venom.yml` is a [venom](https://github.com/ovh/venom) suite covering every route the demo registers. It runs against the compose service, which has no published port, and `tests/atkins.yml` resolves the container address for it:
 
 ```sh
 cd tests && atkins test
@@ -95,7 +95,7 @@ cd tests && atkins test
 
 Every step is `curl` under an `exec` step, sharing one cookie jar, because the
 suite signs in: venom's http executor follows redirects and cannot publish a
-captured cookie to a later step, so there is nowhere to keep a session id. The
+captured cookie to a later step, and the suite has nowhere to keep a session id. The
 jar is a file, which is all the state the suite needs.
 
 It runs against a locally started server too, with the reload command named for

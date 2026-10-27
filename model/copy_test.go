@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestCopyValue covers PHP's assignment semantics. An array is a value, so a
+// TestCopyValue covers PHP's assignment semantics. An array is a value and a
 // copy is independent of its source, and the copy reaches nested arrays because
 // they are values too: a `$copy["a"]["b"] = 1` never shows through the
 // original.
@@ -65,7 +65,7 @@ func TestCopyValue(t *testing.T) {
 
 // TestCopyArray covers the shape the copy comes out in: the same keys in the
 // same order, because insertion order is part of a PHP array's value. A nil
-// array answers nil, so a caller holding one needs no guard of its own.
+// array answers nil and a caller holding one needs no guard of its own.
 func TestCopyArray(t *testing.T) {
 	t.Parallel()
 	if got := CopyArray(nil); got != nil {
@@ -101,8 +101,8 @@ func TestCopyArray(t *testing.T) {
 // chain root at the variable they start from, because the storage they reach
 // lives inside the value that variable holds. Parentheses are transparent.
 //
-// A bare identifier carrying Const is a constant and no variable, so it roots
-// at nothing: a constant is not assignable, and treating `PHP_EOL` as the name
+// A bare identifier carrying Const is a constant and no variable and it roots
+// at no variable: a constant is not assignable, and treating `PHP_EOL` as the name
 // "PHP_EOL" would match a loop variable spelled the same.
 func TestRootName(t *testing.T) {
 	t.Parallel()
@@ -133,14 +133,14 @@ func TestRootName(t *testing.T) {
 }
 
 // TestAssignsTo covers the question a by-value foreach compiles against: would
-// the body notice the copy. phpscript's arrays are pointers, so a by-value
+// the body notice the copy. phpscript's arrays are pointers and a by-value
 // loop copies up front, and copying every element of every loop would be a
 // large price for a semantic almost no loop uses.
 //
 // The test is on the root name and no exact shape. A write to `$v["k"]` counts,
 // because the element it reaches lives inside the value the loop variable
 // holds. Over-reporting costs a copy nothing observes; under-reporting would
-// let a by-value loop edit its source, so the undecidable cases answer true: a
+// let a by-value loop edit its source and the undecidable cases answer true: a
 // target with no name to root on, and an include, which shares this scope and
 // is not visible from here.
 func TestAssignsTo(t *testing.T) {

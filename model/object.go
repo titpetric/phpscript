@@ -8,7 +8,7 @@ import (
 // Because methods live on the Class (resolved by the runtime), an Object passed
 // into expr-lang exposes its Props for `$obj->field` style access.
 //
-// Props is a Go map and has no order of its own, so order records the sequence
+// Props is a Go map and has no order of its own and order records the sequence
 // the properties arrive in. Every reader passes through Names or Range and
 // than ranging the map, because PHP reads properties back in a defined order
 // and a script can see it: json_encode, print_r, var_dump, get_object_vars, the
@@ -79,7 +79,7 @@ func (o *Object) Len() int {
 // added, in the order it added them.
 //
 // A property written straight into Props, bypassing SetProp, is still reported;
-// it sorts after the recorded ones and never disappears, so a missed call
+// it sorts after the recorded ones and never disappears and a missed call
 // site degrades to the order this type had before it recorded one.
 func (o *Object) Names() []string {
 	out := make([]string, 0, len(o.Props))
@@ -105,7 +105,7 @@ func (o *Object) Names() []string {
 	return out
 }
 
-// appendUnrecorded adds the properties Names did not reach, sorted, so Names
+// appendUnrecorded adds the properties Names did not reach, sorted and Names
 // reports a direct Props write in a stable order and never a random one.
 func (o *Object) appendUnrecorded(out []string) []string {
 	have := make(map[string]bool, len(out))

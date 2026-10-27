@@ -9,7 +9,7 @@ import (
 )
 
 // concatHelpers is the helper table a string concatenation reads. It fills
-// nothing else, so a chain that reaches another helper panics on a nil func
+// no other table and a chain that reaches another helper panics on a nil func
 // and the test names it.
 func concatHelpers() *Helpers {
 	return &Helpers{
@@ -20,7 +20,7 @@ func concatHelpers() *Helpers {
 // TestProgram covers the two halves one compiled expression holds: the
 // closure chain Run calls, and the slot table the runner resolves its
 // variable list against. An expression reading no variable compiles to an
-// empty table, so evaluating it reads no Vars slice.
+// empty table and evaluating it reads no Vars slice.
 func TestProgram(t *testing.T) {
 	t.Parallel()
 	compiled, err := CompileExpr(&model.Lit{Value: int64(7)}, concatHelpers())
@@ -45,7 +45,7 @@ func TestProgram(t *testing.T) {
 
 // TestRun covers evaluation against the runner's environment, and the single
 // recover the chain carries. The guard sits at the root and not at each
-// helper call, so a panic anywhere down the chain surfaces as the error
+// helper call and a panic anywhere down the chain surfaces as the error
 // PanicError built, and a host panic stays catchable as one PHP exception on
 // both engines.
 func TestRun(t *testing.T) {
@@ -95,8 +95,8 @@ func TestRun(t *testing.T) {
 
 // TestProgram_Slots covers the identifier spelling the table keys on.
 // The compiler reuses the transpiler's prefixes, `v_` for a PHP variable and
-// `c_` for a bare name, so `$FOO` and `FOO` take separate slots. One
-// identifier read twice shares the slot it got the first time, so the runner
+// `c_` for a bare name and `$FOO` and `FOO` take separate slots. One
+// identifier read twice shares the slot it got the first time and the runner
 // resolves a name once per expression.
 func TestProgram_Slots(t *testing.T) {
 	t.Parallel()
@@ -128,7 +128,7 @@ func TestProgram_Slots(t *testing.T) {
 }
 
 // TestProgram_NumSlots covers the size Run reads the Vars slice at: one entry
-// per distinct identifier, so every slot read lands inside the slice. It
+// per distinct identifier and every slot read lands inside the slice. It
 // matches the length of Vars, which is the list the runner fills.
 func TestProgram_NumSlots(t *testing.T) {
 	t.Parallel()

@@ -2,7 +2,7 @@
 
 `SharedMemory` is a thread-safe, process-local key/value store with atomic counters. A host can use it for small amounts of state that scripts or HTTP requests in the same Go process need in common.
 
-The class is part of the phpscript standard library, so a script constructs it without an include:
+The class is part of the phpscript standard library and a script constructs it without an include:
 
 ```php
 <?php
@@ -45,17 +45,17 @@ The available methods are:
 
 | Method            | Returns                                            |
 |-------------------|----------------------------------------------------|
-| `set($key, $val)` | nothing                                            |
+| `set($key, $val)` | no value                                           |
 | `get($key)`       | The stored string, or an empty string              |
 | `incr($key)`      | The counter's new value, as an int                 |
 | `count($key)`     | The counter's current value, as a string           |
 | `delete($key)`    | Whether a value or a counter existed under the key |
 | `has($key)`       | Whether a value or a counter exists under the key  |
-| `clear()`         | nothing                                            |
+| `clear()`         | no value                                           |
 
 ## Sharing state between runtimes
 
-Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included, so a script running under any of them gets a store per `new` and reads back only what it wrote itself. To keep state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
+Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included and a script running under any of them gets a store per `new` and reads back only what it wrote itself. To keep state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
 
 ```go
 shm := core.NewSharedMemory()
@@ -73,7 +73,7 @@ $shm->incr("requests");
 echo $shm->count("requests");
 ```
 
-The Go store synchronizes concurrent access, so many request runtimes can safely share one instance. Despite its name, this is not operating-system shared memory: its contents are not shared between processes, and the host process drops them when it exits. Use a database or external cache when state must be durable or shared by more than one application process.
+The Go store synchronizes concurrent access and many request runtimes can safely share one instance. Despite its name, this is not operating-system shared memory: its contents are not shared between processes, and the host process drops them when it exits. Use a database or external cache when state must be durable or shared by more than one application process.
 
 ## References
 

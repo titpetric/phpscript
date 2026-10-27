@@ -10,7 +10,7 @@ import (
 )
 
 // TestRegister covers the one name this package installs. A runtime nobody
-// registered against answers for no binding, so a host that built its own
+// registered against answers for no binding and a host that built its own
 // Runtime without stdlib has to call Register for start_span to resolve.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -26,7 +26,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterWithoutTrace covers a CLI run, where nothing opened a trace: the
-// span start_span returns carries no recording and its methods do nothing, so
+// span start_span returns carries no recording and its methods do nothing and
 // a script instrumenting itself runs unchanged with telemetry switched off.
 func TestRegisterWithoutTrace(t *testing.T) {
 	t.Parallel()

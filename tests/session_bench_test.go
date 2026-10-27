@@ -15,7 +15,7 @@ import (
 
 // benchHash is one bcrypt line at cost 4, the cheapest the format allows.
 // The parse checks the format of a stored hash and derives nothing from it,
-// so one hash repeated per row prices the read the way distinct rows would.
+// and one hash repeated per row prices the read the way distinct rows would.
 const benchHash = "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"
 
 // BenchmarkSessionManagerDefault measures `new Session\Manager` with no

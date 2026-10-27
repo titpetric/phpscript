@@ -10,12 +10,12 @@ import (
 )
 
 // TestInitContributesEveryInstaller covers the wiring init.go does. init()
-// contributes each of the four installers through runner.RegisterBinding, so
+// contributes each of the four installers through runner.RegisterBinding and
 // importing this package is what puts password hashing, the CSPRNG, the
 // message digests and the id generators into a binary, and stdlib.Register is
 // what puts them on a runtime. An installer left out of init() leaves its
-// names undefined with nothing else failing, so this test spells one name per
-// installer. This test binary imports only this package, so the contributed
+// names undefined while every other name still resolves, and this test spells
+// one name per installer. This test binary imports only this package and the contributed
 // set is this package's alone.
 func TestInitContributesEveryInstaller(t *testing.T) {
 	t.Parallel()
@@ -42,7 +42,7 @@ func TestInitContributesEveryInstaller(t *testing.T) {
 }
 
 // TestRegisterIdentifiers covers the two generators PHP has no name for. Both
-// render one layout, a 48-bit millisecond timestamp followed by randomness, so
+// render one layout, a 48-bit millisecond timestamp followed by randomness and
 // ids minted in order sort in order as text. The widths are the formats: 26
 // Crockford base32 characters for a ULID, and 36 characters in the 8-4-4-4-12
 // form for a UUIDv7, with the version and variant bits set.
@@ -92,7 +92,7 @@ func TestRegisterIdentifiers(t *testing.T) {
 		t.Errorf("uuid() = %q, want the RFC 4122 variant bits in the fourth group", uuid)
 	}
 
-	// The timestamp is in the leading bits, so a later id sorts after an
+	// The timestamp is in the leading bits and a later id sorts after an
 	// earlier one as text. A millisecond apart is enough to separate them.
 	time.Sleep(2 * time.Millisecond)
 	later, err := rt.InvokeNamed("ulid")

@@ -26,7 +26,7 @@ func TestBuffersNest(t *testing.T) {
 		t.Fatalf("level() = %d, want 2", got)
 	}
 
-	// The inner level flushes into the outer one, so the real writer is
+	// The inner level flushes into the outer one and the real writer is
 	// still empty and the outer buffer now holds both halves.
 	if contents, ok := b.pop(true); !ok || contents != "inner" {
 		t.Fatalf("pop(flush) = %q, %t", contents, ok)
@@ -50,8 +50,8 @@ func TestBuffersNest(t *testing.T) {
 }
 
 // TestBuffersDiscardOnClean covers ob_end_clean: the level closes and pop drops
-// its text, so a template that rendered something a page did not want leaves
-// nothing behind in the output below it.
+// its text and a template that rendered something a page did not want leaves
+// no text in the output below it.
 func TestBuffersDiscardOnClean(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -72,7 +72,7 @@ func TestBuffersDiscardOnClean(t *testing.T) {
 }
 
 // TestBuffersReportAbsence covers the result PHP distinguishes with ===: with
-// no level open, contents and pop report false and never an empty string, so a
+// no level open, contents and pop report false and never an empty string and a
 // script can tell an empty buffer from no buffer at all.
 func TestBuffersReportAbsence(t *testing.T) {
 	t.Parallel()

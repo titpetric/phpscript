@@ -8,7 +8,7 @@ import (
 
 // lifecycleTracker is the part of the telemetry observer that records work
 // arriving from somewhere other than a request. Start matches it structurally,
-// the way annotations matches it, so a host with telemetry off passes no
+// the way annotations matches it and a host with telemetry off passes no
 // observer and nothing here has to know.
 type lifecycleTracker interface {
 	TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error
@@ -33,7 +33,7 @@ type nonFatalModule struct {
 }
 
 // Start runs the wrapped module and records a failure on a trace of its own.
-// There is no request to record onto, so the error reaches the debug front end
+// There is no request to record onto and the error reaches the debug front end
 // as lifecycle work, where an operator looks for it.
 func (m *nonFatalModule) Start(ctx context.Context) error {
 	run := func(ctx context.Context) error {

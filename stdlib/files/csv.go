@@ -13,7 +13,7 @@ import (
 // registerCSV installs the CSV pair over encoding/csv, which is RFC 4180 by
 // construction. That is a divergence by decision: PHP's $escape mechanism is
 // its own invention, and PHP 8.4 deprecates relying on it precisely because it
-// produces non-standard CSV, so these functions take $escape and ignore it,
+// produces non-standard CSV and these functions take $escape and ignore it,
 // and the output here is what PHP emits when a script passes $escape = "".
 // The enclosure cannot vary for the same reason encoding/csv gets the quoting
 // right: it stays at '"', and csvControls refuses another, never misquoting
@@ -68,7 +68,7 @@ func registerCSV(rt *runner.Runtime) {
 		record, err := r.Read()
 		if err != nil {
 			// End of file, or a record too malformed to parse: both are
-			// false, so PHP's read loop terminates.
+			// false and PHP's read loop terminates.
 			return false, nil
 		}
 

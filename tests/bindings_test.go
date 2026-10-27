@@ -192,7 +192,7 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "[]",
 		},
 
-		// A callback is an argument shape and no return shape, so its table
+		// A callback is an argument shape and no return shape and its table
 		// lives in TestBindingTakesEveryCallableSpelling below: every spelling
 		// against both declared shapes, with the errors beside it.
 
@@ -391,7 +391,7 @@ func TestBindingStdlibInteropAcrossShapes(t *testing.T) {
 
 // TestBindingSliceCannotGrow documents the one operation a native slice cannot
 // carry: `$a[] =` append. A slice cannot grow through the interface value
-// holding it, so a binding whose result the script appends to must return a
+// holding it and a binding whose result the script appends to must return a
 // *model.Array. Writing an existing element is fine (see below).
 func TestBindingSliceCannotGrow(t *testing.T) {
 	prog, err := parser.Parse(`<?php $l = bind_list_strings(); $l[] = "zeta";`)
@@ -461,7 +461,7 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 }
 
 // TestBindingKeyedMapReads covers reading a map whose key is not a string.
-// The index arrives as an int64 and the map takes an int key, so the host
+// The index arrives as an int64 and the map takes an int key and the host
 // panics without the coercion.
 func TestBindingKeyedMapReads(t *testing.T) {
 	cases := []struct {
@@ -504,7 +504,7 @@ func TestBindingKeyedMapReads(t *testing.T) {
 // returns.
 //
 // Whether php's numbering survives is a property of the shape and not of
-// unset: a map holds the hole php leaves, and a dense slice cannot, so a
+// unset: a map holds the hole php leaves, and a dense slice cannot and a
 // slice renumbers the way array_values() does. A list a binding keyed by
 // position is a map, and keeps the hole.
 func TestBindingCollectionsUnset(t *testing.T) {
@@ -629,7 +629,7 @@ type masher struct{ out string }
 func (m *masher) Out() string { return m.out }
 
 // TestBindingConstructorTakesACallable covers the third place a callback arrives:
-// a registered constructor. Functions and constructors share reflectInvoker, so
+// a registered constructor. Functions and constructors share reflectInvoker, and
 // one argument bridge answers for both, and a class built out of a callback is
 // the shape a host wiring a strategy object uses.
 func TestBindingConstructorTakesACallable(t *testing.T) {
@@ -692,7 +692,7 @@ func TestBindingCallbackResults(t *testing.T) {
 // does not fit the declared signature.
 //
 // A declared signature with no error slot leaves a callback nowhere to report
-// one, so the error crosses the intervening Go frames as a panic. The host
+// one and the error crosses the intervening Go frames as a panic. The host
 // boundary unwraps it into the throwable the script threw: a `catch` written
 // around the call takes it, and catches no host panic naming a Go type.
 func TestBindingCallbackErrors(t *testing.T) {
@@ -762,7 +762,7 @@ func TestBindingCallbackErrors(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // The construction benchmarks measure the value itself, with no VM involved:
-// this is the cost a binding pays for choosing a return shape.
+// the figure is the cost a binding pays for choosing a return shape.
 
 func BenchmarkConstructModelArray(b *testing.B) {
 	words := []string{"alpha", "beta", "gamma", "delta", "epsilon"}
@@ -839,7 +839,7 @@ func BenchmarkConstructRowsMaps(b *testing.B) {
 
 // TestBindingRecord covers the plain Go struct a binding hands to PHP as an
 // object. Property access resolves through runner.helperGet, which reads the
-// exported fields by reflection and matches a name without regard to case, so
+// exported fields by reflection and matches a name without regard to case, and
 // a script spells a field the way PHP spells one and the Go declaration keeps
 // Go's capitals.
 func TestBindingRecord(t *testing.T) {
@@ -858,7 +858,7 @@ echo $r->name, ":", $r->Name, ":", $r->id;
 }
 
 // TestBindingRecord_Label covers method dispatch on a forwarded Go value. The
-// receiver is a value and no pointer, so a method set declared without one is
+// receiver is a value and no pointer and a method set declared without one is
 // still reachable from `$r->label()`.
 func TestBindingRecord_Label(t *testing.T) {
 	if got := (tests.BindingRecord{Name: "alpha"}).Label(); got != "alpha" {
@@ -874,7 +874,7 @@ echo bind_record()->label(), ":", bind_record_value()->label();
 }
 
 // TestBindingFuncs covers the definitions the VM tests and the raw-call
-// benchmarks share. One set of registrations answers both, so a binding
+// benchmarks share. One set of registrations answers both and a binding
 // measured by a benchmark is the same function a fixture ran.
 func TestBindingFuncs(t *testing.T) {
 	funcs := tests.BindingFuncs()
@@ -1041,7 +1041,7 @@ func BenchmarkScriptPregMatch(b *testing.B) {
 }
 
 // ---------------------------------------------------------------------------
-// what the function table costs: nothing
+// what the function table costs
 // ---------------------------------------------------------------------------
 
 // These two run the same script against runtimes with different function-table

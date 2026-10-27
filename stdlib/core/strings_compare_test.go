@@ -10,7 +10,7 @@ import (
 //
 // The number is the difference between the first two bytes that disagree, with
 // no normalisation to -1/0/1, because a fixture recorded from php pins it:
-// strcmp("A", "a") is -32 there. Bytes compare unsigned, so "\xff" sorts after
+// strcmp("A", "a") is -32 there. Bytes compare unsigned and "\xff" sorts after
 // "\x01" by 254. A tie broken by length normalises, php reading strcmp("a", "")
 // as 1 whatever the tail holds.
 func TestCompareBytes(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCompareBytes(t *testing.T) {
 
 // TestClampLength covers reading strncmp's $length. PHP 8 raises a ValueError
 // below zero; these bindings clamp to zero, where php returns 0 for the call
-// anyway. A length wider than any string this process holds bounds nothing, so
+// anyway. A length wider than any string this process holds bounds nothing and
 // it saturates at the largest int.
 func TestClampLength(t *testing.T) {
 	t.Parallel()
@@ -65,8 +65,8 @@ func TestClampLength(t *testing.T) {
 	}
 }
 
-// TestLowerASCII covers the fold the case-insensitive comparisons use: A-Z and
-// nothing else. These functions walk bytes and decode no rune, so a byte above
+// TestLowerASCII covers the fold the case-insensitive comparisons use: A-Z
+// alone. These functions walk bytes and decode no rune and a byte above
 // 127 passes through unchanged.
 func TestLowerASCII(t *testing.T) {
 	t.Parallel()

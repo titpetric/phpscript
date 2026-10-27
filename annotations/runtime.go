@@ -18,7 +18,7 @@ type RuntimeFunc func(*runner.Runtime)
 // from its handler instead; see handler.buildRuntime.
 //
 // The register hooks run once the standard library sits on the runtime, before the
-// caller's RuntimeFunc options, so an option can always wrap what came before
+// caller's RuntimeFunc options and an option can always wrap what came before
 // it, a runtime context value in particular.
 func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi string, register ...RuntimeFunc) *runner.Runtime {
 	options := c.runnerOptions

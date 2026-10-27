@@ -29,8 +29,8 @@ import (
 
 // Fork returns a runtime that can run the same symbols as this one, writing to
 // w, and shares its parse and bytecode caches. It carries no part of an
-// execution, so it runs safely on a goroutine of its own, and it installs the
-// whole standard library, so a Pool forks per worker and not per request. The
+// execution and it runs safely on a goroutine of its own, and it installs the
+// whole standard library and a Pool forks per worker and not per request. The
 // file comment above is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)
@@ -90,16 +90,16 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// The autoloaders, which are the one piece of script state a fork does
 	// carry. They are how a name becomes a declaration, and a fork exists to run
 	// the same symbols: without them a class the parent had not needed yet is
-	// unresolvable on the child, so a handler that is the first to name one
+	// unresolvable on the child and a handler that is the first to name one
 	// answers 500 where the same line at script level works. Parent and child
 	// share what they capture - composer's ClassLoader is an object - and read
 	// it the way a handler reads `$this`, and the call itself runs on the child,
 	// because Runtime.autoload resolves the callable against the runtime doing
-	// the autoloading. The child records the file each one includes, so every
+	// the autoloading. The child records the file each one includes and every
 	// worker includes it once.
 	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
 
-	// The declarations the tree contributed, replayed and never copied, so
+	// The declarations the tree contributed, replayed and never copied and
 	// the fork's own tables record where each one came from.
 	for program, filename := range rt.hoisted {
 		_ = child.hoistOnce(program, filename)
@@ -109,7 +109,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	}
 
 	// A fork is where a host function that captured the parent would be wrong,
-	// so userFns is rebuilt by the hoist above and never copied.
+	// and userFns is rebuilt by the hoist above and never copied.
 	return child
 }
 
@@ -145,11 +145,11 @@ func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding
-// its arguments and nothing else.
+// its arguments alone.
 //
 // InvokeClosure is the re-entry a host callback needs. The declaration is AST,
-// so it runs on whichever runtime the caller has; what it does not get is the
-// closure's defining scope, so Captures has to be false for the result to mean
+// and it runs on whichever runtime the caller has; what it does not get is the
+// closure's defining scope and Captures has to be false for the result to mean
 // anything. A fresh statics bag per call is the other half of that: two
 // goroutines running the same declaration are two calls, and neither
 // accumulates into the other.

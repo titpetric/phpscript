@@ -105,7 +105,7 @@ func TestMoveUploadedFileMode(t *testing.T) {
 }
 
 // TestMoveUploadedFileUnwritable covers a move that cannot finish. PHP reports
-// it as a false return and nothing else, and the upload has to survive it: the
+// it as a false return alone, and the upload has to survive it: the
 // request still lists it, and the handler still has to be able to remove it.
 func TestMoveUploadedFileUnwritable(t *testing.T) {
 	t.Parallel()
@@ -125,7 +125,7 @@ if (move_uploaded_file($_FILES["avatar"]["tmp_name"], "photo.png")) { echo "move
 	if out != "failed" {
 		t.Fatalf("got %q, want %q", out, "failed")
 	}
-	// A move that cannot finish leaves the upload in place, so the
+	// A move that cannot finish leaves the upload in place and the
 	// request can still report it and Cleanup can still remove it.
 	if _, err := os.Stat(tmpName); err != nil {
 		t.Fatalf("tmp_name after a failed move: %v", err)

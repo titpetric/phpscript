@@ -38,7 +38,7 @@ func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 
 // TestRegister covers the surface the installer puts within reach: the Mail
 // class and the mail function, each under the name a script types. The
-// installer adds both with or without a configured server, so calling code
+// installer adds both with or without a configured server and calling code
 // keeps one spelling and its own fallback.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -54,7 +54,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestMail_Send covers the deliveries a held client makes. The object carries
-// a server name and nothing else, so each send resolves the credential afresh
+// a server name alone and each send resolves the credential afresh
 // inside the provider; one handle sends any number of messages, and every one
 // of them records the server the handle named.
 func TestMail_Send(t *testing.T) {
@@ -172,7 +172,7 @@ func TestMail_SendHTML(t *testing.T) {
 
 // TestMail_SendReplyToInjection pins the refusal of a Reply-To that is not one
 // address. A header smuggled in behind a line break leaves a malformed address
-// once header strips the break, so the call throws and nothing reaches the
+// once header strips the break and the call throws and nothing reaches the
 // provider; send refuses a list too, because the argument names one address.
 func TestMail_SendReplyToInjection(t *testing.T) {
 	t.Parallel()
@@ -210,7 +210,7 @@ func TestMail_SendReplyToInjection(t *testing.T) {
 type plainProvider struct{ model.MailProvider }
 
 // TestMail_SendThroughAPlainProvider covers a provider that declares the
-// interface and nothing more. Its Send still delivers plain text; the binding
+// interface alone. Its Send still delivers plain text; the binding
 // refuses a message with an HTML part or a Reply-To, because delivering the
 // text alone would send a different message than the script wrote.
 func TestMail_SendThroughAPlainProvider(t *testing.T) {
@@ -268,7 +268,7 @@ func TestMailUnknownServer(t *testing.T) {
 }
 
 // TestMailTakesAName pins the absence of an options-array constructor. One
-// would be the single way to put a password into the runtime scope, so its
+// would be the single way to put a password into the runtime scope and its
 // absence is a stated behaviour and no omission.
 func TestMailTakesAName(t *testing.T) {
 	t.Parallel()
@@ -286,7 +286,7 @@ func TestMailTakesAName(t *testing.T) {
 }
 
 // TestMailUnconfigured covers the default provider: mail() and `new Mail`
-// exist on every runtime and refuse catchably, so calling code keeps one
+// exist on every runtime and refuse catchably and calling code keeps one
 // spelling and its own fallback.
 func TestMailUnconfigured(t *testing.T) {
 	t.Parallel()

@@ -22,9 +22,9 @@ func TestConfig_Validate(t *testing.T) {
 	})
 
 	t.Run("an empty root is the working directory", func(t *testing.T) {
-		// Check falls back to ".", so a server started with no root
+		// Check falls back to "." and a server started with no root
 		// validates the tree it runs in. This package directory holds
-		// no public, so the document root check is what reports it, against a
+		// no public and the document root check is what reports it, against a
 		// path relative to the working directory.
 		err := config.New().Check("config.yml", "")
 		if err == nil {
@@ -95,7 +95,7 @@ func TestConfig_Validate(t *testing.T) {
 // TestConfig_ValidateRoot covers the single application root the same way the
 // cases above cover an entry of the virtual host list. Config.Check falls
 // through to it when the configuration lists no sites. fs.Sub does not stat,
-// so a document root that is not there otherwise answers 404 on the first
+// and a document root that is not there otherwise answers 404 on the first
 // request.
 func TestConfig_ValidateRoot(t *testing.T) {
 	t.Parallel()
@@ -143,7 +143,7 @@ func TestConfig_ValidateRoot(t *testing.T) {
 }
 
 // TestErrRootWithVirtualHosts covers the wording the refusal carries. The
-// virtual host entries name their own roots, so a root typed on the command
+// virtual host entries name their own roots and a root typed on the command
 // line has no entry to belong to, and the message quotes it back.
 func TestErrRootWithVirtualHosts(t *testing.T) {
 	t.Parallel()

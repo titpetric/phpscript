@@ -40,7 +40,7 @@ type Suite struct {
 	// Config is the file read over the configuration the run started with.
 	Config config.Config
 
-	// Declared holds the keys the file itself named, so a caller can tell a
+	// Declared holds the keys the file itself named and a caller can tell a
 	// setting the suite named from one it inherited.
 	Declared map[string]any
 
@@ -93,7 +93,7 @@ func loadSuite(root fs.FS, dir, filename string, base config.Config, forbidden b
 // A suite that declared no env of its own resolves what the run does, which is
 // the process environment: a folder that named no connections gets no set of
 // a set of its own. A suite that declared one gets only what it named, the rule
-// a virtual host is already held to, so a fixture cannot reach a database its
+// a virtual host is already held to and a fixture cannot reach a database its
 // folder did not configure.
 func (s *Suite) Provider() model.DatabaseProvider {
 	if s == nil {
@@ -153,7 +153,7 @@ func (s *Suite) Teardown() string {
 // this suite root carries: the standard library rooted at the suite, the host
 // bindings the fixtures use, and the suite's own connections.
 //
-// The suite root is the runtime's filesystem, so a hook names its migrations
+// The suite root is the runtime's filesystem and a hook names its migrations
 // the way an application does, relative to itself. Output goes to out, which a
 // caller not reporting the hook may discard.
 func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
@@ -178,7 +178,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	rt.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(rt)
 	// Register installs the shims rooted at the process working directory;
-	// RegisterFS rebinds them to the suite, so it has to run after it.
+	// RegisterFS rebinds them to the suite and it has to run after it.
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, s.Dir)
 	rt.FreezeStdlib()
@@ -200,7 +200,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 
 // RunSetup runs the setup hooks of every suite, outermost first, and stops at
 // the first failure. A suite nothing lays state down for has nothing for its
-// fixtures to assert against, so the run fails before one executes and not
+// fixtures to assert against and the run fails before one executes and not
 // reporting the same missing table once per fixture.
 func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 	for _, suite := range suites {

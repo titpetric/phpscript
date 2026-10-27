@@ -47,12 +47,12 @@ func main() {
 }
 
 func start() error {
-	// -f and -w decide what every command takes, so this reads both before it
+	// -f and -w decide what every command takes and this reads both before it
 	// builds one: -w moves the process, and the read of the configuration file
 	// starts from where it lands.
 	//
 	// What follows the script is the script's own, and this sets it aside
-	// first, so neither -f nor a flag of run comes out of it.
+	// first and neither -f nor a flag of run comes out of it.
 	head, scriptArgs := flags.Split(os.Args[1:], isCommand)
 	globals, args, err := flags.Pre(head)
 	if err != nil {
@@ -134,8 +134,8 @@ func testConfig(globals *flags.Options, args []string) error {
 }
 
 // commands is every command this binary carries. Every constructor takes the
-// configuration and the global options, so the table names them, with no
-// closure per command closing over what it happens to need. A function, so a
+// configuration and the global options and the table names them, with no
+// closure per command closing over what it happens to need. A function and a
 // test can bind the same table the binary runs.
 func commands() []registration {
 	return []registration{
@@ -171,7 +171,7 @@ func isCommand(name string) bool {
 }
 
 // decorate binds the shared flags onto a command and wraps its Run with the
-// work they imply, so no command package repeats either. It also attaches the
+// work they imply and no command package repeats either. It also attaches the
 // command's examples, which `phpscript <command> --help` prints under
 // its usage line.
 func decorate(appConfig *config.Config, globals *flags.Options, command registration) func() *cli.Command {

@@ -52,7 +52,7 @@ func TestULIDFrom(t *testing.T) {
 }
 
 // TestULIDFromShape covers what a caller relies on without reading the
-// vectors: the width and the alphabet are a ulid()'s, so a derived key and a
+// vectors: the width and the alphabet are a ulid()'s and a derived key and a
 // generated one are the same kind of column, and one seed answers one id.
 func TestULIDFromShape(t *testing.T) {
 	t.Parallel()

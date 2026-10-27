@@ -31,7 +31,7 @@ import (
 //
 // The socket is outside the measurement: the writer discards, with no pass
 // through net/http's connection buffers. That cost is the same on the Go twin,
-// so it belongs to the sweep.
+// and it belongs to the sweep.
 
 // benchServerDriver stands in for run(): the limit the real script sets before
 // it listens, then the router passed to Go in place of HTTP\Server. The limit
@@ -53,7 +53,7 @@ var benchServerRoutes = []struct {
 	body   string
 	// want is a distinctive substring of the response, checked once before the
 	// timed loop. The check notices the bridge's server.php changing under it,
-	// so the benchmark never quietly measures a 404.
+	// and so the benchmark never quietly measures a 404.
 	want string
 }{
 	{name: "hello", method: http.MethodGet, target: "/hello?name=sprint", want: "hello sprint"},
@@ -158,7 +158,7 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 }
 
 // benchServerRequest builds one request and the function that puts it back the
-// way it arrived, so the loop reuses it and allocates none per iteration.
+// way it arrived and the loop reuses it and allocates none per iteration.
 //
 // The context is cancellable, where httptest's is a background one. A served
 // request's context can end, which arms the runtime's per-statement deadline
@@ -166,9 +166,9 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 // a context with no Done channel would price an interpreter that checks nothing.
 //
 // A body has to be rewound and the parsed form dropped: form_value() parses on
-// first call and net/http caches the result on the request, so a reused request
-// would answer the second iteration out of the first one's cache and price
-// nothing.
+// first call and net/http caches the result on the request and a reused request
+// would answer the second iteration out of the first one's cache, and the
+// figure would price the cache.
 func benchServerRequest(b *testing.B, method, target, body string) (*http.Request, func()) {
 	b.Helper()
 

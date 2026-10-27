@@ -10,7 +10,7 @@ import (
 )
 
 // fixtureGroup is the fixtures of one folder, in discovery order. Grouping is
-// what lets the runner print a table per area in place of one long table, so
+// what lets the runner print a table per area in place of one long table and
 // a reader takes a folder's fixtures as a set.
 type fixtureGroup struct {
 	Dir      string // folder holding the fixtures, "." when they sit in the run directory
@@ -68,7 +68,7 @@ func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(worker,
 }
 
 func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, parallel int, fn func(worker, i int, fx *tests.Fixture) T) {
-	// Buffered to the whole batch, so the sender queues the fixtures in one
+	// Buffered to the whole batch and the sender queues the fixtures in one
 	// go and the workers draw from it. An unbuffered channel makes the sender
 	// wait for a worker to take each one, which serialises the hand-off
 	// against the slowest fixture in flight.
@@ -77,7 +77,7 @@ func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, 
 	workers.Add(min(parallel, end-start))
 	for id := range min(parallel, end-start) {
 		// Each goroutine is one worker with a number, and the number is what
-		// --cache=worker scopes a cache to. Its loop is serial, so two
+		// --cache=worker scopes a cache to. Its loop is serial and two
 		// fixtures never touch a worker's cache at once.
 		go func(id int) {
 			defer workers.Done()

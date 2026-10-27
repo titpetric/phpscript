@@ -34,7 +34,7 @@ func TestNewDB(t *testing.T) {
 }
 
 // TestConnector covers the open function a provider takes. Open satisfies it,
-// so a host builds the default provider and an instrumented one the same way.
+// and a host builds the default provider and an instrumented one the same way.
 func TestConnector(t *testing.T) {
 	t.Parallel()
 	var connector Connector = Open

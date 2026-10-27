@@ -31,7 +31,7 @@ type Config struct {
 }
 
 // String renders the settings that identify a server and elides the two that
-// authenticate to it, so a %v in a log line leaks no password.
+// authenticate to it and a %v in a log line leaks no password.
 func (c Config) String() string {
 	auth := "no"
 	if c.Username != "" || c.Password != "" {
@@ -42,7 +42,7 @@ func (c Config) String() string {
 
 // Check reports whether the server is usable, naming it.
 //
-// Host and From are the operator's to get right, so the configuration check
+// Host and From are the operator's to get right and the configuration check
 // tests them at startup and fails the server there. Leaving it to the first
 // delivery means finding out from a @schedule job at three in the morning, on
 // the one code path nobody is watching.
@@ -66,7 +66,7 @@ func (c Config) address() string {
 
 // tlsConfig returns the STARTTLS settings for the configured host. Insecure
 // turns off verification entirely: the certificate is still used to encrypt the
-// session, but the dial verifies neither its chain nor its names, so the
+// session, but the dial verifies neither its chain nor its names and the
 // connection is open to a man in the middle.
 func (c Config) tlsConfig() *tls.Config {
 	return &tls.Config{

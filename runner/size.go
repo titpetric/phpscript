@@ -8,8 +8,8 @@ import (
 
 // Size is a byte count written the way a php.ini size is: a bare number of
 // bytes, or a number with an M suffix for megabytes. ParseSize refuses PHP's
-// K and G shorthands, so a configuration file says what it means in one of
-// two spellings and nothing else parses.
+// K and G shorthands and a configuration file says what it means in one of
+// two spellings and no other form parses.
 //
 // The zero value means no limit, as 0 does in php.ini.
 type Size int64

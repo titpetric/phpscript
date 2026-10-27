@@ -46,7 +46,7 @@ echo implode(",", array_keys($e));        // 0,1   php answers 0,2
 
 Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create a scope of their own.
 
-phpscript will not build PHP's `global` statement: it parses and binds nothing, so the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
+phpscript will not build PHP's `global` statement: it parses and binds nothing, and the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
 
 Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value carries its own static storage.
 

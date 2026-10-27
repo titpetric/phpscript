@@ -14,7 +14,7 @@ func init() {
 }
 
 // registerArraySets installs the array functions that build a new array from one
-// or two given ones. They read through model.RangeValues, so a script can pass
+// or two given ones. They read through model.RangeValues and a script can pass
 // either a PHP array or the native Go slice or map a binding returned, which is
 // what stdlib/core/arrays.go does for the functions it carries.
 func registerArraySets(rt *runner.Runtime) {
@@ -197,7 +197,7 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 //
 // The two are not each other's negation: intersect keeps a value present in
 // every other array, diff keeps it when NONE of them hold it. With one other
-// array those coincide, so the difference only shows once a call passes a
+// array those coincide and the difference only shows once a call passes a
 // third - array_diff($a, $b, $c) drops a value $b holds even though $c does
 // not.
 func wanted(count, others int, keep bool) bool {
@@ -208,7 +208,7 @@ func wanted(count, others int, keep bool) bool {
 }
 
 // filterByKey is array_diff_key and array_intersect_key. It normalises keys
-// through phpval.Key first, so the integer 1 and the string "1" are the one key
+// through phpval.Key first and the integer 1 and the string "1" are the one key
 // PHP treats them as.
 func filterByKey(array any, others []any, keep bool) *model.Array {
 	seen := make(map[any]int, len(others))

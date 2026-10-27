@@ -16,14 +16,14 @@ type Options struct {
 	// Database resolves the named connections the Database and
 	// Database\Migrate bindings open. Nil leaves the choice to the binding,
 	// which falls back to the process environment. A virtual host sets its
-	// own, so that the connections a site can name are only the ones it
+	// own and that the connections a site can name are only the ones it
 	// configured.
 	Database model.DatabaseProvider `yaml:"-"`
 
 	// Mail resolves the named mail servers the Mail binding and mail()
 	// send through. Nil leaves the choice to the binding, which falls back
-	// to a provider holding no servers, so mail() refuses catchably naming
-	// what is missing. A virtual host sets its own, so the servers a site can
+	// to a provider holding no servers and mail() refuses catchably naming
+	// what is missing. A virtual host sets its own and the servers a site can
 	// name are only the ones it configured.
 	Mail model.MailProvider `yaml:"-"`
 
@@ -45,8 +45,8 @@ type Options struct {
 	// block of its phpscript.yml.
 	//
 	// It runs once per request, before the entrypoint the request resolved to,
-	// so the entrypoint and everything it includes see what it declared. The
-	// runtime passes over a file that is not there and reports nothing: the
+	// and the entrypoint and everything it includes see what it declared. The
+	// runtime passes over a file that is not there and reports no error: the
 	// name says what to load when the application carries it, and one setting
 	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
@@ -54,10 +54,10 @@ type Options struct {
 	// Precompile moves parsing and bytecode compilation off the request and
 	// onto startup. A host walks its source tree through a Precompiler before
 	// it serves anything, and LoadFile reads an entrypoint back out of the
-	// include cache and never parses the file again, so every request after
+	// include cache and never parses the file again and every request after
 	// the first runs the AST the caches are already keyed by.
 	//
-	// Nothing invalidates a cache entry. A reload or a restart takes up an
+	// No call invalidates a cache entry. A reload or a restart takes up an
 	// edited file, and what the tree parsed to stays resident until then.
 	Precompile bool `yaml:"precompile"`
 
@@ -105,7 +105,7 @@ type Options struct {
 	// TimeLimit is how long one script may run before the runtime stops it, in
 	// seconds, PHP's max_execution_time. Zero is no limit.
 	//
-	// NOT ENFORCED YET. The decoder takes the key and carries it, so a
+	// NOT ENFORCED YET. The decoder takes the key and carries it and a
 	// configuration written today keeps working when enforcement lands and
 	// never fails to parse along the way.
 	TimeLimit int `yaml:"time_limit"`
@@ -119,7 +119,7 @@ type Options struct {
 }
 
 // inputLimits renders the two input limits as the form decoder takes them.
-// Zero means PHP's default on both sides, so an unconfigured Options decodes
+// Zero means PHP's default on both sides and an unconfigured Options decodes
 // as PHP would.
 func (o Options) inputLimits() shared.Limits {
 	return shared.Limits{

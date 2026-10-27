@@ -16,13 +16,13 @@ import (
 // take the class of. A scalar, null and an array are an instance of nothing.
 //
 // An interface name matches against the list the class declared, including the
-// names those interfaces extend, so `$store instanceof Reader` is true when
+// names those interfaces extend and `$store instanceof Reader` is true when
 // Store implements an interface extending Reader. That list is names, and no
 // member arrives through it.
 //
-// Nothing follows `extends` on a class, because there is no inheritance to
+// No member follows `extends` on a class, because there is no inheritance to
 // follow: a class declaring `extends RuntimeException` is an instance of itself
-// and of nothing else. `instanceof Throwable` is false, Throwable being an
+// and of that class alone. `instanceof Throwable` is false, Throwable being an
 // interface no declaration in the program lists. See docs/design.md.
 func phpInstanceOf(value, class any) bool {
 	want := instanceOfName(class)
@@ -32,7 +32,7 @@ func phpInstanceOf(value, class any) bool {
 	if have := instanceOfClass(value); have != "" && strings.EqualFold(want, have) {
 		return true
 	}
-	// An interface name is not a class name, so the match runs against the
+	// An interface name is not a class name and the match runs against the
 	// list the declaration recorded. That list is names, not members: a class
 	// implementing an interface still declares everything it has.
 	if obj, ok := value.(*model.Object); ok && obj.Class != nil {
@@ -58,7 +58,7 @@ func instanceOfName(class any) string {
 }
 
 // instanceOfClass returns the class name of a value, or "" when the value is
-// not an object. A scalar is never an instance of anything, so
+// not an object. A scalar is never an instance of anything and
 // `1 instanceof Foo` is false and raises nothing.
 func instanceOfClass(value any) string {
 	switch v := value.(type) {

@@ -30,7 +30,7 @@ type Record struct {
 // memStorage is an in-memory Storage implementation.
 //
 // The map is bare: `new Storage` builds one per call, a runtime serves one
-// goroutine, and no two of them share anything here, so there is no lock and
+// goroutine, and no two of them share anything here and there is no lock and
 // none of these methods is safe to call concurrently. core.SharedMemory is
 // the binding for state two runtimes reach; see docs/testing.md.
 type memStorage struct {
@@ -51,7 +51,7 @@ func (s *memStorage) Get(_ context.Context, key string) (Record, error) {
 	return Record{Key: key, Value: v}, nil
 }
 
-// All returns a list of rich types ([]Record), key-sorted for determinism, so
+// All returns a list of rich types ([]Record), key-sorted for determinism, and
 // PHP can foreach over a Go slice and read struct fields on each element.
 func (s *memStorage) All(_ context.Context) ([]Record, error) {
 	keys := s.sortedKeys()
@@ -72,7 +72,7 @@ func (s *memStorage) Tenant() string { return s.tenant }
 //
 // Keep is one of two because there are two declared shapes to cover and one
 // signature cannot be both. Neither is on the Storage interface: the constructor
-// returns the concrete value, so PHP reaches every exported method on it, which
+// returns the concrete value and PHP reaches every exported method on it, which
 // is the rule bindings.md states about registration not being an allowlist.
 func (s *memStorage) Keep(keep func(key, value string) bool) []Record {
 	out := make([]Record, 0, len(s.data))
@@ -113,7 +113,7 @@ type ctxKey string
 const tenantKey ctxKey = "tenant"
 
 // NewStorage is the constructor registered for `new Storage`. Its first
-// parameter is a context.Context, filled in automatically by the runner, so PHP
+// parameter is a context.Context, filled in automatically by the runner and PHP
 // calls `new Storage` with no arguments.
 func NewStorage(ctx context.Context) (Storage, error) {
 	if ctx == nil {

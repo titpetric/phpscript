@@ -24,15 +24,15 @@ type Array struct {
 // integer key, which PHP distinguishes from one whose next index is 0.
 //
 // PHP 8.3 changed the rule: the first integer key inserted sets the next index
-// to key+1 whatever its sign, and later keys only raise it, so [-5 => a] then
+// to key+1 whatever its sign, and later keys only raise it and [-5 => a] then
 // $a[] lands on -4 where PHP 7 landed on 0. An array that never held one
-// appends at 0. Those two states are both "nextID is not above any key", so
+// appends at 0. Those two states are both "nextID is not above any key" and
 // they need telling apart, and math.MinInt64 is below every key a Set can see:
 // the sentinel costs no field, and the `i >= a.nextID` comparison that raises
 // the index reads it correctly without a special case.
 //
 // List mode does not use it. There nextID is len(list) by construction, and an
-// array in list mode has held every integer key from 0 up, so promote carries
+// array in list mode has held every integer key from 0 up and promote carries
 // the sentinel in only when it promotes an empty list.
 const noIntKey = math.MinInt64
 
@@ -52,7 +52,7 @@ func NewArraySize(n int) *Array {
 	return &Array{list: make([]any, 0, n), nextID: noIntKey}
 }
 
-// Reset empties the array while keeping its storage, so a per-request
+// Reset empties the array while keeping its storage and a per-request
 // container (a superglobal, argv) refills into the buckets and slices the
 // previous request grew, and reallocates none of them. A reset map-mode array
 // stays in map mode with zero entries, which is observably the same as
@@ -75,7 +75,7 @@ func (a *Array) isList() bool { return a.values == nil }
 // promote switches the array from list mode to map mode, materialising the
 // implicit integer keys. No other code creates the map or the key slice.
 //
-// The empty case reuses the list's backing array as the key slice, so a
+// The empty case reuses the list's backing array as the key slice and a
 // presized array whose first key is a string (json_decode of an object, the
 // sorted introspection listings) still costs exactly the map. A non-empty list
 // gets a fresh key slice by decision: a script may promote an array from inside
@@ -105,7 +105,7 @@ func (a *Array) promote() {
 // Set assigns key=val, appending the key if new.
 func (a *Array) Set(key, val any) {
 	if a.isList() {
-		// In list mode nextID is always len(list), so an int64 key inside
+		// In list mode nextID is always len(list) and an int64 key inside
 		// [0, len] either overwrites an element or extends the list by one.
 		if i, ok := key.(int64); ok && i >= 0 && i <= int64(len(a.list)) {
 			if i == int64(len(a.list)) {
@@ -137,7 +137,7 @@ func (a *Array) Append(val any) {
 		return
 	}
 	if a.nextID == noIntKey {
-		// Nothing has set the index, so this is the first integer key and PHP
+		// The index holds no value yet and this is the first integer key and PHP
 		// answers 0.
 		a.Set(int64(0), val)
 		return
@@ -190,7 +190,7 @@ func (a *Array) Delete(key any) {
 //
 // It lives here and not in the shim because of the append index, which is
 // the one piece of state a caller cannot reach. PHP decrements it only when the
-// removed key is the one it would hand out next, so popping 9 from
+// removed key is the one it would hand out next and popping 9 from
 // [5 => a, 9 => c] leaves the next append at 9, while popping 5 from
 // [5 => a, 9 => c] leaves it at 10. Rebuilding the array from its entries
 // cannot express that, because it loses the counter.
@@ -203,7 +203,7 @@ func (a *Array) Pop() (any, any, bool) {
 	value, _ := a.Get(key)
 	a.Delete(key)
 	// The guard excludes the sentinel and never decrements it: an array holding
-	// an integer key has had the index set, so the two cannot both be true, and
+	// an integer key has had the index set and the two cannot both be true, and
 	// nextID-1 on the sentinel would wrap.
 	if i, ok := key.(int64); ok && a.nextID != noIntKey && i == a.nextID-1 {
 		a.nextID = i
@@ -319,7 +319,7 @@ func ToArray(v any) *Array {
 	if items, ok := v.([]any); ok {
 		out := NewArraySize(len(items))
 		out.list = append(out.list, items...)
-		// An empty slice held no integer key, so it keeps the sentinel
+		// An empty slice held no integer key and it keeps the sentinel
 		// NewArraySize set, and claims no next index of 0.
 		if len(items) > 0 {
 			out.nextID = int64(len(items))

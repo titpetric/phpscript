@@ -32,9 +32,9 @@ const shellMeta = "#&;`|*?~<>^()[]{}$\\\x0a\xff"
 
 // phpEscapeshellcmd escapes the shell metacharacters in a whole command line.
 //
-// It escapes a quote only where that quote has no partner, so a caller can
+// It escapes a quote only where that quote has no partner and a caller can
 // write escapeshellcmd("echo 'a b'") and keep the quoting they meant. That also
-// means the contents of a quoted argument stay live, so this is not the
+// means the contents of a quoted argument stay live and this is not the
 // function to pass user input through; escapeshellarg is.
 func phpEscapeshellcmd(command string) string {
 	var b strings.Builder

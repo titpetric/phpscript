@@ -1,7 +1,7 @@
 package phpval
 
 // AutoGlobals holds PHP's superglobals in fixed fields and no map
-// entries. The language closes the set, so the per-store "is this a
+// entries. The language closes the set and the per-store "is this a
 // superglobal" question - asked on every variable assignment in both
 // engines - reduces to one byte compare and a switch in place of a map
 // probe, and a request reset is eight field writes in place of a map clear.

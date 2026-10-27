@@ -11,9 +11,9 @@ import (
 
 // TestNewCommand covers the shape every phpscript command shares: the
 // constructor takes the configuration and the global options because one
-// signature covers all nine, and this command reads neither, so both
+// signature covers all nine, and this command reads neither and both
 // arguments are nil here and the command still builds. It declares no flags
-// of its own, so Bind stays nil and the shared flags are all it binds.
+// of its own and Bind stays nil and the shared flags are all it binds.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -76,7 +76,7 @@ func TestRun(t *testing.T) {
 }
 
 // captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run prints through the package-level fmt, so the file descriptor is the only
+// Run prints through the package-level fmt and the file descriptor is the only
 // place to read its output from.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()

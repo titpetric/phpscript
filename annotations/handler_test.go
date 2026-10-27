@@ -29,7 +29,7 @@ throw new Exception("connection refused", 0);
 
 // TestWithExprCache covers the compiled expressions a host shares across
 // requests. The endpoints fill the cache a host passed, and AST node identity
-// keys each entry, so a second request reuses them only where the
+// keys each entry and a second request reuses them only where the
 // program it ran is the one the include cache already held. A tree reparsed
 // per request keys every entry on fresh nodes and the cache grows.
 func TestWithExprCache(t *testing.T) {
@@ -74,7 +74,7 @@ func TestWithExprCache(t *testing.T) {
 // status is what the endpoint ended on, and the notes are what went wrong,
 // empty unless the endpoint failed: a 410 the script set is an answer the
 // script chose, and a thrown exception is a failure whose message the host may
-// render. The page reports whether it rendered, so a false answer leaves the
+// render. The page reports whether it rendered and a false answer leaves the
 // response to the endpoint.
 func TestErrorPageFunc(t *testing.T) {
 	t.Parallel()

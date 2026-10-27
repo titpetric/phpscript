@@ -52,15 +52,15 @@ The gap is the reset between requests and the superglobals decoded for each one.
 
 ## Where it differs from the bridge
 
-The endpoints answer the same bytes on every route, so the two columns compare. Two spellings differ because the host differs:
+The endpoints answer the same bytes on every route and the two columns compare. Two spellings differ because the host differs:
 
-- `header()` and `echo` in place of `$w->header()->set()` and `$w->write()`. The response is the one the server built for this request, so there is no writer to hold.
+- `header()` and `echo` in place of `$w->header()->set()` and `$w->write()`. The response is the one the server built for this request and there is no writer to hold.
 - `json_encode(...) . "\n"` in place of `(new JSON\Encoder($w))->encode(...)`. The encoder writes to a stream and takes the newline with it; `json_encode` returns a document and the handler appends the newline. The bytes are the same either way, phpscript's `json_encode` being the same encoder.
 
 ## Where a diagnostic goes
 
 `error_log()` records on the oida span and writes nowhere else. That is the contract and not a gap: oida is the sink, and the fallback to the process error stream belongs to a run with neither a trace nor an error handler, meaning a command line script. `/slow` calling `error_log` when it notices a client leaving puts the line on that request's trace.
 
-The sweep's `/slow` abort check greps the process log, so it skips this side and says so. Reading the trace instead would mean scraping `/debug/oida`, a tenant-scoped admin surface behind a login in a virtual-hosting deployment, and a load harness has no business reaching into one.
+The sweep's `/slow` abort check greps the process log and it skips this side and says so. Reading the trace instead would mean scraping `/debug/oida`, a tenant-scoped admin surface behind a login in a virtual-hosting deployment, and a load harness has no business reaching into one.
 
 The tests cover the mechanism where it belongs: `TestIgnoreUserAbortRunsOn` and `TestClientAbortEndsTheScript` in `tests/runner/deadline_test.go` hold the handler running past a disconnect and `connection_aborted()` reporting it, and `tests/fixtures/runtime/execution_limits.phpt` pins the types the three functions answer in.

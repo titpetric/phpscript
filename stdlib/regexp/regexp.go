@@ -4,7 +4,7 @@
 // walks the binding from here to its fixtures.
 //
 // The constructors return *regexp.Regexp itself and no facade. Every
-// exported method of that type is a regexp operation, so publishing the whole
+// exported method of that type is a regexp operation and publishing the whole
 // method set is the binding: $rx->find_string($s), $rx->split($s, -1),
 // $rx->replace_all_string($s, $repl). The runtime publishes the type as Regexp,
 // the class a script sees for the value and the name instanceof compares

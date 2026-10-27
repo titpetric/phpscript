@@ -11,7 +11,7 @@ import (
 )
 
 // benchmarkEngines runs one program through the interpreter and through flat
-// bytecode as engine= sub-benchmarks, so the two columns line up under
+// bytecode as engine= sub-benchmarks, and the two columns line up under
 // `benchstat -col /engine`. Supports gates the program: both engines must run
 // it natively or the comparison measures fallback by accident.
 func benchmarkEngines(b *testing.B, source string, register func(*runner.Runtime)) {
@@ -56,7 +56,7 @@ echo $sum;
 
 // BenchmarkEngineExprHeavy is the engine-comparison companion to the
 // end-to-end BenchmarkScriptExprHeavy in tests: a loop body that is almost
-// entirely expression evaluation, so the two engines' expression paths carry
+// entirely expression evaluation, and the two engines' expression paths carry
 // the whole number.
 func BenchmarkEngineExprHeavy(b *testing.B) {
 	benchmarkEngines(b, `<?php

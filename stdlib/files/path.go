@@ -13,8 +13,8 @@ import (
 // position inside it.
 //
 // The directory is per-runtime state, and a host builds one runtime per
-// request, so a script that moves it moves nothing another request can see.
-// Nothing calls os.Chdir: every request in flight shares the process working
+// request and a script that moves it moves state no other request can see.
+// No code calls os.Chdir: every request in flight shares the process working
 // directory with the host itself, and there is no point at which owning it
 // would be correct.
 func registerWorkDir(rt *runner.Runtime) {
@@ -30,7 +30,7 @@ func registerWorkDir(rt *runner.Runtime) {
 }
 
 // registerPaths installs the string-only path functions. They answer about the
-// shape of a path and never touch the filesystem, so they are not bound to the
+// shape of a path and never touch the filesystem and they are not bound to the
 // root and work the same on a path that does not exist.
 func registerPaths(rt *runner.Runtime) {
 	// dirname returns the parent directory of $path, walking up $levels parents when given.

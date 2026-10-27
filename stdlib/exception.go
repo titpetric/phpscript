@@ -7,7 +7,7 @@ import (
 // Exception holds an error code and error message.
 //
 // Every PHP throwable class is this one Go type. Class records the name the
-// script constructed, so get_class() can answer it and a catch clause can
+// script constructed and get_class() can answer it and a catch clause can
 // filter on it; no two of them stand in a subclass relation, because phpscript
 // has no inheritance. See docs/design.md.
 type Exception struct {
@@ -25,7 +25,7 @@ func (e *Exception) ThrowableClass() string {
 	return e.Class
 }
 
-// NewException returns an exception and a nil error, so `new Exception` does
+// NewException returns an exception and a nil error and `new Exception` does
 // not throw. The pointer is what keeps `$e->message = "..."` writable: a
 // struct boxed into the VM's interface is not addressable.
 func NewException(message string, code int) (*Exception, error) {
@@ -59,14 +59,14 @@ func (e *Exception) GetMessage() string {
 	return e.Message
 }
 
-// Error returns the message, so *Exception is a Go error.
+// Error returns the message and *Exception is a Go error.
 func (e *Exception) Error() string {
 	return e.Message
 }
 
 // splExceptions are the SPL and Error class names a PHP library throws. None of
-// them adds behaviour over Exception, so they all construct the same value with
-// a different Class, so `throw new \InvalidArgumentException(...)` runs
+// them adds behaviour over Exception and they all construct the same value with
+// a different Class and `throw new \InvalidArgumentException(...)` runs
 // where an undefined class would otherwise fail it.
 var splExceptions = []string{
 	"ErrorException",
@@ -94,7 +94,7 @@ var splExceptions = []string{
 
 func registerExceptions(rt *runner.Runtime) {
 	// Exception is PHP's base exception class; the SPL exception and Error
-	// classes are the same Go type carrying a different class name, so a
+	// classes are the same Go type carrying a different class name and a
 	// catch clause filters on the name and not on a subclass relation.
 	rt.RegisterConstructor("Exception", NewException)
 	for _, class := range splExceptions {

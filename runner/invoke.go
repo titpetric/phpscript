@@ -27,8 +27,8 @@ var durationType = reflect.TypeOf(time.Duration(0))
 
 // callbackPanic carries the error a PHP callback reported out of the Go frames
 // between it and the host boundary. A binding declaring func(string) string
-// leaves nowhere to return one, so the only way across is a panic; the boundary
-// unwraps this one in place of reporting a host panic, so a script that throws
+// leaves nowhere to return one and the only way across is a panic; the boundary
+// unwraps this one in place of reporting a host panic and a script that throws
 // inside a callback catches its own exception.
 type callbackPanic struct{ err error }
 
@@ -128,9 +128,9 @@ func nameCallError(err error, name string) error {
 }
 
 // phpParamTypeName spells a declared Go parameter type the way PHP names the
-// type in a TypeError ("must be of type int"). It describes a *parameter*, so
+// type in a TypeError ("must be of type int"). It describes a *parameter* and
 // it stays separate from phpDebugType, which describes a value, and from
-// gettype's legacy names (integer/double/boolean) in stdlib: nothing may fold
+// gettype's legacy names (integer/double/boolean) in stdlib: no code may fold
 // one table into the other.
 func phpParamTypeName(t reflect.Type) string {
 	if t == nil {
@@ -160,9 +160,9 @@ func phpParamTypeName(t reflect.Type) string {
 }
 
 // phpDebugType names a value the way PHP's get_debug_type() does ("array
-// given"). It describes a *value*, so it stays separate from phpParamTypeName,
+// given"). It describes a *value* and it stays separate from phpParamTypeName,
 // which describes a declared parameter type, and from gettype's legacy names
-// (integer/double/boolean) in stdlib: nothing may fold one table into the
+// (integer/double/boolean) in stdlib: no code may fold one table into the
 // other.
 func phpDebugType(v any) string {
 	switch value := v.(type) {
@@ -226,7 +226,7 @@ func argsTail2(args []any) []any {
 }
 
 // argsTail is the variadic tail after the first fixed parameter. It aliases
-// the slice and copies nothing: each call builds args fresh, so the binding
+// the slice and copies no element: each call builds args fresh and the binding
 // sees exactly what reflect.Value.Call would have handed it.
 func argsTail(args []any) []any {
 	if len(args) > 1 {
@@ -264,7 +264,7 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 //
 // The runtime matters for one kind of value: a callable. A binding declaring the
 // uniform callable shape gets one bound to rt and not to the runtime that
-// built the value, so a comparator passed to usort or a callback passed to
+// built the value and a comparator passed to usort or a callback passed to
 // array_map inside a handler runs on the worker answering the request and never
 // reaches back into the runtime the script built the value on.
 func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
@@ -305,7 +305,7 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 //
 // want must return one value or none, since a PHP closure returns one. An error
 // the callable reports has nowhere to go in a signature that declares no error
-// slot, so adaptCallable panics with it, and the host boundary turns that into
+// slot and adaptCallable panics with it, and the host boundary turns that into
 // a catchable throwable the way it does any other panic in a binding.
 func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.Value, bool) {
 	if want.IsVariadic() || want.NumOut() > 1 {
@@ -355,7 +355,7 @@ func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 	}
 	// Duration-taking Go APIs keep their native signature while PHP callers
 	// may use Go's readable duration syntax. This applies equally to registered
-	// functions and automatically exposed methods, so time.Time.Add accepts
+	// functions and automatically exposed methods and time.Time.Add accepts
 	// both a Time\Duration value and a string such as "30m".
 	if want == durationType {
 		if text, ok := v.(string); ok {

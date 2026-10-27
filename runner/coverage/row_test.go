@@ -8,7 +8,7 @@ import (
 )
 
 // TestRow_Percent covers the adjusted percentage: a symbol with no runnable
-// statement has nothing left uncovered, so 0/0 reads as covered and not as
+// statement has nothing left uncovered and 0/0 reads as covered and not as
 // a zero dragging every average down.
 func TestRow_Percent(t *testing.T) {
 	t.Parallel()
@@ -27,7 +27,7 @@ func TestRow_Percent(t *testing.T) {
 }
 
 // TestFileRows covers the per-file report, including a registered file holding
-// nothing runnable.
+// no runnable statement.
 func TestFileRows(t *testing.T) {
 	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
@@ -65,7 +65,7 @@ func TestFuncRows(t *testing.T) {
 	if row, ok := got["f"]; !ok || row.Percent() != 100 {
 		t.Errorf("f = %+v, want 100%%", row)
 	}
-	// g holds no counted block, so its adjusted 0/0 reads as covered and
+	// g holds no counted block and its adjusted 0/0 reads as covered and
 	// contributes nothing to the total.
 	if row, ok := got["g"]; !ok || row.Total != 0 || row.Percent() != 100 {
 		t.Errorf("g = %+v, want an empty row", row)

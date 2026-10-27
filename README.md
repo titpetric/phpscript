@@ -14,7 +14,7 @@ One set of endpoints written five ways, each its own directory under `testdata/`
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                              | 2525 req/s, 373 us/req | 466    | 725    |
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                             | 2017 req/s, 472 us/req | 562    | 801    |
 
-Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge` and `phpscript-service` answer under two different execution models, Path B and Path A, and [the comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes, so it carries the commit it describes, and these two commands write it again:
+Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge` and `phpscript-service` answer under two different execution models, Path B and Path A, and [the comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes and it carries the commit it describes, and these two commands write it again:
 
 ```sh
 BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
@@ -42,9 +42,9 @@ scripts/benchmark.php
 
 `.phpt` fixtures settle behaviour: each one starts by running the source through real `php`, and `phpscript test --matrix ./tests/...` checks the runtime against that output on both engines and on `php` itself. The [test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md) come out of that run and hold every fixture, its area and the three columns. A table copied into this page goes stale the moment an area grows, as this one did.
 
-The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row carries the cognitive complexity and the line count beside the percentage, so a low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
+The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row carries the cognitive complexity and the line count beside the percentage and a low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
 
-Those five documents change on every run, so `.gitignore` holds them: `atkins gen` writes them and `atkins publish` attaches them to the release, where the links above resolve to.
+Those five documents change on every run and `.gitignore` holds them: `atkins gen` writes them and `atkins publish` attaches them to the release, where the links above resolve to.
 
 ## Building a docker image
 

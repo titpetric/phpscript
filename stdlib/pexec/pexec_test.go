@@ -42,7 +42,7 @@ func run(t *testing.T, dir, src string) string {
 }
 
 // TestRegister covers the names installed and the root they start a command
-// in. Register is RegisterRoot with no directory, so a command runs where the
+// in. Register is RegisterRoot with no directory and a command runs where the
 // process runs, the directory a CLI invocation reads and writes in.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -68,9 +68,9 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterRoot covers the directory a command starts in when a host bound
-// one: a server serving scripts out of a project directory binds that, so
+// one: a server serving scripts out of a project directory binds that and
 // `pwd` inside a script answers the same thing getcwd() does. It replaces
-// whatever root stands before it, so a host calls it after Register.
+// whatever root stands before it and a host calls it after Register.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -83,7 +83,7 @@ func TestRegisterRoot(t *testing.T) {
 		t.Errorf("a command started in %q, want the bound root %q", got, resolved)
 	}
 
-	// The second call wins, so a host that bound a project after Register is
+	// The second call wins and a host that bound a project after Register is
 	// the one a command obeys.
 	program, err := parser.Parse(`<?php echo shell_exec("pwd");`)
 	if err != nil {
@@ -102,7 +102,7 @@ func TestRegisterRoot(t *testing.T) {
 }
 
 // TestRegisterNamesTheRunningProcess covers posix_getpid and getmypid: both
-// name the interpreter and never a command it starts, so the two report the
+// name the interpreter and never a command it starts and the two report the
 // same number, the test binary's own.
 func TestRegisterNamesTheRunningProcess(t *testing.T) {
 	t.Parallel()

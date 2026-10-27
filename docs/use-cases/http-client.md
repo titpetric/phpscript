@@ -2,7 +2,7 @@
 
 The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls where PHP has the `curl_*` family, which [Design decisions](../design.md#wont-build) refuses.
 
-A request is a `net/http` request handed straight over, so a script reads and writes it the way Go names it. A response is a facade, because the runtime reads its body in full before the script sees it.
+A request is a `net/http` request handed straight over and a script reads and writes it the way Go names it. A response is a facade, because the runtime reads its body in full before the script sees it.
 
 ## Create a client
 
@@ -36,7 +36,7 @@ $client = new HTTP\Client(array(
 
 A client always has a timeout. No spelling turns it off, because a request with no deadline is the one failure a script cannot recover from.
 
-An unrecognised key throws, so the constructor reports a typo where the script writes it, ahead of a request going out without it:
+An unrecognised key throws and the constructor reports a typo where the script writes it, ahead of a request going out without it:
 
 ```php
 new HTTP\Client(array("timeuot" => 5));   // throws: unknown option "timeuot"
@@ -62,7 +62,7 @@ $response = $client->send($request);
 
 A script writes HTTP methods uppercase. The request constructor uppercases a lowercase one before the request goes out, because a server treats the method as case-sensitive.
 
-`send()` throws on a transport failure or a timeout. An HTTP error status is not a failure, so check the status:
+`send()` throws on a transport failure or a timeout. An HTTP error status is not a failure and check the status:
 
 ```php
 if ($response->ok()) {
@@ -74,7 +74,7 @@ if ($response->ok()) {
 
 ## Read a request
 
-`HTTP\Request` is a `net/http` request, so its fields and methods are Go's, matched case-insensitively:
+`HTTP\Request` is a `net/http` request and its fields and methods are Go's, matched case-insensitively:
 
 ```php
 $trace_id = "b7c1";
@@ -90,7 +90,7 @@ $request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 
-Everything `net/http` exports on a request is reachable, so there is one vocabulary for a request, with no PHP-side name per part of it.
+Everything `net/http` exports on a request is reachable and there is one vocabulary for a request, with no PHP-side name per part of it.
 
 ## Read a response
 
@@ -104,7 +104,7 @@ Everything `net/http` exports on a request is reachable, so there is one vocabul
 | `headers()`     | Every response header as an array                                   |
 | `json()`        | The body decoded into arrays and scalars; throws on a non-JSON body |
 
-The response reads the body in full on construction, under a fixed ceiling. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
+The response reads the body in full on construction, under a fixed ceiling. A script has no way to close a stream and an unread body would leak its connection when the request ended.
 
 ## Send requests in parallel
 
@@ -126,7 +126,7 @@ foreach ($results as $name => $response) {
 }
 ```
 
-One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason, so a page renders what it has, and one unreachable host loses one result:
+One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason and a page renders what it has, and one unreachable host loses one result:
 
 ```php
 $results = $client->parallel(array(
@@ -177,8 +177,8 @@ foreach ($response->json() as $user) {
 }
 ```
 
-A transport failure throws and an error status does not, so the route handles both, and neither leaves the page rendering a half-built list.
+A transport failure throws and an error status does not and the route handles both, and neither leaves the page rendering a half-built list.
 
 ## Tracing
 
-`send()` records an external span per request, carrying the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans, so a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).
+`send()` records an external span per request, carrying the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans and a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).

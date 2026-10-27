@@ -4,8 +4,8 @@
 // runs once per session, before any fixture in this folder.
 //
 // Two halves, because a fixture needs rows and not only tables. The migration
-// creates the schema and mig records it, so a second run applies nothing; the
-// hook deletes and reinserts the seed, so the fixtures below start from the
+// creates the schema and mig records it, and a second run applies nothing; the
+// hook deletes and reinserts the seed, and the fixtures below start from the
 // same rows whatever state the hook found.
 
 $migrate = new Database\Migrate("scaffold");
@@ -17,7 +17,7 @@ $db->query("delete from catalogue");
 
 // The ids are part of the state the fixtures assert against, and a delete does
 // not return them. sqlite's AUTOINCREMENT keeps its high-water mark in
-// sqlite_sequence, so a second setup over the same database would seed 4, 5, 6.
+// sqlite_sequence, and a second setup over the same database would seed 4, 5, 6.
 $db->query("delete from sqlite_sequence where name = 'catalogue'");
 
 $db->insert("catalogue", array("name" => "Ada", "category" => "People"));

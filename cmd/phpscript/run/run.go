@@ -50,10 +50,10 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 	}
 
 	// The runtime resolves every path against RootFS, which cannot express a
-	// path outside itself: cleanFSPath strips the leading slash, so an
+	// path outside itself: cleanFSPath strips the leading slash and an
 	// absolute path resolves against the working directory. Sandboxing is
 	// the right default for an include inside a script, but not for the file
-	// the user named on the command line, so a script that sits outside the
+	// the user named on the command line and a script that sits outside the
 	// working directory roots the runtime at its own directory instead.
 	//
 	// A path under the working directory keeps today's behaviour, because PHP
@@ -81,7 +81,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 // reloadScope derives the context one generation runs under, and answers
 // whether a SIGHUP ended it.
 //
-// The signal cancels the generation and not the run, so the script stops
+// The signal cancels the generation and not the run and the script stops
 // the way it stops for anything else - its context ends - and the loop above
 // decides whether another generation follows.
 func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
@@ -111,7 +111,7 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 }
 
 // runOnce is one generation: a runtime, the script read and parsed again, and
-// the run. It drops everything it built when it returns, so a reload picks up
+// the run. It drops everything it built when it returns and a reload picks up
 // an edited file.
 func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
@@ -131,12 +131,12 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 		newRuntime = runner.NewFlatStack
 	}
 	rt := newRuntime(os.Stdout, options)
-	// The signal context, so that Ctrl-C and a reload reach the script. A
+	// The signal context and that Ctrl-C and a reload reach the script. A
 	// binding that blocks - a server parked in wait() - is waiting on this.
 	rt.SetContext(ctx)
 
 	// A collector turns flatstack off for this runtime: coverage is an
-	// interpreter feature and the fallback is atomic, so a counted program runs
+	// interpreter feature and the fallback is atomic and a counted program runs
 	// interpreted whole.
 	var collector *coverage.Collector
 	if globals.Covering() {
@@ -214,7 +214,7 @@ func writeCoverage(collector *coverage.Collector, globals *flags.Options, root s
 // the directory to root the runtime at.
 //
 // A path at or below the working directory keeps the working directory as the
-// root, so an include resolves the way PHP resolves it. Anything else, an
+// root and an include resolves the way PHP resolves it. Anything else, an
 // absolute path or one that climbs out with "..", roots at the script's own
 // directory, since the working directory cannot name it.
 func resolveEntrypoint(arg string) (script, root string, err error) {

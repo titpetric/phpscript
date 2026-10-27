@@ -32,7 +32,7 @@ func runScript(t *testing.T, src, entry string) (string, error) {
 	return out.String(), runErr
 }
 
-// A first-class callable resolves the same names a call resolves, so a host
+// A first-class callable resolves the same names a call resolves, and a host
 // static registered under its whole spelling answers, `self::` resolves against
 // its enclosing method, and a bound method keeps its receiver.
 func TestFirstClassCallableResolution(t *testing.T) {
@@ -61,7 +61,7 @@ func TestFirstClassCallableResolution(t *testing.T) {
 		{
 			// An unqualified name inside a namespace resolves there first and then
 			// globally, the fallback a call takes. A namespaced file may only
-			// declare, so this case takes the callable inside a function.
+			// declare, and this case takes the callable inside a function.
 			name:  "a namespaced name falls back to the global function",
 			src:   "<?php\nnamespace App;\n\nfunction pick() { $f = strtoupper(...); echo $f(\"ab\"); }\n",
 			want:  "AB",

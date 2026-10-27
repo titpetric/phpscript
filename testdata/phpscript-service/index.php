@@ -4,8 +4,8 @@
 
 // The same API as testdata/phpscript-http-bridge/server.php, in the shape a
 // phpscript application takes: one file per endpoint, the annotation above as
-// the whole routing table, and the request in the superglobals. Nothing
-// here builds a router or holds a handler.
+// the whole routing table, and the request in the superglobals. The program
+// builds no router and holds no handler.
 //
 // This is Path A, a runtime per request. The bridge is Path B, workers forked
 // once at listen(). A number from one never belongs in a table with a number

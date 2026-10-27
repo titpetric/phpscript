@@ -61,7 +61,7 @@ func (src *sources) typeDoc(name string) *typeInfo {
 	return &infos[0]
 }
 
-// skipDirs are directories a scan does not descend into: nothing in them
+// skipDirs are directories a scan does not descend into: a file in them
 // registers a binding on the CLI runtime, and demos and tests register
 // symbols of their own that would shadow the real sites.
 var skipDirs = map[string]bool{
@@ -70,7 +70,7 @@ var skipDirs = map[string]bool{
 }
 
 // emptySources is what a caller with no Go source tree to read passes in. Every
-// lookup misses, so the result carries only what reflection recovered.
+// lookup misses and the result carries only what reflection recovered.
 func emptySources() *sources {
 	return &sources{
 		funcs: map[string]*sourceEntry{},
@@ -121,7 +121,7 @@ func scan(root string) (*sources, error) {
 		return nil, err
 	}
 
-	// First pass: index declarations, so a registration in one file can
+	// First pass: index declarations and a registration in one file can
 	// resolve a function defined in another.
 	for _, pf := range files {
 		for _, decl := range pf.file.Decls {
@@ -242,7 +242,7 @@ func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr 
 		// The qualifier has to agree with the package holding the declaration
 		// found in. Without that check a registration of regexp.Compile reads
 		// the signature of flatstack/engine.Compile, which shares the name and
-		// nothing else, and publishes its parameters.
+		// that alone, and publishes its parameters.
 		if qualifier, ok := fn.X.(*ast.Ident); ok {
 			if info := src.lookupDeclIn(pkg, qualifier.Name, fn.Sel.Name); info != nil {
 				ft = info.decl.Type
@@ -273,7 +273,7 @@ func (src *sources) method(typeName, goName string) *sourceEntry {
 }
 
 // lookupDecl finds a declaration by name, preferring the calling package.
-// samePkg restricts the match to it, so a bare identifier binds.
+// samePkg restricts the match to it and a bare identifier binds.
 func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	var fallback *declInfo
 	for _, info := range src.decls[name] {

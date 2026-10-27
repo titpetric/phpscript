@@ -175,7 +175,7 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 
 // callArgs prints the argument list of a call, which for PHP 8.1's first-class
 // callable syntax is the literal ellipsis. The node carries the spelling and
-// no desugared form, so the printer writes `greet(...)` back as itself.
+// no desugared form and the printer writes `greet(...)` back as itself.
 func (p *printer) callArgs(firstClass bool, args []model.Expr) string {
 	if firstClass {
 		return "..."
@@ -200,13 +200,13 @@ const (
 	// literal keeps on one line. Past that the printer expands the literal one
 	// entry per line, the way gofmt expands a struct literal, because a row of
 	// three or more pairs is where a single line stops being readable and
-	// stops diffing well. A list of values without keys is not a record, so
+	// stops diffing well. A list of values without keys is not a record and
 	// the printer expands one only where it does not fit.
 	arrayLitInlineItems = 2
 
 	// arrayLitWidth is how wide an array literal may be, counted from its own
 	// indent and not from the start of the line: the printer writes the
-	// statement around the literal, so this code cannot see that width.
+	// statement around the literal and this code cannot see that width.
 	arrayLitWidth = 100
 
 	// tabWidth is the column width a hard tab counts as when measuring a line
@@ -231,7 +231,7 @@ func (p *printer) arrayLit(n *model.ArrayLit) string {
 			keyed = true
 			part = p.expr(it.Key) + " => " + part
 		}
-		// Nothing folds a nested literal that expanded back onto one line.
+		// A nested literal that expanded back onto one line folds flat.
 		expand = expand || strings.Contains(part, "\n")
 		parts[i] = part
 	}

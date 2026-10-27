@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// forkParent is a runtime that has run src, so it holds the declarations a fork
+// forkParent is a runtime that has run src and it holds the declarations a fork
 // carries over.
 func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	t.Helper()
@@ -26,7 +26,7 @@ func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 }
 
 // TestRuntime_Fork covers what a fork carries and what it does not. It carries
-// the symbols the tree declared, so the same function is callable on the child,
+// the symbols the tree declared and the same function is callable on the child,
 // and none of the execution: a fork is safe on a goroutine of its own, which is
 // the whole reason it exists.
 func TestRuntime_Fork(t *testing.T) {
@@ -54,9 +54,9 @@ func TestRuntime_Fork(t *testing.T) {
 }
 
 // TestRuntime_DeclaredPrograms covers the table a host replays onto forks it
-// builds itself. Fork does it already, so this is for a host managing its own.
+// builds itself. Fork does it already and this is for a host managing its own.
 //
-// It answers a copy, so a caller walking it while the runtime includes another
+// It answers a copy and a caller walking it while the runtime includes another
 // file is not reading the map the include writes.
 func TestRuntime_DeclaredPrograms(t *testing.T) {
 	t.Parallel()
@@ -78,7 +78,7 @@ func TestRuntime_DeclaredPrograms(t *testing.T) {
 }
 
 // TestRuntime_SetPreparer covers how a fork gets its bindings. A binding is
-// almost always a closure over its registering runtime, so a copied
+// almost always a closure over its registering runtime and a copied
 // entry would read and write the parent from inside the child; the preparer is
 // the host saying how to install them again.
 func TestRuntime_SetPreparer(t *testing.T) {
@@ -107,8 +107,8 @@ func TestRuntime_SetPreparer(t *testing.T) {
 }
 
 // TestRuntime_InvokeClosure covers the re-entry a host callback needs. The
-// declaration is AST, so it runs on whichever runtime the caller holds, and it
-// gets a scope holding its arguments and nothing else.
+// declaration is AST and it runs on whichever runtime the caller holds, and it
+// gets a scope holding its arguments alone.
 //
 // The declaration comes off the parse tree and not out of a script variable:
 // a *model.Closure is what the method takes, and that is the form a host

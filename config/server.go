@@ -19,7 +19,7 @@ type Server struct {
 
 	// PidFile is the file the server records its process id in, and the one
 	// -s reload reads it back from. Empty writes none. The path resolves
-	// against the working directory, so -s needs the same -w.
+	// against the working directory and-s needs the same -w.
 	PidFile string `yaml:"pid_file"`
 }
 

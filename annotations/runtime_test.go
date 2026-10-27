@@ -27,9 +27,9 @@ echo $total;
 }
 
 // TestRuntimeFunc covers the hook a host customizes an endpoint's runtime
-// with. It runs once the standard library sits on the runtime, so a hook sees
+// with. It runs once the standard library sits on the runtime and a hook sees
 // the bindings a script already has and a later hook replaces what an earlier
-// one registered. Each request builds one runtime, so the hook runs once per
+// one registered. Each request builds one runtime and the hook runs once per
 // request and nothing a script did leaks into the next one.
 func TestRuntimeFunc(t *testing.T) {
 	t.Parallel()
@@ -72,7 +72,7 @@ func TestRuntimeFunc(t *testing.T) {
 // TestWithCoverage covers the statement counts a server keeps for its
 // application code. A collector is per run because it keys statements by the
 // AST node the parser produced, and the aggregator keys them by profile line,
-// so counts of two requests add on one entry per statement range.
+// and counts of two requests add on one entry per statement range.
 func TestWithCoverage(t *testing.T) {
 	t.Parallel()
 	aggregator := coverage.NewAggregator()

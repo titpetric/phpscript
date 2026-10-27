@@ -31,7 +31,7 @@ type Message struct {
 // byte for byte. One with HTML and text is multipart/alternative, text first
 // and HTML last, because RFC 2046 puts the preferred part last; HTML alone is
 // a single text/html part. Either way buildMessage encodes the parts
-// quoted-printable, so a long line or a non-ASCII byte reaches the server as
+// quoted-printable and a long line or a non-ASCII byte reaches the server as
 // 7-bit lines of 76 characters.
 func buildMessage(from string, message Message) (string, error) {
 	headers := []string{
@@ -98,7 +98,7 @@ func writeQuotedPrintable(w io.Writer, content string) error {
 	return encoder.Close()
 }
 
-// headerReplacer lives for the process, so header builds none per message.
+// headerReplacer lives for the process and header builds none per message.
 var headerReplacer = strings.NewReplacer("\r", "", "\n", "")
 
 // header strips CR/LF so script-supplied values cannot inject headers.

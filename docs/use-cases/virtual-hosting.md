@@ -32,7 +32,7 @@ sites/
 
 ## 2. The operator's configuration
 
-`server.yml` names the listen address and the sites. A `root` resolves against the working directory, so these are the two directories beside the file:
+`server.yml` names the listen address and the sites. A `root` resolves against the working directory and these are the two directories beside the file:
 
 ```yaml
 server:
@@ -50,11 +50,11 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry, so a site that configures no database of its own inherits nothing. The sites' scripts also read `env` with `getenv()`, so leaving it empty keeps the operator's own environment out of them.
+Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry and a site that configures no database of its own inherits nothing. The sites' scripts also read `env` with `getenv()` and leaving it empty keeps the operator's own environment out of them.
 
 ## 3. Each site's configuration
 
-Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml`, so it only names what it changes.
+Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml` and it only names what it changes.
 
 `shop/phpscript.yml` takes route scanning and the runner limits as they come, and names a tracer and a database of its own:
 
@@ -133,7 +133,7 @@ header("Content-Type: application/json");
 echo json_encode(array("posts" => array()));
 ```
 
-Both sites carry the same `db.php`, `shop/public/db.php` and `blog/web/db.php`, so the database boundary is visible later:
+Both sites carry the same `db.php`, `shop/public/db.php` and `blog/web/db.php` and the database boundary is visible later:
 
 ```php
 <?php
@@ -157,7 +157,7 @@ shop: schema ready
 Server listening on 127.0.0.1:8080 http://127.0.0.1:8080
 ```
 
-`@startup` and `@schedule` run per site, and the modules they run as carry the domain, so `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
+`@startup` and `@schedule` run per site, and the modules they run as carry the domain and `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
 
 A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server carries on serving every site including the one whose job failed. The rest of that site's jobs still run.
 
@@ -184,7 +184,7 @@ virtualhost:
 
 The first name is the site's own, the one errors and module names report it as.
 
-Matching is exact, but the host mux compares a `Host` lowercased, without its port and without a trailing dot, so all three of these reach `shop`:
+Matching is exact, but the host mux compares a `Host` lowercased, without its port and without a trailing dot and all three of these reach `shop`:
 
 ```sh
 curl -H 'Host: SHOP.Example.com.' http://127.0.0.1:8080/
@@ -196,7 +196,7 @@ curl -H 'Host: shop.example.com' http://127.0.0.1:8080/
 
 Each site gets a router of its own, and that is where the boundaries come from.
 
-**Routes.** Shop's router registers `/hello/{name}`, so the blog does not have it, and `/feed` is not shop's:
+**Routes.** Shop's router registers `/hello/{name}` and the blog does not have it, and `/feed` is not shop's:
 
 ```sh
 curl -i -H 'Host: blog.example.com' http://127.0.0.1:8080/hello/Ada
@@ -216,7 +216,7 @@ curl -s -H 'Host: blog.example.com' http://127.0.0.1:8080/debug/oida/traces
 
 Each page takes its title from the `service_name` its own file configured, `shop` on one domain and `blog` on the other, and lists the requests that arrived on that domain and no others. The counters and the trace store behind them are separate, not two views of one buffer.
 
-**Databases.** The provider builds a site's connections from that site's own `env` and sees nothing else. The two `db.php` files are identical and only shop's works:
+**Databases.** The provider builds a site's connections from that site's own `env` and sees no other site's connection. The two `db.php` files are identical and only shop's works:
 
 ```sh
 curl -H 'Host: shop.example.com' http://127.0.0.1:8080/db.php
@@ -244,7 +244,7 @@ virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the opera
 
 The rest of the configuration is the site's. It can turn route scanning off, raise its own upload limits, choose the flat-stack runtime, or record its traces to disk, without any of it reaching the other site.
 
-The startup check loads and checks every entry before the server listens, so a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
+The startup check loads and checks every entry before the server listens and a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
 
 ## Where to go next
 

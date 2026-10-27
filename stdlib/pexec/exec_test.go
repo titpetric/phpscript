@@ -22,7 +22,7 @@ echo "[", $last, "][", count($lines), "][", $lines[0], ",", $lines[1], "][", $co
 }
 
 // TestExecAppendsToTheArray covers the by-reference half: PHP appends to an
-// array that already holds something, so a second call into the same variable
+// array that already holds something and a second call into the same variable
 // adds to it and never replaces it.
 func TestExecAppendsToTheArray(t *testing.T) {
 	t.Parallel()
@@ -36,7 +36,7 @@ echo implode(",", $lines);`)
 }
 
 // TestExecReportsTheExitStatus covers a command that ran and failed: it has a
-// status to report, so $result_code carries it and the return is the empty
+// status to report and $result_code carries it and the return is the empty
 // string a command printing nothing answers with. The status is a separate
 // output because a caller reading the return alone cannot tell a failure from
 // a command that printed nothing.
@@ -53,7 +53,7 @@ echo "[", $last, "][", $code, "]";`)
 
 // TestExecTrimsEachLine covers the splitting rule: trailing whitespace comes
 // off every line, and a command that printed nothing reports no lines at all
-// and never one empty one, so count($output) is 0 and not 1.
+// and never one empty one and count($output) is 0 and not 1.
 func TestExecTrimsEachLine(t *testing.T) {
 	t.Parallel()
 	out := run(t, "", `<?php
@@ -84,7 +84,7 @@ echo "[", $last, "][", $code, "]";`)
 
 // TestPassthruWritesBytesThrough covers the one to reach for when the output
 // is binary: the bytes arrive untouched, with no line splitting to trim them,
-// and the return is null, so the status is the only thing to read. The same
+// and the return is null and the status is the only thing to read. The same
 // bytes through exec() lose the trailing space exec() strips per line.
 func TestPassthruWritesBytesThrough(t *testing.T) {
 	t.Parallel()
@@ -101,7 +101,7 @@ echo "[", $lines[0], "]";`)
 }
 
 // TestShellExecReturnsEverything covers the whole of stdout, newline included,
-// and the null a silent command answers with. The null is PHP's, so a caller
+// and the null a silent command answers with. The null is PHP's and a caller
 // checking for failure has to read the string and never the return.
 func TestShellExecReturnsEverything(t *testing.T) {
 	t.Parallel()
@@ -115,9 +115,9 @@ echo "[", $text, "][", ($quiet === null ? "null" : "value"), "]";`)
 }
 
 // TestCommandsRefuseAnEmptyCommandLine covers the guard in front of every one
-// of them: an empty command names nothing to run, so none of them starts a
+// of them: an empty command names nothing to run and none of them starts a
 // shell. Each reports what it reports for a command it could not start, false
-// for the three and null for shell_exec. php 8 raises ValueError here, so a
+// for the three and null for shell_exec. php 8 raises ValueError here and a
 // script written against php sees a return where it would see a throw.
 func TestCommandsRefuseAnEmptyCommandLine(t *testing.T) {
 	t.Parallel()
@@ -132,7 +132,7 @@ echo "[", (shell_exec("") === null ? "null" : "other"), "]";`)
 }
 
 // TestCommandsRunThroughTheShell covers the one decision these four share:
-// each command line reaches `sh -c`, so a pipeline, a redirect and a glob are
+// each command line reaches `sh -c` and a pipeline, a redirect and a glob are
 // the shell's to read and never parsed here.
 func TestCommandsRunThroughTheShell(t *testing.T) {
 	t.Parallel()

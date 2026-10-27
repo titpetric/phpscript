@@ -18,7 +18,7 @@ func isComposite(value any) bool {
 }
 
 // isObjectLike reports whether a value prints as an object. It repeats the
-// test is_object() makes and shares nothing with it, so this file stands
+// test is_object() makes and shares nothing with it and this file stands
 // alone; it counts a callable because PHP's Closure is an object too, and a
 // script that dumps one reads it as one.
 func isObjectLike(value any) bool {
@@ -71,7 +71,7 @@ func classOf(value any) string {
 }
 
 // objectKey returns the address identifying an object, and whether it has one.
-// A struct passed by value has no identity and cannot close a cycle, so
+// A struct passed by value has no identity and cannot close a cycle and
 // objectKey neither numbers nor guards it.
 func objectKey(value any) (uintptr, bool) {
 	rv := reflect.ValueOf(value)
@@ -124,7 +124,7 @@ func objectFields(value any) []objectField {
 	if rv.Kind() != reflect.Struct {
 		return nil
 	}
-	// An unexported Go field never reaches PHP, so it counts as no property at
+	// An unexported Go field never reaches PHP and it counts as no property at
 	// all, let alone a private one.
 	rt := rv.Type()
 	fields := make([]objectField, 0, rt.NumField())
@@ -193,13 +193,13 @@ func exportScalar(value any) string {
 }
 
 // exportString single-quotes a string the way var_export does: it escapes only
-// the quote and the backslash, so a newline stays a literal newline.
+// the quote and the backslash and a newline stays a literal newline.
 func exportString(s string) string {
 	return "'" + exportReplacer.Replace(s) + "'"
 }
 
 // exportReplacer holds one Replacer for the whole package. strings.NewReplacer
-// compiles its table on first use behind a sync.Once, so one per call means
+// compiles its table on first use behind a sync.Once and one per call means
 // compiling it per call.
 var exportReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 

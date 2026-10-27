@@ -9,7 +9,7 @@ import (
 )
 
 // TestRenameAndCopy covers the two ways a script relocates a file it owns. Both
-// resolve their arguments against the root, so a script names them the way it
+// resolve their arguments against the root and a script names them the way it
 // names everything else, and both answer with a bool and no error.
 func TestRenameAndCopy(t *testing.T) {
 	t.Parallel()
@@ -112,7 +112,7 @@ if (chmod("missing.txt", 0640)) { echo "|missing-ok"; } else { echo "|missing-fa
 }
 
 // TestChownSelf checks ownership by name and by id. Changing a file to the
-// owner it already has is the one chown any user may make, so this runs the
+// owner it already has is the one chown any user may make and this runs the
 // same as root and as anyone else.
 func TestChownSelf(t *testing.T) {
 	t.Parallel()
@@ -170,7 +170,7 @@ if (chgrp("a.txt", "no-such-group-here")) { echo "|unknown-ok"; } else { echo "|
 }
 
 // TestWritesStayInRoot pins the confinement: the runtime cleans a relative
-// path that climbs out of the root back into it, so a script cannot write
+// path that climbs out of the root back into it and a script cannot write
 // above the directory the host bound.
 func TestWritesStayInRoot(t *testing.T) {
 	t.Parallel()

@@ -13,12 +13,12 @@ import (
 //
 // The handle carries the listing taken at open time, and no open descriptor. A
 // source filesystem an embedded application ships has no descriptor to hold
-// open, and both filesystems have to answer the same way, so opendir reads the
+// open, and both filesystems have to answer the same way and opendir reads the
 // listing through root.readDir - the same reader scandir uses.
 //
-// Nothing stays open between opendir and closedir, and a script that forgets
-// to close leaks nothing: the handle is an ordinary Go value the collector
-// takes once the script drops it.
+// No descriptor stays open between opendir and closedir, and a script that
+// forgets to close leaks no resource: the handle is an ordinary Go value the
+// collector takes once the script drops it.
 func registerDirs(rt *runner.Runtime, r root) {
 	// opendir returns a handle for reading the names in $directory, or false
 	// when $directory is not a directory; php's $context argument is not
@@ -60,7 +60,7 @@ func registerDirs(rt *runner.Runtime, r root) {
 }
 
 // openDir is what opendir() returns. PHP calls it a resource, a kind of value
-// this runtime does not have, so the handle is a Go value the script only ever
+// this runtime does not have and the handle is a Go value the script only ever
 // passes back to readdir() and closedir() - the same arrangement fopen() uses
 // with its *os.File. The Go name is not dirHandle because that is the name of
 // the argument the two readers take, and the generated reference uses argument

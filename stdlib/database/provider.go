@@ -1,7 +1,7 @@
 // Package database holds the named sql connections a phpscript runtime
 // resolves through. It copies the provider in
 // github.com/titpetric/platform, which lives in an internal package no
-// outside module reaches, so that a virtual host can hold a provider of its
+// outside module reaches and that a virtual host can hold a provider of its
 // own in place of a process global.
 package database
 
@@ -16,7 +16,7 @@ import (
 )
 
 // Provider is what a runtime resolves named connections through. model declares
-// the interface, so a runtime can name it in its options without depending on
+// the interface and a runtime can name it in its options without depending on
 // this package.
 type Provider = model.DatabaseProvider
 
@@ -104,7 +104,7 @@ func (r *DatabaseProvider) List() []string {
 // Register adds a named credential to the provider.
 //
 // A host that keeps its connections in a database registers them per request,
-// from whichever goroutine is serving it, so one mutex guards the credentials
+// from whichever goroutine is serving it and one mutex guards the credentials
 // map and the pool cache beside it.
 //
 // Re-registering a name with the same configuration is free. Re-registering it
@@ -136,7 +136,7 @@ func (r *DatabaseProvider) credential(name string) (string, bool) {
 }
 
 // Connect issues a PingContext to verify a live connection before returning.
-// The context propagates tracing detail, so the trace groups the ping right.
+// The context propagates tracing detail and the trace groups the ping right.
 func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*DB, error) {
 	db, err := r.Open(ctx, names...)
 	if err != nil {
@@ -163,7 +163,7 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*DB, error)
 // "app", and both mean the credential "app" until a deployment registers the
 // first. Keying on the name passed would open that caller a pool of
 // its own and every caller naming "app" another, and two pools on a DSN that
-// names no shared file are two databases, so the schema one applied would not
+// names no shared file are two databases and the schema one applied would not
 // be in the one the next script queries.
 //
 // Reading the cache before the credential has the mirror image of that problem:

@@ -12,7 +12,7 @@ import (
 
 // TestIncludeFunc covers the resolver a host installs for include and require.
 // The resolver keeps the runner free of a file system: the hook answers with a
-// parsed program, so a host serving scripts out of anything at all resolves
+// parsed program and a host serving scripts out of anything at all resolves
 // the path itself. An error it reports is the include failing, and nothing
 // falls back to reading a file.
 func TestIncludeFunc(t *testing.T) {
@@ -66,7 +66,7 @@ func TestIncludeFunc(t *testing.T) {
 // in Go. composer's generated vendor/autoload.php is the case it exists for:
 // the script sees the hook's value where PHP would see the file's, and the
 // runner never parses the file beside it. The hook runs when the script
-// includes the path and not before, so the PHP semantics hold.
+// includes the path and not before and the PHP semantics hold.
 func TestRuntime_RegisterInclude(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -94,7 +94,7 @@ func TestRuntime_RegisterInclude(t *testing.T) {
 		t.Errorf("output = %q, want the file not to have been parsed", got)
 	}
 
-	// RegisterInclude cleans the path at registration, so the spellings a
+	// RegisterInclude cleans the path at registration and the spellings a
 	// script may write for one file reach the same hook.
 	out.Reset()
 	same, err := rt.Load(`<?php require "./vendor/autoload.php";`)
@@ -153,7 +153,7 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 		t.Error("the class the included file declares is not defined")
 	}
 
-	// SPLAutoload searches the second entry too, so the list is a list.
+	// SPLAutoload searches the second entry too and the list is a list.
 	if err := rt.SPLAutoload("Widget"); err != nil {
 		t.Fatalf("SPLAutoload(Widget): %v", err)
 	}

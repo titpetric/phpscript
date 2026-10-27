@@ -124,8 +124,8 @@ func TestRuntime_SetConst(t *testing.T) {
 }
 
 // TestRuntime_RegisterShutdown covers the callbacks php runs at the end of a
-// program, in registration order, so a registered flush reaches the output of
-// a script that already finished. The run consumes each, so the next program
+// program, in registration order and a registered flush reaches the output of
+// a script that already finished. The run consumes each and the next program
 // on a pooled runtime does not run the previous one's.
 func TestRuntime_RegisterShutdown(t *testing.T) {
 	t.Parallel()
@@ -192,7 +192,7 @@ func TestRuntime_PutEnv(t *testing.T) {
 }
 
 // TestRuntime_OnReset covers the reset hooks: each registered one runs once
-// per reset, so a binding's own state leaves with the program's.
+// per reset and a binding's own state leaves with the program's.
 func TestRuntime_OnReset(t *testing.T) {
 	rt := New(io.Discard, Options{})
 	var calls int

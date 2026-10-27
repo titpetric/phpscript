@@ -32,14 +32,14 @@ type Database struct {
 	IsReadonly bool
 
 	// transaction is the span opened by Begin and ended by Commit or Rollback,
-	// so a transaction reads as one region and not three markers.
+	// and a transaction reads as one region and not three markers.
 	transaction *telemetry.Span
 }
 
 type databaseSpanKey struct{}
 
 // ErrReadOnly is what a refusal by a read-only client matches with errors.Is.
-// The runtime surfaces the refusal to PHP as a thrown exception, so a script
+// The runtime surfaces the refusal to PHP as a thrown exception and a script
 // catches it like any other database error.
 var ErrReadOnly = errors.New("database is read-only")
 
@@ -56,7 +56,7 @@ func (e readOnlyError) Error() string {
 	return ErrReadOnly.Error() + ": " + e.refusal
 }
 
-// Is matches the sentinel, so errors.Is(err, ErrReadOnly) holds for a refusal.
+// Is matches the sentinel and errors.Is(err, ErrReadOnly) holds for a refusal.
 func (e readOnlyError) Is(target error) bool {
 	return target == ErrReadOnly
 }
@@ -114,7 +114,7 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 //
 // A row is a native map: foreach walks it, $row["col"] indexes it,
 // $row["extra"] = 1 writes to it and unset($row["col"]) takes a column out of
-// it. A map carries no column order, so
+// it. A map carries no column order and
 // `foreach ($row as $column => $value)` visits columns in arbitrary order;
 // a script that needs a stable order names its columns in the SELECT and
 // indexes them.
@@ -171,7 +171,7 @@ func (b *Database) Close(ctx context.Context) (any, error) {
 }
 
 // Begin starts a transaction and opens the span measuring it. The span stays
-// open until Commit or Rollback, so a transaction is one region in the trace
+// open until Commit or Rollback and a transaction is one region in the trace
 // and no open marker and close marker to pair up.
 func (b *Database) Begin(ctx context.Context) (any, error) {
 	if b.transaction == nil {
@@ -220,13 +220,13 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 }
 
 // observe records what the query log reports onto the span of the call that
-// produced it. The span already measures the call, so the statement, the values
+// produced it. The span already measures the call and the statement, the values
 // bound to it and the transaction depth are what this adds. Every method is nil
-// safe, so an uninstrumented run takes the same path.
+// safe and an uninstrumented run takes the same path.
 //
 // observe records the bound values, not just their count: a placeholder query
 // names no row, and reading the values back is the reason to open the trace at
-// all. They are as sensitive as the columns they filter on, so the front end
+// all. They are as sensitive as the columns they filter on and the front end
 // belongs behind something that authenticates.
 func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	span := databaseSpan(ctx)
@@ -243,9 +243,9 @@ func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 
 // queryArgs renders the values bound to a statement. The bridge passes
 // positional arguments as a slice and named ones as the map or struct they came
-// from, so queryArgs passes both shapes through untouched: the front end
+// from and queryArgs passes both shapes through untouched: the front end
 // renders a slice and a map perfectly well, and flattening them would lose
-// which name held what. An empty set is not recorded, so a query without
+// which name held what. An empty set is not recorded and a query without
 // placeholders has no attribute and never an empty one.
 func queryArgs(args any) (any, bool) {
 	if args == nil {
@@ -271,16 +271,16 @@ func recordRows(ctx context.Context, rows int) {
 }
 
 // databaseSpan returns the span measuring the call in progress, or nil when
-// nothing instruments the run. Every span method is nil safe, so callers do
-// not check.
+// the run carries no instrumentation. Every span method is nil safe and
+// callers do not check.
 func databaseSpan(ctx context.Context) *telemetry.Span {
 	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
 	return span
 }
 
 // refuseWrite reports the error a read-only client returns for a CRUD helper.
-// There is nothing to classify: insert(), replace() and update() write by
-// definition, so it refuses them before anything builds a statement.
+// The CRUD helpers classify themselves: insert(), replace() and update() write
+// by definition, and it refuses them before anything builds a statement.
 func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 	if !b.IsReadonly {
 		return nil
@@ -293,7 +293,7 @@ func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 // refuseQuery reports the error a read-only client returns for a statement that
 // is not a read, classifying it by the keyword it starts with.
 //
-// A refused statement never reaches the query log, so refuseQuery records its
+// A refused statement never reaches the query log and refuseQuery records its
 // text here: a boundary nobody can see enforced is a boundary nobody can debug
 // when it refuses the wrong statement.
 func (b *Database) refuseQuery(ctx context.Context, query string) error {
@@ -313,7 +313,7 @@ func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	return err
 }
 
-// name qualifies a method with the PHP variable holding this client, so the
+// name qualifies a method with the PHP variable holding this client and the
 // trace tells two clients in one request apart.
 func (b *Database) name(method string) string {
 	if b.ID == "" {

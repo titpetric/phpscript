@@ -8,10 +8,10 @@ import (
 // counted from zero the way PHP counts them: preg_match's third argument is the
 // match array, preg_replace_callback's fifth is the replacement count. A
 // namespaced file carries both the qualified call name and the global name it
-// falls back to, so either spelling has to match.
+// falls back to and either spelling has to match.
 //
 // exec's $output, its second argument, is absent from the table: the caller
-// and the binding share one array, so the binding appends into the one the
+// and the binding share one array and the binding appends into the one the
 // caller passed and reaches the same observable result. Its exit status, the
 // third, has no such route back.
 func TestByRefArg(t *testing.T) {

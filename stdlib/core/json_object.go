@@ -3,8 +3,8 @@ package core
 // jsonObject is a JSON object that keeps the order its entries arrive in.
 //
 // encoding/json sorts the keys of a Go map and PHP does not: json_encode writes
-// an array in build order, so a row encoded for a client reads back in the
-// order the script assembled it. A map cannot carry that order, so this type
+// an array in build order and a row encoded for a client reads back in the
+// order the script assembled it. A map cannot carry that order and this type
 // exists in place of a map[string]any.
 //
 // jsonEncodeValue converts an array into one, for the indent path and for a Go
@@ -29,7 +29,7 @@ func (o *jsonObject) add(key string, value any) {
 
 // MarshalJSON writes the entries in insertion order, into one buffer grown to
 // an estimate of the document. It appends a key or a scalar that needs no
-// escaping as itself; everything else defers to json.Marshal, so the bytes
+// escaping as itself; everything else defers to json.Marshal and the bytes
 // are the ones encoding/json writes either way.
 func (o *jsonObject) MarshalJSON() ([]byte, error) {
 	size := 2

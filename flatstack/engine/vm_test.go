@@ -9,7 +9,7 @@ import (
 // refTestHost is the part of the host contract these tests exercise: the
 // frame handle a real host holds, the snapshot-before-call and write-back-
 // after ordering of its slow path, plus the calls themselves. Every other
-// method falls to the embedded nil interface, so a test program that
+// method falls to the embedded nil interface and a test program that
 // reaches one fails loudly, and never silently.
 type refTestHost struct {
 	Host
@@ -79,7 +79,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 	return host.echoed
 }
 
-// The locals snapshot the host holds predates the call, so it still carries
+// The locals snapshot the host holds predates the call and it still carries
 // the value the out parameter replaces. Writing it back would undo the write
 // and leave a reused $m holding the first call's matches.
 func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
@@ -90,7 +90,7 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 		echo $m;
 	`, map[string]func(*refTestHost, []any){
 		"preg_match_all": func(h *refTestHost, args []any) {
-			// Two calls in sequence, so the second one writes a slot the
+			// Two calls in sequence and the second one writes a slot the
 			// snapshot already carries a value for.
 			if _, ok := h.locals["m"]; ok {
 				setRef("second")(h, args)
@@ -106,7 +106,7 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 }
 
 // An uninitialised target is the case that always worked: the snapshot does
-// not hold it, so nothing overwrites it. It has to keep working.
+// not hold it and nothing overwrites it. It has to keep working.
 func TestVMRefSetterWritesFreshLocal(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -165,7 +165,7 @@ func TestVMRefMarksArePerFrame(t *testing.T) {
 }
 
 // release has to zero the whole backing array, not just the live prefix. The
-// pool holds the buffers for the life of the process, so a value left above
+// pool holds the buffers for the life of the process and a value left above
 // the high-water mark of a later, smaller program would stay reachable
 // through the pool, and the collector would never free it.
 func TestExecStateReleaseClearsToCapacity(t *testing.T) {
@@ -233,7 +233,7 @@ func TestExecStateReleaseEmpty(t *testing.T) {
 }
 
 // memoryTestHost is a Host that also accounts memory. A type assertion finds
-// the capability, so implementing the four methods is the whole opt-in.
+// the capability and implementing the four methods is the whole opt-in.
 type memoryTestHost struct {
 	semanticHost
 	interval int
@@ -267,7 +267,7 @@ func (h *memoryTestHost) CheckMemory() error {
 // TestMemoryHost covers the accounting hook the VM calls on a host that limits
 // memory. The VM reads the interval once per run, and it decides how often
 // CheckMemory runs; the walker stays registered for the length of the run and
-// comes off on the way out, so nothing walks the pooled state it closes over
+// comes off on the way out and nothing walks the pooled state it closes over
 // past its release. The walk reaches the frame's initialised locals, where a
 // script's values are.
 func TestMemoryHost(t *testing.T) {
@@ -295,7 +295,7 @@ func TestMemoryHost(t *testing.T) {
 	}
 
 	// A zero interval turns the checks off. The walker is still registered,
-	// so a host that only answers usage queries keeps seeing VM state.
+	// and a host that only answers usage queries keeps seeing VM state.
 	quiet := &memoryTestHost{}
 	runHost(t, quiet, `<?php $marker = "retained"; for ($i = 0; $i < 60; $i = $i + 1) { $marker = "retained"; }`)
 	if quiet.checks != 0 {
@@ -320,7 +320,7 @@ func (h *deadlineTestHost) CheckDeadline() error {
 // TestDeadlineHost covers the deadline hook. The interval is a constant in
 // the engine and not something the host settles once per run, because a
 // script can call set_time_limit after the run started. A run that answers
-// nil carries on to the end, so the cost of a script with no limit and no
+// nil carries on to the end and the cost of a script with no limit and no
 // client is the call itself.
 func TestDeadlineHost(t *testing.T) {
 	t.Parallel()
@@ -334,7 +334,7 @@ func TestDeadlineHost(t *testing.T) {
 		t.Errorf("echoed = %v, want the loop to have run to the end", long.echoed)
 	}
 
-	// A program shorter than the check interval is never asked, so a small
+	// A program shorter than the check interval is never asked and a small
 	// script pays nothing for the capability.
 	short := &deadlineTestHost{}
 	runHost(t, short, `<?php echo "hi";`)

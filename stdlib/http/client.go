@@ -18,7 +18,7 @@ import (
 
 // DefaultTimeout is how long a client waits for a response when the script did
 // not say. A request with no deadline at all is the one failure mode a script
-// cannot recover from, so no spelling turns it off.
+// cannot recover from and no spelling turns it off.
 const DefaultTimeout = 30 * time.Second
 
 // maxResponseBody caps how much of a response body send reads. A script reads
@@ -27,8 +27,8 @@ const DefaultTimeout = 30 * time.Second
 const maxResponseBody = 32 << 20 // 32 MiB
 
 // Client is the PHP-visible HTTP\Client. The net/http client is a named
-// unexported field and no embedded one, so a script reaches the methods
-// below alone, and nothing else net/http exports.
+// unexported field and no embedded one and a script reaches the methods
+// below alone, and no other net/http export.
 type Client struct {
 	client  *nethttp.Client
 	base    string
@@ -64,7 +64,7 @@ func NewClient(ctx context.Context, options any) (*Client, error) {
 			case "headers":
 				config.Headers, err = toHeaders(value)
 			default:
-				// An unknown key is an error and no value quietly ignored, so a
+				// An unknown key is an error and no value quietly ignored and a
 				// typo fails where the script wrote it, ahead of a request
 				// going out without it.
 				err = fmt.Errorf("HTTP\\Client: unknown option %q", toString(key))
@@ -112,7 +112,7 @@ type clientConfig struct {
 }
 
 // Send sends $request and returns the response. A transport failure or a
-// timeout throws; an HTTP error status does not, so check $response->status().
+// timeout throws; an HTTP error status does not and check $response->status().
 func (c *Client) Send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("HTTP\\Client: send expects an HTTP\\Request")
@@ -143,13 +143,13 @@ func (c *Client) Post(ctx context.Context, url string, body ...string) (*Respons
 }
 
 // Parallel sends every request in $requests at once and returns the responses
-// under the same keys, so the call takes as long as the slowest request rather
+// under the same keys and the call takes as long as the slowest request rather
 // than the sum. $requests is an array of HTTP\Request keyed by a name the
 // script chooses, each bounded by the client's timeout.
 //
 // One request failing does not fail the others and does not throw: that
 // response reports $response->ok() as false and $response->err() as the reason,
-// so a script sees every outcome. A throw means the argument is no array of
+// and a script sees every outcome. A throw means the argument is no array of
 // requests.
 func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Response, error) {
 	pending, err := toRequestMap(requests)
@@ -176,7 +176,7 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 			response, err := c.send(ctx, request)
 			if err != nil {
 				// Parallel reports a failure on the response and returns no
-				// error, so one unreachable host does not hide the results of
+				// error and one unreachable host does not hide the results of
 				// every other request in the batch.
 				response = &Response{err: err.Error()}
 			}
@@ -191,7 +191,7 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 }
 
 // send performs one request against the client's configuration. Send and
-// Parallel share it, so a batched request carries the same configuration as a
+// Parallel share it and a batched request carries the same configuration as a
 // single one.
 func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	prepared, err := c.prepare(ctx, request)
@@ -230,7 +230,7 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 }
 
 // prepare resolves a request against the client's base URL and default
-// headers. It clones and mutates nothing, so two clients can send the same
+// headers. It clones and mutates nothing and two clients can send the same
 // request value, and so Parallel does not write to a request another goroutine
 // is reading.
 func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {

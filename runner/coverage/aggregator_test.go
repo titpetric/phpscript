@@ -75,7 +75,7 @@ func TestAggregator_Functions(t *testing.T) {
 }
 
 // TestAggregator_Empty covers the question the shutdown flush asks: a server
-// nothing reached writes no profile, because an empty one reads as a
+// that ran no request writes no profile, because an empty one reads as a
 // measurement that found nothing.
 func TestAggregator_Empty(t *testing.T) {
 	t.Parallel()
@@ -90,8 +90,8 @@ func TestAggregator_Empty(t *testing.T) {
 }
 
 // TestAggregator is the reason the aggregator exists: a collector
-// keys statements by AST node, so a second parse of the same source produces a
-// second set of keys. The aggregator keys them by what the profile will say, so
+// keys statements by AST node and a second parse of the same source produces a
+// second set of keys. The aggregator keys them by what the profile will say and
 // re-parsing adds counts and never entries.
 func TestAggregator(t *testing.T) {
 	t.Parallel()
@@ -111,7 +111,7 @@ func TestAggregator(t *testing.T) {
 }
 
 // TestAggregator_Files pins that the composed key carries the filename,
-// so the same line of two files stays two entries.
+// and the same line of two files stays two entries.
 func TestAggregator_Files(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()

@@ -20,7 +20,7 @@ import (
 //
 // Register runs before the program does, seeding every executable statement at
 // count zero under the filename it loads from. The entrypoint and every
-// include register, so the files in a profile are the files get_included_files
+// include register and the files in a profile are the files get_included_files
 // reports, and an included-but-unexecuted statement still appears, at zero.
 type Collector struct {
 	mu    sync.Mutex
@@ -38,7 +38,7 @@ type coverStmt struct {
 }
 
 // Block is one line-range entry of a coverage profile. Lines only: the parser
-// records no columns, so a profile writer chooses them (the test command
+// records no columns and a profile writer chooses them (the test command
 // derives them from the source text).
 type Block struct {
 	File      string
@@ -75,9 +75,9 @@ func New() *Collector {
 }
 
 // Register seeds every executable statement of program at count zero under
-// filename. A declaration does not execute, so Register skips it; its body's
+// filename. A declaration does not execute and Register skips it; its body's
 // statements carry spans of their own. A statement already registered keeps its
-// count, so re-including a cached program does not reset it.
+// count and re-including a cached program does not reset it.
 func (c *Collector) Register(filename string, program *model.Program) {
 	filename = Name(filename)
 	c.mu.Lock()
@@ -97,7 +97,7 @@ func (c *Collector) Register(filename string, program *model.Program) {
 
 // registerFuncs records the span of every declared function body: free
 // functions from the statement list, methods from class declarations, named or
-// anonymous. An abstract method has no body span to charge, so add returns
+// anonymous. An abstract method has no body span to charge and add returns
 // early; an interface declares only signatures and charges nothing.
 func (c *Collector) registerFuncs(filename string, program *model.Program) {
 	seen := map[*model.FuncDecl]bool{}
@@ -136,7 +136,7 @@ func (c *Collector) registerFuncs(filename string, program *model.Program) {
 		}
 	}
 	// A function declared inside another statement's body is in no list above
-	// but carries a span like any parsed statement, so the sweep picks it up.
+	// but carries a span like any parsed statement and the sweep picks it up.
 	// A method arrives through its class, which keeps it prefixed.
 	for stmt := range program.SourceSpans {
 		if fd, ok := stmt.(*model.FuncDecl); ok && !seen[fd] {
@@ -148,7 +148,7 @@ func (c *Collector) registerFuncs(filename string, program *model.Program) {
 // Files returns every registered filename, sorted. A file appears whether or
 // not it holds an executable statement: a file of pure declarations registers
 // no counts, and a report that renders only counted blocks would omit it,
-// reading as a gap where there is nothing to run.
+// reading as a gap where no code runs.
 func (c *Collector) Files() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -236,7 +236,7 @@ func (c *Collector) Blocks() []Block {
 }
 
 // coverable reports whether a statement executes. A declaration does not: the
-// interpreter hoists it and exec passes it by, so counting it would mark a
+// interpreter hoists it and exec passes it by and counting it would mark a
 // never-called function's signature covered while its body stays at zero.
 func coverable(s model.Stmt) bool {
 	switch s.(type) {
@@ -248,7 +248,7 @@ func coverable(s model.Stmt) bool {
 
 // coverSpan is the line range charged for a statement. A compound statement's
 // parsed span covers its whole body, but the body's statements carry spans of
-// their own, so coverSpan returns the header line alone: an untaken branch
+// their own and coverSpan returns the header line alone: an untaken branch
 // must not read as covered because the interpreter reaches its `if`.
 func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	switch n := s.(type) {

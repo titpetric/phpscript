@@ -9,7 +9,7 @@ import (
 )
 
 // TestCoreAreasRegisterThemselves covers the wiring the package documents:
-// every file contributes its own area from its own init(), so adding, moving or
+// every file contributes its own area from its own init() and adding, moving or
 // dropping an area needs no edit to another file. Importing the package is what
 // installs them, the way a program imports a database/sql driver.
 //

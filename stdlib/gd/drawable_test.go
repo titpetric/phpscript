@@ -24,7 +24,7 @@ func TestFillRect(t *testing.T) {
 }
 
 // TestCopyPixels covers the copy a decoded image takes when wrap cannot draw
-// on it, including the offset: copyPixels reads src from at, so a source whose
+// on it, including the offset: copyPixels reads src from at and a source whose
 // bounds do not start at the origin lands at the destination's origin.
 func TestCopyPixels(t *testing.T) {
 	t.Parallel()
@@ -42,7 +42,7 @@ func TestCopyPixels(t *testing.T) {
 
 // TestResample covers the scale imagecopyresampled performs. A single colour
 // scaled up stays that colour whatever the interpolation does between
-// neighbours, so the assertion holds without pinning CatmullRom's weights.
+// neighbours and the assertion holds without pinning CatmullRom's weights.
 func TestResample(t *testing.T) {
 	t.Parallel()
 	green := color.RGBA{G: 255, A: 255}
@@ -59,7 +59,7 @@ func TestResample(t *testing.T) {
 	}
 }
 
-// TestDrawable covers the alias the handle declares its image with, so the
+// TestDrawable covers the alias the handle declares its image with and the
 // type a host reads off Underlying is the one this package writes into.
 func TestDrawable(t *testing.T) {
 	t.Parallel()

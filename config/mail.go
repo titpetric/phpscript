@@ -16,17 +16,17 @@ var flatMailKeys = []string{"host", "port", "username", "password", "from", "ins
 // through, keyed by the name a script names; "default" is what a script
 // naming none gets.
 //
-// The credentials stay here: nothing a script can call spells a host or a
-// password or reads one back. A site declaring a mail block gets the servers it
+// The credentials stay here: a script cannot spell a host or a password or
+// read one back. A site declaring a mail block gets the servers it
 // named and none of the operator's, which docs/configuration.md records.
 type Mail map[string]mail.Config
 
-// Check checks that mail can leave through every configured server, so a
+// Check checks that mail can leave through every configured server and a
 // credential the operator got wrong fails the command and not the first
 // delivery. A @schedule job discovering it at three in the morning is the
 // failure mode worth avoiding.
 //
-// The walk runs in name order, so the server it names does not depend on map
+// The walk runs in name order and the server it names does not depend on map
 // iteration.
 func (m Mail) Check(filename string) error {
 	names := make([]string, 0, len(m))
@@ -49,7 +49,7 @@ func (m Mail) Check(filename string) error {
 // It reads the generic map because that is the only place the difference is
 // still visible: the decoder can only report that a string is not a struct,
 // which names neither the key nor the fix. The walk takes keys and names in a
-// fixed order, so the same file fails on the same line.
+// fixed order and the same file fails on the same line.
 func CheckMailDeclaration(filename string, declared map[string]any) error {
 	servers, ok := declared["mail"].(map[string]any)
 	if !ok {

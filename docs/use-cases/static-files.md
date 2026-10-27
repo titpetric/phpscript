@@ -29,7 +29,7 @@ The server answers a request that names a directory with that directory's index 
 
 `/` is `public/index.php` or `public/index.html`, `/docs/` is `public/docs/index.php` or `public/docs/index.html`, and so on down the tree. `index.php` wins when a directory has both: the dynamic page is the one the site wrote for the server to publish, and the `index.html` beside it remains a placeholder nobody has removed.
 
-The server redirects a directory named without its trailing slash to the same path with one, before serving the index page. The links in that page resolve against its serving URL, so `/docs` has to become `/docs/` or every relative link in it points a directory too high.
+The server redirects a directory named without its trailing slash to the same path with one, before serving the index page. The links in that page resolve against its serving URL and `/docs` has to become `/docs/` or every relative link in it points a directory too high.
 
 A directory with neither index page is a 404, answered by the site's own [error page](error-handling.md#error-pages) when it has one. It does not list the files below it, unless the site enables a listing.
 
@@ -44,26 +44,26 @@ autoindex: true
 
 `autoindex` is off by default. Publishing every file below the document root is a decision a site makes, and not one it should arrive at by leaving an `index.html` out of a directory.
 
-The server generates the listing, so there is nothing to write and nothing to regenerate when the directory changes. It holds:
+The server generates the listing, and no file needs writing or regenerating when the directory changes. It holds:
 
 - every entry, linked relative to the directory's request path, with directories first
 - the size of each file and when it last changed
-- images as thumbnails above the table as well as rows in it, so a folder of screenshots is browsable and still says how big each one is
+- images as thumbnails above the table as well as rows in it and a folder of screenshots is browsable and still says how big each one is
 - a link to the directory above, except at the document root, whose parent is not the site's to link to
 
-The listing leaves out names beginning with a dot: a listing is what a site chose to publish, and a dotfile below the document root is at best noise and at worst an editor's backup of a script. The page carries the little styling it needs inline and fetches nothing from anywhere else, so a listing tells a third party nothing about the browsing and renders the same on a machine with no route out.
+The listing leaves out names beginning with a dot: a listing is what a site chose to publish, and a dotfile below the document root is at best noise and at worst an editor's backup of a script. The page carries the little styling it needs inline and fetches nothing from anywhere else and a listing tells a third party nothing about the browsing and renders the same on a machine with no route out.
 
 An index page still wins where there is one. `autoindex` only decides what a directory without one answers.
 
 ## Error pages
 
-A static site puts up its own error pages the same way an application does, by writing a file named after the status in the document root. `404.html` answers for a 404 and `error.html` answers for every status the site does not name one for, so a site with no PHP in it needs no PHP to answer a dead link. See [Error pages](error-handling.md#error-pages).
+A static site puts up its own error pages the same way an application does, by writing a file named after the status in the document root. `404.html` answers for a 404 and `error.html` answers for every status the site does not name one for and a site with no PHP in it needs no PHP to answer a dead link. See [Error pages](error-handling.md#error-pages).
 
 ## What is not served
 
 The document root is the boundary. A file above it, `phpscript.yml` and the route and template directories among them, has no URL and is not reachable by one; a path with `..` in it does not escape.
 
-A `.php` file in a directory the configuration lists in `runner.writable_paths` is content and not code: the server serves it as bytes and never executes it. That includes an `index.php` and a `404.php`, so an upload directory below the document root cannot turn an upload form into a way to run code.
+A `.php` file in a directory the configuration lists in `runner.writable_paths` is content and not code: the server serves it as bytes and never executes it. That includes an `index.php` and a `404.php` and an upload directory below the document root cannot turn an upload form into a way to run code.
 
 ## Virtual hosting
 

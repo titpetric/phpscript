@@ -13,7 +13,7 @@ import (
 )
 
 // TestStorageDisk_Delete covers logging a session out. Delete removes the file,
-// so a later Load reports fs.ErrNotExist and a second Delete does too: the
+// and a later Load reports fs.ErrNotExist and a second Delete does too: the
 // manager reads the same condition from either backend.
 func TestStorageDisk_Delete(t *testing.T) {
 	t.Parallel()
@@ -53,10 +53,10 @@ func TestStorageDisk_Delete(t *testing.T) {
 
 // TestStorageDiskPruneSweepsByModificationTime covers the sweep that bounds how
 // large the directory grows. A session rewritten on every request keeps a
-// current modification time, so Prune reads age off the file and never off the
+// current modification time and Prune reads age off the file and never off the
 // ID.
 //
-// Prune skips the temporary files Save writes, so a sweep running beside a save
+// Prune skips the temporary files Save writes and a sweep running beside a save
 // cannot remove the file that save is about to rename into place.
 func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 	t.Parallel()
@@ -87,7 +87,7 @@ func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 		t.Errorf("Load after a one hour Prune = %v, want the session", err)
 	}
 
-	// A negative maxAge puts the cutoff in the future, so the session is past it.
+	// A negative maxAge puts the cutoff in the future and the session is past it.
 	if err := storage.Prune(ctx, -time.Second); err != nil {
 		t.Fatalf("Prune: %v", err)
 	}

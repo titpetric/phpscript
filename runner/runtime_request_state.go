@@ -16,7 +16,7 @@ func (rt *Runtime) BeginRequest(ctx context.Context) RequestState {
 
 	rt.client = ctx
 	rt.clientDone = watchEnd(ctx)
-	// Off for every request, so a handler that ignored a disconnect does not
+	// Off for every request and a handler that ignored a disconnect does not
 	// decide it for the next one. The limit is not saved: the limit is the
 	// runtime's and a handler moving it means to move it.
 	rt.ignoreAbort = false

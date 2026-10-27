@@ -13,10 +13,10 @@ import (
 // constants, every one of them.
 //
 // A script branches on a token by name, and a name that is not a constant reads
-// as null, so comparing a token against null is a branch that never runs. The
+// as null and comparing a token against null is a branch that never runs. The
 // binding registers every id the tokenizer can emit for that reason, and not
 // the handful one caller happened to need. They are constants and no globals,
-// so they resolve inside a function or a method too.
+// and they resolve inside a function or a method too.
 func TestTokenizerConstants(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -39,8 +39,8 @@ func TestTokenizerConstants(t *testing.T) {
 	}
 }
 
-// TestTokenName covers reading an id back as its registered name,
-// so a token_get_all() result prints as something a reader recognises. An id
+// TestTokenName covers reading an id back as its registered name. A
+// token_get_all() result prints as that name, which a reader recognises. An id
 // the tokenizer never emits answers "UNKNOWN", php's own wording for one.
 func TestTokenName(t *testing.T) {
 	t.Parallel()

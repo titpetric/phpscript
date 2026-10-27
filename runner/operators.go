@@ -11,12 +11,12 @@ import (
 
 // This file is the PHP operator tables: comparison, identity, arithmetic,
 // bitwise and the unary operators. Both engines read them, the interpreter
-// directly and the bytecode host through flatHost.Binary and Unary, so the
+// directly and the bytecode host through flatHost.Binary and Unary and the
 // two cannot answer a different value for one expression. The coercions the
 // operators read (toInt, toFloat, phpString) live in convert.go.
 
 // phpLooseEqual is PHP's `==`, used by switch/case matching and the flatstack
-// host. It reads the same table as the comparison operators, so null equals 0,
+// host. It reads the same table as the comparison operators and null equals 0,
 // "" and false, and two numeric strings compare numerically ("1" == "01").
 func phpLooseEqual(a, b any) bool {
 	return phpCompare("==", a, b)
@@ -92,7 +92,7 @@ func phpIdentical(a, b any) bool {
 		y, ok := b.(string)
 		return ok && x == y
 	case []byte:
-		// A []byte is the string it carries, so `===` against one compares text
+		// A []byte is the string it carries and `===` against one compares text
 		// and never reports two different types. See phpval.Bytes.
 		if y, ok := phpval.Bytes(b); ok {
 			return string(x) == y
@@ -203,7 +203,7 @@ func phpArith(op string, a, b any) any {
 			return float64(0)
 		}
 	}
-	// Integer arithmetic that overflows becomes float in PHP, so
+	// Integer arithmetic that overflows becomes float in PHP and
 	// PHP_INT_MAX + 1 is 9.2233720368548E+18, with no wrap to a negative. The
 	// rules live in phpval so the flat VM's integer opcodes share them.
 	x, y := toInt(a), toInt(b)
@@ -308,7 +308,7 @@ func phpNegate(v any) any {
 // casts to int, where ~n is -(n+1).
 //
 // PHP 8 raises a TypeError for a null, bool or array operand. phpscript casts
-// those the way it casts every other bitwise operand, so `~null` is -1 and no
+// those the way it casts every other bitwise operand and `~null` is -1 and no
 // fatal error (docs/README.md).
 func phpBitNot(v any) any {
 	if s, ok := v.(string); ok {

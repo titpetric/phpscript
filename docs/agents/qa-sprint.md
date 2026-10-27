@@ -66,11 +66,11 @@ Where it goes:
 
 The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule; this document repeats none of it.
 
-A new area is a new folder and nothing registers it. The fixture's own folder is its include root, so copy a shared support file into it, because phpscript rejects an include that climbs out.
+A new area is a new folder and nothing registers it. The fixture's own folder is its include root and copy a shared support file into it, because phpscript rejects an include that climbs out.
 
 ## Dead code
 
-`splint` reports uncovered symbols and `uncover` reads a coverage profile. `splint` runs bare, so one finding fails the run and a sprint reads its output as a list of work.
+`splint` reports uncovered symbols and `uncover` reads a coverage profile. `splint` runs bare and one finding fails the run and a sprint reads its output as a list of work.
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -85,11 +85,11 @@ Four false positives, each real in this tree. A symbol reached only:
 - from a benchmark, which `go test` without `-bench` never runs;
 - from a `//go:build ignore` file, which `testdata/goserver/main.go` is;
 - from a demo or a venom suite, which no Go test reads;
-- by registered name, which every binding is. A PHP source line calls a binding by its string name, so it has no Go caller at all.
+- by registered name, which every binding is. A PHP source line calls a binding by its string name and it has no Go caller at all.
 
-Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name comes out in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration, so a removal that rides along with a rename is two changes in one.
+Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name comes out in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration and a removal that rides along with a rename is two changes in one.
 
-Every rule blocks, so a finding is work and never a number to raise. The three paths `.splint.yml` exempts from the length limit are the whole list, and a change that adds a fourth argues for it.
+Every rule blocks and a finding is work and never a number to raise. The three paths `.splint.yml` exempts from the length limit are the whole list, and a change that adds a fourth argues for it.
 
 ## Simplification
 

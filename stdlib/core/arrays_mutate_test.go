@@ -129,7 +129,7 @@ func TestPHPArrayMergeCopiesInputs(t *testing.T) {
 
 // TestPHPArrayMergeResultIsAppendable is the reason array_merge does not
 // return a []any for the all-lists case: a Go slice cannot grow through the
-// interface value holding it, so `$x = array_merge($a, $b); $x[] = "z"` would
+// interface value holding it and `$x = array_merge($a, $b); $x[] = "z"` would
 // be an error. Rule 4 of docs/allocation-performance.md.
 func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
 	t.Parallel()
@@ -147,9 +147,9 @@ func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
 }
 
 // TestArrayMutatorsRejectNonArrays covers the one case a .phpt fixture cannot:
-// the four mutators resize their argument, so they require a *model.Array and
+// the four mutators resize their argument and they require a *model.Array and
 // must say so, with no silent mutation of a copy the script never sees. PHP
-// has no spelling that passes them a Go slice, so only a Go test reaches this path.
+// has no spelling that passes them a Go slice and only a Go test reaches this path.
 func TestArrayMutatorsRejectNonArrays(t *testing.T) {
 	t.Parallel()
 	// The shapes a binding returns in place of a *model.Array.

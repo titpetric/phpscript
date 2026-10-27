@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackCatchClauseSelection pins which catch clause a throw enters.
 // A fixture cannot tell a bytecode run from an interpreter fallback that
-// happened to agree, so every case asserts Supports first.
+// happened to agree, and every case asserts Supports first.
 func TestFlatstackCatchClauseSelection(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -56,7 +56,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 			want:   "finally:outer",
 		},
 		{
-			// catch (Exception) declines an engine error, so the clause after
+			// catch (Exception) declines an engine error, and the clause after
 			// it runs.
 			name:   "exception does not catch an engine error",
 			source: `<?php try { explode(",", "a,b", array()); } catch (Exception $e) { echo "exception"; } catch (Throwable $e) { echo "throwable"; }`,
@@ -102,7 +102,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 
 // TestFlatstackCatchSurvivesCalleeJumps pins the handler discipline across
 // frames: opJump discards a handler when the jump leaves its try's pc range,
-// and a callee's pcs are always outside the caller's range, so the range rule
+// and a callee's pcs are always outside the caller's range, and the range rule
 // holds only inside the frame that armed the handler. Before that scoping, the
 // first branch in a called function silently disarmed the caller's catch.
 func TestFlatstackCatchSurvivesCalleeJumps(t *testing.T) {

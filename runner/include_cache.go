@@ -13,7 +13,7 @@ const DefaultMaxCacheSize = 10000
 // IncludeCache stores parsed include/require programs by cleaned filesystem
 // path. Runtime.Run/exec treat a parsed program as immutable: hoisting copies
 // declarations into runtime maps, while statement execution only reads the
-// AST, so callers that do not mutate ASTs themselves can share a cached
+// AST and callers that do not mutate ASTs themselves can share a cached
 // *model.Program safely. maxEntries bounds the size to prevent memory leaks.
 type IncludeCache struct {
 	mu         sync.RWMutex

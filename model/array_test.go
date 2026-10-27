@@ -295,7 +295,7 @@ func TestArrayNegativeKey(t *testing.T) {
 
 // TestArrayKeysAreOpaque locks in that the Array itself does not normalise
 // keys: "0", int(0) and int64(0) are three distinct keys. Normalisation is the
-// runner's job (runner.normalizeKey), so list mode must only recognise int64.
+// runner's job (runner.normalizeKey) and list mode must only recognise int64.
 func TestArrayKeysAreOpaque(t *testing.T) {
 	t.Parallel()
 	a := NewArray()
@@ -644,7 +644,7 @@ func TestArrayMatchesLegacyImplementation(t *testing.T) {
 }
 
 // keysEqual compares key slices, treating nil and empty as the same (list mode
-// materialises its keys, so an empty array returns an empty non-nil slice).
+// materialises its keys and an empty array returns an empty non-nil slice).
 func keysEqual(a, b []any) bool {
 	if len(a) != len(b) {
 		return false
@@ -662,7 +662,7 @@ func keysEqual(a, b []any) bool {
 //	go test ./model/ -run XXX -bench BenchmarkArray -benchmem
 //
 // The Legacy variants build the same array through the pre-list-mode
-// implementation, so the delta is the change itself.
+// implementation and the delta is the change itself.
 
 func benchValues(n int) []string {
 	out := make([]string, n)
@@ -729,7 +729,7 @@ func BenchmarkArrayAppend50Sized(b *testing.B) { benchArrayAppend(b, 50, true) }
 func BenchmarkArrayAppend50SizedLegacy(b *testing.B) { benchLegacyAppend(b, 50, true) }
 
 // The Ints variants store values in 0..255, which the runtime boxes for free
-// (staticuint64s), so what they time is the array's own structural cost.
+// (staticuint64s) and what they time is the array's own structural cost.
 func BenchmarkArrayAppend5Ints(b *testing.B) {
 	b.ReportAllocs()
 	for range b.N {
@@ -751,7 +751,7 @@ func BenchmarkArrayAppend5IntsLegacy(b *testing.B) {
 }
 
 // The string-keyed build is the case list mode must not make worse: the array
-// promotes on the first key, so it should cost what the map-backed one did.
+// promotes on the first key and it should cost what the map-backed one did.
 func BenchmarkArrayStringKeys5(b *testing.B) {
 	keys := benchValues(5)
 	b.ReportAllocs()
@@ -826,7 +826,7 @@ func BenchmarkArrayRange50Legacy(b *testing.B) {
 	}
 }
 
-// Reset empties the array but keeps its storage, so a reused container
+// Reset empties the array but keeps its storage and a reused container
 // (a per-request superglobal) refills without reallocating, and holds no
 // stale reference above its new length.
 func TestArrayResetKeepsStorage(t *testing.T) {
@@ -891,7 +891,7 @@ func TestArray_Delete(t *testing.T) {
 		t.Errorf("Keys() = %v, want %v", got, want)
 	}
 
-	// The append index is not rewound: unset never renumbers, so the next
+	// The append index is not rewound: unset never renumbers and the next
 	// append lands past the removed key.
 	arr.Append("d")
 	if got, want := arr.Keys(), []any{int64(1), int64(3)}; !reflect.DeepEqual(got, want) {

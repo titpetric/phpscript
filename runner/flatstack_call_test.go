@@ -7,7 +7,7 @@ import (
 
 // TestFlatHostFrame covers the handle the engine binds once per run, which
 // replaced the map copied in and out around every call. A host with no frame
-// bound materialises an empty scope, so a callee reading caller locals before
+// bound materialises an empty scope and a callee reading caller locals before
 // the bind sees nothing and never a nil map.
 func TestFlatHostFrame(t *testing.T) {
 	t.Parallel()
@@ -24,7 +24,7 @@ func TestFlatHostFrame(t *testing.T) {
 		t.Errorf("the materialised scope holds %d variables, want 0", got)
 	}
 
-	// With no frame bound there is nowhere to write back to, so pullScope
+	// With no frame bound there is nowhere to write back to and pullScope
 	// leaves the materialised scope as it found it.
 	scope.Set("rows", int64(3))
 	host.pullScope(scope)

@@ -9,14 +9,14 @@ import (
 // phpFormatFloat renders a float the way PHP's php_gcvt does, with precision
 // significant digits; a negative precision names the fewest digits that
 // read back as the same double, which is the meaning serialize_precision=-1 has for
-// var_dump and var_export. echo and print_r pass 14 instead, so 0.1+0.2 is 0.3
+// var_dump and var_export. echo and print_r pass 14 instead and 0.1+0.2 is 0.3
 // for one and 0.30000000000000004 for the other.
 //
 // phpFormatFloat picks the exponent form from where the decimal point falls,
 // not from Go's 'g' thresholds: PHP switches when the point sits before the
-// third leading zero or past the last significant digit, so 1e16 stays written
+// third leading zero or past the last significant digit and 1e16 stays written
 // out and 1e17 does not. Its mantissa always carries a fraction and its
-// exponent no leading zero, so it writes 1.0E+100 where Go writes 1e+100.
+// exponent no leading zero and it writes 1.0E+100 where Go writes 1e+100.
 func phpFormatFloat(f float64, precision int) string {
 	switch {
 	case math.IsInf(f, 1):

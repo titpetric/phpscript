@@ -17,8 +17,8 @@ type FileMode uint32
 
 // DefaultUploadFileMode is the mode move_uploaded_file() sets on a stored upload
 // when the configuration does not name one. The temporary copy an upload
-// arrives in is private to this process, so the move has to apply a mode on the
-// way out or nothing else could read what the script stored.
+// arrives in is private to this process and the move has to apply a mode on the
+// way out or no other process could read what the script stored.
 const DefaultUploadFileMode = FileMode(0o644)
 
 // ParseFileMode reads an octal file mode. An empty value is the zero value.

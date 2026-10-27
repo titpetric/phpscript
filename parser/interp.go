@@ -10,13 +10,13 @@ import (
 // Double-quoted string interpolation.
 //
 // PHP spells an embedded expression two ways inside a double-quoted literal,
-// and this file scans both, so the lexer, the parser and the token_get_all
+// and this file scans both and the lexer, the parser and the token_get_all
 // tokenizer agree on where one ends. Simple syntax is `$name`, `$name[sub]` or
 // `$name->prop`, and reaches exactly one level: `"$o->p->q"` is the property `p`
 // followed by the literal text `->q`. Complex syntax is `{$expr}`, where the
 // braces re-enter PHP and the expression inside is an ordinary one.
 //
-// A single-quoted literal never interpolates, so nothing here runs for one.
+// A single-quoted literal never interpolates and nothing here runs for one.
 
 // interpKind classifies one piece of a double-quoted literal.
 type interpKind uint8
@@ -55,8 +55,8 @@ type interpPart struct {
 // embedded expression.
 //
 // A literal with no embedded expression still scans cleanly and reports
-// interp=false, so the caller keeps treating it as a plain
-// string. The scan decodes a text part, so the caller never decodes twice.
+// interp=false and the caller keeps treating it as a plain
+// string. The scan decodes a text part and the caller never decodes twice.
 func scanInterp(src string, start int, line int) (parts []interpPart, end int, interp bool, err error) {
 	var text strings.Builder
 	textStart, textLine := start, line
@@ -128,7 +128,7 @@ func scanInterp(src string, start int, line int) (parts []interpPart, end int, i
 }
 
 // scanSimple reads the simple-syntax expression starting at the `$` under
-// src[i]. It reports ok=false when the `$` does not begin one, so a
+// src[i]. It reports ok=false when the `$` does not begin one and a
 // lone dollar such as `"$ 5"` stays literal text, as it does in PHP.
 func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	if i+1 >= len(src) {
@@ -171,7 +171,7 @@ func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool,
 }
 
 // scanCurly reads the `{$expr}` starting at the brace under src[i] and returns
-// the expression source between the braces. The braces re-enter PHP, so the
+// the expression source between the braces. The braces re-enter PHP and the
 // scan tracks nesting and skips over string literals: `"{$a['}']}"` closes on
 // the second brace, not on the one inside the key.
 func scanCurly(src string, i int, line int) (inner string, end int, err error) {
@@ -202,7 +202,7 @@ func scanCurly(src string, i int, line int) (inner string, end int, err error) {
 // literals are a small share of the tokens in a file and every token pays for
 // the struct.
 func (p *parser) parseInterp(t token) (model.Expr, error) {
-	// raw is the literal with its quotes, so the body starts at 1 and the scan
+	// raw is the literal with its quotes and the body starts at 1 and the scan
 	// stops on the closing quote the lexer already found.
 	parts, _, _, err := scanInterp(t.raw, 1, t.line)
 	if err != nil {
@@ -246,7 +246,7 @@ func (p *parser) interpExpr(part interpPart, line int) (model.Expr, error) {
 }
 
 // interpSubscript resolves the key of a simple-syntax `$a[sub]`. PHP reads a
-// bare word there as a string key, so `"$row[id]"` is `$row['id']` and not the
+// bare word there as a string key and `"$row[id]"` is `$row['id']` and not the
 // constant `id`: the one place a bare word inside a subscript does not
 // mean a constant.
 func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
@@ -290,7 +290,7 @@ func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 }
 
 // skipQuoted returns the offset just past the string literal opening at src[i],
-// or ok=false for a literal nothing terminates. It only has to find the end, so it reads
+// or ok=false for a literal nothing terminates. It only has to find the end and it reads
 // `\x` as two bytes without decoding it.
 func skipQuoted(src string, i int) (end int, ok bool) {
 	quote := src[i]
@@ -314,7 +314,7 @@ func skipQuoted(src string, i int) (end int, ok bool) {
 // an arbitrary expression, which names the variable whose name the expression
 // evaluates to. `${name}` is `$name` and `${arr['k']}` is `$arr['k']`; the
 // expression form is variable-variable syntax and needs `$$name`, which this
-// parser does not read, so this fails.
+// parser does not read and this fails.
 //
 // PHP deprecated the whole syntax in 8.2 and removes it in 9. It parses here
 // because php 8.5 runs it.

@@ -14,9 +14,9 @@ import (
 )
 
 // TestRegister covers the four classes the binding installs. A script reaches
-// them by name, so this test constructs each one from PHP, and the same path
+// them by name and this test constructs each one from PHP, and the same path
 // refuses the arguments with no useful default: HTTP\Server carries the runtime
-// the constructor closed over, so a refusal from Go reaches the script as a
+// the constructor closed over and a refusal from Go reaches the script as a
 // throw.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -55,7 +55,7 @@ try {
 }
 
 // TestClient_Post covers the one-line POST a script reaches for where PHP has
-// curl_setopt. The body is optional, so a form POST with no payload is the same
+// curl_setopt. The body is optional and a form POST with no payload is the same
 // call with the argument left off, and an HTTP error status does not throw: the
 // script reads $response->status().
 func TestClient_Post(t *testing.T) {
@@ -103,7 +103,7 @@ func TestClient_Post(t *testing.T) {
 
 // newMux builds a router over a runtime that has declared the named PHP
 // handlers, and returns it with the buffer the script and its handlers echo
-// into. A handler has to be a PHP callable, so a caller declares the functions
+// into. A handler has to be a PHP callable and a caller declares the functions
 // in a script and names them by string.
 func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 	t.Helper()
@@ -124,7 +124,7 @@ func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 }
 
 // TestNewMux covers the router a Go host builds directly. It starts with no
-// routes, so a request before any handle() reaches net/http's own 404 and never
+// routes and a request before any handle() reaches net/http's own 404 and never
 // a nil dereference.
 func TestNewMux(t *testing.T) {
 	t.Parallel()
@@ -141,7 +141,7 @@ func TestNewMux(t *testing.T) {
 }
 
 // TestMux_Handle covers describing a route. handle() resolves the handler as it
-// records the route, so a name nothing declares is an error there and not a 500
+// records the route and a name nothing declares is an error there and not a 500
 // on the first request that arrives, and it refuses an empty pattern outright.
 func TestMux_Handle(t *testing.T) {
 	t.Parallel()

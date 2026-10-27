@@ -7,7 +7,7 @@ import (
 )
 
 // TestNodeChunkKeepsPointerIdentity covers the property the chunked allocator
-// has to hold: every node leaves the chunk once and keeps its own address, so a
+// has to hold: every node leaves the chunk once and keeps its own address and a
 // map keyed by model.Expr tells two nodes apart. A chunk reset or reused would
 // make two expressions share an address, and the compiled-expression cache in
 // runner would answer one with the other's code.
@@ -15,7 +15,7 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 	t.Parallel()
 	var chunk nodeChunk[model.Lit]
 
-	// Past nodeChunkMax, so the allocator carves more than one backing array
+	// Past nodeChunkMax and the allocator carves more than one backing array
 	// and the addresses have to stay distinct across the boundary.
 	const count = 400
 	seen := make(map[*model.Lit]bool, count)
@@ -30,7 +30,7 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 		nodes = append(nodes, node)
 	}
 
-	// Writing through one node never reaches another, so a field set on a
+	// Writing through one node never reaches another and a field set on a
 	// later node does not rewrite an earlier one in the same array.
 	for i, node := range nodes {
 		if node.Value != int64(i) {
@@ -69,7 +69,7 @@ func TestNodeChunkGrows(t *testing.T) {
 }
 
 // TestScratchTakesExactlySized covers what the shared stack buys: one
-// exactly-sized allocation per list, so a slice of call arguments has cap
+// exactly-sized allocation per list and a slice of call arguments has cap
 // equal to len and never the slack appending would leave. An empty list
 // answers nil, matching what appending to a nil slice produced.
 func TestScratchTakesExactlySized(t *testing.T) {
@@ -101,7 +101,7 @@ func TestScratchTakesExactlySized(t *testing.T) {
 
 // TestScratchIsReentrant covers nesting, the state a call argument holding an
 // array literal parses in: the inner list pushes and pops above the outer
-// mark, so the outer elements stay contiguous and come back in push order.
+// mark and the outer elements stay contiguous and come back in push order.
 func TestScratchIsReentrant(t *testing.T) {
 	t.Parallel()
 	var stack scratch[model.Expr]
@@ -130,7 +130,7 @@ func TestScratchIsReentrant(t *testing.T) {
 }
 
 // TestScratchDropsOnFailure covers the error path: a parse that gave up
-// abandons what it pushed, so the next list starts from the mark the caller
+// abandons what it pushed and the next list starts from the mark the caller
 // above it holds and never inherits the elements of the one that failed.
 func TestScratchDropsOnFailure(t *testing.T) {
 	t.Parallel()
@@ -153,7 +153,7 @@ func TestScratchDropsOnFailure(t *testing.T) {
 }
 
 // TestNodeChunkBacksTheParser covers the allocator against a real parse: two
-// parses of the same source build separate nodes, so an AST cached by pointer
+// parses of the same source build separate nodes and an AST cached by pointer
 // never answers with another program's.
 func TestNodeChunkBacksTheParser(t *testing.T) {
 	t.Parallel()

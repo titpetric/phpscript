@@ -11,7 +11,7 @@ import (
 
 // The split between this file and strings.go is PHP's own: the str* functions
 // count bytes and the mb_* functions count characters. A byte offset is what
-// PREG_OFFSET_CAPTURE reports and what substr consumes, so the two agree;
+// PREG_OFFSET_CAPTURE reports and what substr consumes and the two agree;
 // mb_substr takes a character offset, which a script derives with
 // mb_strlen(substr($s, 0, $offset)).
 //
@@ -325,7 +325,7 @@ func byteRuneOffset(s string, bytes int) int64 {
 }
 
 // runeLower folds s rune by rune. strings.ToLower with simple mappings keeps
-// the rune count, so character offsets computed on the folded string index
+// the rune count and character offsets computed on the folded string index
 // the original.
 func runeLower(s string) string {
 	return strings.Map(unicode.ToLower, s)

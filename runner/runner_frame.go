@@ -44,7 +44,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if obj.Class != nil {
 		scope.Set("__class__", rt.boxed(obj.Class.Name))
 	}
-	// The span name costs two string builds, so they happen only when an
+	// The span name costs two string builds and they happen only when an
 	// observer is listening.
 	if len(rt.observers) > 0 {
 		name := obj.ID
@@ -81,7 +81,7 @@ type closureEnv struct {
 	class     any
 
 	// statics holds this closure value's function-static bags: PHP keeps a
-	// `static $x` storage per closure instance, so two counters built by
+	// `static $x` storage per closure instance and two counters built by
 	// the same factory count independently. Keyed like Runtime.funcStatics.
 	statics map[*model.StaticVar]map[string]any
 }
@@ -99,7 +99,7 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 		env.captured = make(map[string]any, len(cl.Uses))
 		for _, use := range cl.Uses {
 			// A by-reference capture binds the same value a by-value one does:
-			// the runtime has no reference cells, so the distinction only shows
+			// the runtime has no reference cells and the distinction only shows
 			// up in writes the closure makes back to the enclosing frame, which
 			// it cannot do either way.
 			value, _ := scope.Get(use.Name)
@@ -110,8 +110,8 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 }
 
 // invokeClosure runs an anonymous function in a fresh scope seeded with its
-// captured environment and nothing else: the enclosing frame's other variables
-// are not reachable from the body. bindParams runs after the captures, so a
+// captured environment alone: the enclosing frame's other variables
+// are not reachable from the body. bindParams runs after the captures and a
 // parameter of the same name wins; php rejects that overlap outright, as
 // "Cannot use lexical variable $x as a parameter name".
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
@@ -144,7 +144,7 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 }
 
 // runDeferred invokes callbacks registered since mark in last-in, first-out
-// order. It removes each one before the call, so a callback runs at most once,
+// order. It removes each one before the call and a callback runs at most once,
 // including when it fails or registers another during the unwind.
 func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
 	var errs []error

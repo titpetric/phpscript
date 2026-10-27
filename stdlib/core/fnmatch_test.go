@@ -52,7 +52,7 @@ func TestFnmatch(t *testing.T) {
 		{"[a-c-e]", "-", 0, true},
 		{"[a-c-e]", "d", 0, false},
 
-		// An unterminated '[' is a literal, so the first of
+		// An unterminated '[' is a literal and the first of
 		// these fails: the pattern then matches the four bytes "[abc".
 		{"[abc", "[", 0, false},
 		{"[abc", "a", 0, false},
@@ -94,7 +94,7 @@ func TestFnmatch(t *testing.T) {
 	}
 }
 
-// TestFnmatchDefaultFlags checks the two-argument form, so every
+// TestFnmatchDefaultFlags checks the two-argument form and every
 // script calls it: the variadic slot is empty and the mode is zero.
 func TestFnmatchDefaultFlags(t *testing.T) {
 	t.Parallel()

@@ -14,7 +14,7 @@ import (
 
 // TestNewCommand covers what the constructor closes over. The configuration
 // arrives as a pointer so one signature covers all nine commands, and this one
-// reads it, so a nil pointer has to resolve to the zero configuration before
+// reads it and a nil pointer has to resolve to the zero configuration before
 // the Run closure captures it. The command declares no flags of its own: a run
 // takes a script path and the shared flags.
 func TestNewCommand(t *testing.T) {

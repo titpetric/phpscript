@@ -10,7 +10,7 @@ import (
 // TestRegisterLog covers where error_log() puts a message, and what it answers.
 //
 // php's error_log writes to the SAPI's log and the SAPI decides what that is.
-// Here a host that installed a handler with OnError receives it there, so the
+// Here a host that installed a handler with OnError receives it there and the
 // message reaches the application and no process error stream; the stream is
 // the fallback for a run with nothing listening, because an error log that
 // discards is worse than none. The call answers true either way.

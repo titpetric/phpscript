@@ -16,7 +16,7 @@ func init() {
 }
 
 // registerArrays installs the array shims. They take `any`, not *model.Array,
-// and read their input through model.RangeValues, so a script can pass either
+// and read their input through model.RangeValues and a script can pass either
 // a PHP array or the native Go slice/map a binding returned. Those that build
 // a fresh list return a []any (one allocation, presized) in place of an
 // *model.Array (a struct, a map[any]any, a growing key slice and an interface
@@ -59,11 +59,11 @@ func registerArrays(rt *runner.Runtime) {
 	// and later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
 	// reset returns the first value of $array, or false for an empty array;
-	// there is no internal pointer here, so this is the value without the
+	// there is no internal pointer here and this is the value without the
 	// rewind.
 	rt.RegisterFunc("reset", func(array any) any { return edgeValue(array, true) })
 	// end returns the last value of $array, or false for an empty array; there
-	// is no internal pointer here, so this is the value without the seek.
+	// is no internal pointer here and this is the value without the seek.
 	rt.RegisterFunc("end", func(array any) any { return edgeValue(array, false) })
 	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
 	rt.RegisterFunc("array_keys", func(array any) []any {
@@ -317,7 +317,7 @@ func phpArrayFlip(array any) *model.Array {
 
 // phpArrayReverse reverses the order of the elements. PHP drops integer keys
 // and renumbers them from zero unless $preserve_keys is true, but it keeps
-// string keys either way, so an array with any string key has to come back as
+// string keys either way and an array with any string key has to come back as
 // an *model.Array. A renumbered all-integer-keyed array is a plain list, which
 // is a presized []any (rule 4).
 func phpArrayReverse(array any, preserveKeys ...any) any {

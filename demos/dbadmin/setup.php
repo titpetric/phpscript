@@ -15,8 +15,8 @@ $db = new Database("dbadmin");
 $tpl = new MiniTPL\Template;
 
 // The user database is the .htpasswd file in this directory, and the session
-// is a cookie over it. Both are the defaults, so neither constructor names
-// one: the manager reads .htpasswd and keeps sessions on disk, so a reload
+// is a cookie over it. Both are the defaults, and neither constructor names
+// one: the manager reads .htpasswd and keeps sessions on disk, and a reload
 // leaves everybody signed in.
 //
 // No password and no hash appears in this application. The runtime reads the
@@ -27,7 +27,7 @@ $auth = new Auth\Storage\PasswordFile;
 
 // Every page renders the same header, and the sign-in page renders it with
 // nobody signed in. add_default and not assign: load() clears the assigned
-// variables and re-applies the defaults, so a value no controller knows about
+// variables and re-applies the defaults, and a value no controller knows about
 // survives only as a default.
 $tpl->add_default("username", "");
 $tpl->add_default("user_id", "");
@@ -42,7 +42,7 @@ $tpl->add_default("csrf", csrf_token());
  * Sends a visitor without a session to the sign-in page, and tells the
  * template who they are.
  *
- * bootstrap.php calls it, so every page that includes bootstrap.php is behind
+ * bootstrap.php calls it, and every page that includes bootstrap.php is behind
  * the login and a page added later is behind it too.
  */
 function require_login($session, $db, $tpl) {
@@ -58,7 +58,7 @@ function require_login($session, $db, $tpl) {
 /**
  * The signed-in user's row, read by the id the session carries.
  *
- * The id is a ULID computed from the username, so the user table is a view of
+ * The id is a ULID computed from the username, and the user table is a view of
  * the password file and this is an ordinary primary-key read. A session whose
  * account the file has since dropped resolves to nothing, and the header
  * prints the id in place of a name.
@@ -95,7 +95,7 @@ function render_footer_stats() {
  * response stages as that cookie when the request carries none.
  *
  * The pair is the double-submit pattern. A page on another origin can neither
- * read the cookie nor set it, so it cannot write a form whose hidden field
+ * read the cookie nor set it, and it cannot write a form whose hidden field
  * matches, and the token needs no store on the server. HttpOnly holds,
  * because the server renders the token into the form and no script reads the
  * cookie.
@@ -112,8 +112,8 @@ function csrf_token() {
 
 /**
  * Whether the posted csrf field agrees with the csrf cookie. A post missing
- * either half fails, and the comparison is hash_equals, so it leaks nothing
- * about where the two differ.
+ * either half fails, and the comparison is hash_equals, which says where the
+ * two differ and no more.
  */
 function csrf_check() {
 	if (!isset($_COOKIE["csrf"]) || !isset($_POST["csrf"]) || $_COOKIE["csrf"] == "") {
@@ -124,7 +124,7 @@ function csrf_check() {
 }
 
 // There is no h() here, and no template names an escape filter: minitpl
-// escapes by markup context on its own, so a value crossing a second escaper
+// escapes by markup context on its own, and a value crossing a second escaper
 // reaches the page as &amp;quot; where a quote belongs. The three templates
 // that show a null marker spell it themselves.
 function identifier_ok($name) {
@@ -173,8 +173,8 @@ function csv_cell($value) {
 /**
  * Runs a console statement and returns the message, rows and column names.
  *
- * query() reports success as a boolean, so statements that return rows are
- * read with get_all() instead. Rows arrive as maps without a column order;
+ * query() reports success as a boolean, and this function reads statements
+ * that return rows with get_all() instead. Rows arrive as maps without a column order;
  * this sorts the names to keep the rendered table stable between requests.
  */
 function sql_execute($db, $query) {

@@ -1,6 +1,6 @@
 //go:build ignore
 
-// testserver.go is testserver.php written in Go, route for route, so one load
+// testserver.go is testserver.php written in Go, route for route, and one load
 // generator drives both and the difference reads off directly.
 //
 // The work is the same: the same patterns on the same net/http router, the same
@@ -12,7 +12,7 @@
 // way the PHP server's worker count does. Go needs no such bound - net/http
 // answers each request on a goroutine and the scheduler takes it from there -
 // so leaving it unset bounds nothing, which is the Go server anyone would
-// actually write. Set, it becomes a semaphore of that depth, so a side by side
+// actually write. Set, it becomes a semaphore of that depth, and a side by side
 // against a bounded PHP server compares the same arrangement on both sides.
 //
 //	go run testdata/testserver.go
@@ -52,9 +52,9 @@ func readConfig() config {
 // describes, and as the bare seconds scripts/bench-http.sh passes.
 //
 // Reading it as seconds alone leaves `600s` parsing to nothing and the server
-// holding the ten-second default, so it stops listening part-way through a
+// holding the ten-second default, and it stops listening part-way through a
 // sweep and every route after the first measures an empty column. The phpscript
-// side takes either spelling, so the two servers have to agree.
+// side takes either spelling, and the two servers have to agree.
 func readLimit(value string) time.Duration {
 	if value == "" {
 		return 10 * time.Second
@@ -147,7 +147,7 @@ func info(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# go\n\nRuntime => net/http\nGo Version => %s\n", os.Getenv("GOVERSION"))
 }
 
-// bounded caps how many requests the server answers at once, so a run stands
+// bounded caps how many requests the server answers at once, and a run stands
 // beside a PHP server holding the same number of workers.
 func bounded(next http.Handler, workers int) http.Handler {
 	if workers < 1 {

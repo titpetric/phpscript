@@ -16,7 +16,7 @@ const defaultTrimChars = " \t\n\r\x00\x0B"
 // phpTrim implements the trim family over PHP's optional charlist.
 //
 // The list is a set of bytes and not of characters, which is the unit the
-// rest of the str* functions count in, so a charlist holding one byte of a
+// rest of the str* functions count in and a charlist holding one byte of a
 // multi-byte character strips that byte. strings.Trim reads its cutset as runes
 // and cannot express either that or the "a..z" range.
 func phpTrim(side trimSide, def string) func(string, ...string) string {
@@ -47,7 +47,7 @@ func phpTrim(side trimSide, def string) func(string, ...string) string {
 //
 // A range whose end sorts below its start, or one missing either end, stays the
 // literal bytes the list spells. PHP warns on each of those and then reads it
-// the same way; there are no warnings here, so the reading is the whole of the
+// the same way; there are no warnings here and the reading is the whole of the
 // behaviour.
 func charMask(list string) [256]bool {
 	var mask [256]bool

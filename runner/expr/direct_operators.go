@@ -13,7 +13,7 @@ import (
 // direct.go.
 
 // compileInterp compiles an interpolated string to one closure that writes
-// every part into a single builder. This compiles the parts once, so an
+// every part into a single builder. This compiles the parts once and an
 // embedded expression costs what the same expression costs anywhere else and
 // the literal pays no dispatch of its own per execution.
 //

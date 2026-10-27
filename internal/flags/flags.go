@@ -9,7 +9,7 @@
 //
 // Pre reads -f and -w before anything constructs the command, because the
 // configuration file and the working directory decide what the command takes.
-// Pre also takes them off the argument list; Bind declares them anyway, so
+// Pre also takes them off the argument list; Bind declares them anyway and
 // they appear in help beside the rest.
 package flags
 
@@ -45,7 +45,7 @@ type Options struct {
 	ConfigFile string
 
 	// WorkDir is -w: the directory the process changes to before it does
-	// anything else, so every relative path in the configuration, the
+	// anything else and every relative path in the configuration, the
 	// arguments and the scripts means the same thing.
 	WorkDir string
 
@@ -92,7 +92,7 @@ func (o *Options) Bind(fs *cli.FlagSet) {
 }
 
 // BindWith returns a Bind that declares the shared flags before the command's
-// own, so every command carries the set whether it defines flags or not.
+// own and every command carries the set whether it defines flags or not.
 func (o *Options) BindWith(bind func(*cli.FlagSet)) func(*cli.FlagSet) {
 	return func(fs *cli.FlagSet) {
 		o.Bind(fs)
@@ -128,7 +128,7 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 // This runs before anything constructs the command: -f decides the
 // configuration a command takes, and -w decides what every relative path after
 // it means, the configuration file included. pflag runs later and never sees
-// them, so Bind's defaults are the values this found.
+// them and Bind's defaults are the values this found.
 func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))
@@ -193,7 +193,7 @@ func Pre(args []string) (*Options, []string, error) {
 	return o, remaining, nil
 }
 
-// valued names the shared flags that take a value, so a walk over the
+// valued names the shared flags that take a value and a walk over the
 // arguments can tell which of them consume the word after them. --verbose is the
 // only one that does not.
 var valued = map[string]bool{
@@ -202,7 +202,7 @@ var valued = map[string]bool{
 	"--stdlib": true, "-f": true, "-w": true,
 }
 
-// Split cuts the argument list after the script named for `run`, so the words
+// Split cuts the argument list after the script named for `run` and the words
 // after it belong to the script as $argv and never to phpscript as flags.
 //
 // The script is the first word that is not a flag, a flag's value or the run
@@ -230,7 +230,7 @@ func Split(args []string, isCommand func(string) bool) (head, script []string) {
 	return args, nil
 }
 
-// Hoist moves the command name to the front of the argument list, so a global
+// Hoist moves the command name to the front of the argument list and a global
 // flag may precede it.
 //
 // This walks the flags this package declares and no others: a command's own
@@ -252,7 +252,7 @@ func Hoist(args []string, isCommand func(string) bool) []string {
 		}
 		if !valued[name] {
 			// A flag this package does not declare belongs to a command, and a
-			// command's flags follow its name. Nothing left to hoist.
+			// command's flags follow its name. The rest stays in place.
 			return args
 		}
 		if !assigned && name != "--cover" {
@@ -262,7 +262,7 @@ func Hoist(args []string, isCommand func(string) bool) []string {
 	return args
 }
 
-// Chdir applies -w. It runs before the read of the configuration, so naming a
+// Chdir applies -w. It runs before the read of the configuration and naming a
 // tree once serves it, and no path inside the configuration repeats that name.
 func (o *Options) Chdir() error {
 	if o.WorkDir == "" {
@@ -313,7 +313,7 @@ func (o *Options) Report() bool {
 }
 
 // ResolveCoverFile expands TimePlaceholder and creates the directory that
-// holds the profile, so --coverfile=cover/phpscript.{time}.cov works
+// holds the profile and --coverfile=cover/phpscript.{time}.cov works
 // against a tree that has no cover directory yet.
 func (o *Options) ResolveCoverFile(now time.Time) (string, error) {
 	name := o.CoverFile
@@ -367,7 +367,7 @@ func (o *Options) startCPUProfile() (func(), error) {
 }
 
 // writeMemProfile writes the heap profile --memprofile named. The collection
-// runs first, so the profile describes what the program still reaches and
+// runs first and the profile describes what the program still reaches and
 // never what the collector has yet to sweep.
 func (o *Options) writeMemProfile() error {
 	if o.MemProfile == "" {

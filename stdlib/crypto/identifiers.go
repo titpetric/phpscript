@@ -12,18 +12,18 @@ import (
 )
 
 // RegisterIdentifiers installs the id generators. Neither is a PHP name:
-// PHP's own library mints no unique ids, so ports reach for composer packages
+// PHP's own library mints no unique ids and ports reach for composer packages
 // (ramsey/uuid, symfony/ulid) whose value is exactly the entropy source this
 // package already owns. Both live here and not in a Go dependency, because
-// each is a format over crypto/rand and nothing more.
+// each is a format over crypto/rand.
 //
 // The two share one layout (a 48-bit millisecond timestamp followed by
-// randomness), so both sort by creation time. ulid() renders it in Crockford
+// randomness) and both sort by creation time. ulid() renders it in Crockford
 // base32; uuid() renders it as a version 7 UUID, the hexadecimal spelling of
 // the same idea.
 func RegisterIdentifiers(rt *runner.Runtime) {
 	// ulid returns a 26-character ULID: a millisecond timestamp and 80 random
-	// bits in Crockford base32, so ids sort by creation time. Ids from the
+	// bits in Crockford base32 and ids sort by creation time. Ids from the
 	// same millisecond sort in no particular order.
 	rt.RegisterFunc("ulid", func() (string, error) {
 		b, err := timestampedID()
@@ -34,7 +34,7 @@ func RegisterIdentifiers(rt *runner.Runtime) {
 	})
 
 	// uuid returns a UUIDv7 as 36 lowercase characters in the 8-4-4-4-12
-	// form: a millisecond timestamp and random bits, so ids sort by creation
+	// form: a millisecond timestamp and random bits and ids sort by creation
 	// time like a ulid.
 	rt.RegisterFunc("uuid", func() (string, error) {
 		b, err := timestampedID()

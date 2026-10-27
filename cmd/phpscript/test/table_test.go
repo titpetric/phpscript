@@ -220,7 +220,7 @@ func TestEngineTime(t *testing.T) {
 
 // TestMarkdownCell covers the escaping a fixture's failure reason needs. A
 // pipe in the text would close the cell early and shift every column after it,
-// so the generated report would read as a different table.
+// making the generated report read as a different table.
 func TestMarkdownCell(t *testing.T) {
 	t.Parallel()
 	if got, want := markdownCell("a | b"), `a \| b`; got != want {

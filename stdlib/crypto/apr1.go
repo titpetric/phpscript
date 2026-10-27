@@ -8,21 +8,21 @@ import (
 
 // apr1Magic is the identifier Apache's md5-crypt variant writes, and the whole
 // of what separates it from the `$1$` md5-crypt php's crypt() reads: the magic
-// string goes into the first digest, so the same password and salt produce a
+// string goes into the first digest and the same password and salt produce a
 // different hash under each. php verifies no `$apr1$` line - crypt() answers
 // "*0" for the setting - so this derivation lives here and its test vectors
 // come from `openssl passwd -apr1`.
 const apr1Magic = "$apr1$"
 
 // apr1Rounds is the iteration count the algorithm fixes. No parameter carries
-// it: nothing in the encoded form records it and no caller can raise it, so a
+// it: no field in the encoded form records it, no caller can raise it, and a
 // guess costs 1000 md5 compressions for every file. That is tens of
 // microseconds, a hundred thousand times under bcrypt at the default cost, and
 // the reason docs/security.md names `htpasswd -B`.
 const apr1Rounds = 1000
 
 // apr1SaltMax is the salt length Apache generates and reads. apr_md5_encode
-// truncates a longer field, so this one does too.
+// truncates a longer field and this one does too.
 const apr1SaltMax = 8
 
 // apr1Alphabet is crypt(3)'s base64 ordering, which is neither standard base64
@@ -48,8 +48,8 @@ func IsAPR1(stored string) bool {
 }
 
 // apr1Split reads the salt and the tag out of the encoded form. The tag comes
-// back for the shape check alone: a verify recomputes the whole string, so
-// nothing compares against it directly.
+// back for the shape check alone: a verify recomputes the whole string, which
+// is the only comparison.
 func apr1Split(stored string) (salt, tag string, ok bool) {
 	rest, found := strings.CutPrefix(stored, apr1Magic)
 	if !found {
@@ -67,9 +67,9 @@ func apr1Split(stored string) (salt, tag string, ok bool) {
 //
 // Change any step and the hash stops matching what htpasswd wrote, including
 // the two steps that read as mistakes. The password length drives a loop that
-// mixes either a zero byte or the password's first byte, so two passwords
+// mixes either a zero byte or the password's first byte and two passwords
 // differing only in length take different paths; and the 1000 rounds alternate
-// what they digest on the index, so the derivation is serial.
+// what they digest on the index and the derivation is serial.
 func apr1Encode(password, salt string) string {
 	if len(salt) > apr1SaltMax {
 		salt = salt[:apr1SaltMax]
@@ -107,7 +107,7 @@ func apr1Encode(password, salt string) string {
 	final = ctx.Sum(nil)
 
 	// The rounds are the whole cost. Each one digests the password and the
-	// previous output in an order the index decides, so a round waits on the
+	// previous output in an order the index decides and a round waits on the
 	// one before it.
 	for i := 0; i < apr1Rounds; i++ {
 		round := md5.New()

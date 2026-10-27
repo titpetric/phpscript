@@ -8,7 +8,7 @@
 // A MapMap answers from the request and holds what a script wrote, nothing
 // else.
 //
-// The edits are request-scoped, so their map comes from a pool and goes back
+// The edits are request-scoped and their map comes from a pool and goes back
 // cleared and never freed.
 package mapmap
 
@@ -20,7 +20,7 @@ import (
 // Source is the read-only half of a MapMap: the request, or a map built for a
 // run that has no request behind it.
 //
-// A source serves reads for the length of a request and takes no write, so
+// A source serves reads for the length of a request and takes no write and
 // every MapMap over one can share it.
 type Source interface {
 	// Get answers the value of key and whether the source holds it.
@@ -35,8 +35,8 @@ type Source interface {
 
 // MapMap reads through a Source and writes to a layer of its own.
 //
-// Read answers the layer first, so a script that assigns to a key sees what it
-// assigned; the write touches no source, which stays shared. Nothing copies
+// Read answers the layer first and a script that assigns to a key sees what it
+// assigned; the write touches no source, which stays shared. No copy leaves
 // out of the source until something reads the whole thing.
 type MapMap struct {
 	src Source
@@ -46,7 +46,7 @@ type MapMap struct {
 	//
 	// A slice and not a map: a request writes a key or two, and a linear
 	// scan over that beats hashing, with one allocation for the backing array
-	// in place of one for the map and its bucket. Nothing here grows to the
+	// in place of one for the map and its bucket. The plan stays below the
 	// size where the scan would lose.
 	edits []edit
 }
@@ -167,7 +167,7 @@ func (m *MapMap) Len() int {
 // Range visits the source in its own order, then the keys only the layer holds.
 //
 // A key the layer overwrote arrives in the source's position carrying the
-// written value, so assigning to an existing key does not move it.
+// written value and assigning to an existing key does not move it.
 func (m *MapMap) Range(fn func(key, value any) bool) {
 	if m == nil {
 		return
@@ -202,7 +202,7 @@ func (m *MapMap) Range(fn func(key, value any) bool) {
 }
 
 // Release returns the layer to the pool. The MapMap reads as the source alone
-// afterwards, so a caller releases when the request it belongs to is over.
+// afterwards and a caller releases when the request it belongs to is over.
 func (m *MapMap) Release() {
 	if m == nil {
 		return
@@ -258,12 +258,12 @@ func (s ValueSource) Range(fn func(key string, value any) bool) bool {
 	return true
 }
 
-// RequestSource derives the CGI names from the request itself, so serving one
+// RequestSource derives the CGI names from the request itself and serving one
 // builds no map.
 //
 // Extra carries the names the request cannot answer on its own, which are the
 // ones a caller computed: the clock for REQUEST_TIME, and whatever the host
-// decided about the scheme behind a proxy. A Source of its own, so a caller
+// decided about the scheme behind a proxy. A Source of its own and a caller
 // passes the map it already has with no copy into another. It serves reads,
 // takes no write, and wins over a derived name.
 type RequestSource struct {

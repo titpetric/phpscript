@@ -27,7 +27,7 @@ type Callable struct {
 
 	// class stands in for obj in the Class::method spelling, which names no
 	// receiver. Each call builds an empty instance of its own and shares
-	// none, so `self::` resolves and nothing crosses between two calls.
+	// none and `self::` resolves and nothing crosses between two calls.
 	class *model.Class
 
 	// env is what a closure literal takes from its defining scope.
@@ -37,13 +37,13 @@ type Callable struct {
 	// running it resolves and this value does not. This is the one spelling
 	// whose meaning belongs to the runtime and not to the value: a name is a
 	// program counter that each runtime looks up in its own function table,
-	// so a host can register a binding under it.
+	// and a host can register a binding under it.
 	name string
 
 	// rt is the runtime that built the value, and call is the uniform shape on
 	// it. The pair is what `on` compares against the runtime doing the calling:
 	// a value is a value and crosses freely, but an execution belongs to one
-	// goroutine, so a call from anywhere else has to be a call of its own.
+	// goroutine and a call from anywhere else has to be a call of its own.
 	//
 	// This constructor fills call, and no caller takes it as a method value at
 	// the point of use. coerceArg passes it to bindings, and a method value
@@ -88,8 +88,8 @@ func (rt *Runtime) newMethod(obj *model.Object, decl *model.FuncDecl, scope *Sco
 }
 
 // newStaticMethod binds Class::method, which has no receiver. Each call builds
-// the empty instance again, so `self::` constants resolve and two calls share
-// nothing; php would reject `$this` here and so does an instance with no
+// the empty instance again and `self::` constants resolve and two calls share
+// no state; php would reject `$this` here and so does an instance with no
 // properties.
 func (rt *Runtime) newStaticMethod(class *model.Class, decl *model.FuncDecl, scope *Scope) *Callable {
 	c := &Callable{fn: decl, class: class, rt: rt}
@@ -110,12 +110,12 @@ func (rt *Runtime) newNamedCallable(name string) *Callable {
 // Call invokes the callable on the runtime that built it.
 func (c *Callable) Call(args ...any) (any, error) { return c.call(args...) }
 
-// Invoke runs the callable on rt, in a scope holding args and nothing else -
+// Invoke runs the callable on rt, in a scope holding args alone -
 // and, for a bound method, its receiver.
 //
 // This is the cross-runtime call, and it stands apart from Call: a runtime of
 // its own answers a request, and the declaration crosses while the runtime
-// that built the value stays behind. A name crosses as a name, so the runtime
+// that built the value stays behind. A name crosses as a name and the runtime
 // running it resolves it against its own function table.
 func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 	switch {
@@ -128,7 +128,7 @@ func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 		env.statics = map[*model.StaticVar]map[string]any{}
 		return rt.invokeClosure(c.closure, args, env)
 	case c.class != nil:
-		// A static spelling names no receiver, so each runtime builds its own
+		// A static spelling names no receiver and each runtime builds its own
 		// empty instance and nothing crosses.
 		return rt.invokeMethod(model.NewObject(c.class), c.fn, args, nil)
 	case c.fn != nil:
@@ -181,12 +181,12 @@ func (c *Callable) Name() string {
 // AsCallable describes v as something a host can run on another runtime: a
 // closure, a method bound to its receiver, an object with __invoke, a declared
 // function by name, or Class::method. What it captured comes along, and every
-// runtime running it shares that, so a callable must read what it captured and
+// runtime running it shares that and a callable must read what it captured and
 // never write to it.
 //
 // This constructor refuses the two array spellings that everything else
 // accepts, which docs/README.md records as a decision. A Go func fails for a
-// different reason: it carries no declaration, so another runtime has nothing
+// different reason: it carries no declaration and another runtime has nothing
 // to run, and a host holding one already holds the call.
 func (rt *Runtime) AsCallable(v any) (*Callable, error) {
 	switch value := v.(type) {
@@ -266,7 +266,7 @@ func (rt *Runtime) callableWithScope(scope *Scope, v any) (func(...any) (any, er
 		return nil, false
 	}
 	// A typed nil func is a func-shaped value nothing can call: invoking one
-	// panics inside reflect and reports nothing useful, so it counts as
+	// panics inside reflect and reports nothing useful and it counts as
 	// uncallable and is_callable answers false.
 	if rv := reflect.ValueOf(v); rv.Kind() == reflect.Func && !rv.IsNil() {
 		return adaptOn(rt, v), true
@@ -363,9 +363,9 @@ func splitStaticCallable(name string) (string, string, bool) {
 // callable syntax over a name or a value: the callable the call site names,
 // without calling it. fallback is the Call node's global-namespace name.
 //
-// A value that is already callable answers itself, so
+// A value that is already callable answers itself and
 // `$fn(...) === $fn` holds as in php. Everything else resolves to a
-// *Callable, so a script reads the result as php's Closure.
+// *Callable and a script reads the result as php's Closure.
 func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any, error) {
 	switch value := target.(type) {
 	case *Callable:
@@ -400,10 +400,10 @@ func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any,
 // closureMember answers `$obj->method(...)` and `Class::method(...)`: the
 // declaration bound to what it will run against, as a *Callable.
 //
-// A string target is a class name, so it resolves through newStaticMethod, the
+// A string target is a class name and it resolves through newStaticMethod, the
 // same path staticMethod and AsCallable take for that spelling: an empty instance
-// per call, so `self::` inside the body resolves and two invocations of the value
-// share nothing. A host-backed receiver has no declaration to bind, so
+// per call and `self::` inside the body resolves and two invocations of the value
+// share nothing. A host-backed receiver has no declaration to bind and
 // its method resolves through reflection and the bound call is the value itself.
 func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, error) {
 	switch receiver := target.(type) {

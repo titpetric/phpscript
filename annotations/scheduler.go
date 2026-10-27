@@ -23,7 +23,7 @@ type Scheduler struct {
 
 	// cancel ends the jobs Start launched. The context the caller passes
 	// Start belongs to the caller and not to the generation going away,
-	// so without this a reload leaves the previous tree's jobs running.
+	// and without this a reload leaves the previous tree's jobs running.
 	mu     sync.Mutex
 	cancel context.CancelFunc
 }

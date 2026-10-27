@@ -15,7 +15,7 @@ import (
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
 	// An executable script starts with an interpreter line, which the lexer
-	// skips. Source puts it back on the formatted output, so it costs the
+	// skips. Source puts it back on the formatted output and it costs the
 	// script nothing of its formatting.
 	if shebang, rest, ok := splitShebang(src); ok {
 		out, err := Source(rest)
@@ -25,7 +25,7 @@ func Source(src string) (string, error) {
 		return shebang + "\n" + out, nil
 	}
 	// Files that start outside PHP are templates. Formatting their PHP blocks
-	// independently is not supported yet, so leave the entire file unchanged.
+	// independently is not supported yet and leave the entire file unchanged.
 	if !strings.HasPrefix(src, "<?php") {
 		return src, nil
 	}
@@ -34,7 +34,7 @@ func Source(src string) (string, error) {
 		return "", err
 	}
 	out, unsupported := printProgram(prog, Options{Comments: CollectComments(src)})
-	// Formatting rewrites the file in place, so a node the printer cannot
+	// Formatting rewrites the file in place and a node the printer cannot
 	// spell has to stop the rewrite: emitting the placeholder would delete
 	// working code.
 	if len(unsupported) > 0 {
@@ -134,7 +134,7 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 	return stmts, nil
 }
 
-// collectImports maps every name a file imports to the alias it gave it, so
+// collectImports maps every name a file imports to the alias it gave it and
 // the printer can write a reference the way the author did and not the way
 // the parser resolved it.
 //
@@ -163,7 +163,7 @@ func collectImports(stmts []model.Stmt) map[string]string {
 // imports, and answers what follows both.
 //
 // A `use` is a compile-time alias: it binds a short name to a long one and
-// loads nothing, so it can sit anywhere and is legal before the include that
+// loads nothing and it can sit anywhere and is legal before the include that
 // will eventually define what it names. That is exactly why the order is
 // worth fixing here, and not left to whoever types it: a reader
 // scanning the top of a file learns what the file pulls in before what it

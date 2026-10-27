@@ -8,7 +8,7 @@ import (
 )
 
 // TestTest covers the block `phpscript test` reads out of `config.yml`. A fixture
-// tree carries its defaults in a file, so a suite says what it needs and the
+// tree carries its defaults in a file and a suite says what it needs and the
 // command line is not repeating it on every invocation.
 func TestTest(t *testing.T) {
 	t.Parallel()
@@ -29,7 +29,7 @@ func TestTest(t *testing.T) {
 }
 
 // TestTest_Validate covers the values a run can act on. Whether a hook file
-// exists goes unchecked here: the file lives in the caller's filesystem, so the
+// exists goes unchecked here: the file lives in the caller's filesystem and the
 // run reports a missing hook where it executes it.
 func TestTest_Validate(t *testing.T) {
 	t.Parallel()
@@ -177,7 +177,7 @@ func TestLoadTestSuite(t *testing.T) {
 	})
 }
 
-// runKeyValue is a legal value for each run-wide key, so the rejection a suite
+// runKeyValue is a legal value for each run-wide key and the rejection a suite
 // gets is over the key it named and not over the value.
 func runKeyValue(key string) string {
 	switch key {

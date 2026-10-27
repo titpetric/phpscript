@@ -29,7 +29,7 @@ type Context struct {
 	Argv    []string
 
 	// ServerSource is what $_SERVER reads through when the source can derive a
-	// name without a map. A request answers most of them itself, so
+	// name without a map. A request answers most of them itself and
 	// serving one fills Server with the few it cannot and leaves the rest for
 	// the first read that reaches them to derive.
 	//
@@ -44,11 +44,11 @@ type Context struct {
 	// The flat maps above are not the same information. They hold one string
 	// per literal field name, the shape a Go host reads and what
 	// Session\Manager looks a cookie up in, and they cannot express what the
-	// decoder needs: `a[]=1&a[]=2` is one repeated name, so a map keeps only
+	// decoder needs: `a[]=1&a[]=2` is one repeated name and a map keeps only
 	// the second value.
 	//
 	// Nil for a Context built from no request; Register falls back
-	// to the flat map, so Register still reads a c.Get a host filled itself.
+	// to the flat map and Register still reads a c.Get a host filled itself.
 	GetVars    *model.Array
 	PostVars   *model.Array
 	CookieVars *model.Array
@@ -65,18 +65,18 @@ type Context struct {
 	status   *int
 	// errors holds what went wrong with the request itself, before any script
 	// ran: a body refused for its size. A pointer for the same reason status
-	// is, so a copy of a Context reports what another copy recorded.
+	// is and a copy of a Context reports what another copy recorded.
 	errors *[]error
 
 	// rawBody holds the request body bytes php://input answers with. A pointer
-	// for the same reason status is, so a copy of a Context reads
+	// for the same reason status is and a copy of a Context reads
 	// what another copy buffered.
 	rawBody *[]byte
 
 	// decode holds the request and what decoding has pulled out of it so far. A
-	// Context built by a host has none: there is nothing to decode, and the
+	// Context built by a host has none: no bytes wait to decode, and the
 	// fields above are what it holds. A pointer for the same reason status is,
-	// so a decode through one copy shows in every other.
+	// and a decode through one copy shows in every other.
 	decode *decoder
 }
 
@@ -104,7 +104,7 @@ type decoder struct {
 	cookieVars *model.Array
 
 	// The flat forms, allocated by the decode that fills them. A request that
-	// reads no query allocates no query map, so they are not in
+	// reads no query allocates no query map and they are not in
 	// NewContext with the rest.
 	get     map[string]string
 	post    map[string]string
@@ -130,7 +130,7 @@ func NewContext() Context {
 }
 
 // newContext allocates what every Context has. The maps a request decodes into
-// are not among them: the decode that fills each one allocates it, so a page
+// are not among them: the decode that fills each one allocates it and a page
 // reading no query allocates no query map. NewContext adds them because a host
 // writes into the fields directly.
 func newContext() Context {
@@ -190,7 +190,7 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	c.decode = &decoder{request: r, options: opts}
 
 	// The query, the body and the cookie header are not read here. The first
-	// read that needs one decodes it, so a page that names no superglobal
+	// read that needs one decodes it and a page that names no superglobal
 	// parses nothing; see decoder.
 	//
 	// This check refuses a body over post_max_size here and not later, because
@@ -203,7 +203,7 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 
 	// Server variables ($_SERVER). The request is the source and Server holds
-	// the extras, so a read goes to both and copies neither.
+	// the extras and a read goes to both and copies neither.
 	c.serverVars(r)
 	c.ServerSource = &mapmap.RequestSource{Request: r, Extra: mapmap.MapSource(c.Server)}
 
@@ -355,7 +355,7 @@ func (c Context) cookieVars() *model.Array {
 
 // decodeQuery fills $_GET, reading the query string on the first call.
 //
-// RawQuery and not r.URL.Query(): a url.Values is a map, so field order is
+// RawQuery and not r.URL.Query(): a url.Values is a map and field order is
 // already gone, and the bracket decoder needs it.
 func (c Context) decodeQuery() {
 	if c.decode == nil {
@@ -375,7 +375,7 @@ func (c Context) decodeQuery() {
 }
 
 // decodeCookies fills $_COOKIE on the first call. r.Cookies() keeps the order
-// sent, and Go does not percent-decode a cookie the way PHP does, so that
+// sent, and Go does not percent-decode a cookie the way PHP does and that
 // happens here.
 func (c Context) decodeCookies() {
 	if c.decode == nil {
@@ -398,7 +398,7 @@ func (c Context) decodeCookies() {
 
 // decodeForm fills $_POST, $_FILES and php://input on the first call.
 //
-// Nothing can read a body twice, so every path needing any part of it comes
+// The body reads once and every path needing any part of it comes
 // through here.
 func (c Context) decodeForm() {
 	if c.decode == nil {
@@ -412,18 +412,18 @@ func (c Context) decodeForm() {
 // pathValues fills c.Path from the route parameters the pattern declares,
 // which $_REQUEST merges over the request fields.
 //
-// The names come from the declared path and not the matched one, so a
+// The names come from the declared path and not the matched one and a
 // parameter reads back under its declared name whichever router serves it.
 // Both routers publish the values through r.PathValue: ServeMux natively, chi
 // by calling SetPathValue for every URL param it captured.
 //
-// A {name...} parameter is the exception. chi has no such syntax, so
+// A {name...} parameter is the exception. chi has no such syntax and
 // RenderRoutePath spells it as chi's * wildcard, which chi publishes under "*".
 func (c Context) pathValues(r *http.Request) {
 	params, err := model.ParseRoutePath(routePattern(r))
 	if err != nil {
 		// The linter reports a path the grammar refuses and registration skips
-		// it, so reaching here means a host registered it directly.
+		// it and reaching here means a host registered it directly.
 		return
 	}
 	for _, param := range params {
@@ -445,20 +445,20 @@ func (c Context) pathValues(r *http.Request) {
 // (DOCUMENT_ROOT, SCRIPT_NAME, SCRIPT_FILENAME, PHP_SELF, PATH_INFO,
 // SERVER_NAME, SERVER_PORT, SERVER_SOFTWARE) are not here: none of them follow
 // from an *http.Request. A real PHP answers SERVER_NAME and SERVER_PORT from
-// the socket it accepted on and not from the Host header, so a request whose
+// the socket it accepted on and not from the Host header and a request whose
 // Host names something else still reports the listening address; the host that
 // owns the listener is the one that can say. Set them on Context.Server after
 // building the context.
 func (c Context) serverVars(r *http.Request) {
 	// REQUEST_METHOD, REQUEST_URI, QUERY_STRING, HTTP_HOST and SERVER_PROTOCOL
 	// are not written here. The request answers all five, and mapmap derives
-	// them on the read that asks, so a script that never names one costs
-	// nothing for it. What follows is what the request cannot answer alone.
+	// them on the read that asks and a script that never names one costs
+	// no time for it. What follows is what the request cannot answer alone.
 
 	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
 	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
 	// An IPv6 address arrives bracketed and leaves without, as PHP writes it.
-	// A Go host is free to put anything in the field, so a value that does not
+	// A Go host is free to put anything in the field and a value that does not
 	// parse lands in REMOTE_ADDR whole and REMOTE_PORT stays unset.
 	if addr, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		c.Server["REMOTE_ADDR"] = addr
@@ -472,7 +472,7 @@ func (c Context) serverVars(r *http.Request) {
 	// script deciding from it whether it talks over TLS would be deciding on
 	// what the client said. A host behind a proxy that terminates TLS is the
 	// one that knows whether to trust the proxy, and sets the two keys itself.
-	// HTTPS is unset on a plain request, never "off", so an
+	// HTTPS is unset on a plain request, never "off" and an
 	// isset($_SERVER["HTTPS"]) test works in PHP.
 	c.Server["REQUEST_SCHEME"] = "http"
 	if r.TLS != nil {
@@ -492,7 +492,7 @@ func (c Context) serverVars(r *http.Request) {
 
 	// REQUEST_TIME_FLOAT is when the request started, to the microsecond, and
 	// REQUEST_TIME the whole second of it. One clock read fills both, here and
-	// not per key, so the two cannot disagree about which second the request
+	// not per key and the two cannot disagree about which second the request
 	// began in.
 	start := time.Now()
 	c.Server["REQUEST_TIME"] = strconv.FormatInt(start.Unix(), 10)
@@ -500,12 +500,12 @@ func (c Context) serverVars(r *http.Request) {
 }
 
 // contentLength renders the CONTENT_LENGTH value of a request and reports
-// whether it has one. PHP takes the key from the Content-Length header, so a
+// whether it has one. PHP takes the key from the Content-Length header and a
 // chunked body, which announces no length, has no CONTENT_LENGTH, while a body
 // of zero bytes that announced itself has "0".
 //
 // Go parses the header into Request.ContentLength (-1 when unknown) and leaves
-// the header in place, so the header says whether the client sent one. A
+// the header in place and the header says whether the client sent one. A
 // request built in process, as httptest.NewRequest does, has the field without
 // the header; a positive length there is a body all the same.
 func contentLength(r *http.Request) (string, bool) {

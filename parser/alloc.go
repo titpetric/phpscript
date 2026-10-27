@@ -14,7 +14,7 @@ import (
 //
 //   - nodeChunk carves nodes of one concrete type out of a backing array.
 //     Every node keeps its own address, leaves the chunk exactly once and
-//     takes no reset and no reuse, so pointer identity holds, which
+//     takes no reset and no reuse and pointer identity holds, which
 //     runner.compileExpr relies on for its map[model.Expr]*compiledExpr cache.
 //     The trade is retention: a chunk stays reachable while any node in it
 //     does. That costs nothing here because one *model.Program holds the whole
@@ -25,7 +25,7 @@ import (
 //     bodies, parameters, array items). Pushing onto the shared stack and
 //     copying out once produces one exactly-sized allocation per list, in place
 //     of the 1->2->4->8 growth of appending to a nil slice. The stack is
-//     re-entrant: nested lists push and pop above the outer mark, so the outer
+//     re-entrant: nested lists push and pop above the outer mark and the outer
 //     elements stay contiguous.
 
 const (
@@ -89,7 +89,7 @@ func (s *scratch[T]) drop(mark int) { s.buf = s.buf[:mark] }
 // Node constructors
 //
 // One per chunked node type. make zeroes chunk memory, and every node leaves
-// the chunk once, so a constructor that leaves a field unset matches a
+// the chunk once and a constructor that leaves a field unset matches a
 // composite literal that omits it.
 // ---------------------------------------------------------------------------
 

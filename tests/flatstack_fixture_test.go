@@ -6,7 +6,7 @@ import (
 )
 
 // TestFlatstackFixtures runs every fixture through the flat bytecode runtime.
-// It skips a fixture the compiler rejects and delegates nothing: a fallback
+// It skips a fixture the compiler rejects without falling back: a fallback
 // run would test the compatibility interpreter a second time under this name.
 func TestFlatstackFixtures(t *testing.T) {
 	areas, err := embeddedFixtures()

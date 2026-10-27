@@ -8,7 +8,7 @@ import (
 )
 
 // TestTelemetry covers the inline decode of the block. The struct embeds the
-// oida options with `yaml:",inline"`, so path and driver sit at one level in a
+// oida options with `yaml:",inline"` and path and driver sit at one level in a
 // file: a reader of `config.yml` sees one telemetry block and not a nested one.
 func TestTelemetry(t *testing.T) {
 	t.Parallel()
@@ -37,7 +37,7 @@ storage_path: "/dev/shm/site"
 }
 
 // TestTelemetry_Validate covers the driver names a server starts under. The
-// check trims and lowercases the name before it compares, so an operator who
+// check trims and lowercases the name before it compares and an operator who
 // typed Disk is not refused over the spelling. An empty driver is memory.
 func TestTelemetry_Validate(t *testing.T) {
 	t.Parallel()
@@ -59,7 +59,7 @@ func TestTelemetry_Validate(t *testing.T) {
 				if err == nil {
 					t.Fatalf("driver %q validated", test.driver)
 				}
-				// The message carries the driver as the file spelled it, so
+				// The message carries the driver as the file spelled it and
 				// the operator can find the line.
 				if !strings.Contains(err.Error(), test.driver) {
 					t.Errorf("err = %q, want it to name the driver", err.Error())
@@ -74,8 +74,8 @@ func TestTelemetry_Validate(t *testing.T) {
 }
 
 // TestTelemetry_Resolved covers the storage a driver names. Check decides
-// the driver without building anything, so this path opens a store on disk and
-// nothing else does: a command that checks a file opens no directory.
+// the driver without building anything and this path opens a store on disk and
+// store on disk. A command that checks a file opens no directory.
 func TestTelemetry_Resolved(t *testing.T) {
 	t.Parallel()
 	t.Run("memory holds no store", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestTelemetry_Resolved(t *testing.T) {
 		if err == nil {
 			t.Fatal("an unknown driver resolved")
 		}
-		// The options come back whole beside the error, so a caller that
+		// The options come back whole beside the error and a caller that
 		// reports the failure can still name the block it came from.
 		if options.Path != "/debug/oida" {
 			t.Errorf("path = %q, want /debug/oida", options.Path)
@@ -143,7 +143,7 @@ func TestFlatstack(t *testing.T) {
 }
 
 // TestRoutes covers the key that loads annotated PHP routes. `config.yml` holds
-// it on, so a server started over an application root serves the @route
+// it on and a server started over an application root serves the @route
 // annotations in it without a file saying so.
 func TestRoutes(t *testing.T) {
 	t.Parallel()
@@ -162,7 +162,7 @@ func TestRoutes(t *testing.T) {
 
 // TestValue covers the nil pointer a caller may pass any command constructor.
 // One signature covers the commands that read configuration beside the ones
-// that read none, so the nil check lives here once.
+// that read none and the nil check lives here once.
 func TestValue(t *testing.T) {
 	t.Parallel()
 	if got := config.Value(nil); got.DocumentRoot != "" || got.Routes.Enabled {
@@ -175,7 +175,7 @@ func TestValue(t *testing.T) {
 		t.Errorf("Value(&held) = %+v, want %+v", got, held)
 	}
 
-	// The value is a copy, so a command that edits what it holds does
+	// The value is a copy and a command that edits what it holds does
 	// not reach the configuration the caller still holds.
 	got.DocumentRoot = "htdocs"
 	if held.DocumentRoot == "htdocs" {

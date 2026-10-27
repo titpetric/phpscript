@@ -68,18 +68,18 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("PHP_FLOAT_DIG", int64(15))
 
 	// INF and NAN are the two float values with no numeric spelling. Every
-	// renderer here already writes them, so without the constants a script
+	// renderer here already writes them and without the constants a script
 	// could read one out of an overflow and never write one.
 	rt.SetConst("INF", math.Inf(1))
 	rt.SetConst("NAN", math.NaN())
 
 	// The standard streams. registerLang registers STDIN with the rest of the
 	// language constructs; the two output streams are the process's, not the
-	// response body, so a diagnostic written to STDERR stays out of the page.
+	// response body and a diagnostic written to STDERR stays out of the page.
 	rt.SetConst("STDOUT", os.Stdout)
 	rt.SetConst("STDERR", os.Stderr)
 
-	// htmlspecialchars() flags. phpscript always escapes as ENT_QUOTES does, so
+	// htmlspecialchars() flags. phpscript always escapes as ENT_QUOTES does and
 	// the values exist for a call to pass and never to select a behaviour.
 	rt.SetConst("ENT_QUOTES", int64(3))
 	rt.SetConst("ENT_COMPAT", int64(2))
@@ -96,7 +96,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("FILTER_NULL_ON_FAILURE", int64(134217728))
 
 	// $_FILES error codes. A script compares against these even where the
-	// runtime cannot produce them, so registerPlatformConstants defines every
+	// runtime cannot produce them and registerPlatformConstants defines every
 	// one of PHP's; the request runtime sets OK, INI_SIZE, NO_FILE, NO_TMP_DIR
 	// and CANT_WRITE, since FORM_SIZE is a per-form limit, PARTIAL is an
 	// aborted transfer, and EXTENSION comes from extensions phpscript lacks.
@@ -109,7 +109,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(runner.UploadErrCantWrite))
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
-	// E_ALL is not every bit set: php 8 dropped E_STRICT (2048) from it, so it
+	// E_ALL is not every bit set: php 8 dropped E_STRICT (2048) from it and it
 	// is 30719 here and in php 8, where php 7 reported 32767. The difference is
 	// only visible once a script can write E_ALL & ~E_NOTICE, which needs the
 	// bitwise operators.
@@ -185,7 +185,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	})
 
 	// runner.Context.Header stages the response headers and writes them after
-	// the script finishes, so no header leaves the process while a script runs.
+	// the script finishes and no header leaves the process while a script runs.
 	rt.RegisterFunc("headers_sent", func(_ ...any) bool { return false })
 
 	// phpscript has no php.ini. Reporting every directive as unset is what PHP
@@ -227,7 +227,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 		// A negative offset caps where the match may start, counted from the
 		// end. PHP 8 raises a ValueError when that runs past the start of the
 		// haystack; phpscript clamps to 0. A match inside the prefix ending
-		// one needle past the cap starts at or before it, so LastIndex over
+		// one needle past the cap starts at or before it and LastIndex over
 		// that prefix answers directly.
 		last := int64(len(haystack)) + offset[0]
 		if last < 0 {
@@ -334,7 +334,7 @@ func phpStrtr(subject string, args ...any) string {
 	if !ok {
 		return subject
 	}
-	// PHP tries the longest key that matches at each position, so the
+	// PHP tries the longest key that matches at each position and the
 	// replacement is order-independent and never rewrites its own output.
 	keys := make([]string, 0, pairs.Len())
 	replacements := make(map[string]string, pairs.Len())

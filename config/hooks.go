@@ -17,7 +17,7 @@ type Hooks struct {
 	Setup string `yaml:"setup"`
 
 	// Teardown runs once after those fixtures, whether they passed or failed,
-	// so state a suite created outside its own database is still released by a
+	// and state a suite created outside its own database is still released by a
 	// run that ended badly.
 	Teardown string `yaml:"teardown"`
 }

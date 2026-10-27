@@ -31,10 +31,10 @@ func TestMethodCallError(t *testing.T) {
 	}
 }
 
-// TestThrowableMethod covers PHP's Throwable method set over any Go error, so a
+// TestThrowableMethod covers PHP's Throwable method set over any Go error and a
 // catch clause binds whatever reached it: a thrown Exception, an error a
 // binding returned, a converted panic. A method the concrete Go type defines
-// wins, so *stdlib.Exception reports its own code.
+// wins and *stdlib.Exception reports its own code.
 func TestThrowableMethod(t *testing.T) {
 	t.Parallel()
 	inner := errors.New("no such table")
@@ -91,7 +91,7 @@ func TestThrowableMethod(t *testing.T) {
 }
 
 // TestMethodByNameFold covers PHP's case-insensitive method resolution, then
-// the retry without underscores, so a snake_case script name finds the
+// the retry without underscores and a snake_case script name finds the
 // idiomatic Go one: `$t->iso_week()` resolves ISOWeek.
 func TestMethodByNameFold(t *testing.T) {
 	t.Parallel()
@@ -107,7 +107,7 @@ func TestMethodByNameFold(t *testing.T) {
 }
 
 // TestFieldByNameFold covers property access on a Go struct: the exact name
-// first, then without case, then without underscores, so `$rec->is_readonly`
+// first, then without case, then without underscores and `$rec->is_readonly`
 // reads the field IsReadonly.
 func TestFieldByNameFold(t *testing.T) {
 	t.Parallel()

@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// benchCalls runs body in a loop of 100, so a per-call figure is the reported
+// benchCalls runs body in a loop of 100, and a per-call figure is the reported
 // one less the baseline, divided by a hundred.
 func benchCalls(b *testing.B, body string) {
 	rt := runner.New(io.Discard, runner.Options{})
@@ -33,12 +33,12 @@ func BenchmarkDispatchFast(b *testing.B) {
 }
 
 // BenchmarkDispatchReflect calls one it does not. str_repeat is
-// func(string, int64) string, which is not among the shapes, so the call goes
+// func(string, int64) string, which is not among the shapes, and the call goes
 // through reflectInvoker and reflect.Value.Call.
 //
 // The pair is what a new shape in fastInvoker is worth. 163 of the 314
 // registered functions take the reflect path, across 126 distinct signatures,
-// so the question is per function and no sweep.
+// and each function decides on its own, without a sweep.
 func BenchmarkDispatchReflect(b *testing.B) {
 	benchCalls(b, `str_repeat("a", 3);`)
 }
@@ -50,13 +50,13 @@ func BenchmarkDispatchBaseline(b *testing.B) {
 
 // BenchmarkDispatchSprintf prices one of the string family's most called
 // names. sprintf is func(string, ...any) (string, error): the error-returning
-// spelling of a shape fastInvoker already lists without the error, so the
-// figure moves with nothing but which invoker the registration built.
+// spelling of a shape fastInvoker already lists without the error, and the
+// figure moves with only which invoker the registration built.
 //
 // It exists because the shape of a binding's return is not a local decision.
 // Adding an error return is a correctness change that reads as one line, and
 // it decides the dispatch path for every call to that
-// name afterwards. This benchmark is what prices sprintf, so the move lands
+// name afterwards. This benchmark is what prices sprintf, and the move lands
 // measured.
 func BenchmarkDispatchSprintf(b *testing.B) {
 	benchCalls(b, `sprintf("%s-%d", "a", 3);`)

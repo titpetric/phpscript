@@ -87,7 +87,7 @@ func registerRequest(rt *runner.Runtime) {
 	})
 
 	// setrawcookie stages a Set-Cookie header the way setcookie does, writing
-	// $value as it stands, so a value carrying a semicolon or a space is the
+	// $value as it stands and a value carrying a semicolon or a space is the
 	// caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
@@ -99,8 +99,8 @@ func registerRequest(rt *runner.Runtime) {
 // The header text is net/http's, not PHP's: attributes read Path and HttpOnly
 // where PHP writes path and HttpOnly, and the expiry is RFC 1123 where PHP
 // writes its own dashed variant. RFC 6265 makes attribute names
-// case-insensitive and both date spellings parseable, so a client cannot tell;
-// a test asserting the exact header text can, so this comment records it.
+// case-insensitive and both date spellings parseable and a client cannot tell;
+// a test asserting the exact header text can and this comment records it.
 func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool {
 	request, ok := runner.RequestContext(rt.Context())
 	if !ok {
@@ -131,7 +131,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 }
 
 // applyCookiePositional reads the long argument list: $expires, $path,
-// $domain, $secure, $httponly. There is no samesite in this form, so
+// $domain, $secure, $httponly. There is no samesite in this form and
 // PHP grew the array one.
 func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {

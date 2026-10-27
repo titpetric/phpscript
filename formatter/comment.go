@@ -7,7 +7,7 @@ import (
 )
 
 // Comment is one comment of the source, with the lines it occupied. The AST
-// holds no comments, so the formatter reads them off the source separately and
+// holds no comments and the formatter reads them off the source separately and
 // places them by line: a comment goes out before the first statement that
 // starts below it. OwnLine records that nothing but whitespace came before it,
 // which separates a comment an author wrote above a statement from one written
@@ -90,7 +90,7 @@ func (p *printer) comment(c Comment) {
 
 // CollectComments returns every comment of src in source order, with the lines
 // it occupied and whether it stood on a line of its own. The AST holds no
-// comments, so this is what keeps them in a file the formatter rewrites.
+// comments and this is what keeps them in a file the formatter rewrites.
 func CollectComments(src string) []Comment {
 	var out []Comment
 	offset := 0

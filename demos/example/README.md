@@ -10,7 +10,7 @@ phpscript -f config.yml server .
 ```
 
 Then open the address printed by the server (normally `http://localhost:8080`).
-`config.yml` registers the SQLite connection as `bookmarks`, so the first start
+`config.yml` registers the SQLite connection as `bookmarks`, and the first start
 creates the database next to the sources.
 
 | Route                              | File                                          |
@@ -30,7 +30,7 @@ creates the database next to the sources.
 ## Tests
 
 [tests/venom.yml](tests/venom.yml) covers every route. It runs against the
-compose service, which has no published port, so
+compose service, which has no published port, and
 [tests/atkins.yml](tests/atkins.yml) resolves the container address for it:
 
 ```sh
@@ -38,4 +38,4 @@ cd tests && atkins test
 ```
 
 The suite leaves the database as it found it: each case that adds a bookmark
-extracts the new id and deletes it again, so the suite runs as often as you like.
+extracts the new id and deletes it again, and the suite runs as often as you like.

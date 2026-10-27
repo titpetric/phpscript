@@ -8,7 +8,7 @@ import (
 )
 
 // TestMemory_Configured covers which names an in-memory provider accepts.
-// Naming none configures every name, so a dry run captures whatever a script
+// Naming none configures every name and a dry run captures whatever a script
 // sends; naming some lets a test read back the refusal a script reads for the
 // rest. An empty name is the "default" server, as everywhere else.
 func TestMemory_Configured(t *testing.T) {
@@ -36,9 +36,9 @@ func TestMemory_Configured(t *testing.T) {
 }
 
 // TestMemory_Send covers queueing in place of delivering. A queued message
-// carries its target server's name, so a test reads back which server a script
+// carries its target server's name and a test reads back which server a script
 // selected. This provider refuses a name it does not hold the way a real
-// delivery refuses it, so a test still exercises the error a script reads.
+// delivery refuses it and a test still exercises the error a script reads.
 func TestMemory_Send(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
@@ -93,7 +93,7 @@ func TestMemory_SendMessage(t *testing.T) {
 }
 
 // TestMemory_Next covers reading the queue as a queue: the oldest message
-// first, and gone once read, so a test walking a sequence of deliveries does
+// first, and gone once read and a test walking a sequence of deliveries does
 // not index into a slice. The second return reports an empty queue, because a
 // zero Message reads the same as one a script sent with empty strings.
 func TestMemory_Next(t *testing.T) {
@@ -122,7 +122,7 @@ func TestMemory_Next(t *testing.T) {
 }
 
 // TestMemory_Reset covers emptying the queue, which a test reusing one
-// provider across cases does between them. The configured names survive it, so
+// provider across cases does between them. The configured names survive it and
 // the provider still refuses what it refused before.
 func TestMemory_Reset(t *testing.T) {
 	t.Parallel()

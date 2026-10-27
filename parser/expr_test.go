@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// shape renders an expression fully parenthesized, so a test states the tree
+// shape renders an expression fully parenthesized and a test states the tree
 // the precedence table built and never the value an engine would compute from
-// it. The parser cannot reach the runner, so it runs nothing.
+// it. The parser cannot reach the runner and it runs nothing.
 func shape(e model.Expr) string {
 	switch n := e.(type) {
 	case *model.Binary:
@@ -61,13 +61,13 @@ func TestBinaryPrecedence(t *testing.T) {
 		src  string
 		want string
 	}{
-		// php: 1 | 2 == 2 is 1, so the comparison folds first.
+		// php: 1 | 2 == 2 is 1 and the comparison folds first.
 		{src: `1 | 2 == 2`, want: `(1 | (2 == 2))`},
-		// php: 1 << 2 + 3 is 32, so the addition folds first.
+		// php: 1 << 2 + 3 is 32 and the addition folds first.
 		{src: `1 << 2 + 3`, want: `(1 << (2 + 3))`},
-		// php: 1 . 2 << 1 is "14", so the shift folds before the dot.
+		// php: 1 . 2 << 1 is "14" and the shift folds before the dot.
 		{src: `1 . 2 << 1`, want: `(1 . (2 << 1))`},
-		// php: 2 + 3 . "x" is "5x", so the addition folds before the dot.
+		// php: 2 + 3 . "x" is "5x" and the addition folds before the dot.
 		{src: `2 + 3 . "x"`, want: `((2 + 3) . "x")`},
 		{src: `1 + 2 * 3`, want: `(1 + (2 * 3))`},
 		{src: `7 % 4 * 2`, want: `((7 % 4) * 2)`},
@@ -103,7 +103,7 @@ func TestParenthesesOverridePrecedence(t *testing.T) {
 }
 
 // TestTernaryIsLooserThanEveryBinary covers where the conditional sits: the
-// whole comparison is the condition, so `$a > 1 ? "y" : "n"` reads one way
+// whole comparison is the condition and `$a > 1 ? "y" : "n"` reads one way
 // only.
 func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
 	t.Parallel()
@@ -114,7 +114,7 @@ func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
 
 // TestAssignmentIsRightAssociative covers the one expression-level assignment
 // this parser accepts, the `($x = f()) !== false` idiom. It binds to the right
-// and only where an assignment may target the left side, so `1 = $a` parses as
+// and only where an assignment may target the left side and `1 = $a` parses as
 // the literal and never as an assignment.
 func TestAssignmentIsRightAssociative(t *testing.T) {
 	t.Parallel()
@@ -122,7 +122,7 @@ func TestAssignmentIsRightAssociative(t *testing.T) {
 		t.Errorf("parsed as %s, want %s", got, want)
 	}
 
-	// A literal is not an lvalue, so nothing consumes the operator and the
+	// A literal is not an lvalue and nothing consumes the operator and the
 	// expression ends at the literal.
 	program := mustParse(t, `<?php echo 1;`)
 	if _, ok := program.Stmts[0].(*model.Echo).Args[0].(*model.AssignExpr); ok {
@@ -132,7 +132,7 @@ func TestAssignmentIsRightAssociative(t *testing.T) {
 
 // TestIsLValue covers what may sit on the left of an expression-level
 // assignment: a variable, an index, a property, a static property and list(),
-// and nothing computed. A call result has nowhere to store a value, so
+// and nothing computed. A call result has nowhere to store a value and
 // accepting one would build a tree the runner cannot execute.
 func TestIsLValue(t *testing.T) {
 	t.Parallel()

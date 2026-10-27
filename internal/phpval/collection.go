@@ -20,7 +20,7 @@ func Strings(a any) ([]string, error) {
 	// One captured struct and no two captured variables: each variable a
 	// closure captures by reference is its own heap allocation, and this runs
 	// under implode. The field holds the refused value as its concrete type,
-	// so the happy path stores nothing.
+	// and the happy path stores nothing.
 	state := struct {
 		out     []string
 		refused *model.Object

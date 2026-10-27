@@ -14,7 +14,7 @@ package runner
 // Throwable marks a value that records its PHP class.
 //
 // ThrowableClass reads the class off the value and not off the Go type: every
-// SPL name is one Go type, so reflection would answer "Exception" for an
+// SPL name is one Go type and reflection would answer "Exception" for an
 // InvalidArgumentException. The method is also the predicate separating a PHP
 // throwable from an error a Go binding returned, which a Go type name cannot
 // do: it would take a driver type called Error for PHP's Error class, and the

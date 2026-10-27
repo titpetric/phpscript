@@ -9,17 +9,17 @@ import (
 
 // registerStreamReads installs the read half of the handle API. fopen() already
 // returns the handle these take, and fwrite() and stream_get_contents() already
-// take one, so these cover every way of reading a handle short of reading it
+// take one and these cover every way of reading a handle short of reading it
 // whole at once.
 //
 // None of them buffers. A buffered reader would read further than the script
-// named, which fseek() and ftell() would then disagree with, so fgets()
+// named, which fseek() and ftell() would then disagree with and fgets()
 // walks the handle a byte at a time instead. That is one syscall per byte on a
 // host file: reading a whole file and splitting it costs less here, and a
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
-	// Go's io package, so fseek passes the argument through as it arrives and
+	// Go's io package and fseek passes the argument through as it arrives and
 	// never translates it.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
@@ -44,7 +44,7 @@ func registerStreamReads(rt *runner.Runtime) {
 	})
 
 	// fgets reads one line from $stream, keeping the newline that ends it,
-	// and returns false at the end of the handle; $length bounds the line, so
+	// and returns false at the end of the handle; $length bounds the line and
 	// a line longer than it comes back in pieces.
 	rt.RegisterFunc("fgets", func(stream io.Reader, length ...int64) any {
 		if stream == nil {
@@ -53,7 +53,7 @@ func registerStreamReads(rt *runner.Runtime) {
 		limit := int64(-1)
 		if len(length) > 0 && length[0] > 0 {
 			// PHP's $length counts the terminating NUL it never writes to a
-			// script, so the line it reads is one shorter.
+			// script and the line it reads is one shorter.
 			limit = length[0] - 1
 		}
 
@@ -84,7 +84,7 @@ func registerStreamReads(rt *runner.Runtime) {
 	// feof reports whether $stream is at its end. It answers for a handle
 	// fopen() gave out, by comparing where the handle sits against how long
 	// the file is; php://input and php://output are not seekable and answer
-	// false, so a script draining the request body should read it with
+	// false and a script draining the request body should read it with
 	// stream_get_contents.
 	rt.RegisterFunc("feof", func(stream any) bool {
 		f, ok := stream.(*os.File)

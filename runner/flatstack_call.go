@@ -26,7 +26,7 @@ func (h *flatHost) boundScope() *Scope {
 }
 
 // pullScope writes a materialised scope's variables back into the frame.
-// boundScope builds that scope for one call and nothing keeps it, so this
+// boundScope builds that scope for one call and nothing keeps it and this
 // deletes the magic constants in place and filters nothing into another map.
 func (h *flatHost) pullScope(scope *Scope) {
 	if h.frame == nil {
@@ -47,7 +47,7 @@ func (h *flatHost) Construct(class string, args []any) (any, error) {
 func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
 	// A method on a PHP-declared object dispatches through the interpreter
 	// and sees the frame. A Go receiver's method sees the frame only through
-	// a context parameter, so callGoMethod's scopeFor materialises the scope
+	// a context parameter and callGoMethod's scopeFor materialises the scope
 	// for the methods that ask and no others, which is no common data-access
 	// shape.
 	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
@@ -68,7 +68,7 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 }
 
 // Call resolves a function the way helperFunc does, but a binding whose
-// signature declares no context never sees the scope, so this builds it no
+// signature declares no context never sees the scope and this builds it no
 // snapshot, no Scope and no write-back. That is the interpreter's own
 // contract: installFunc calls the same bindings with no per-call scope.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
@@ -104,7 +104,7 @@ func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any,
 }
 
 // InvokeValue calls a callable held in a value, `$fn(...)`, through the same
-// resolution call_user_func uses, so every callable spelling works.
+// resolution call_user_func uses and every callable spelling works.
 func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperInvoke(&scopeRef{scope: scope})(callee, args...)
@@ -177,7 +177,7 @@ func (h *flatHost) InvokeCallable(callable any) error {
 		return nil
 	}
 	// A compiled closure arrives as func(...any) (any, error) and reads its
-	// frame through its own nested run, so only a context-taking callable
+	// frame through its own nested run and only a context-taking callable
 	// needs the scope materialised.
 	if !wantsContext(reflect.TypeOf(callable)) {
 		_, err := h.runtime.invokeWithScopeContext(callable, nil, nil)

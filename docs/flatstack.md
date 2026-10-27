@@ -144,7 +144,7 @@ It supports these expressions:
 - Static calls `Class::method(...)` and static properties `Class::$name`, dispatched through the host bridge onto the interpreter's resolution
 - Function statics `static $x = ...` in named functions and methods, against the same per-statement storage the interpreter uses
 - Invoking a callable held in a value: `$fn($x)`; a string naming a compiled function takes a VM frame, everything else resolves through the host
-- First-class callable syntax, `callable(...)`, in all four call forms. The host resolves the callable, so the value is the same Closure the interpreter builds, and the declaration it names runs there on call
+- First-class callable syntax, `callable(...)`, in all four call forms. The host resolves the callable and the value is the same Closure the interpreter builds, and the declaration it names runs there on call
 - Property reads, writes and `unset($obj->prop)`
 - String concatenation with `.`
 - Anonymous functions, including a by-value `use (...)` capture list, a `$this` carried away from an enclosing method, and `static function () {}`
@@ -160,7 +160,7 @@ The complete program atomically selects fallback when it contains any unsupporte
 - `compact()` of a name declared `static $x`, which lives in a bag and not a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and a name computed at run time resolves through the name table the program carries
 - `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
-- `func_get_args()`, refused by name at every call site. A compiled frame seeds its declared parameters into slots and keeps no argument list, so an argument past the last parameter is not in the frame to report. It names the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: the function table resolves that name and carries no scope builtin, so both engines report the same undefined function
+- `func_get_args()`, refused by name at every call site. A compiled frame seeds its declared parameters into slots and keeps no argument list and an argument past the last parameter is not in the frame to report. It names the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: the function table resolves that name and carries no scope builtin and both engines report the same undefined function
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
 - `try` without a `catch` clause
 - Casts
@@ -174,7 +174,7 @@ These are not called "unsupported programs" at the public runtime boundary: they
 
 ### Closure identity
 
-A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the one documented disagreement between the two engines, and it does not extend to the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines, so `$fn(...) === $fn` holds on both.
+A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the one documented disagreement between the two engines, and it does not extend to the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines and `$fn(...) === $fn` holds on both.
 
 Fixing it means the engine's closure value carries an identity, which means a value type both packages can see in place of a bare `func(...any) (any, error)`, and a case for it everywhere the host resolves a callable. Comparing the function pointer is no fix: two closures built from one literal share it, which would answer true where php answers false.
 
@@ -190,11 +190,11 @@ Flat bytecode uses the runner's existing host bridge, including:
 
 The VM binds a frame handle (`engine.FrameLocals`) to the host once per run, with no copy of its locals into a map around every call. The host decides when a callee needs the scope: it passes no scope at all to a function-table hit whose signature does not take a `context.Context`, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. The by-reference marks rely on that snapshot-before-call ordering, and the engine's `vm_test` pins it.
 
-`Snapshot` is the frame's named variables, the set `compact()`, `extract()` and `get_defined_vars()` read. It holds no argument list, so the compiler refuses `func_get_args()`.
+`Snapshot` is the frame's named variables, the set `compact()`, `extract()` and `get_defined_vars()` read. It holds no argument list and the compiler refuses `func_get_args()`.
 
-A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file, so a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
+A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file and a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
 
-The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name, so coercion has one home. Slot type inference stops here, and a measurement is why: values live in `[]any`, where the type assertion is the unboxing, so an opcode holding monomorphic int operand slots saves nothing over the dynamic guard.
+The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name and coercion has one home. Slot type inference stops here, and a measurement is why: values live in `[]any`, where the type assertion is the unboxing and an opcode holding monomorphic int operand slots saves nothing over the dynamic guard.
 
 Panics raised by registered Go constructors, functions, or methods become `HostPanicError` at the reflection boundary. Native bytecode `try`/`catch` can catch these errors exactly like a returned Go error:
 

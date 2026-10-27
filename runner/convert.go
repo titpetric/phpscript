@@ -15,7 +15,7 @@ import (
 
 // phpString renders any value the way PHP would for string contexts/echo.
 //
-// The rendering is phpval's and not a second copy of it, so echo, implode and
+// The rendering is phpval's and not a second copy of it and echo, implode and
 // var_dump cannot disagree about a float's precision, a time.Time's spelling or
 // what an array reads as. The one case that is the runner's own is a caught
 // exception: `echo $e` prints the error text.
@@ -53,12 +53,12 @@ func phpTruthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
-		// A []byte reads as the string it carries, so "" and "0" are falsey as
+		// A []byte reads as the string it carries and "" and "0" are falsey as
 		// they are for a string. See phpval.Bytes.
 		if s, ok := phpval.Bytes(v); ok {
 			return s != "" && s != "0"
 		}
-		// An empty collection is falsey whatever its Go type, so a binding that
+		// An empty collection is falsey whatever its Go type and a binding that
 		// returns a []string behaves like one that returns an *Array in
 		// `if ($rows)` and `empty($rows)`.
 		if n, ok := model.LenValues(v); ok {
@@ -87,7 +87,7 @@ func toInt(v any) int64 {
 	default:
 		// A Go binding returns named scalar types (time.Month, time.Weekday,
 		// time.Duration), which are integers wearing a name. Arithmetic on them
-		// is ordinary PHP arithmetic, so `$t->month() + 1` counts months rather
+		// is ordinary PHP arithmetic and `$t->month() + 1` counts months rather
 		// than answering zero.
 		return namedScalarInt(v)
 	}
@@ -192,7 +192,7 @@ func helperCast(typ string, v any) any {
 	case "int", "integer":
 		// An array casts to 1 when it holds anything and 0 when it does not.
 		// This is the only context that converts one: php refuses arithmetic on
-		// an array with a TypeError and coerces nothing, so toInt answers
+		// an array with a TypeError and coerces nothing and toInt answers
 		// zero and the rule lives here and not there.
 		if model.IsCollection(v) {
 			if phpTruthy(v) {
@@ -212,7 +212,7 @@ func helperCast(typ string, v any) any {
 		// (array) on an object reads its properties out, in the order the
 		// object reads them back. PHP prefixes a private or protected name with
 		// its declaring class; phpscript enforces no visibility, and a
-		// key holding a NUL byte is one no script could index, so the cast
+		// key holding a NUL byte is one no script could index and the cast
 		// keeps the plain name. See docs/README.md.
 		if obj, ok := v.(*model.Object); ok {
 			out := model.NewArraySize(obj.Len())
@@ -315,12 +315,12 @@ func toFloat(v any) float64 {
 }
 
 // normalizeKey canonicalises array keys. PHP has int keys and string keys and
-// nothing else, and the conversion rules are the same ones the standard
-// library needs for array_key_exists() and array_flip(), so there is one
+// no third type, and the conversion rules are the same ones the standard
+// library needs for array_key_exists() and array_flip() and there is one
 // definition and this is a call to it.
 func normalizeKey(k any) any { return phpval.Key(k) }
 
 // keyString spells a script's index as the name a model.Keyed answers to. PHP
-// normalises a key to an int or a string; a Keyed takes string names, so an
+// normalises a key to an int or a string; a Keyed takes string names and an
 // int index reads as its decimal spelling.
 func keyString(k any) string { return phpval.String(phpval.Key(k)) }

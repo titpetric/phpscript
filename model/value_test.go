@@ -6,12 +6,12 @@ import (
 )
 
 // TestArrayItemValue covers the already-evaluated array entry the transpiled
-// __array and __pair helpers produce. Key is nil for a list-style append, so
+// __array and __pair helpers produce. Key is nil for a list-style append and
 // folding a mixed list into an *Array appends those entries at the next integer
 // index and sets the rest by key.
 //
 // That is PHP's numbering for `[1, "k" => 2, 3]`: a string key takes no integer
-// position, so the third entry lands at 1.
+// position and the third entry lands at 1.
 func TestArrayItemValue(t *testing.T) {
 	t.Parallel()
 	items := []ArrayItemValue{
@@ -44,7 +44,7 @@ func TestArrayItemValue(t *testing.T) {
 	}
 
 	// An integer key is a key and no append: `[2 => "x"]` sets the position it
-	// names, so the next append follows it.
+	// names and the next append follows it.
 	explicit := NewArray()
 	explicit.Set(int64(2), "x")
 	explicit.Append("y")

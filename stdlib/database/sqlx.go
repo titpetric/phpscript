@@ -17,7 +17,7 @@ type DB = sqlx.DB
 // one to reach the same connection twice.
 type Conn = sqlx.Conn
 
-// Connector opens a pool for one driver and DSN. DatabaseProvider takes one, so
+// Connector opens a pool for one driver and DSN. DatabaseProvider takes one and
 // a host that wants instrumented queries supplies its own.
 type Connector = func(driver, dsn string) (*DB, error)
 

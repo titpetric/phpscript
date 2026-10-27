@@ -7,7 +7,7 @@ import (
 
 // TestSourceValue covers what a foreign context value answers for the two
 // span-source keys: the values the WithSpan wrappers attach, and a false for
-// an empty location, so the caller falls down its parent chain the way an
+// an empty location and the caller falls down its parent chain the way an
 // unwrapped context does.
 func TestSourceValue(t *testing.T) {
 	t.Parallel()
@@ -38,9 +38,9 @@ func (c carrierThrough) Value(key any) any {
 }
 
 // TestSpanSource covers the source location a span records. PHP has no lexical
-// scope a Go caller can read, so the interpreter publishes the file and line of
+// scope a Go caller can read and the interpreter publishes the file and line of
 // the statement it runs into the context a binding runs under. The write drops
-// an empty filename and a line at or below zero, so a span never records a
+// an empty filename and a line at or below zero and a span never records a
 // location of "" or 0 as though a PHP frame had published it.
 func TestSpanSource(t *testing.T) {
 	t.Parallel()
@@ -89,7 +89,7 @@ func TestSpanSource(t *testing.T) {
 }
 
 // TestWithSpanFilename covers the location reaching a span. A binding
-// instruments without naming a file, so every span started from that context
+// instruments without naming a file and every span started from that context
 // carries the file the interpreter published and the line beside it.
 func TestWithSpanFilename(t *testing.T) {
 	t.Parallel()
@@ -107,7 +107,7 @@ func TestWithSpanFilename(t *testing.T) {
 		t.Errorf("span source = %q:%d, want queries/users.php:23", span.Filename, span.Line)
 	}
 
-	// A span started without a location carries none, so a Go-only call does
+	// A span started without a location carries none and a Go-only call does
 	// not inherit the line of whatever ran before it.
 	StartSpan(ctx, "flush", KindInternal).End()
 	spans = trace.Clone().Spans

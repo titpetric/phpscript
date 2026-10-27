@@ -6,7 +6,7 @@ import (
 )
 
 // TestArrayFindStrict pins the comparison in_array and array_search share: the
-// loose path is phpval.Compare, so PHP 8's "a non-numeric string does not equal
+// loose path is phpval.Compare and PHP 8's "a non-numeric string does not equal
 // 0" holds, and the strict path compares the Go type first.
 func TestArrayFindStrict(t *testing.T) {
 	t.Parallel()

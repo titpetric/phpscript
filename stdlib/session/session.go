@@ -4,7 +4,7 @@
 // as long as the process; disk storage is a file per session under a directory
 // the host chooses, and prunes by modification time.
 //
-// A manager wraps whichever storage it receives for tracing, so a request's
+// A manager wraps whichever storage it receives for tracing and a request's
 // trace shows which backend it paid for and whether the session exists. The
 // trace omits the session ID: that ID is the credential in the cookie.
 //
@@ -33,7 +33,7 @@ func Register(rt *runner.Runtime) {
 
 // RegisterRoot installs the session classes with disk storage rooted at dir. A
 // $storage_path the script names resolves against dir, cannot climb out of it,
-// and must sit inside the runtime's writable_paths, so the directory it creates
+// and must sit inside the runtime's writable_paths and the directory it creates
 // is one the script could also have written a file into.
 //
 // Without that, the constructor mkdir'd whatever the script named: a vhost could
@@ -53,7 +53,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	// Session\Manager starts, reads and validates the request's session
 	// against the given $storage, and logs a user in against the given
 	// $users. With no arguments it takes disk storage and the application's
-	// own .htpasswd, so `new Session\Manager` is a working login.
+	// own .htpasswd and `new Session\Manager` is a working login.
 	//
 	// The default store opens the file and defers the parse to the login
 	// that reads it: a manager constructs on every request, and a page
@@ -78,7 +78,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 //
 // The fallback writes a log line, because memory storage is a different
 // promise. It lives as long as the runtime that built it, and a server forks
-// one per worker, so a session minted on one worker is invisible to the next
+// one per worker and a session minted on one worker is invisible to the next
 // and a login fails at random. One line costs less to read than that symptom.
 // The line names the path and the reason, and the trace names the backend on
 // every session span.

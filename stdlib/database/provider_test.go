@@ -12,10 +12,10 @@ import (
 )
 
 // TestProvider covers the alias a host names in its runtime options. model
-// declares the interface itself, so a runtime can name a provider without
+// declares the interface itself and a runtime can name a provider without
 // depending on this package, and the alias keeps one name for it on both
 // sides. A runtime whose options name none resolves through Default, the
-// process environment as a CLI run has it, so a connection resolves before a
+// process environment as a CLI run has it and a connection resolves before a
 // host has configured anything.
 func TestProvider(t *testing.T) {
 	t.Parallel()
@@ -158,7 +158,7 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 }
 
 // TestDatabaseProviderCachesUnderResolvedName covers the pool a caller naming
-// fallbacks gets. Database\Migrate names "shop:migrate" before "shop", so
+// fallbacks gets. Database\Migrate names "shop:migrate" before "shop" and
 // the credential that answers is not the name it asked under; caching under
 // the name passed would open it a second pool, which on a private DSN such
 // as an in-memory sqlite is a second database, and the schema it applied would

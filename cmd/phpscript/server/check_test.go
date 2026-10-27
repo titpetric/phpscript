@@ -48,7 +48,7 @@ func TestCheck(t *testing.T) {
 		}
 	})
 
-	// The gap this closes: fs.Sub does not stat, so a single-root server
+	// The gap this closes: fs.Sub does not stat and a single-root server
 	// comes up and answers 404 on the first request without it.
 	t.Run("a missing document root fails", func(t *testing.T) {
 		_, errOut, ok := checkResult(t, "", t.TempDir())

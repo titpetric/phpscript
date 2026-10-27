@@ -8,7 +8,7 @@ import (
 
 // TestPHPInstanceOf covers `$value instanceof Class` as class-name equality,
 // compared without case as class names are everywhere else. A class declaring
-// `extends RuntimeException` is an instance of itself and of nothing else,
+// `extends RuntimeException` is an instance of itself and of that class alone,
 // because there is no inheritance to follow; an interface name matches against
 // the list the declaration recorded. See docs/design.md.
 func TestPHPInstanceOf(t *testing.T) {
@@ -44,9 +44,9 @@ func TestPHPInstanceOf(t *testing.T) {
 }
 
 // TestInstanceOfClass covers the class name a value reports. A scalar is an
-// instance of nothing, so `1 instanceof Foo` is false and raises nothing. A
+// instance of nothing and `1 instanceof Foo` is false and raises nothing. A
 // callable value is php's Closure whichever of the three spellings it holds,
-// and a host-backed value reports its Go type name, so `new Database("app")`
+// and a host-backed value reports its Go type name and `new Database("app")`
 // answers "Database".
 func TestInstanceOfClass(t *testing.T) {
 	t.Parallel()

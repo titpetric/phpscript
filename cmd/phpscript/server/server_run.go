@@ -93,7 +93,7 @@ type handler struct {
 	phpOptions runner.Options
 
 	// pool holds this site's registered runtimes between requests, a field
-	// of the handler the same way the include cache is, so a runtime
+	// of the handler the same way the include cache is and a runtime
 	// registered against this site's filesystem and options can never answer
 	// for another site; see runner.SessionPool.
 	pool *runner.SessionPool
@@ -184,7 +184,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// autoindex on and named exactly that.
 	if info.IsDir() {
 		// A directory named without its trailing slash takes a redirect first,
-		// so the relative links in the page that answers resolve below it and
+		// and the relative links in the page that answers resolve below it and
 		// not beside it.
 		if !strings.HasSuffix(r.URL.Path, "/") {
 			redirectToDirectory(w, r)
@@ -203,7 +203,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if path.Ext(filename) == ".php" {
 		// The entrypoint name is relative to the application root, not the
-		// document root, so an include reaching above the served directory
+		// document root and an include reaching above the served directory
 		// still resolves inside the project.
 		entrypoint := path.Join(h.documentRoot, filename)
 		if h.executes(entrypoint) {
@@ -218,7 +218,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFileFS(w, r, h.public, filename)
 }
 
-// serveNotFound answers a request that resolved to nothing: the site's own page
+// serveNotFound answers a request that resolved to no file: the site's own page
 // when it has one, and the plain status otherwise. See serveErrorPage for who
 // gets the page.
 func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +249,7 @@ func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 //
 // SERVER_NAME and SERVER_PORT come from the address the listener bound in real
 // PHP, not from the Host header, which is client supplied. This server
-// routes by Host, so the name a request arrived under is the site it reached,
+// routes by Host and the name a request arrived under is the site it reached,
 // which SERVER_NAME reports; the port is the one the URL carried,
 // left unset when it carried none.
 //
@@ -279,18 +279,18 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 // produced: the request context holding the headers and status the script
 // staged, the body it buffered, and whatever it ended with.
 //
-// Nothing reaches w. The caller decides the response, so the site's own page
-// can answer an error and not the error's own words. vars, when set, adds
+// The response reaches w unwritten. The caller decides it, and the site's own
+// page can answer an error and not the error's own words. vars, when set, adds
 // $_SERVER entries the entrypoint needs beyond the ones the request and the
 // site answer for.
 func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
 	var out bytes.Buffer
 
 	// A pooled runtime, registered once by buildRuntime and reset between
-	// requests: nothing a request wrote survives the Put. The response is a
+	// requests: the Put drops everything a request wrote. The response is a
 	// pushed redirection, dropped with the rest of the session by the reset,
 	// and the connection enters through BeginRequest the way a Path B worker's
-	// does, so connection_aborted answers for this client and ignore_user_abort
+	// does and connection_aborted answers for this client and ignore_user_abort
 	// starts off for every request.
 	rt := h.pool.Get()
 	defer h.pool.Put(rt)
@@ -300,7 +300,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	if h.coverage != nil {
 		// A collector turns flatstack off for this request: coverage is an
 		// interpreter feature and the fallback is atomic. The pool drops the
-		// collector with the session, so nothing keyed by an AST node outlives
+		// collector with the session and nothing keyed by an AST node outlives
 		// its own program.
 		collector := coverage.New()
 		rt.SetCoverage(collector)
@@ -326,7 +326,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	}
 
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
-		// No script frame outlives Run, so the peak is the request's memory
+		// No script frame outlives Run and the peak is the request's memory
 		// footprint; a fresh usage walk would be baseline.
 		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
 		if rt.MemoryLimit() > 0 {
@@ -345,7 +345,7 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	// before it: half a page is not an answer.
 	var notes string
 	if _, exited := runner.IsExit(err); err != nil && !exited {
-		// The trace ID is also the Request-Id header, so a log line and the
+		// The trace ID is also the Request-Id header and a log line and the
 		// recorded trace of the same request find each other.
 		log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, filename, err, telemetry.TraceID(r.Context()))
 		notes, body = err.Error(), nil
@@ -418,7 +418,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 	}
 
 	// A reload discards the platform value every registration binds to,
-	// so every registration belongs here and not in Run.
+	// and every registration belongs here and not in Run.
 	manager.Setup = func(svc *Service) error {
 		appConfig, err := reloadConfig(started, globals)
 		if err != nil {
@@ -469,7 +469,7 @@ func setup(ctx context.Context, svc *Service, appConfig config.Config, args []st
 		}
 	}
 
-	// Last, so it stops last: the platform stops modules in registration
+	// Last and it stops last: the platform stops modules in registration
 	// order, and a profile written before the sites stopped would miss what
 	// they did on the way out.
 	if cover != nil {
@@ -506,12 +506,12 @@ func warnFrozen(log Logger, started, reloaded config.Config) {
 
 // registerSite wires the single tenant server: one application root, its
 // modules mounted straight onto the platform router. The route modules stay on
-// that router and not a nested one, so the platform keeps seeing the pattern
+// that router and not a nested one and the platform keeps seeing the pattern
 // a request matched, the label its traces carry.
 func registerSite(svc *Service, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
-	// One application owns the process, so its scripts read the process
+	// One application owns the process and its scripts read the process
 	// environment with what the configuration adds on top. Either way,
 	// runner.ScriptEnvironment holds infrastructure variables back.
 	runnerOptions := appConfig.Runner
@@ -533,7 +533,7 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 	}
 
 	// Startup jobs and routed endpoints read the same source tree and execute
-	// PHP the same way, so they share one set of options.
+	// PHP the same way and they share one set of options.
 	annotationOptions := sharedCaches(files, annotationOptions(appConfig, runnerOptions, observers, root, ""))
 	if cover != nil {
 		cover.watch(os.DirFS(root))
@@ -571,7 +571,7 @@ func documentRoot(appConfig config.Config) string {
 
 // annotationOptions returns the options every annotated PHP file of one source
 // tree runs under. Startup jobs, scheduled jobs and routed endpoints read the
-// same tree and execute PHP the same way, so they share one set.
+// same tree and execute PHP the same way and they share one set.
 func annotationOptions(appConfig config.Config, runnerOptions runner.Options, observers []runner.Observer, root, suffix string) []annotations.Option {
 	return []annotations.Option{
 		annotations.WithRootDir(root),
@@ -585,14 +585,14 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 
 // routeOptions adds the exclusions routed endpoints need.
 //
-// The handler serves files under the document root directly, so an annotation
+// The handler serves files under the document root directly and an annotation
 // there must not publish a second, unguarded route. A writable path drops out
-// for a stronger reason: a script can put a .php file in one, so scanning it
+// for a stronger reason: a script can put a .php file in one and scanning it
 // would let a user's upload register a route the next time the server starts.
 func routeOptions(options []annotations.Option, writablePaths []string, documentRoot string) []annotations.Option {
 	result := append(options[:len(options):len(options)], annotations.WithExcludedDirectory(documentRoot))
 	for _, p := range writablePaths {
-		// The scanner walks paths relative to the application root, so an
+		// The scanner walks paths relative to the application root and an
 		// absolute entry names nothing it will ever see.
 		if p = strings.TrimSpace(p); p != "" && !filepath.IsAbs(p) {
 			result = append(result, annotations.WithExcludedDirectory(p))

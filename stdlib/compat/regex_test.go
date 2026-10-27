@@ -6,7 +6,7 @@ import (
 )
 
 // TestPregQuoteEscapes covers preg_quote(): every PCRE metacharacter comes
-// back escaped, and so does a delimiter the call names, so the result sits
+// back escaped, and so does a delimiter the call names and the result sits
 // inside a pattern written with that delimiter.
 func TestPregQuoteEscapes(t *testing.T) {
 	t.Parallel()
@@ -22,7 +22,7 @@ func TestPregQuoteEscapes(t *testing.T) {
 }
 
 // TestPregMatchWritesGroups covers what the matches reference receives: the
-// whole match first and one entry per group, so $m[1] is the first capture.
+// whole match first and one entry per group and $m[1] is the first capture.
 // The return is the match count php answers, which is 1 or 0 for preg_match.
 func TestPregMatchWritesGroups(t *testing.T) {
 	t.Parallel()

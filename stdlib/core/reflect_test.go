@@ -49,7 +49,7 @@ func TestGetClassOfAHostValue(t *testing.T) {
 }
 
 // TestNoParentClass is the executable form of a design decision: phpscript has
-// no inheritance, so no class has a parent to report and no object is an
+// no inheritance and no class has a parent to report and no object is an
 // instance of a subclass. A guard written as `is_subclass_of($o, "Exception")
 // || get_class($o) === "Exception"` falls through to the name comparison, which
 // is the check that answers here. If this fails, read docs/design.md.
@@ -68,7 +68,7 @@ var_dump(get_parent_class($s), is_subclass_of($s, "Site"), get_class($s) === "Si
 
 // TestGetObjectVars covers the properties an object reads back, in the order it
 // reads them. A property named for its digits becomes an integer key as an
-// array entry, so `(object) array("a", "b")` reads back as a list and a
+// array entry and `(object) array("a", "b")` reads back as a list and a
 // foreach over the result counts from zero.
 func TestGetObjectVars(t *testing.T) {
 	t.Parallel()
@@ -120,7 +120,7 @@ var_dump(method_exists("Site", "hello"), method_exists("Nope", "hello"));`)
 //
 // A class name answers false, which php does not: there property_exists("Site",
 // "greeting") is true. The declaration is reachable only through an instance
-// here, so the call that names a class has nothing to read.
+// here and the call that names a class has nothing to read.
 func TestPropertyExists(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

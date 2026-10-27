@@ -8,9 +8,9 @@ import (
 // which the decimal point decides and not Go's 'g' thresholds: 1e16 is still
 // written out at seventeen digits and 1e17 is not, and a small value turns at
 // the third leading zero. The mantissa always carries a fraction and the
-// exponent no leading zero, so the spelling is 1.0E+17 and not 1e+17.
+// exponent no leading zero and the spelling is 1.0E+17 and not 1e+17.
 //
-// echo passes precision=14 where var_dump passes the round-tripping form, so
+// echo passes precision=14 where var_dump passes the round-tripping form and
 // one float has two spellings: 1/3 is 0.33333333333333 to echo.
 func TestFloatFormatting(t *testing.T) {
 	t.Parallel()

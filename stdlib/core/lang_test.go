@@ -26,10 +26,10 @@ echo gettype(1), "|", gettype(1.5), "|", gettype("a"), "|", gettype(true), "|",
 
 // TestIntval covers the two halves of intval. With no base, or base 10, it
 // matches the (int) cast; any other base applies to a string argument alone,
-// so intval(12.9, 16) is 12 and never a hex reading of the digits.
+// and intval(12.9, 16) is 12 and never a hex reading of the digits.
 //
 // An array is the one case the cast does not own: PHP reads it as its
-// truthiness, so an empty array is 0 and a filled one is 1 whatever it holds.
+// truthiness and an empty array is 0 and a filled one is 1 whatever it holds.
 func TestIntval(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -48,7 +48,7 @@ echo intval("42abc"), "|", intval("abc"), "|", intval("  12  "), "|", intval("1e
 //
 // Base 0 detects the base off a 0x, 0b or 0 prefix and is 10 without one. The
 // 0o octal prefix is not among them, exactly because strtol does not know it,
-// so intval("0o12", 8) is 0. A base outside 0 and 2-36 is strtol's EINVAL,
+// and intval("0o12", 8) is 0. A base outside 0 and 2-36 is strtol's EINVAL,
 // which intval surfaces as 0 and raises nothing, php 8.5 included.
 func TestIntvalBase(t *testing.T) {
 	t.Parallel()
@@ -78,7 +78,7 @@ echo intval("9223372036854775807", 10), "|", intval("9223372036854775808", 10), 
 }
 
 // TestCallUserFuncArray covers the array spelling of a dynamic call. The
-// arguments arrive as the list the array holds, so a callable taking three
+// arguments arrive as the list the array holds and a callable taking three
 // parameters receives three arguments and not one array.
 func TestCallUserFuncArray(t *testing.T) {
 	t.Parallel()
@@ -97,7 +97,7 @@ echo call_user_func_array(function () { return "none"; }, []);`)
 
 // TestGetTypeSeparatesAnArrayFromAStruct covers the check gettype and the
 // reflection functions share. A *model.Array is a pointer to a struct in Go
-// and an array in PHP, so the collection test comes first; a value a Go
+// and an array in PHP and the collection test comes first; a value a Go
 // binding handed over is an object, because a script constructs it with new
 // and reads its properties the way it reads an interpreted one's.
 func TestGetTypeSeparatesAnArrayFromAStruct(t *testing.T) {

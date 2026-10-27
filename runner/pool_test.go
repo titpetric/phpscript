@@ -10,7 +10,7 @@ import (
 )
 
 // TestPool covers the two numbers NewPool takes, which are its contract: the
-// worker count is the parallelism and the queue depth is the backpressure, so
+// worker count is the parallelism and the queue depth is the backpressure and
 // a caller can read both back off the pool it holds.
 //
 // Zero workers is GOMAXPROCS, the parallelism the machine has for work that is
@@ -38,7 +38,7 @@ func TestPool(t *testing.T) {
 }
 
 // TestPool_Submit covers running work on a worker and waiting for it. Each run
-// gets a forked runtime and never the pool's own, so two submits never share
+// gets a forked runtime and never the pool's own and two submits never share
 // one set of frames.
 func TestPool_Submit(t *testing.T) {
 	t.Parallel()
@@ -113,8 +113,8 @@ func (j *lendingJob) Done() chan struct{} {
 
 // TestPool_SubmitLendsTheDoneChannel covers the DoneJob path: the pool signals
 // through the channel the job lends, and the buffered slot empties on receipt,
-// so one channel serves every submit of the job. The send and the receive pair
-// per run, so no run reads the signal of the one before it and answers ahead
+// and one channel serves every submit of the job. The send and the receive pair
+// per run and no run reads the signal of the one before it and answers ahead
 // of its own work.
 func TestPool_SubmitLendsTheDoneChannel(t *testing.T) {
 	t.Parallel()

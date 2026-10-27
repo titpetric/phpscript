@@ -23,7 +23,7 @@ const CoveragePath = "/debug/phpscript/coverage"
 // aggregator every request folds its counts into, the endpoint that publishes
 // them, and the flush that writes the profile when the platform stops.
 //
-// A collector counts statements by AST node, so it belongs to one run; the
+// A collector counts statements by AST node and it belongs to one run; the
 // aggregator holds one entry per statement range and is what survives the
 // request that produced it. See runner/coverage.
 type coverageModule struct {
@@ -48,7 +48,7 @@ func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 }
 
 // watch adds a site's source tree to the roots a profile resolves columns
-// against. Every site registers one, so a virtual host server has one per site.
+// against. Every site registers one and a virtual host server has one per site.
 func (m *coverageModule) watch(root fs.FS) {
 	m.roots = append(m.roots, root)
 }

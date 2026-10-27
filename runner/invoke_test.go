@@ -29,7 +29,7 @@ func TestPlural(t *testing.T) {
 }
 
 // TestArgAt covers reading a declared parameter the script did not pass. PHP
-// tolerates the short call, so the missing argument is nil and the reflect path
+// tolerates the short call and the missing argument is nil and the reflect path
 // pads with the zero value the same way.
 func TestArgAt(t *testing.T) {
 	t.Parallel()
@@ -50,7 +50,7 @@ func TestArgAt(t *testing.T) {
 
 // TestArgsTail covers what follows the fixed parameters in a variadic call.
 // argsTail aliases the slice and never copies it: the runner builds args fresh
-// per call, so the binding sees what reflect.Value.Call would have handed it.
+// per call and the binding sees what reflect.Value.Call would have handed it.
 func TestArgsTail(t *testing.T) {
 	t.Parallel()
 	args := []any{"a", "b", "c"}
@@ -148,7 +148,7 @@ func TestPHPDebugType(t *testing.T) {
 // string parameter renders the value the way PHP renders it in a string
 // context, because Go's own conversion means something else: reflect turns
 // int64(65) into "A" where PHP writes "65". A duration-taking parameter accepts
-// Go's readable spelling, so time.Time.Add takes "30m".
+// Go's readable spelling and time.Time.Add takes "30m".
 func TestCoerceArg(t *testing.T) {
 	t.Parallel()
 	stringType := reflect.TypeOf("")
@@ -181,7 +181,7 @@ func TestCoerceArg(t *testing.T) {
 
 // TestCallResult covers reducing a reflect Call result to a value and an error.
 // A Go callable returning two or more values becomes a PHP list in declaration
-// order, so a script destructures it: keeping only the first would answer a
+// order and a script destructures it: keeping only the first would answer a
 // different question, since time.Time.ISOWeek returns the year and the week.
 func TestCallResult(t *testing.T) {
 	t.Parallel()
@@ -265,7 +265,7 @@ func TestNameCallError(t *testing.T) {
 
 // TestRecoveredError covers what a recovered panic reaches a script as. A
 // callback that threw carries its own error across the Go frames between it and
-// the host boundary, so a script catches its own exception; anything else is a
+// the host boundary and a script catches its own exception; anything else is a
 // host panic, named after what panicked.
 func TestRecoveredError(t *testing.T) {
 	t.Parallel()
@@ -286,7 +286,7 @@ func TestRecoveredError(t *testing.T) {
 
 // TestWantsContext covers the check on whether the runner puts the runtime
 // context ahead of a binding's arguments. Only a first parameter of
-// context.Context counts, so a binding taking a string first receives the
+// context.Context counts and a binding taking a string first receives the
 // arguments a script passed and nothing in front of them.
 func TestWantsContext(t *testing.T) {
 	t.Parallel()
@@ -309,7 +309,7 @@ func TestWantsContext(t *testing.T) {
 
 // TestAdapt covers wrapping a Go callable in the uniform shape the evaluation
 // environment carries, which is the one shape the engine's call closures
-// assert. The wrapper coerces arguments through reflection, so a shim can keep
+// assert. The wrapper coerces arguments through reflection and a shim can keep
 // a natural Go signature.
 func TestAdapt(t *testing.T) {
 	t.Parallel()
@@ -323,7 +323,7 @@ func TestAdapt(t *testing.T) {
 	}
 
 	// The wrapper renders an int64 reaching a string parameter the way PHP does,
-	// so the binding reads "7" and never Go's own conversion of the code point.
+	// and the binding reads "7" and never Go's own conversion of the code point.
 	coerced, err := fn(int64(9), int64(7))
 	if err != nil {
 		t.Fatalf("the coerced call failed: %v", err)

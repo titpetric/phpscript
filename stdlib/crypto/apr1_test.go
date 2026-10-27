@@ -90,7 +90,7 @@ func TestAPR1VerifyRefuses(t *testing.T) {
 }
 
 // TestAPR1EncodeTruncatesTheSalt pins apr_md5_encode's own handling: it keeps
-// the first eight bytes of a longer salt, so a hash written with one verifies
+// the first eight bytes of a longer salt and a hash written with one verifies
 // against the truncation. The refusal of such an encoded form belongs to
 // apr1Split; this covers the derivation alone.
 func TestAPR1EncodeTruncatesTheSalt(t *testing.T) {

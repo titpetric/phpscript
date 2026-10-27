@@ -8,7 +8,7 @@ import (
 
 // TestIncludeCache covers storing a parsed program under its cleaned path. The
 // cache treats a parsed program as immutable: hoisting copies declarations into
-// per-runtime maps and statement execution only reads the tree, so every caller
+// per-runtime maps and statement execution only reads the tree and every caller
 // shares one program.
 func TestIncludeCache(t *testing.T) {
 	t.Parallel()
@@ -41,7 +41,7 @@ func TestIncludeCache(t *testing.T) {
 
 // TestNewIncludeCacheWithCapacity covers the bound that keeps a long-running
 // process from growing one entry per path it ever included. A capacity of zero
-// or less reads as the default, so a host passing an unset value gets the
+// or less reads as the default and a host passing an unset value gets the
 // bound and never an unbounded map.
 func TestNewIncludeCacheWithCapacity(t *testing.T) {
 	t.Parallel()
@@ -65,7 +65,7 @@ func TestNewIncludeCacheWithCapacity(t *testing.T) {
 
 // TestIncludeCache_Account covers the heap a precompile pass reports adding.
 // The total reads zero until a pass runs, as a lazily filled cache reports: a
-// request names each file in it. Account drops a negative figure, so a
+// request names each file in it. Account drops a negative figure and a
 // miscounted pass cannot credit the total.
 func TestIncludeCache_Account(t *testing.T) {
 	t.Parallel()
@@ -94,7 +94,7 @@ func TestIncludeCache_Account(t *testing.T) {
 
 // TestIncludeCacheVersion covers the counter a reader deriving something from
 // the whole cache holds its copy against. Entry count would not serve: a Set
-// replacing a re-parsed file leaves the count alone, so the derived copy
+// replacing a re-parsed file leaves the count alone and the derived copy
 // would read as fresh.
 func TestIncludeCacheVersion(t *testing.T) {
 	t.Parallel()

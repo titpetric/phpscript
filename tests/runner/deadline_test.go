@@ -55,7 +55,7 @@ while (true) { $n = 1; }
 }
 
 // TestTimeLimitSleepsAreCut holds the limit over a wait as well as over a
-// loop: a sleep is on the runtime context, so it ends when the script does.
+// loop: a sleep is on the runtime context, and it ends when the script does.
 func TestTimeLimitSleepsAreCut(t *testing.T) {
 	t.Parallel()
 	started := time.Now()
@@ -92,7 +92,7 @@ echo "finished";
 	}
 }
 
-// TestClientAbortEndsTheScript is the default: the connection went away, so the
+// TestClientAbortEndsTheScript is the default: the connection went away, and the
 // script does too.
 func TestClientAbortEndsTheScript(t *testing.T) {
 	t.Parallel()
@@ -169,8 +169,8 @@ var_dump(connection_aborted());
 }
 
 // TestTimeLimitIsNotCatchable holds the limit past a try, the way php holds its
-// own: there is no more time to carry on with, so the clause does not run and
-// the error reaches the host.
+// own: there is no more time to carry on with, and the clause does not run
+// while the error reaches the host.
 func TestTimeLimitIsNotCatchable(t *testing.T) {
 	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
@@ -192,7 +192,7 @@ try {
 }
 
 // TestShutdownRunsAfterTheLimit is what makes the limit survivable: the clock
-// is off for the shutdown pass, so a callback registered to close what the
+// is off for the shutdown pass, and a callback registered to close what the
 // script opened gets to run.
 func TestShutdownRunsAfterTheLimit(t *testing.T) {
 	t.Parallel()
@@ -243,7 +243,7 @@ func TestEnterRequestScopesTheConnection(t *testing.T) {
 
 // TestTimeLimitEndsAnEmptyLoop covers the shortest loop there is. The check
 // used to run per statement, and a body with no statements never reached it,
-// so `while (true) {}` outran every limit on the interpreter.
+// and `while (true) {}` outran every limit on the interpreter.
 func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
 	t.Parallel()
 	for _, body := range []string{"{}", "{ }", ";"} {
@@ -304,8 +304,8 @@ while (true) { $n = 1; }
 }
 
 // TestTimeLimitDoesNotOutliveItsProgram covers a runtime a host reuses: the
-// timer one program armed would end the next one, which set
-// nothing.
+// timer one program armed would end the next one, which armed no timer of its
+// own.
 func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -340,7 +340,7 @@ func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 
 // TestDeadlineStillHoldsAfterAShutdownPass covers the other half of reuse: the
 // shutdown pass turns the clock off so its callbacks can run, and turns it
-// back on, so a later program on that runtime stays bounded.
+// back on, and a later program on that runtime stays bounded.
 func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

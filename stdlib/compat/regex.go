@@ -2,7 +2,7 @@
 // engine with a different bargain: RE2 guarantees a match runs in time linear
 // in the length of the subject, and pays for that by leaving out every
 // construct that would require backtracking. Two of those omissions show up in
-// ordinary PHP code, so preg_* compiles each pattern on whichever engine can
+// ordinary PHP code and preg_* compiles each pattern on whichever engine can
 // express it.
 //
 //   - flags follow a /.../flags delimiter syntax, translated here to RE2's
@@ -10,26 +10,26 @@
 //   - backreferences and lookaround are not expressible in RE2 at all.
 //
 // The second is not a corner case. minitpl's compiler pairs a template tag with
-// its closing tag using `\1`, so a pattern RE2 cannot compile appears in the
+// its closing tag using `\1` and a pattern RE2 cannot compile appears in the
 // first library this runtime targets, and reporting "no match" for it
 // compiled every `{block}` and `{inline}` definition into garbage.
 //
 // RE2 stays the default: the faster of the two, and it cannot backtrack
 // catastrophically. The fallback carries a match timeout for that reason.
 //
-// A third gap is in RE2's API and not in its syntax, so it decides the
+// A third gap is in RE2's API and not in its syntax and it decides the
 // engine per call and not per pattern. PHP's $offset moves where a match
-// starts without moving where the subject begins, so `^` and `\b` still see
+// starts without moving where the subject begins and `^` and `\b` still see
 // the real start of the string.
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
-// FindStringMatchStartingAt does, so a non-zero $offset runs on the
-// backtracking engine even for a pattern RE2 compiled, so a pattern
+// FindStringMatchStartingAt does and a non-zero $offset runs on the
+// backtracking engine even for a pattern RE2 compiled and a pattern
 // can carry both engines.
 //
 // The two engines disagree about what an index counts: RE2 reports byte
 // offsets, regexp2 matches over a []rune and reports rune indexes. PHP's
-// offsets are byte offsets even under the /u modifier, so every index out of
+// offsets are byte offsets even under the /u modifier and every index out of
 // regexp2 passes through runeOffsets before a script sees it.
 //
 // See docs/reference/extensions/regexp.md for the user-facing account.
@@ -46,7 +46,7 @@ import (
 )
 
 // registerRegex installs the preg_* shims onto rt. Each Runtime gets its own
-// compiled-pattern cache, so a pattern compiled for one request is not shared
+// compiled-pattern cache and a pattern compiled for one request is not shared
 // with another.
 func registerRegex(rt *runner.Runtime) {
 	cache := newRegexpCache()
@@ -82,12 +82,12 @@ func registerRegex(rt *runner.Runtime) {
 	// PREG_SPLIT_OFFSET_CAPTURE.
 	rt.RegisterFunc("preg_split", cache.phpPregSplit)
 	// preg_quote escapes the characters that are special in a PCRE pattern,
-	// plus $delimiter, so a caller can splice a literal into one.
+	// plus $delimiter and a caller can splice a literal into one.
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 
 // The PREG_* flag bits, with the values PHP defines. A script passes them as
-// ordinary integers and combines them by adding, so the values are part of the
+// ordinary integers and combines them by adding and the values are part of the
 // interface and no implementation detail: a $flags of 258 has to mean
 // set order with offset capture.
 const (
@@ -103,7 +103,7 @@ const (
 
 // registerRegexConstants defines the PREG_* constants. The two families share
 // the low bits and are not interchangeable: PREG_SPLIT_NO_EMPTY and
-// PREG_PATTERN_ORDER are both 1, so only the function that takes the flag
+// PREG_PATTERN_ORDER are both 1 and only the function that takes the flag
 // decides what it means.
 func registerRegexConstants(rt *runner.Runtime) {
 	rt.SetConst("PREG_PATTERN_ORDER", int64(pregPatternOrder))
@@ -124,7 +124,7 @@ const backtrackTimeout = time.Second
 // phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches,
 // $flags, $offset), returning the number of matches, or false for a pattern
 // that does not compile. PHP leaves $matches untouched in that case rather
-// than emptying it, so the failure is distinguishable from "no matches".
+// than emptying it and the failure is distinguishable from "no matches".
 //
 // $flags selects PREG_PATTERN_ORDER (the default) or PREG_SET_ORDER, either
 // combined with PREG_OFFSET_CAPTURE and PREG_UNMATCHED_AS_NULL.
@@ -184,7 +184,7 @@ func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) strin
 
 // phpPregReplaceCallback implements preg_replace_callback($pattern, $callback,
 // $subject, $limit, &$count, $flags). Neither engine's ReplaceAll can call
-// back into the interpreter, so this shim builds the replacement by hand from
+// back into the interpreter and this shim builds the replacement by hand from
 // the match indexes. $limit is the number of replacements, -1 for every match;
 // a pattern that does not compile returns null with $count zero, as PHP does.
 func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...any) (any, error), subject string, limit any, count func(any), flags any) (any, error) {
@@ -196,7 +196,7 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 	}
 	bits := phpval.Int(flags)
 	// An omitted $limit is PHP's -1 (replace everything). A passed 0 is not:
-	// it names no replacements at all, so nil and 0 have to differ here.
+	// it names no replacements at all and nil and 0 have to differ here.
 	max := int64(-1)
 	if limit != nil {
 		max = phpval.Int(limit)
@@ -266,7 +266,7 @@ func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any
 	return pieces.result()
 }
 
-// phpPregQuote escapes the characters that are special in a PCRE pattern, so a
+// phpPregQuote escapes the characters that are special in a PCRE pattern and a
 // caller can splice a literal into one.
 func phpPregQuote(subject string, delimiter ...string) string {
 	special := ".\\+*?[^]$(){}=!<>|:-#/"

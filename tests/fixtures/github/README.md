@@ -1,9 +1,8 @@
 # Issue reproductions
 
 One file per GitHub issue, in the `.phpt` format under a `.yml` extension. The
-fixture runner only discovers `.phpt`, so nothing here runs; the extension is
-what keeps a file written against *expected* behaviour out of the passing
-suite. Files stay after their issue closes, as the record of each report
+fixture runner only discovers `.phpt`, and the extension keeps a file written
+against *expected* behaviour out of the passing suite. Files stay after their issue closes, as the record of each report
 and what now guards it.
 
 While the issue is open, the file records the expected behaviour.

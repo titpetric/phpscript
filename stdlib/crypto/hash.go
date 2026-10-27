@@ -84,7 +84,7 @@ func RegisterHash(rt *runner.Runtime) {
 	})
 
 	// hash_algos returns the algorithm names hash() and hash_hmac() accept
-	// here, sorted. The list is a seventh of PHP's, so a script that lets a user
+	// here, sorted. The list is a seventh of PHP's, and a script that lets a user
 	// pick an algorithm reads the list.
 	rt.RegisterFunc("hash_algos", func() []any {
 		names := make([]string, 0, len(digests))
@@ -103,7 +103,7 @@ func RegisterHash(rt *runner.Runtime) {
 
 // digests is the algorithm table, spelled the way PHP spells the names, and
 // shorter than PHP's hash_algos(): every entry here is one a Go binary already
-// carries, and hash_algos() below answers this table and not PHP's, so a
+// carries, and hash_algos() below answers this table and not PHP's and a
 // script reads the set it has.
 //
 // This build registers the family because storing a token as a digest an index
@@ -131,9 +131,9 @@ func newDigest(fn, algo string) (hash.Hash, error) {
 	return factory(), nil
 }
 
-// unknownAlgo phrases the refusal the way PHP 8 phrases its ValueError, so a
-// script that catches it reads a familiar message. There is nothing to clamp to
-// here: a digest under a name this build does not carry has no nearest answer.
+// unknownAlgo phrases the refusal the way PHP 8 phrases its ValueError and a
+// script that catches it reads a familiar message. No name has a nearest answer
+// here: a digest under a name this build does not carry is unavailable.
 func unknownAlgo(fn, algo string) error {
 	return fmt.Errorf("%s(): Argument #1 ($algo) must be a valid hashing algorithm, %q given", fn, algo)
 }

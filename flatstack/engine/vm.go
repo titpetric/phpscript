@@ -33,7 +33,7 @@ type execState struct {
 	locals      []any
 	initialized []bool
 	// extras holds variables a host call introduced under names the compiler
-	// never saw. It starts nil and the first write makes the map, so a program
+	// never saw. It starts nil and the first write makes the map and a program
 	// that never gains one pays nothing.
 	extras     map[string]any
 	refWrites  []bool
@@ -44,14 +44,14 @@ type execState struct {
 	pc         int
 
 	// spareLocals/spareInits hold cleared frame arrays returned by popped
-	// user-function frames, so a call loop reuses two slabs and costs no
+	// user-function frames and a call loop reuses two slabs and costs no
 	// allocation per call. Safe because nothing outlives the frame that
 	// borrowed them: the host call that pushed an opRef setter consumes it,
 	// and closures copy their seeds at creation.
 	spareLocals [][]any
 	spareInits  [][]bool
 
-	// walker closes over the state itself, built once per pooled state, so
+	// walker closes over the state itself, built once per pooled state and
 	// registering it with a MemoryHost allocates nothing after the state's
 	// first use.
 	walker func(yield func(any))
@@ -83,7 +83,7 @@ func (st *execState) stashFrame(locals []any, init []bool) {
 // release returns the state to the pool with every slot zeroed.
 //
 // The clears run to capacity and not to length. The pool holds these
-// buffers for the life of the process, so a value left above the high-water
+// buffers for the life of the process and a value left above the high-water
 // mark of a later, smaller program stays reachable from the pool and is never
 // collected.
 func (st *execState) release() {
@@ -119,7 +119,7 @@ var statePool = sync.Pool{
 
 // armWalker installs the live-value walk over this state's own slots, once
 // per state: the closure captures the state and reads its fields at call
-// time, so one closure serves every run. release leaves it in place, and a
+// time and one closure serves every run. release leaves it in place, and a
 // state released into the pool from outside statePool.New arrives without
 // one; arming on draw keeps memory accounting alive for whoever holds it.
 func (st *execState) armWalker() {
@@ -141,7 +141,7 @@ func (st *execState) armWalker() {
 					yield(frame.locals[i])
 				}
 			}
-			// A suspended frame's foreach still holds its listing, so
+			// A suspended frame's foreach still holds its listing and
 			// the walk has to reach it or a recursive walk under-reports
 			// everything but the innermost loop.
 			yieldIterators(frame.iterators, yield)
@@ -165,7 +165,7 @@ func (st *execState) pop() (any, error) {
 // values stay in the stack's backing array above the truncated top, valid
 // for the duration of the call, and the next push overwrites them. A binding
 // that keeps arguments copies them - the same contract the interpreter's
-// variadic tails alias under. A three-index slice pinches the cap, so a
+// variadic tails alias under. A three-index slice pinches the cap and a
 // callee appending to its variadic pack reallocates and never writes into
 // the stack.
 func (st *execState) args(count int) ([]any, error) {
@@ -203,7 +203,7 @@ func (st *execState) handle(runErr error) bool {
 	}
 	// exit() and die() are not catchable in PHP: a script that ends
 	// inside a try ends there. They unwind as an error here only because
-	// that is how the VM gets back to the top, so a handler declines
+	// that is how the VM gets back to the top and a handler declines
 	// them and never binding them to a catch variable.
 	var exiting scriptExit
 	if errors.As(runErr, &exiting) {
@@ -262,7 +262,7 @@ func (st *execState) handle(runErr error) bool {
 	}
 	// No clause declared a type that matches. The error keeps
 	// propagating, but this try's finally block still has to run first,
-	// so park it and let opRethrow pick it up on the other side.
+	// and park it and let opRethrow pick it up on the other side.
 	if handler.pending < 0 || handler.pending >= len(st.locals) {
 		return false
 	}
@@ -275,7 +275,7 @@ func (st *execState) handle(runErr error) bool {
 // receiver into paramSlots[0] when the def carries one, the positionals in
 // order, and the leftovers into a trailing variadic collector as an array:
 // an empty one when the caller stops short of it, which is bindParams'
-// answer too. An argument the caller did not pass leaves its slot cold, so
+// answer too. An argument the caller did not pass leaves its slot cold and
 // the entry prologue can bind the parameter's default.
 func (st *execState) enterUserFrame(def userFuncDef, receiver any, hasReceiver bool, arguments []any) {
 	st.callFrames = append(st.callFrames, callFrame{
@@ -324,7 +324,7 @@ func (st *execState) iterator(n int) *iteratorState {
 }
 
 // setIterator grows the slice to hold iterator n. The compiler numbers
-// iterators per function from zero, so the slice stays as small as the
+// iterators per function from zero and the slice stays as small as the
 // deepest loop nest.
 func (st *execState) setIterator(n int, it *iteratorState) {
 	for len(st.iterators) <= n {
@@ -380,7 +380,7 @@ type callFrame struct {
 	refWrites   []bool
 
 	// iterators is the caller's live foreach state. The compiler numbers
-	// iterators per function, so a callee reuses the numbers its caller is
+	// iterators per function and a callee reuses the numbers its caller is
 	// standing in, and a recursive call reuses them exactly. Saving the slice
 	// here and handing the callee an empty one stops the call from closing a
 	// foreach the caller has in flight.
@@ -398,7 +398,7 @@ type callFrame struct {
 type MemoryHost interface {
 	// MemoryCheckInterval returns the number of instructions between memory
 	// checks; zero disables checking. Live-value registration happens either
-	// way, so usage queries still see VM state.
+	// way and usage queries still see VM state.
 	MemoryCheckInterval() int
 	// PushLiveWalker registers an enumerator over every live VM value;
 	// PopLiveWalker removes it. Calls nest across nested Run invocations.
@@ -425,7 +425,7 @@ type DeadlineHost interface {
 
 // deadlineCheckInstructions is how often a run looks at its deadline. The
 // interpreter looks once per statement; an instruction is finer than a
-// statement, so this is the closer of the two either way.
+// statement and this is the closer of the two either way.
 const deadlineCheckInstructions = 256
 
 // localSeed is one local written into a frame before it starts running: the
@@ -510,7 +510,7 @@ func Run(host Host, program *Program) error {
 //
 // A closure call re-enters here and pushes no call frame on the running
 // loop: the call arrives from a host binding (usort() invoking its comparator),
-// not from an instruction, so there is no loop to push onto.
+// not from an instruction and there is no loop to push onto.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
 	st := statePool.Get().(*execState)
 	st.armWalker()
@@ -531,7 +531,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 		}
 	}
 	if len(globals) > 0 {
-		// A name the program never mentions has no slot and goes to extras, so
+		// A name the program never mentions has no slot and goes to extras and
 		// get_defined_vars() at the top level lists it the way it does in the
 		// interpreter's global scope.
 		st.extras = applyNamedValues(program, st.locals, st.initialized, st.extras, globals, st.refWrites)
@@ -556,7 +556,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	memInterval, memTick := 0, 0
 	if hasMemHost {
 		memInterval = memHost.MemoryCheckInterval()
-		// The pooled state carries its walker, armed once per state, so
+		// The pooled state carries its walker, armed once per state and
 		// registration allocates nothing after the state's first use.
 		memHost.PushLiveWalker(st.walker)
 		defer memHost.PopLiveWalker()
@@ -613,7 +613,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			st.stack = append(st.stack, loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a))
 		case opLoadConst:
 			name := program.localNames[inst.a]
-			// A scope value of the same name wins, so the magic
+			// A scope value of the same name wins and the magic
 			// constants set per frame answer before the constant table.
 			if st.initialized[inst.a] {
 				st.stack = append(st.stack, st.locals[inst.a])
@@ -625,7 +625,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 			value, constErr := host.Constant(name)
 			if constErr != nil {
-				// Through handle, so a catch clause binds it the way it binds
+				// Through handle and a catch clause binds it the way it binds
 				// an error a binding returned.
 				if st.handle(constErr) {
 					continue
@@ -642,7 +642,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					value: loadLocal(host, program, st.locals, st.initialized, st.extras, slot),
 				})
 			}
-			// The capture skips an unbound `$this` and never stores null, so
+			// The capture skips an unbound `$this` and never stores null and
 			// the closure body reads it the way it reads any other unset local.
 			if def.thisSlot >= 0 && st.initialized[def.thisSlot] {
 				captured = append(captured, localSeed{slot: def.thisSlot, value: st.locals[def.thisSlot]})
@@ -676,7 +676,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				identifiable.SetID(inst.extra)
 			}
 			if host.SetGlobal(program.localNames[inst.a], value) {
-				// The host claimed the name (a superglobal), so the store is
+				// The host claimed the name (a superglobal) and the store is
 				// request state, not frame state.
 				st.initialized[inst.a] = false
 			} else {
@@ -1037,7 +1037,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			// A jump out of a try's pc range discards its handler; that is how
 			// leaving the region disarms the catch. The range only means
 			// anything in the frame that armed it: a callee's pcs lie outside
-			// the caller's try body, so a jump there - an if, a loop, the skip
+			// the caller's try body and a jump there - an if, a loop, the skip
 			// over an inline closure - must leave the caller's st.handlers alone.
 			for len(st.handlers) > 0 {
 				handler := st.handlers[len(st.handlers)-1]
@@ -1351,7 +1351,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				return popErr
 			}
 			// A thrown throwable is already an error and propagates as
-			// itself, so a catch clause binds the object and not a
+			// itself and a catch clause binds the object and not a
 			// rendering of it. A bare value still renders.
 			throwErr := host.Throw(value)
 			if st.handle(throwErr) {
@@ -1503,17 +1503,17 @@ func loadLocal(host Host, program *Program, locals []any, initialized []bool, ex
 }
 
 // closureValue turns a compiled closure into the func(...any) (any, error)
-// shape Runtime.Callable reduces every PHP callable to, so a binding invokes a
+// shape Runtime.Callable reduces every PHP callable to and a binding invokes a
 // bytecode closure exactly as it invokes an interpreted one.
 //
 // captured is the snapshot taken at the closure value's construction. Each
-// call gets a fresh frame seeded with it, so one call cannot see another's
+// call gets a fresh frame seeded with it and one call cannot see another's
 // writes, and the closure keeps working after its defining frame returns.
 func closureValue(program *Program, host Host, def closureDef, captured []localSeed) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
 		seeds = append(seeds, captured...)
-		// Parameters follow the captures, so a parameter of the same
+		// Parameters follow the captures and a parameter of the same
 		// name wins; php rejects that overlap outright. An argument the
 		// caller omitted binds null, matching the interpreter's bindParams.
 		for i, slot := range def.paramSlots {
@@ -1524,7 +1524,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 			seeds = append(seeds, localSeed{slot: slot, value: value})
 		}
 		// run binds its own frame handle and puts the caller's back on the
-		// way out, so the snapshot usort() took before invoking this
+		// way out and the snapshot usort() took before invoking this
 		// comparator stays the one usort()'s write-back sees.
 		var result any
 		if err := run(program, host, def.entryPC, seeds, nil, &result); err != nil {
@@ -1536,7 +1536,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 
 // fastBinary computes a classified binary operator when both operands are
 // int64, or both strings under concat. Any other shape reports false and the
-// caller dispatches to the host, so numeric strings, floats, arrays and the
+// caller dispatches to the host and numeric strings, floats, arrays and the
 // coercion table keep their one home in the host's phpArith/phpCompare.
 func fastBinary(class int, left, right any) (any, bool) {
 	if class == binConcat {
@@ -1593,7 +1593,7 @@ func fastBinary(class int, left, right any) (any, bool) {
 
 // applyNamedValues writes host-visible variables back into their slots. A slot
 // marked in refWrites keeps what the by-reference setter put there: names is a
-// snapshot from before the call, so it still carries the old value. A name the
+// snapshot from before the call and it still carries the old value. A name the
 // compiler never saw goes to extras, which this function makes on first use
 // and returns to the caller.
 func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) map[string]any {

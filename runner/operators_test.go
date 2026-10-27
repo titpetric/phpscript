@@ -8,7 +8,7 @@ import (
 )
 
 // TestPHPCompare covers the loose operators. null equals 0, "" and false; two
-// numeric strings compare numerically, so "1" == "01". A NaN operand answers
+// numeric strings compare numerically and "1" == "01". A NaN operand answers
 // false to every operator except `!=`, which PHP does not derive from its
 // ordering, and a bool or null on the other side pulls both operands through
 // the bool domain where (bool)NAN is true.
@@ -45,7 +45,7 @@ func TestPHPCompare(t *testing.T) {
 }
 
 // TestPHPLooseEqual covers the entry switch/case matching and the flatstack
-// host read. It resolves to the same table the comparison operators read, so a
+// host read. It resolves to the same table the comparison operators read and a
 // `switch` arm cannot match on a rule `==` disagrees with.
 func TestPHPLooseEqual(t *testing.T) {
 	t.Parallel()
@@ -110,7 +110,7 @@ func TestPHPIdentical(t *testing.T) {
 // TestPHPArith covers + - * / % **. `+` on two arrays is PHP's union, where the
 // left operand wins every key it has; a numeric string operand keeps PHP's
 // int/float distinction by its own spelling; integer arithmetic that overflows
-// becomes float, so PHP_INT_MAX + 1 has no wrap to a negative.
+// becomes float and PHP_INT_MAX + 1 has no wrap to a negative.
 func TestPHPArith(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -163,7 +163,7 @@ func TestUnionArrays(t *testing.T) {
 // TestPHPBitwise covers & | ^ << >>. Two strings operate bytewise and answer a
 // string, where `&` and `^` stop at the shorter operand and `|` keeps the
 // longer one with the missing bytes read as zero. A negative shift count has no
-// answer, so PHP raises ArithmeticError for it.
+// answer and PHP raises ArithmeticError for it.
 func TestPHPBitwise(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -203,7 +203,7 @@ func TestPHPBitwise(t *testing.T) {
 
 // TestPHPBitNot covers `~`. On a string it flips every byte; on anything else
 // it casts to int, where ~n is -(n+1). PHP 8 raises a TypeError for a null,
-// bool or array operand and phpscript casts those, so `~null` is -1. See
+// bool or array operand and phpscript casts those and `~null` is -1. See
 // docs/README.md.
 func TestPHPBitNot(t *testing.T) {
 	t.Parallel()

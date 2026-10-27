@@ -26,7 +26,7 @@ import (
 // no string form for a date to copy: `echo $dateTime` is a fatal Error. The
 // rule comes from where PHP writes one itself. The `date` field of var_dump,
 // print_r and json_encode is Y-m-d H:i:s, and PDO returns a DATETIME column
-// as the stored text. Anything else that can spell itself does, so a
+// as the stored text. Anything else that can spell itself does and a
 // Duration is "1h30m0s" and a Month is "August".
 func GoString(v any) (string, bool) {
 	switch x := v.(type) {
@@ -41,7 +41,7 @@ func GoString(v any) (string, bool) {
 }
 
 // Bytes answers the string a []byte carries, and whether v holds one. A PHP
-// string is a byte string, so a binding's []byte is one of those and never a
+// string is a byte string and a binding's []byte is one of those and never a
 // list of integers.
 func Bytes(v any) (string, bool) {
 	b, ok := v.([]byte)
@@ -90,7 +90,7 @@ func String(v any) string {
 
 // StringContext is String with the refusal PHP raises where a script's own
 // conversion reaches a value that has no string form. There is no __toString
-// here, so an object is that value; an array key and var_dump refuse nothing.
+// here and an object is that value; an array key and var_dump refuse nothing.
 func StringContext(v any) (string, error) {
 	if _, ok := v.(*model.Object); ok {
 		return "", &ConversionError{Class: classNameOf(v)}
@@ -99,7 +99,7 @@ func StringContext(v any) (string, error) {
 }
 
 // ConversionError reports a value a string context cannot convert, under the
-// class PHP raises for it: an object with no __toString. It names that class, so
+// class PHP raises for it: an object with no __toString. It names that class and
 // `catch (Error $e)` matches it and `catch (Exception $e)` does not, as in PHP.
 type ConversionError struct {
 	Class string
@@ -128,9 +128,9 @@ func classNameOf(v any) string {
 }
 
 // FloatString renders a float the way PHP's echo does: precision=14 significant
-// digits, so 0.1*0.2 echoes as 0.02 and never the round-tripping
+// digits and 0.1*0.2 echoes as 0.02 and never the round-tripping
 // 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
-// always carries a decimal point and the exponent has no leading zero, so 1e20
+// always carries a decimal point and the exponent has no leading zero and 1e20
 // echoes as 1.0E+20, not 1E+20 or 1e+20.
 func FloatString(x float64) string {
 	switch {
@@ -186,7 +186,7 @@ func Int(v any) int64 {
 	default:
 		// A collection answers zero here, as the numeric context reads it:
 		// php refuses arithmetic on an array with a TypeError and never
-		// coercing it, so this value never reaches an operator as a number. The
+		// coercing it and this value never reaches an operator as a number. The
 		// explicit (int) cast is the one context that converts one, and it does
 		// so in runner.helperCast.
 		return 0
@@ -194,7 +194,7 @@ func Int(v any) int64 {
 }
 
 // Float is PHP's float cast. It reads the same leading numeric prefix Int does,
-// so "12abc" is 12 to both of them and "-3.5" is -3.5 here and -3 there. A
+// and "12abc" is 12 to both of them and "-3.5" is -3.5 here and -3 there. A
 // string with no numeric prefix, and every value that is not a scalar, is 0.
 func Float(v any) float64 {
 	switch x := v.(type) {
@@ -222,9 +222,9 @@ func Float(v any) float64 {
 // first character that is not part of one ("12abc" is 12, "1.5x" is 1.5, ".5"
 // is 0.5, "1e3" is 1000, "abc" is 0).
 //
-// Int, Float and Number all read the string through here, so no two of them can
+// Int, Float and Number all read the string through here and no two of them can
 // take a different number out of it, which this package exists to prevent.
-// The prefix is the one runner.numericPrefix reads for a cast, so
+// The prefix is the one runner.numericPrefix reads for a cast and
 // (int)"1e3" and phpval.Int("1e3") agree as well.
 //
 // isInt reports a prefix carrying no fraction and no exponent,
@@ -294,7 +294,7 @@ func parseInt(prefix string) int64 {
 }
 
 // parseFloat reads a float prefix. Digits past float64's range return +Inf or
-// -Inf with ErrRange, the value PHP reads for them too, so the error
+// -Inf with ErrRange, the value PHP reads for them too and the error
 // is not consulted.
 func parseFloat(prefix string) float64 {
 	f, _ := strconv.ParseFloat(prefix, 64)
@@ -303,9 +303,9 @@ func parseFloat(prefix string) float64 {
 
 // Number returns v in PHP's numeric domain: an int64 for what PHP treats as an
 // integer, a float64 for what it treats as a float. It lets abs(), min(),
-// max() and array_sum() return the argument's own type, so that abs(-1) is
+// max() and array_sum() return the argument's own type and that abs(-1) is
 // int(1) and abs(-1.5) is float(1.5). Number reads a string through the
-// same numeric prefix Int and Float read, so the three never disagree: "12abc"
+// same numeric prefix Int and Float read and the three never disagree: "12abc"
 // is int64(12), "-3.5" is float64(-3.5) and "abc" is int64(0).
 func Number(v any) any {
 	switch x := v.(type) {
@@ -367,7 +367,7 @@ func Key(v any) any {
 }
 
 // floatKey truncates toward zero. Go leaves an out-of-range float-to-int
-// conversion undefined, so floatKey names the ends the compiler would not.
+// conversion undefined and floatKey names the ends the compiler would not.
 func floatKey(f float64) int64 {
 	switch {
 	case math.IsNaN(f):
@@ -383,13 +383,13 @@ func floatKey(f float64) int64 {
 // NumericKey reports whether s is the canonical spelling of an integer, and so
 // becomes an int key. The string has to read back identically from the integer
 // it would become, which rules out "08", "+1", "-0", " 1", "1.0", "1e2" and
-// anything past int64. Each stays a string key, so $a["08"] and $a[8] are two
+// anything past int64. Each stays a string key and $a["08"] and $a[8] are two
 // entries. ParseInt accepts most of them, hence the hand-rolled check.
 func NumericKey(s string) (int64, bool) {
 	digits := s
 	if strings.HasPrefix(digits, "-") {
 		digits = digits[1:]
-		// "-0" prints as "0", so it never spells a canonical integer.
+		// "-0" prints as "0" and it never spells a canonical integer.
 		if digits == "0" {
 			return 0, false
 		}

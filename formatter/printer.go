@@ -15,21 +15,21 @@ type printer struct {
 	inPHP     bool
 	spans     map[model.Stmt]model.SourceSpan
 	// unsupported records the AST nodes the printer has no spelling for. The
-	// formatter rewrites files in place, so printing a placeholder comment for
+	// formatter rewrites files in place and printing a placeholder comment for
 	// one would delete working code; Source reports them as an error instead
 	// and leaves the file alone.
 	unsupported []string
 	// comments is the source comment stream, consumed in order: nextComment is
 	// the first one not yet written out. lastLine is the source line of the
-	// last thing written, so a blank line the author left
+	// last thing written and a blank line the author left
 	// from one the printer would be inventing.
 	// imports maps a fully-qualified name to the alias the file's use
-	// statements gave it, so a reference prints in its own spelling.
+	// statements gave it and a reference prints in its own spelling.
 	imports     map[string]string
 	comments    []Comment
 	nextComment int
 	lastLine    int
-	// afterComment records a comment as the last thing written, so a
+	// afterComment records a comment as the last thing written and a
 	// declaration can follow its documentation without a blank line between.
 	afterComment bool
 }

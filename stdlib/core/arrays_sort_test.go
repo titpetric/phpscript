@@ -7,7 +7,7 @@ import (
 )
 
 // TestPHPKsort covers ksort keeping every key attached to its value while the
-// entries move. sort() next door throws the keys away, so the two families
+// entries move. sort() next door throws the keys away and the two families
 // cannot share one walk.
 func TestPHPKsort(t *testing.T) {
 	t.Parallel()
@@ -43,7 +43,7 @@ func TestPHPKrsort(t *testing.T) {
 	}
 }
 
-// TestPHPAsort covers asort ordering by value with the keys carried along, so a
+// TestPHPAsort covers asort ordering by value with the keys carried along and a
 // score table sorts without losing the name against each score.
 func TestPHPAsort(t *testing.T) {
 	t.Parallel()
@@ -101,7 +101,7 @@ func TestSortEntries(t *testing.T) {
 }
 
 // TestCallbackLess covers adapting a script comparator to the boolean
-// sort.SliceStable takes. A comparator that raises reads as "not less", so a
+// sort.SliceStable takes. A comparator that raises reads as "not less" and a
 // failing callback leaves the order it saw and aborts no sort mid-way.
 func TestCallbackLess(t *testing.T) {
 	t.Parallel()

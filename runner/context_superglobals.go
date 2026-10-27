@@ -39,7 +39,7 @@ func (c Context) Register(rt *Runtime) {
 	// auto_globals_jit. Runtime.resolveAuto is the read that binds.
 	//
 	// The layers of the request this one replaces go back to the pool. A
-	// runtime serves one request at a time, so the moment the next registers
+	// runtime serves one request at a time and the moment the next registers
 	// is the moment the last one lets go of them.
 	releaseMapMaps(rt, superglobalNames...)
 	for _, name := range superglobalNames {
@@ -55,8 +55,8 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("argc", int64(len(c.Argv)))
 
 	// What the request got wrong is the runtime's to report, not the script's
-	// to catch: it happened before the script started, so there is nothing for
-	// a try/catch to wrap. See Errors.
+	// to catch: it happened before the script started and a try/catch has no
+	// error to wrap. See Errors.
 	for _, err := range c.Errors() {
 		rt.RecordError(err)
 	}
@@ -80,7 +80,7 @@ var superglobalNames = []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "
 
 // autoGlobal builds the view for one superglobal, on the first read that
 // names it. The names are the closed set AutoGlobals claims; _SESSION is
-// Session\Manager's and no request input, so it builds nothing here.
+// Session\Manager's and no request input and it builds nothing here.
 func (c Context) autoGlobal(name string) any {
 	switch name {
 	case "_GET":
@@ -116,7 +116,7 @@ func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 }
 
 // lazyInput renders one decoded input as a view whose source is the decode
-// itself, so naming the variable is what parses it.
+// itself and naming the variable is what parses it.
 //
 // decoded answers the bracket-decoded array once it exists, and flat the map a
 // host set. A Context with nothing to decode reads flat directly, which is
@@ -130,7 +130,7 @@ func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]s
 	}))
 }
 
-// arraySource reads a *model.Array as a mapmap source, so a read reaches a
+// arraySource reads a *model.Array as a mapmap source and a read reaches a
 // decoded input where it lies, with no copy into a second shape.
 type arraySource struct{ array *model.Array }
 
@@ -165,9 +165,9 @@ func (s arraySource) Range(fn func(key string, value any) bool) bool {
 
 // ServerMap renders $_SERVER as a view over the request, with no array built.
 //
-// A read goes to the source, which is the request where there is one, so a
+// A read goes to the source, which is the request where there is one and a
 // script that reads a key or two copies nothing and one that reads none costs
-// nothing at all. ServerMap seeds the two times because PHP answers them as
+// no time at all. ServerMap seeds the two times because PHP answers them as
 // numbers and every other name as a string.
 func (c Context) ServerMap() *mapmap.MapMap {
 	src := c.ServerSource
@@ -187,7 +187,7 @@ func (c Context) ServerMap() *mapmap.MapMap {
 // serverArrayInto renders $_SERVER. Context.Server holds every value as a
 // string because that is what all but two of PHP's server keys are; the two
 // that are not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float,
-// get their type back here, so a script comparing either with === sees what
+// get their type back here and a script comparing either with === sees what
 // PHP writes.
 func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	mapToArrayInto(arr, c.Server)
@@ -204,10 +204,10 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 // PHP's default request order, with the route's path values written over them
 // last. The path values are the one deviation from PHP, whose $_REQUEST
 // carries no route parameters: a path parameter is request input here, and
-// it carries under PHP's name, so nothing here spells a name PHP does not
+// it carries under PHP's name and nothing here spells a name PHP does not
 // have. See the predefined-variables reference.
 //
-// Every entry is a copy. $_REQUEST is its own array in PHP, so a write to it
+// Every entry is a copy. $_REQUEST is its own array in PHP and a write to it
 // must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
 func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	// Through the accessors, because $_REQUEST is the four merged and reading

@@ -78,7 +78,7 @@ const (
 	opCompactInit
 	// opCompactEntry writes one name into the map on top of the stack, which
 	// it leaves there: a is the local's slot and name is the key. It skips a
-	// slot holding nothing, so compact() omits a name that is not set, and
+	// slot holding nothing and compact() omits a name that is not set, and
 	// keeps a slot holding null, because null is a value.
 	opCompactEntry
 	// opCompactDynamic is opCompactEntry for a name the compiler could not
@@ -103,7 +103,7 @@ const (
 	opStaticSeeded
 	// opStaticLoad and opStaticStore read and write one name in a
 	// function-static bag: a indexes the *model.StaticVar node, name is the
-	// variable. The bag is live shared storage, so a recursive call observes
+	// variable. The bag is live shared storage and a recursive call observes
 	// the writes of the frame above it. opStaticStore mirrors opStore's b
 	// (keep) and compound-operator name handling through extra.
 	opStaticLoad
@@ -141,7 +141,7 @@ type instruction struct {
 // the way runner/expr captures the operator when it compiles a closure. The
 // VM inlines the both-int64 (and both-string, for concat) cases through the
 // phpval helpers phpArith itself uses; every other operand shape falls
-// through to host.Binary with the operator name, so semantics have one home.
+// through to host.Binary with the operator name and semantics have one home.
 // binNone is zero so an unclassified emit keeps its host dispatch.
 const (
 	binNone = iota
@@ -214,7 +214,7 @@ type userFuncDef struct {
 // opClosure turns the definition into a callable value.
 //
 // The slot numbers are frame offsets, and the same number means the same name
-// in every frame: Program.localNames is per program, not per function, so
+// in every frame: Program.localNames is per program, not per function and
 // opClosure copies a capture straight from the creating frame into the
 // closure's own frame without a name lookup.
 type closureDef struct {
@@ -224,7 +224,7 @@ type closureDef struct {
 	// interpreter's bindParams does.
 	paramSlots []int
 	// captures holds the slots of the `use (...)` list. opClosure reads them
-	// where the closure value appears, not at the call, so the capture is the
+	// where the closure value appears, not at the call and the capture is the
 	// snapshot PHP's by-value `use` describes.
 	captures []int
 	// thisSlot is the slot holding the receiver a closure written inside a
@@ -252,7 +252,7 @@ type Program struct {
 	nameSlots map[string]int
 	userFuncs map[string]userFuncDef
 	// userFuncsFold indexes userFuncs by lowercased name; PHP function and
-	// class names are case-insensitive, so a fold collision is already a
+	// class names are case-insensitive and a fold collision is already a
 	// redeclaration error before the compiler builds this map.
 	userFuncsFold map[string]userFuncDef
 	classes       []*model.Class
@@ -282,7 +282,7 @@ type Host interface {
 	// SetGlobal passes a whole-variable store to the host before the frame
 	// keeps it. A host claims names with cross-frame semantics (PHP's
 	// superglobals) by returning true; the engine then leaves the frame slot
-	// cold, so later reads keep resolving through Lookup.
+	// cold and later reads keep resolving through Lookup.
 	SetGlobal(string, any) bool
 	// Constant resolves a bare name. The error is what an undefined one
 	// raises, which Lookup has no way to report.
@@ -295,7 +295,7 @@ type Host interface {
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error
 	// SetEntry writes value into container at key when container is a value the
-	// script owns. A collection a binding returned belongs to the host, so
+	// script owns. A collection a binding returned belongs to the host and
 	// SetEntry leaves it alone and reports no error, matching what a
 	// by-reference foreach over one does in the interpreter.
 	SetEntry(container, key, value any) error
@@ -304,13 +304,13 @@ type Host interface {
 	//
 	// It answers the container to store back, or nil for a removal in place.
 	// A native slice cannot hold a hole and cannot shrink through the
-	// interface value holding it, so removing from one answers a shorter
+	// interface value holding it and removing from one answers a shorter
 	// slice for the caller to assign.
 	UnsetIndex(container, key any) (replacement any, err error)
 	// MatchCatch reports whether a catch clause declaring declaredType handles
 	// err. The class hierarchy, the `A|B` union form and the rule that
 	// `catch (Exception)` does not catch an engine error all live in the host,
-	// so both backends select the same clause.
+	// and both backends select the same clause.
 	MatchCatch(declaredType string, err error) bool
 	// Throw turns a thrown value into the error it travels as. A built-in
 	// throwable is an error already; Throw wraps an instance of a declared
@@ -321,7 +321,7 @@ type Host interface {
 	// for a thrown instance and the error itself for everything else.
 	CatchValue(err error) any
 	// ClassConst reads the constant name off class. The compiler has already
-	// collapsed `self`, `static` and `parent` to the enclosing class, so the
+	// collapsed `self`, `static` and `parent` to the enclosing class and the
 	// name arrives concrete; `Class::class` still reaches the host, since it
 	// resolves even when nothing declares the class.
 	ClassConst(class, name string) (any, error)
@@ -369,7 +369,7 @@ type staticCallHost interface {
 }
 
 // staticPropHost reads and writes `Class::$name`, the storage the class owns.
-// SetStaticProp applies op, so a compound assignment reads and writes under
+// SetStaticProp applies op and a compound assignment reads and writes under
 // the host's rules.
 type staticPropHost interface {
 	GetStaticProp(class, name string) (any, error)
@@ -389,7 +389,7 @@ type closureHost interface {
 
 // staticVarHost returns the persistent bag of one `static $x` statement and
 // whether an earlier call already seeded it. The bag is live shared storage:
-// the VM reads and writes it directly, so a recursive call observes the
+// the VM reads and writes it directly and a recursive call observes the
 // frame above it.
 type staticVarHost interface {
 	StaticVarBag(node *model.StaticVar) (map[string]any, bool)

@@ -19,7 +19,7 @@ func mustParse(t *testing.T, src string) *model.Program {
 
 // TestParseFile covers what the filename settles. php resolves __FILE__,
 // __DIR__ and __LINE__ when it compiles a file, and so does this: each becomes
-// a literal in the AST, so neither engine writes them into a scope per frame
+// a literal in the AST and neither engine writes them into a scope per frame
 // or reads them back per statement. The name is the path a script sees, the
 // runtime's own spelling and never the host's.
 func TestParseFile(t *testing.T) {
@@ -46,7 +46,7 @@ func TestParseFile(t *testing.T) {
 		}
 	}
 
-	// Parse is ParseFile with no name, so a source compiled without one
+	// Parse is ParseFile with no name and a source compiled without one
 	// leaves the file constants unresolved and carries them as references.
 	unnamed := mustParse(t, "<?php echo __FILE__;")
 	if _, resolved := unnamed.Stmts[0].(*model.Echo).Args[0].(*model.Lit); resolved {
@@ -298,7 +298,7 @@ func TestParseClassModifiers(t *testing.T) {
 	}
 }
 
-// A namespaced file may only declare symbols, so a modifier the parser does not
+// A namespaced file may only declare symbols and a modifier the parser does not
 // recognise surfaces there as a rejected file and never a dropped keyword.
 func TestParseClassModifiersInNamespace(t *testing.T) {
 	t.Parallel()
@@ -385,7 +385,7 @@ func TestParseClassHeritageRejected(t *testing.T) {
 
 // An interface body holds method signatures with no body, class constants and
 // the `static` spelling of a signature. The parser resolves the names it
-// carries the way it resolves a class name, so a namespace and a `use` alias
+// carries the way it resolves a class name and a namespace and a `use` alias
 // both apply.
 func TestParseInterface(t *testing.T) {
 	t.Parallel()
@@ -448,7 +448,7 @@ func TestParseInterfaceRejected(t *testing.T) {
 	}
 }
 
-// The restriction on a namespaced file is a decision, so the message has to
+// The restriction on a namespaced file is a decision and the message has to
 // carry the reason and the way out, and point at the offending statement
 // and not at whatever follows it.
 func TestParseNamespacedStatementRejected(t *testing.T) {
@@ -469,7 +469,7 @@ func TestParseNamespacedStatementRejected(t *testing.T) {
 	}
 }
 
-// `use` and `declare` are preamble and no code, so a namespaced file may
+// `use` and `declare` are preamble and no code and a namespaced file may
 // still carry them.
 func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	t.Parallel()
@@ -479,7 +479,7 @@ func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	}
 }
 
-// exprShape renders an expression fully parenthesised, so a precedence test
+// exprShape renders an expression fully parenthesised and a precedence test
 // reads as the tree the parser built and not as a chain of type
 // assertions.
 func exprShape(e model.Expr) string {
@@ -546,8 +546,8 @@ func TestParseBitwisePrecedence(t *testing.T) {
 }
 
 // The parser reads the by-reference marker in front of a variable alone, and
-// nothing swallowed the binary `&` of `echo 6 & 3` and printed 6. The marker
-// stands in front of a variable and nowhere else, so nothing consumes an
+// no rule swallowed the binary `&` of `echo 6 & 3` and printed 6. The marker
+// stands in front of a variable and nowhere else and nothing consumes an
 // operator silently.
 func TestParseAmpersandIsNotSwallowed(t *testing.T) {
 	t.Parallel()
@@ -586,7 +586,7 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 	}
 }
 
-// The parser cuts `$a = $b = array()` into one assignment per name, so each
+// The parser cuts `$a = $b = array()` into one assignment per name and each
 // name gets its own array, the same thing PHP's copy-on-assignment amounts to
 // for a literal. The names come out right to left, the order PHP runs them in.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
@@ -704,7 +704,7 @@ $obj = new class implements Reader {
 	if len(n.Decl.Methods) != 1 || n.Decl.Methods[0].Name != "name" {
 		t.Errorf("Methods = %+v, want one named name", n.Decl.Methods)
 	}
-	// The declaration is not a statement, so the program carries it separately
+	// The declaration is not a statement and the program carries it separately
 	// for whatever registers the file's classes.
 	if len(prog.AnonClasses) != 1 || prog.AnonClasses[0] != n.Decl {
 		t.Errorf("AnonClasses = %v, want the declaration New points at", prog.AnonClasses)

@@ -8,7 +8,7 @@ import (
 )
 
 // exception stands in for stdlib.Exception, which runner cannot import: stdlib
-// imports runner, so StatusFor reads the code structurally.
+// imports runner and StatusFor reads the code structurally.
 type exception struct {
 	message string
 	code    int
@@ -19,7 +19,7 @@ func (e *exception) Error() string { return e.message }
 func (e *exception) GetCode() int { return e.code }
 
 // TestAcceptsHTML pins that only an explicit request for HTML counts as one.
-// "*/*" matches every type there is, and curl and fetch() send it, so reading
+// "*/*" matches every type there is, and curl and fetch() send it and reading
 // it as a request for HTML would put a website's error page in front of every
 // program that talks to the server.
 func TestAcceptsHTML(t *testing.T) {
@@ -190,7 +190,7 @@ func TestWriteResponse(t *testing.T) {
 
 // TestWriteResponseRefusesAStatusThatCannotBeSent pins that a script cannot
 // bring the handler down by naming a number. http_response_code() takes any
-// integer and net/http panics on one outside 100 to 999, so WriteResponse
+// integer and net/http panics on one outside 100 to 999 and WriteResponse
 // treats a status it cannot send as no status at all.
 func TestWriteResponseRefusesAStatusThatCannotBeSent(t *testing.T) {
 	t.Parallel()

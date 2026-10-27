@@ -11,7 +11,7 @@ import (
 
 // TestZeroModule covers the embedded module the server's own modules carry: it
 // reports the name Options.Modules filters on and answers every hook a module
-// leaves alone, so coverageModule writes Mount and nothing else.
+// leaves alone; coverageModule writes Mount alone.
 func TestZeroModule(t *testing.T) {
 	t.Parallel()
 	var module LifecycleModule = newZeroModule("phpprobe")
@@ -28,7 +28,8 @@ func TestZeroModule(t *testing.T) {
 
 // TestManager covers what this package asks of a Manager before it serves: the
 // configured options reach it, and the setup hook it carries takes the Service
-// those options built. Nothing runs until Run, so the hook has not fired here.
+// those options built. The manager stays idle until Run and the hook has not
+// fired here.
 func TestManager(t *testing.T) {
 	t.Parallel()
 	cfg := config.NewTestConfig()
@@ -81,7 +82,7 @@ func TestLogger(t *testing.T) {
 
 // TestTelemetryModule states what the recorder is: a module the platform
 // mounts like any other and the
-// interpreter observes onto the trace it started, so setup holds it as one.
+// interpreter observes onto the trace it started and setup holds it as one.
 func TestTelemetryModule(t *testing.T) {
 	t.Parallel()
 	var recorder *TelemetryModule
@@ -92,7 +93,7 @@ func TestTelemetryModule(t *testing.T) {
 
 // recordingLogger is a Logger that keeps every message. Every other method of
 // the interface panics: a call to one would be a claim on the library that
-// nothing here states.
+// this package never makes.
 type recordingLogger struct {
 	Logger
 	messages []string

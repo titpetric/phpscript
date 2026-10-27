@@ -45,7 +45,7 @@ type goMethodInfo struct {
 // then case-insensitively, then without underscores so a snake_case PHP
 // spelling finds the idiomatic Go name (get_id -> GetID), the same ladder
 // methodByNameFold climbs. It computes the bound signature and the context
-// check once here, on the value, so the per-call path is one map hit and an
+// check once here, on the value and the per-call path is one map hit and an
 // index.
 func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	t := rv.Type()
@@ -103,7 +103,7 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 			return nil, &ArgumentCountError{Want: numIn - injected, Got: len(args) - injected}
 		}
 		in := make([]reflect.Value, 0, len(args))
-		// A PHP position is 1-based over the arguments the script wrote, so an
+		// A PHP position is 1-based over the arguments the script wrote and an
 		// injected context, which sits at args[0], shifts it back by one.
 		offset := 1 - injected
 		for i, a := range args {
@@ -199,11 +199,11 @@ func methodCallError(err error, method string) error {
 
 // throwableMethod implements PHP's Throwable interface over any Go error.
 //
-// stdlib registers every throwable class name to one type, so a catch clause
+// stdlib registers every throwable class name to one type and a catch clause
 // binds whatever error reached it: an Exception a script threw, an error a
 // binding returned, or a panic converted at the host boundary. Each answers the
 // method set a script expects on a caught value. A method the concrete Go type
-// defines wins, so *stdlib.Exception reports its own code.
+// defines wins and *stdlib.Exception reports its own code.
 func throwableMethod(base any, method string) (any, bool) {
 	err, ok := base.(error)
 	if !ok {
@@ -253,7 +253,7 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 
 // goFieldInfo is one cached field resolution: the index chain
 // Value.FieldByIndexErr reads, and whether the name resolved to an exported
-// field at all. structField caches a miss too, so a probe does not rescan the
+// field at all. structField caches a miss too and a probe does not rescan the
 // field set.
 type goFieldInfo struct {
 	index []int

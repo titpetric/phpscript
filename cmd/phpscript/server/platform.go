@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// This file is where this package names github.com/titpetric/platform, so a
+// This file is where this package names github.com/titpetric/platform and a
 // reader of what `phpscript server` asks of the server library reads one file
 // and splint's imports/pollution holds.
 
@@ -16,7 +16,7 @@ import (
 type LifecycleModule = platform.Module
 
 // ZeroModule is platform.UnimplementedModule, which answers every hook a
-// module leaves alone, so a module writes the one or two it has.
+// module leaves alone and a module writes the one or two it has.
 type ZeroModule = platform.UnimplementedModule
 
 // Router is platform.Router, the mux a module mounts handlers on.

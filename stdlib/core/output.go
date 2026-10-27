@@ -60,11 +60,11 @@ func registerOutput(rt *runner.Runtime) {
 type valueWriter struct {
 	b *strings.Builder
 	// ids numbers objects for var_dump's "#n". PHP's number is the object
-	// handle it assigns at construction; nothing in this runtime records one,
-	// so the numbering here is per call and in the order the dump reaches
+	// handle it assigns at construction; this runtime records no handle,
+	// and the numbering here is per call and in the order the dump reaches
 	// them. Two calls both start at #1 where PHP would count on.
 	ids map[uintptr]int
-	// active holds the objects on the path from the root, so a graph that
+	// active holds the objects on the path from the root and a graph that
 	// refers back to itself prints *RECURSION* and never loops forever.
 	active map[uintptr]bool
 }
@@ -129,7 +129,7 @@ func (w *valueWriter) export(value any, indent int) {
 		w.b.WriteString(open)
 		for _, field := range objectFields(value) {
 			// PHP indents an object's property names three spaces past the
-			// object but recurses at two, so a nested array under a property
+			// object but recurses at two and a nested array under a property
 			// sits one column to the left of its own key. Odd, but var_export
 			// emits that and a fixture diff holds this to it.
 			w.exportEntry(exportKey(field.name), field.value, indent+3, indent+2)
@@ -157,7 +157,7 @@ func (w *valueWriter) exportEntry(key string, value any, keyIndent, valIndent in
 }
 
 // dump writes value with its type at the given indent, backing var_dump. Every
-// value occupies whole lines, so the caller never has to close one.
+// value occupies whole lines and the caller never has to close one.
 func (w *valueWriter) dump(value any, indent int) {
 	w.pad(indent)
 	switch x := value.(type) {
@@ -247,7 +247,7 @@ func (w *valueWriter) printR(value any, depth int) {
 		w.pad(8*depth + 4)
 		w.b.WriteString("[" + key + "] => ")
 		w.printR(val, depth+1)
-		// A composite already ended its line with ")\n", so this newline is
+		// A composite already ended its line with ")\n" and this newline is
 		// the blank line PHP leaves after a nested array.
 		w.b.WriteByte('\n')
 	}

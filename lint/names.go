@@ -17,7 +17,7 @@ import (
 // runtime would answer for after stdlib registration. A miss is a warning, not
 // a failure, because a name can arrive through an include or an autoloader the
 // lint pass does not chase, but each finding is a line that would raise
-// "call to undefined function" or "undefined class" the moment it runs, so it
+// "call to undefined function" or "undefined class" the moment it runs and it
 // is worth reading before the runtime says it.
 
 var (
@@ -34,7 +34,7 @@ func SetInclude(path string) {
 
 // knownRuntime is the registry the checks query for the names a host
 // registers. The first call builds it, once per process: registration is
-// deterministic, and the runtime never executes a script here, so nothing
+// deterministic, and the runtime never executes a script here and nothing
 // writes to the table after construction.
 func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
@@ -46,7 +46,7 @@ func knownRuntime() *runner.Runtime {
 		stdlib.RegisterFS(rt, ".")
 		// A request context installs the request-aware functions (header,
 		// http_response_code, getallheaders, ...); stdlib.Register does
-		// not. A server-targeted file still names them, so an empty
+		// not. A server-targeted file still names them and an empty
 		// request context registers them for the name check.
 		runner.NewContext().Register(rt)
 		// The host bindings, before the include runs. What the include then
@@ -60,7 +60,7 @@ func knownRuntime() *runner.Runtime {
 		for _, name := range internal {
 			hostFuncs[strings.ToLower(name)] = true
 		}
-		// The per-scope builtins are not in the function table, so a script
+		// The per-scope builtins are not in the function table and a script
 		// calling func_get_args() would read as a call to something
 		// undefined. The host registers them all the same.
 		for _, name := range runner.ScopeBuiltins() {
@@ -125,7 +125,7 @@ func (d *declaredNames) hasClass(name string) bool {
 }
 
 // lintUndefinedNames reports function calls and class references nothing
-// answers for. Messages mirror the runtime's own, so the finding reads as the
+// answers for. Messages mirror the runtime's own and the finding reads as the
 // error that would otherwise arrive at call time.
 func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 	declared := &declaredNames{
@@ -180,7 +180,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 			return true
 		}
 		// Autoload only when an --include registered one. Composer's
-		// autoloader declares no class until a name reaches it, so
+		// autoloader declares no class until a name reaches it and
 		// including it and then refusing to autoload would leave every PSR-4
 		// class unknown, which is the finding the flag exists to
 		// remove. With no include there is no autoloader to run, and the
@@ -216,7 +216,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		case *model.StaticCall:
 			// A host may register a binding under the whole spelling - the
 			// clock is a set of functions named DateTime::now, DateTime::parse
-			// and so on, and no class with methods, so a static call resolves
+			// and so on, and no class with methods and a static call resolves
 			// when the registry answers for the class or the full name.
 			if !classKnown(n.Class) && !rt.FunctionExists(n.Class+"::"+n.Method) {
 				report(line, fmt.Sprintf("static call %s::%s(): unknown class", n.Class, n.Method))
@@ -397,7 +397,7 @@ func (w *astWalker) one(e model.Expr) {
 		w.exprs(n.Args)
 		if n.Decl != nil {
 			// An anonymous class declares its body inside the expression;
-			// nothing else walks it. The walk passes the declaration to
+			// no other walk reaches it. The walk passes the declaration to
 			// the statement hook so class-shaped checks see it too.
 			if w.stmt != nil {
 				w.stmt(n.Decl)

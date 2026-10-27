@@ -35,7 +35,7 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 		t.Fatalf("DefaultStoragePath is not stable: %s then %s", one, again)
 	}
 
-	// DefaultStoragePath resolves a relative root before digesting it, so the
+	// DefaultStoragePath resolves a relative root before digesting it and the
 	// same tree named two ways is one site and never two.
 	if session.DefaultStoragePath(".") != session.DefaultStoragePath(mustAbs(t, ".")) {
 		t.Fatal("a relative and an absolute spelling of one root resolve to two directories")
@@ -51,14 +51,14 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 
 // TestPruneDoesNotCrossApplicationRoots is the reason that scoping exists.
 //
-// prune() takes an age, not an ID, so any script that can construct the storage
+// prune() takes an age, not an ID and any script that can construct the storage
 // can empty it. While every application root shared one directory, one line of
 // PHP on any site of a virtual-host server deleted every other site's sessions;
 // session IDs being unguessable did not help, because that line guessed no ID
 // and named no path.
 //
 // The unrooted host is in the table because it writes into the parent of the
-// scoped directories, so Prune has to skip them and never walk in.
+// scoped directories and Prune has to skip them and never walk in.
 func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	ctx := context.Background()
@@ -97,7 +97,7 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 	}
 
 	// The site that pruned did prune, or the assertion above would hold for a
-	// Prune that does nothing at all.
+	// Prune that removes no session.
 	if _, err := two.Load(ctx, "a-session-id"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("two Load after its own Prune error = %v, want fs.ErrNotExist", err)
 	}
@@ -146,7 +146,7 @@ func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 // TestRegister covers the three classes the stdlib wiring installs, rooted at
 // the process working directory the way the filesystem shims are. Memory
 // storage round-trips through the script, and a manager is constructible over
-// it, so a script reaches the whole surface without a host naming a root.
+// it and a script reaches the whole surface without a host naming a root.
 func TestRegister(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -179,7 +179,7 @@ echo " " . $manager->session_cookie_name;
 
 // TestRegisterRoot covers the confinement a virtual host depends on. A
 // $storage_path the script names resolves inside dir and cannot climb out of
-// it, so the directory the constructor creates is one the script could also
+// it and the directory the constructor creates is one the script could also
 // have written a file into.
 //
 // Without it the constructor made whatever the script named, and a site could
@@ -229,8 +229,8 @@ echo $disk->load("abc");
 
 // TestRegisteredManagerTakesTheDefaults covers the spelling a site writes:
 // `new Session\Manager` with no arguments, meaning disk storage and the
-// application's own .htpasswd. A login is then the manager and nothing else:
-// the script names no store and reads no hash.
+// application's own .htpasswd. A login is then the manager alone: the script
+// names no store and reads no hash.
 func TestRegisteredManagerTakesTheDefaults(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -287,7 +287,7 @@ try {
 
 // TestRegisteredManagerDefersThePasswordFileParse covers what the default
 // store costs a request: `new Session\Manager` opens the password file and
-// parses nothing, so a page that never calls login() does not pay for the
+// parses nothing and a page that never calls login() does not pay for the
 // account list, and a file with a bad line refuses the login that reads it,
 // naming the line an operator fixes.
 func TestRegisteredManagerDefersThePasswordFileParse(t *testing.T) {
@@ -324,9 +324,9 @@ try {
 // reports it.
 //
 // Memory storage is a different promise from disk: it lives as long as the
-// runtime, and a server forks one per worker, so a session minted on one
+// runtime, and a server forks one per worker and a session minted on one
 // worker is invisible to the next and a login looks like it failed at random.
-// A silent fallback would leave the symptom as the only clue, so the warning
+// A silent fallback would leave the symptom as the only clue and the warning
 // names the path and the reason.
 //
 // This test runs serial: it replaces the default slog logger.

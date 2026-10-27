@@ -38,7 +38,7 @@ func FuzzFlatstackCompilerInput(f *testing.F) {
 			return
 		}
 		// Compilation is the target. Arbitrary input can now produce supported,
-		// intentionally infinite loops, so executing it would make fuzzing hang.
+		// intentionally infinite loops, and executing it would make fuzzing hang.
 		_ = flatstack.Supports(program)
 	})
 }

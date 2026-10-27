@@ -61,7 +61,7 @@ func TestEnv(t *testing.T) {
 // TestHelpers covers the dispatch the helper table carries: the compiled
 // chain holds the typed implementation for the operator it compiled and calls
 // it with the operands themselves, with no []any slice between them. One
-// operator reaches one field, so a table filled for three operators records
+// operator reaches one field and a table filled for three operators records
 // three separate calls.
 func TestHelpers(t *testing.T) {
 	t.Parallel()

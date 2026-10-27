@@ -34,7 +34,7 @@ type config struct {
 // whether it did. status is the status the endpoint ended on and notes is what
 // went wrong, empty unless the endpoint failed.
 //
-// A routed endpoint is a file outside the document root, so it has no error
+// A routed endpoint is a file outside the document root and it has no error
 // page of its own to find; the host that owns the document root supplies one of
 // these. A false answer, and a nil func, leave the response to the endpoint.
 type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool

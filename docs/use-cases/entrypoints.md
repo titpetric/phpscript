@@ -15,7 +15,7 @@ if err != nil {
 mux.Handle("GET /", handle)
 ```
 
-Nothing about the PHP side is special. The file declares a function:
+The PHP side is ordinary. The file declares a function:
 
 ```php
 <?php
@@ -27,17 +27,17 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 }
 ```
 
-An `http.ResponseWriter` and an `*http.Request` are Go values, so they arrive as themselves. The script reads and writes them through the same reflection bridge every host object uses; there is no marshalling step and no copy.
+An `http.ResponseWriter` and an `*http.Request` are Go values and they arrive as themselves. The script reads and writes them through the same reflection bridge every host object uses; there is no marshalling step and no copy.
 
 `HTTP\Request` is the name a script already has for `*net/http.Request`, the one `new HTTP\Request` builds for an outbound call, and `HTTP\ResponseWriter` is `http.ResponseWriter` under the same rule. `HTTP\ResponseWriter` names no constructor, because a handler receives a response writer and constructs none.
 
-Nothing checks either hint, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
+The runtime checks neither hint, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
 
 ## What an invocation carries
 
 The arguments alone.
 
-The runtime decodes no request, so `$_GET`, `$_POST` and `$_SERVER` remain undefined. No file body runs: the runtime hoists the declaring program for the functions and classes it declares, and skips its top-level statements. The scope the function body executes in holds its parameters and whatever it declares itself.
+The runtime decodes no request and `$_GET`, `$_POST` and `$_SERVER` remain undefined. No file body runs: the runtime hoists the declaring program for the functions and classes it declares, and skips its top-level statements. The scope the function body executes in holds its parameters and whatever it declares itself.
 
 `BenchmarkLookup` splits the cost up, on one pinned core:
 
@@ -49,7 +49,7 @@ BenchmarkLookup/runtime      	   10000	    132753 ns/op	   84364 B/op	     684 a
 BenchmarkLookup/request      	    7159	    158615 ns/op	   96324 B/op	     850 allocs/op
 ```
 
-`bind` is resolving the symbol and building the closure, paid per runtime. `invoke` is calling it, the only line that scales with traffic, and `callable` is the same call through the untyped `rt.Callable`, so the gap between them is what the signature bridge costs. `runtime` runs no PHP at all: the benchmark builds a runtime and registers the standard library onto it.
+`bind` is resolving the symbol and building the closure, paid per runtime. `invoke` is calling it, the only line that scales with traffic, and `callable` is the same call through the untyped `rt.Callable` and the gap between them is what the signature bridge costs. `runtime` runs no PHP at all: the benchmark builds a runtime and registers the standard library onto it.
 
 In that last pair, `request` less `runtime` is the script; the rest is the host getting ready to run it, and a lookup on a reused runtime skips it. That setup cost is also why the request path stops scaling with cores while the lookup path keeps going - at ninety kilobytes a go, the collector becomes the limit before the CPU does.
 
@@ -57,9 +57,9 @@ A host needing the superglobals still has them: build the runtime, `runner.FromR
 
 ## Finding the symbol
 
-The symbol may be anywhere under the runtime's source root. A runtime that has loaded nothing parses its tree through a `Precompiler` on the first lookup, so there is no load step to remember; a host that already precompiled, or that has been serving requests, resolves against the cache it filled.
+The symbol may be anywhere under the runtime's source root. A runtime that has loaded nothing parses its tree through a `Precompiler` on the first lookup and there is no load step to remember; a host that already precompiled, or that has been serving requests, resolves against the cache it filled.
 
-A free function in a namespaced file carries the namespace, so `App\Handler\index` is the whole name. That name resolves, and so does any trailing part of it:
+A free function in a namespaced file carries the namespace and `App\Handler\index` is the whole name. That name resolves, and so does any trailing part of it:
 
 ```go
 runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index") // exact
@@ -67,7 +67,7 @@ runner.Lookup[http.HandlerFunc](rt, "Handler\\index")      // by segment
 runner.Lookup[http.HandlerFunc](rt, "index")               // by name
 ```
 
-The last one is an error if two namespaces declare an `index`. `*runner.LookupError` carries the names that matched, so a host binding its handlers at startup reads which spelling to use, and serves no handler on a guess.
+The last one is an error if two namespaces declare an `index`. `*runner.LookupError` carries the names that matched and a host binding its handlers at startup reads which spelling to use, and serves no handler on a guess.
 
 ## Signatures
 
@@ -100,7 +100,7 @@ handle, err := runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index")
 
 That is the arrangement the HTTP server already keeps per request: the process pays for the parse and the bytecode compile once, everything an invocation allocates is its own, and the only thing two goroutines share is a read lock.
 
-Sharing one runtime instead is a crash. Evaluation writes `rt.compiled`, `rt.goMethods` and `rt.frames` with no lock, so two goroutines calling one closure take the process down with `fatal error: concurrent map writes` out of `setCompiledExpr`.
+Sharing one runtime instead is a crash. Evaluation writes `rt.compiled`, `rt.goMethods` and `rt.frames` with no lock and two goroutines calling one closure take the process down with `fatal error: concurrent map writes` out of `setCompiledExpr`.
 
 ## Reusing a runtime
 
@@ -137,7 +137,7 @@ A kilobyte of every row is the `httptest` recorder, which the native handler all
 
 Pooling is 37x a fresh runtime per request and 59x less garbage, which is the part that decides whether more cores help. What it costs is PHP's request isolation: script globals, `static $x` in a function or a class, constants the script defined and anything `register_shutdown_function` collected all survive into the next request on that runtime. A handler that is a pure function of its arguments does not care. One that is not will read the last request's state.
 
-`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops it all. That also drops the declarations, so the lookup binds the symbol again per request - at a few hundred nanoseconds, so the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
+`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops it all. That also drops the declarations and the lookup binds the symbol again per request - at a few hundred nanoseconds and the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
 
 A pool does not carry the writer: `runner.New` fixes it for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
 
@@ -145,6 +145,6 @@ A pool does not carry the writer: `runner.New` fixes it for the runtime's life. 
 
 A looked-up symbol runs on the interpreter even under a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table and not the runtime's.
 
-`Options.Include` is not run per invocation, so a composer autoloader is not installed by a lookup. A function that needs one requires it in its own body, or the host runs the prelude on the runtime before looking anything up.
+`Options.Include` is not run per invocation and a composer autoloader is not installed by a lookup. A function that needs one requires it in its own body, or the host runs the prelude on the runtime before looking anything up.
 
 A `static $x` inside a looked-up function keeps its value across invocations on the same runtime, which is PHP's within-request semantics applied to the runtime's lifetime.

@@ -26,7 +26,7 @@ echo "public";
 }
 
 // TestScannerReadsOnlyWhatAnApplicationPublishes covers which files discovery
-// reads. The scan reads a .php file at any depth, so routes can sit in one
+// reads. The scan reads a .php file at any depth and routes can sit in one
 // folder or in a tree of them. It passes over a composer install tree: a
 // dependency does not
 // publish routes into the application, and walking it costs a parse of every
@@ -65,7 +65,7 @@ func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
 }
 
 // TestScannerRefusesANilRoot covers a host that configured no source tree.
-// Discovery walks one filesystem, so there is nothing to scan and nothing to
+// Discovery walks one filesystem with no files to scan and no routes to
 // serve, and the failure arrives at registration where a deployment sees it.
 func TestScannerRefusesANilRoot(t *testing.T) {
 	t.Parallel()

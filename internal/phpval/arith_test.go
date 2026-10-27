@@ -6,7 +6,7 @@ import (
 )
 
 // TestOverflowAddInt covers the carry detection the float fallback reads. A
-// sum that leaves the int64 range reports false and a zero, so a caller never
+// sum that leaves the int64 range reports false and a zero and a caller never
 // has a wrapped negative to tell apart from a real one.
 func TestOverflowAddInt(t *testing.T) {
 	t.Parallel()
@@ -35,7 +35,7 @@ func TestOverflowAddInt(t *testing.T) {
 }
 
 // TestOverflowSubInt covers the borrow detection. Subtracting a negative is
-// the direction that overflows upward, so the cases carry both signs of y.
+// the direction that overflows upward and the cases carry both signs of y.
 func TestOverflowSubInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -94,7 +94,7 @@ func TestOverflowMulInt(t *testing.T) {
 }
 
 // TestAddInt covers PHP's + on two ints. php 8.5 prints
-// float(9.223372036854776E+18) for PHP_INT_MAX + 1, so a sum that leaves the
+// float(9.223372036854776E+18) for PHP_INT_MAX + 1 and a sum that leaves the
 // range changes type and the Go wrap is never visible to a script.
 func TestAddInt(t *testing.T) {
 	t.Parallel()
@@ -164,7 +164,7 @@ func TestMulInt(t *testing.T) {
 
 // TestDivInt covers PHP's / on two ints, where the operator is true division
 // and no integer one: php 8.5 prints float(3.5) for 7/2 and int(3) for 6/2,
-// so an even division keeps the int type and an uneven one changes it.
+// and an even division keeps the int type and an uneven one changes it.
 //
 // Division by zero returns int 0 here. php 8.5 throws DivisionByZeroError; the
 // warning and the throw are the interpreter's, and this function is the
@@ -192,7 +192,7 @@ func TestDivInt(t *testing.T) {
 }
 
 // TestModInt covers PHP's %, which takes the sign of the left operand: php 8.5
-// prints int(-1) for -7%3 and int(1) for 7%-3. Go's % has the same rule, so
+// prints int(-1) for -7%3 and int(1) for 7%-3. Go's % has the same rule and
 // the operator passes through.
 //
 // Modulo by zero returns int 0, matching the interpreter's phpArith. php 8.5

@@ -41,7 +41,7 @@ echo get_class($o), "|", $o->getMessage(), "|", ($o === $e ? "same" : "different
 }
 
 // An *model.Array is a pointer to a struct and would answer a "looks like an
-// object" test, so the collection branch has to run first or `(object)` on an
+// object" test and the collection branch has to run first or `(object)` on an
 // array becomes a no-op.
 func TestObjectCastConvertsCollections(t *testing.T) {
 	t.Parallel()

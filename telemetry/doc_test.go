@@ -7,7 +7,7 @@ import (
 )
 
 // TestInstrumentationUnderADisabledTracer covers the nil safety this package
-// claims. A tracer nothing enables starts no trace, so Start, StartSpan
+// claims. A tracer nothing enables starts no trace and Start, StartSpan
 // and Do all run against a context holding none: the span is nil, every method
 // on it does nothing, and Do still calls fn and returns its error unchanged.
 // A binding can then instrument without testing whether telemetry is on.
@@ -29,7 +29,7 @@ func TestInstrumentationUnderADisabledTracer(t *testing.T) {
 		t.Fatalf("StartTrace() returned trace %+v, want nil", trace)
 	}
 
-	// The location a PHP frame published is still in the context, so this is
+	// The location a PHP frame published is still in the context and this is
 	// the path a binding takes in a process where nobody turned recording on.
 	ctx = WithSpanLine(WithSpanFilename(ctx, "public/index.php"), 12)
 
@@ -41,7 +41,7 @@ func TestInstrumentationUnderADisabledTracer(t *testing.T) {
 		t.Fatalf("Start() = %+v, want nil without a trace", span)
 	}
 
-	// Every method tolerates the nil receiver, so a binding calls them
+	// Every method tolerates the nil receiver and a binding calls them
 	// unconditionally.
 	span.SetAttribute("rows", 3)
 	span.RecordError(errors.New("ignored"))

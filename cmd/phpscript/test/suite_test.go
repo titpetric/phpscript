@@ -11,7 +11,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// writeTree fills a temporary directory and makes it the working directory, so
+// writeTree fills a temporary directory and makes it the working directory and
 // a run resolves the suite files the way an invocation from an application root
 // does.
 func writeTree(t *testing.T, files map[string]string) string {
@@ -54,7 +54,7 @@ func TestSuiteIncludeIsAPreludeWithoutTheFlag(t *testing.T) {
 }
 
 // TestSuiteHooksRunOncePerSession covers both hooks and the order they run in.
-// Each appends to a file, so the file records how many times each ran and
+// Each appends to a file and the file records how many times each ran and
 // which side of the fixtures each sits on.
 func TestSuiteHooksRunOncePerSession(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
@@ -159,7 +159,7 @@ no configuration found for database: [sqlite_test]
 }
 
 // TestSuiteBelowTheRunRootMayNotSetRunKeys covers the tenant rule applied to a
-// suite: --parallel describes one run of the command, so two folders cannot
+// suite: --parallel describes one run of the command and two folders cannot
 // both answer for it.
 func TestSuiteBelowTheRunRootMayNotSetRunKeys(t *testing.T) {
 	writeTree(t, map[string]string{

@@ -67,10 +67,10 @@ func (b *propBag) Delete(key string) {
 // TestCollection covers the contract a value satisfies to read as an array
 // without being one: its own length and its own iteration. count(), foreach and
 // the array bindings read a collection through LenValues, RangeValues and
-// IsCollection, so a view over data a binding already holds reaches all three
+// IsCollection and a view over data a binding already holds reaches all three
 // and pays nothing to build an *Array.
 //
-// A nil *Array reports no collection, so count() applies PHP's scalar rule to
+// A nil *Array reports no collection and count() applies PHP's scalar rule to
 // it the way it does to a string.
 func TestCollection(t *testing.T) {
 	t.Parallel()
@@ -107,7 +107,7 @@ func TestCollection(t *testing.T) {
 // collection read by name: Read answers nil for a name nothing holds, and Has
 // tells that apart from a name holding nil.
 //
-// Keyed embeds Collection, so one value answers count() and foreach as well,
+// Keyed embeds Collection and one value answers count() and foreach as well,
 // and a runtime reaching a bag declared in another package needs no *Array.
 func TestKeyed(t *testing.T) {
 	t.Parallel()

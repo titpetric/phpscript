@@ -69,7 +69,7 @@ func TestTimeLimitError(t *testing.T) {
 
 // TestArgumentCountError covers php's wording for a call with too many
 // arguments. It says "at most" because a binding spells PHP's optional
-// parameters as extra ones, so too few arguments is legal and zero-padded.
+// parameters as extra ones and too few arguments is legal and zero-padded.
 func TestArgumentCountError(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -109,7 +109,7 @@ func TestTypeError(t *testing.T) {
 }
 
 // TestUndefinedConstantError covers the one error here that names a class PHP
-// does not: RuntimeException, so `catch (Exception $e)` takes it. A name this
+// does not: RuntimeException and `catch (Exception $e)` takes it. A name this
 // runtime does not define is a condition a script can answer for, where PHP 8
 // raises Error and expects nobody to handle it.
 func TestUndefinedConstantError(t *testing.T) {
@@ -124,7 +124,7 @@ func TestUndefinedConstantError(t *testing.T) {
 }
 
 // TestHostPanicError covers the error a panic in a registered Go callable
-// reaches a script as, so a PHP try/catch handles it the way it handles an
+// reaches a script as and a PHP try/catch handles it the way it handles an
 // error the same callable returned.
 func TestHostPanicError(t *testing.T) {
 	t.Parallel()

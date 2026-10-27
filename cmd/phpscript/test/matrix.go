@@ -31,7 +31,7 @@ type matrixCell struct {
 
 // matrixRow is a fixture and its cell per runner, in opts.runners() order.
 // Metrics are the default runtime's: a row has one cost column and three
-// runners, so the matrix compares correctness across runners and cost on the
+// runners and the matrix compares correctness across runners and cost on the
 // runtime the other two measure against. Per-runner cost stays in --json.
 type matrixRow struct {
 	DisplayPath string

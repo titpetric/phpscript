@@ -18,7 +18,7 @@ func registerStringCompare(rt *runner.Runtime) {
 	})
 	// strcasecmp compares $string1 and $string2 byte by byte with the ASCII
 	// letters folded to lower case, answering a negative number, a positive
-	// one, or 0 as strcmp does; it compares a byte above 127 unfolded, so the
+	// one, or 0 as strcmp does; it compares a byte above 127 unfolded and the
 	// folding does not reach an accented letter.
 	rt.RegisterFunc("strcasecmp", func(string1, string2 string) int64 {
 		return compareBytes(string1, string2, wholeString, true)
@@ -50,8 +50,8 @@ func clampLength(length int64) int {
 	if length < 0 {
 		return 0
 	}
-	// A length wider than any string this process holds bounds nothing: the
-	// caller's own lengths bound the loop below.
+	// A length wider than any string this process holds clamps to that width;
+	// the caller's own lengths bound the loop below.
 	if length > int64(int(^uint(0)>>1)) {
 		return int(^uint(0) >> 1)
 	}
@@ -64,7 +64,7 @@ func clampLength(length int64) int {
 // It returns the difference between the first two bytes that disagree, with no
 // normalisation to -1/0/1, because PHP's memcmp answers the byte difference and
 // a fixture recorded from php pins the number: strcmp("A", "a") is -32 there,
-// not -1. Bytes compare unsigned, so "\xff" sorts after "\x01" and never
+// not -1. Bytes compare unsigned and "\xff" sorts after "\x01" and never
 // before it. Only a tie broken by length normalises, which is also PHP's
 // reading: strcmp("a", "abcdefgh") is -1 and not -7.
 func compareBytes(string1, string2 string, limit int, fold bool) int64 {
@@ -90,8 +90,8 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 		}
 	}
 
-	// The compared run agreed. A strncmp that stopped at its own limit has
-	// nothing left to say, whatever the strings do after it.
+	// The compared run agreed. A strncmp that stopped at its own limit compares
+	// no further, whatever the strings do after it.
 	if bounded {
 		return 0
 	}
@@ -107,7 +107,7 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 
 // lowerASCII folds one byte the way PHP's case-insensitive comparisons do:
 // A-Z only. unicode.ToLower would fold a rune, and these functions never decode
-// one - they walk bytes, so strcasecmp cannot see that "\xc3\x84" and
+// one - they walk bytes and strcasecmp cannot see that "\xc3\x84" and
 // "\xc3\xa4" are the same letter.
 func lowerASCII(c byte) byte {
 	if c >= 'A' && c <= 'Z' {

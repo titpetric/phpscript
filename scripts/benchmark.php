@@ -19,16 +19,16 @@
 //	scripts/benchmark.php --targets php-vanilla-apache --jit tracing \
 //		--endpoints bare=/_bare.php,hello=/hello?name=sprint
 //
-// A summary row collapses the endpoints of its own run, so a list mixing one
+// A summary row collapses the endpoints of its own run, and a list mixing one
 // cheap path with one expensive path leaves that row describing neither. Read
 // the per-endpoint table for those.
 //
 // A runtime takes the name of its directory, with the concurrency appended:
 // `phpscript-service-4` is testdata/phpscript-service answering four requests
-// at once. php-vanilla is one directory served two ways, so it carries the web
+// at once. php-vanilla is one directory served two ways, and it carries the web
 // server in its name.
 //
-// What this prints is a point estimate and nothing more. scripts/bench-http.sh
+// What this prints is a point estimate. scripts/bench-http.sh
 // stays the harness of record: the drift column that catches a box doing
 // something else, the memory section, the per-segment appendix, the manifest of
 // toolchain and commands, and the /slow abort check are all there and none of
@@ -53,7 +53,7 @@ function fail($message) {
 	exit(1);
 }
 
-// pid_file and profile_file record what is up, so teardown reaches it from any
+// pid_file and profile_file record what is up, and teardown reaches it from any
 // exit path. `.gitignore` holds bin/, and it resolves the same for both sides of every
 // call here: a relative path reads inside the runtime's root, and the shell a
 // command runs through starts in that same directory.
@@ -66,7 +66,7 @@ function profile_file() {
 }
 
 // teardown takes down whatever the work files name as up. A server left behind holds
-// its port and keeps its workers on the cores the next measurement needs, so a
+// its port and keeps its workers on the cores the next measurement needs, and a
 // shutdown function registers this and every exit path reaches it, the
 // guarantee `trap stop_server EXIT` carries in the bash harness.
 function teardown() {
@@ -125,7 +125,7 @@ function environments() {
 }
 
 // endpoints is the API every environment answers, route for route and byte for
-// byte, so one column compares against another. A --endpoints list replaces it
+// byte, and one column compares against another. A --endpoints list replaces it
 // with paths of the caller's choosing, each named for its column.
 function endpoints($list) {
 	if ($list !== "") {
@@ -205,7 +205,7 @@ function flags($argv, $defaults) {
 	return $settings;
 }
 
-// micros reads one wrk latency. wrk picks the unit per line, so each line's
+// micros reads one wrk latency. wrk picks the unit per line, and each line's
 // suffix decides the scale.
 function micros($token) {
 	if (str_ends_with($token, "us")) {
@@ -223,8 +223,8 @@ function micros($token) {
 	return $token + 0;
 }
 
-// segment runs wrk once and reduces its report to the six numbers a row is
-// built from, latencies in microseconds.
+// segment runs wrk once and reduces its report to the six numbers a row
+// carries, latencies in microseconds.
 function segment($url, $threads, $conc, $duration, $lua) {
 	$command = "nice -n -20 wrk --latency -t " . $threads . " -c " . $conc . " --timeout 30s -d " . $duration;
 	if ($lua !== "") {
@@ -287,7 +287,7 @@ function segment($url, $threads, $conc, $duration, $lua) {
 	return $row;
 }
 
-// median picks the 50th percentile the way the bash harness picks it, so a row
+// median picks the 50th percentile the way the bash harness picks it, and a row
 // here and a row there hold the same number.
 function median($values) {
 	$count = count($values);
@@ -337,7 +337,7 @@ function collapse($segments) {
 }
 
 // address polls a server's log until it reports where it listens. A kernel-
-// picked port keeps two runs on one box from colliding, so the log is the only
+// picked port keeps two runs on one box from colliding, and the log is the only
 // place the port exists.
 function address($log, $pattern) {
 	for ($i = 0; $i < 200; $i++) {
@@ -390,7 +390,7 @@ function start_compose($environment, $settings) {
 	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
 	$compose = $prefix . "docker compose -f testdata/php-vanilla/compose.yml --profile " . $environment["profile"];
 
-	// Recorded before the stack comes up, so a profile that half starts is
+	// Recorded before the stack comes up, and a profile that half starts is
 	// still taken down.
 	file_put_contents(profile_file(), $environment["profile"]);
 
@@ -411,7 +411,7 @@ function start_compose($environment, $settings) {
 
 // table prints rows under headers, every column as wide as its widest cell.
 // The first columns name a thing and read left, the rest are numbers and read
-// right, so a digit lines up under a digit.
+// right, and a digit lines up under a digit.
 function table($title, $headers, $named, $rows) {
 	$widths = array();
 	foreach ($headers as $column => $head) {

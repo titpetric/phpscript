@@ -38,7 +38,7 @@ func TestMapFixturesRunsConcurrentlyWithSerialBarrier(t *testing.T) {
 
 // TestMapFixturesSerialRun covers the path a run with no --parallel takes: the
 // fixtures execute in order on the caller's goroutine, each worker numbered
-// zero, so a cache scoped to a worker is one cache for the run.
+// zero and a cache scoped to a worker is one cache for the run.
 func TestMapFixturesSerialRun(t *testing.T) {
 	fixtures := []*tests.Fixture{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
@@ -63,7 +63,7 @@ func TestMapFixturesSerialRun(t *testing.T) {
 		}
 	}
 
-	// One fixture is one fixture whatever --parallel says, so mapFixtures
+	// One fixture is one fixture whatever --parallel says and mapFixtures
 	// skips the batching and never enters it with a single job in it.
 	results := mapFixtures(fixtures[:1], 8, func(worker int, _ int, fx *tests.Fixture) string {
 		if worker != 0 {
@@ -77,7 +77,7 @@ func TestMapFixturesSerialRun(t *testing.T) {
 }
 
 // TestGroupFixtures covers the bucketing the per-area tables print from.
-// groupFixtures keeps discovery order both between folders and inside one, so
+// groupFixtures keeps discovery order both between folders and inside one and
 // two runs over one tree print the same report and a diff of two reports is a
 // diff of the results.
 func TestGroupFixtures(t *testing.T) {

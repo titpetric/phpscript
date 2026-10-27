@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// stringWriterRecorder counts which write method a caller reaches, so a test
+// stringWriterRecorder counts which write method a caller reaches and a test
 // can tell a forwarded WriteString from the []byte fallback.
 type stringWriterRecorder struct {
 	*httptest.ResponseRecorder
@@ -64,7 +64,7 @@ func TestTrackerForwardsWriteString(t *testing.T) {
 	})
 }
 
-// headerOnlyWriter narrows a recorder to the three ResponseWriter methods, so
+// headerOnlyWriter narrows a recorder to the three ResponseWriter methods and
 // the tracker sees a writer with no WriteString of its own.
 type headerOnlyWriter struct {
 	inner *httptest.ResponseRecorder

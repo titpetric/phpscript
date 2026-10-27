@@ -9,7 +9,7 @@ import (
 )
 
 // TestInit covers the wiring this package does for itself. init() contributes
-// Register, the way a program wires in a database/sql driver, so a host that
+// Register, the way a program wires in a database/sql driver and a host that
 // calls stdlib.Register gets the HTTP surface by having imported the package
 // and names nothing. Reaching it through stdlib.Register and no direct call is
 // the point: a dropped init() leaves `new HTTP\Client` as a class nothing

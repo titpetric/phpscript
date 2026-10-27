@@ -27,7 +27,7 @@ func TestBoundVar(t *testing.T) {
 	}
 
 	// Slot zero is a slot: the zero value and an unfilled binding read the
-	// same, so the compiler fills every BoundVar it emits.
+	// same and the compiler fills every BoundVar it emits.
 	if zero := (BoundVar{}); zero.Name != "" || zero.Slot != 0 {
 		t.Errorf("the zero BoundVar is not empty: %+v", zero)
 	}

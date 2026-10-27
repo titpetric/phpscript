@@ -6,7 +6,7 @@ import (
 )
 
 // The stored values every test in this package authenticates against, all for
-// the one password below. Each comes from the tool that owns its format, so a
+// the one password below. Each comes from the tool that owns its format and a
 // row that stops verifying is a compatibility break and no test to update:
 //
 //	php -r 'echo password_hash("hunter2hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
@@ -39,7 +39,7 @@ var unreadableHashes = map[string]string{
 	"truncated bcrypt": "$2y$04$j1zOEFHUWgLb8D1SytMeoe",
 	// The 1997 spelling with no minor revision, then a revision php's crypt
 	// never wrote. php -r answers bool(false) for both through
-	// password_verify, so a line carrying either would verify nowhere.
+	// password_verify and a line carrying either would verify nowhere.
 	"bcrypt no revision":  "$2$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
 	"bcrypt bad revision": "$2c$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
 	"bcrypt bad base64":   "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEb!!!",
@@ -69,7 +69,7 @@ func TestVerify(t *testing.T) {
 }
 
 // TestVerifyRefusesUnreadable covers the fallthrough. A file this package
-// parsed cannot reach it, because the parse refuses the same list, so what is
+// parsed cannot reach it, because the parse refuses the same list and what is
 // under test is that a store assembled some other way authenticates nobody.
 func TestVerifyRefusesUnreadable(t *testing.T) {
 	t.Parallel()

@@ -3,12 +3,12 @@
 // front end mounted at /debug/oida.
 //
 // This is the only package in phpscript that imports oida. Everything else
-// instruments through the symbols bound here, so no call site names the
-// provider. The bindings are type aliases and thin wrappers, so a
-// *telemetry.Span is a *oida.Span: nothing copies or adapts one at runtime.
+// instruments through the symbols bound here and no call site names the
+// provider. The bindings are type aliases and thin wrappers and a
+// *telemetry.Span is a *oida.Span: no copy or adapter exists at runtime.
 //
 // That covers the call sites, and no more of the dependency. The recorder and the
-// front end belong to the host platform, which names oida itself, so replacing
+// front end belong to the host platform, which names oida itself and replacing
 // the provider means replacing it there as well. A host passes the tracer
 // that platform built:
 //
@@ -17,7 +17,7 @@
 //		module = telemetry.NewModule(recorder.Tracer())
 //	}
 //
-// The module is a runner.Observer, so a Runtime handed to it reports its
+// The module is a runner.Observer and a Runtime handed to it reports its
 // scoreboard state and its spans onto the trace of the request that is running:
 //
 //	rt.SetContext(r.Context())
@@ -25,5 +25,5 @@
 //
 // Instrumentation is nil safe. Spans started without a trace in the context,
 // or in a process running with telemetry off, return a nil span whose methods
-// do nothing, so instrumented code runs unchanged either way.
+// do nothing and instrumented code runs unchanged either way.
 package telemetry

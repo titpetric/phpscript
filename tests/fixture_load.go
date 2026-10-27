@@ -62,10 +62,10 @@ func isFixturePath(name string) bool {
 
 // embeddedFixtures walks the embedded tree and groups every .phpt by the area
 // directory holding it. A fixture's include root is that directory, which is
-// also where the php runner executes, so all three runners resolve a relative
+// also where the php runner executes and all three runners resolve a relative
 // include to the same file.
 //
-// LoadSuiteFS reads an area holding a phpscript.yml as a suite, so the Go tests
+// LoadSuiteFS reads an area holding a phpscript.yml as a suite and the Go tests
 // run under the connections and the prelude the same folder passes to the
 // command. Discovery is per area and not per ancestor: the walk starts at
 // tests/fixtures and no invocation root sits above it to walk up to.
@@ -173,7 +173,7 @@ func errorChainContains(err error, substr string) bool {
 // GoldenSuffix and GoldenOutputSuffix name the second fixture form: a php file
 // the runtimes execute, and the output beside it they must match.
 //
-// The body is an ordinary file and no section of a document, so php runs it
+// The body is an ordinary file and no section of a document and php runs it
 // where it lies and __FILE__ and __DIR__ read back its own path.
 // A person can also run the body by hand, which a .phpt cannot. The form
 // carries no frontmatter: a fixture needing one declares a .phpt.
@@ -183,7 +183,7 @@ const (
 )
 
 // ParseGolden builds a fixture from a _test.php body and the _test.txt beside
-// it. It takes both as they are; there is nothing to parse out of either.
+// it. It takes both as they are, with no section to parse out of either.
 func ParseGolden(body, expected []byte, path string) *Fixture {
 	return &Fixture{
 		Name:     strings.TrimSuffix(filepath.Base(path), GoldenSuffix),
@@ -200,7 +200,7 @@ func goldenOutput(path string) string {
 
 // unmarshalHeader reads the yaml header of a .phpt document into target.
 //
-// This package reads every header through this one door, so a fixture and a
+// This package reads every header through this one door and a fixture and a
 // test of the parser agree on what a key means and on which library decided.
 func unmarshalHeader(data []byte, target any) error {
 	return yaml.Unmarshal(data, target)

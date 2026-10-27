@@ -10,7 +10,7 @@ import (
 )
 
 // TestRegister covers the one name this package installs, and where its report
-// lands: phpinfo() writes through the runtime's output, so a buffered page
+// lands: phpinfo() writes through the runtime's output and a buffered page
 // captures it the way it captures echo.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -43,7 +43,7 @@ func TestRegister(t *testing.T) {
 
 // TestRegisterIgnoresArguments covers the signature PHP has and this binding
 // does not read: phpinfo($what) selects sections in PHP, and the report here
-// is one block, so the binding takes an argument and changes nothing. A script
+// is one block and the binding takes an argument and changes nothing. A script
 // written for PHP calls phpinfo(INFO_GENERAL) and has to keep running.
 func TestRegisterIgnoresArguments(t *testing.T) {
 	t.Parallel()

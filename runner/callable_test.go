@@ -61,7 +61,7 @@ func constant(t testing.TB, rt *runner.Runtime, name string) any {
 }
 
 // TestAsCallableTakesEverySpellingButAnArray is the host-facing half of the
-// callable contract: AsCallable answers a value another runtime can run, so it
+// callable contract: AsCallable answers a value another runtime can run and it
 // needs a declaration to run and refuses anything that is not one.
 //
 // The two array spellings are the documented refusal (docs/README.md): they stay
@@ -82,7 +82,7 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 		{name: "function name", value: "plain", want: "plain a", named: "plain"},
 		{name: "Class::method", value: "Site::shout", want: "HELLO a", named: "Site::shout"},
 		{name: "an object with __invoke", value: constant(t, rt, "SITE"), want: "invoked a", named: "Site::__invoke"},
-		// The first-class spellings arrive as a *Callable already, so the router
+		// The first-class spellings arrive as a *Callable already and the router
 		// takes the form php itself writes, and not only the string for it.
 		{name: "name(...)", value: constant(t, rt, "FC_FUNC"), want: "plain a", named: "plain"},
 		{name: "$obj->method(...)", value: constant(t, rt, "FC_METHOD"), want: "hei a", named: "Site::hello"},
@@ -143,11 +143,11 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 }
 
 // TestCallable_Invoke covers the cross-runtime call a request answered on a
-// worker of its own makes: the value crosses and the execution does not, so
+// worker of its own makes: the value crosses and the execution does not and
 // each spelling runs on the runtime passed in.
 //
 // A closure, a bound method and Class::method carry their declaration and run
-// on a runtime that never loaded the source. A name crosses as a name, so the
+// on a runtime that never loaded the source. A name crosses as a name and the
 // runtime running it resolves it against its own function table, and one
 // declaring nothing cannot answer for it. That is the half that lets a host
 // register a binding under the name a script named.
@@ -198,7 +198,7 @@ func TestCallable_Invoke(t *testing.T) {
 		t.Errorf("Invoke() = %v, want %q", result, "plain b")
 	}
 
-	// Call is the same execution on the runtime that built the value, so the
+	// Call is the same execution on the runtime that built the value and the
 	// two answers agree where the runtime is the same one.
 	closure, err := origin.AsCallable(constant(t, origin, "CLOSURE"))
 	if err != nil {
@@ -235,7 +235,7 @@ func TestAsCallableReportsWhatItCaptured(t *testing.T) {
 		{name: "a declared function has nothing", value: "plain", want: false},
 		{name: "Class::method has no receiver to share", value: "Site::shout", want: false},
 		// The first-class spellings answer the same as the strings they are the
-		// written form of, so routing closureMember through
+		// written form of and routing closureMember through
 		// newStaticMethod settles: the static one shares nothing.
 		{name: "name(...) has nothing", value: constant(t, rt, "FC_FUNC"), want: false},
 		{name: "$obj->method(...) carries its receiver", value: constant(t, rt, "FC_METHOD"), want: true},

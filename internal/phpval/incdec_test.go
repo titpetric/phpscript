@@ -70,7 +70,7 @@ func TestDecrement(t *testing.T) {
 
 // TestStringNumber covers which strings denote a number and which type each
 // one denotes. The spelling decides the type: php 8.5 prints int(5) for +"5"
-// and float(100) for +"1e2", so an exponent or a fraction is a float even
+// and float(100) for +"1e2" and an exponent or a fraction is a float even
 // when the value is whole. The bool is is_numeric, which rejects "0x1A",
 // "1_000" and the empty string, and accepts surrounding whitespace.
 func TestStringNumber(t *testing.T) {

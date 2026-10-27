@@ -64,7 +64,7 @@ func (e *TimeLimitError) Error() string {
 }
 
 // HostPanicError converts a panic raised by a registered Go constructor,
-// function, or method into the runtime error path, so PHP try/catch handles it
+// function, or method into the runtime error path and PHP try/catch handles it
 // like an error returned by the same host callable.
 type HostPanicError struct {
 	Callable string
@@ -77,7 +77,7 @@ func (e *HostPanicError) Error() string {
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
-// callable declares. PHP raises the same condition under the same name, so it
+// callable declares. PHP raises the same condition under the same name and it
 // names that class: `catch (ArgumentCountError $e)` and `catch (Error $e)`
 // match it and `catch (Exception $e)` does not, as in PHP.
 type ArgumentCountError struct {
@@ -100,7 +100,7 @@ func (e *ArgumentCountError) Error() string {
 }
 
 // TypeError reports an argument that will not convert to the type the
-// callable's parameter declares. PHP raises TypeError for the same call, so it
+// callable's parameter declares. PHP raises TypeError for the same call and it
 // names that class: `catch (TypeError $e)` and `catch (Error $e)` match it and
 // `catch (Exception $e)` does not, as in PHP.
 type TypeError struct {
@@ -120,7 +120,7 @@ func (e *TypeError) Error() string {
 		name = "call"
 	}
 	// PHP also names the parameter ("Argument #3 ($limit)"). A Go binding's
-	// parameter names are not recoverable through reflect, so the position
+	// parameter names are not recoverable through reflect and the position
 	// stands alone.
 	return fmt.Sprintf("%s(): Argument #%d must be of type %s, %s given", name, e.Position, e.Want, e.Got)
 }

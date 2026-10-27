@@ -31,15 +31,15 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "a,bb,ccc",
 		},
 		{
-			// Creating the closure value reads the capture, so a later write
+			// Creating the closure value reads the capture, and a later write
 			// to the captured variable never reaches it.
 			name:   "use captures a snapshot",
 			source: `<?php $m = 3; $f = function ($x) use ($m) { return $x * $m; }; $m = 10; echo implode(",", array_map($f, array(1, 2)));`,
 			want:   "3,6",
 		},
 		{
-			// The frame holds the captures and the parameters and nothing else,
-			// so an enclosing variable the use list did not name is not in it.
+			// The frame holds the captures and the parameters alone, and an
+			// enclosing variable the use list did not name is not in it.
 			name:   "an enclosing variable of the same name is not visible",
 			source: `<?php $x = "outer"; echo call_user_func(function ($x) { return $x; }, "inner");`,
 			want:   "inner",

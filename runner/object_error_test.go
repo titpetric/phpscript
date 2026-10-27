@@ -8,7 +8,7 @@ import (
 )
 
 // TestObjectError covers the wrapper a thrown instance travels in. An object is
-// not an error, so it needs one to take the path a built-in throwable takes,
+// not an error and it needs one to take the path a built-in throwable takes,
 // and the class it records is both what a catch clause filters on and what
 // get_class() reports. A class declaring `extends` is still only its own class
 // here.
@@ -29,7 +29,7 @@ func TestObjectError(t *testing.T) {
 // TestObjectErrorRendering covers the renderings an uncaught throw falls back
 // to: a class with no message prints the class, an instance of no class prints
 // "object", and a wrapper around nothing still renders a message. A nil class
-// reports no name at all, so matchCatchType routes it the way it routes an
+// reports no name at all and matchCatchType routes it the way it routes an
 // error a binding returned.
 func TestObjectErrorRendering(t *testing.T) {
 	t.Parallel()
@@ -67,7 +67,7 @@ func TestObjectErrorRendering(t *testing.T) {
 
 // TestCatchValue covers what a catch clause binds. A script that threw an
 // instance gets the instance back, never the wrapper; everything else binds the
-// error itself, so a Go binding's failure reaches `catch` as a value a script
+// error itself and a Go binding's failure reaches `catch` as a value a script
 // can read a message off.
 func TestCatchValue(t *testing.T) {
 	t.Parallel()

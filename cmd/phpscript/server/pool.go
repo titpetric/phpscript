@@ -10,7 +10,7 @@ import (
 // buildRuntime constructs one runtime of this site's pool: the standard
 // library, the site's filesystem root, its caches and its observers, installed
 // once and serving every request that takes it from the pool. FreezeStdlib
-// marks the constants and the environment as the host's, so a reset between
+// marks the constants and the environment as the host's and a reset between
 // requests keeps them and drops what a script defined.
 func (h *handler) buildRuntime() *runner.Runtime {
 	newRuntime := runner.New

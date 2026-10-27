@@ -1,6 +1,6 @@
 # HTTP server bindings
 
-The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They are `net/http`'s `ServeMux` and `Server`, so a PHP program can itself be the server: it builds the router, listens, and owns the process until it stops.
+The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They are `net/http`'s `ServeMux` and `Server` and a PHP program can itself be the server: it builds the router, listens, and owns the process until it stops.
 
 That is one of two ways to serve. The other is `phpscript server`, which scans a source tree for `// @route` comments and runs a file per request; see [routing.md](routing.md). Use that one for an application laid out as pages and endpoints. Use this one when the program is the server: a service with a handful of routes, a test server, something that has to start and stop on its own terms.
 
@@ -60,13 +60,13 @@ class Server {
 }
 ```
 
-An `__invoke` is that same binding under the name php reserves for one, and a static method names no receiver at all: the runtime builds an empty instance per call, so `self::` resolves and two requests share nothing.
+An `__invoke` is that same binding under the name php reserves for one, and a static method names no receiver at all: the runtime builds an empty instance per call and `self::` resolves and two requests share nothing.
 
-`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and this router will keep refusing them: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this router leaves out, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead, so a route registered with one fails on its own line, ahead of the first request.
+`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and this router will keep refusing them: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this router leaves out, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead and a route registered with one fails on its own line, ahead of the first request.
 
 ## Patterns
 
-The pattern is `net/http`'s, so a method and a path, with `{name}` segments the handler reads back through `$r->path_value($name)`:
+The pattern is `net/http`'s: a method and a path, with `{name}` segments the handler reads back through `$r->path_value($name)`:
 
 ```php
 $mux->handle('GET /{$}', $index);          // the root, and nothing else
@@ -75,7 +75,7 @@ $mux->handle("POST /echo", $echo);          // one method
 $mux->handle("/health", $health);           // any method
 ```
 
-`GET /` is a `net/http` subtree and answers for every path nothing else claimed; `GET /{$}` anchors it to the root alone. Write `'{$}'` in single quotes: in a double-quoted string `{$` starts an interpolation.
+`GET /` is a `net/http` subtree and answers for every path no other route claimed; `GET /{$}` anchors it to the root alone. Write `'{$}'` in single quotes: in a double-quoted string `{$` starts an interpolation.
 
 ## Answering
 
@@ -104,11 +104,11 @@ Each worker holds a runtime of its own, forked from the one running the script. 
 
 ## What a handler can reach
 
-A handler starts on a clean stack holding `$w` and `$r` and nothing else. The runtime decodes no superglobal, nothing carries over from the last request, and two requests answered at the same moment cannot see each other.
+A handler starts on a clean stack holding only `$w` and `$r`. The runtime decodes no superglobal, nothing carries over from the last request, and two requests answered at the same moment cannot see each other.
 
 A handler carries what it captured: a closure's `use (...)` values and the `$this` it binds, or a bound method's receiver. Every request answering through that handler shares them, because each request runs on a runtime of its own and the capture is not copied. Read them. Writing to one from a handler is two requests writing to one value, and the engine cannot make that safe without copying the object, which is not what a shared receiver is for.
 
-Autoloaders come along too, so the worker that first names a class loads it there, once per worker. What does not come along is anything the script wrote: globals, `static $x`, constants the script defined, the list of included files, the output it produced. A handler reaches its captures, what its receiver holds, and every declaration ahead of `listen()`.
+Autoloaders come along too and the worker that first names a class loads it there, once per worker. What does not come along is anything the script wrote: globals, `static $x`, constants the script defined, the list of included files, the output it produced. A handler reaches its captures, what its receiver holds, and every declaration ahead of `listen()`.
 
 ## Re-entry: calling back into PHP
 
@@ -125,7 +125,7 @@ function with_log($next) {
 $mux->handle("GET /users/{id}", with_log($this->showUser));
 ```
 
-`$next` is a callable value built on the runtime that ran the script, and a worker answers the request. The value crosses; the execution does not follow it. Calling it runs the declaration on the worker, so what it echoes reaches this request's response, `connection_aborted()` inside it reports this client, and two requests through one wrapper never meet. The same holds for a callable read out of a shared object or an array, and for one handed to a binding that calls back - `usort`, `array_map`, `preg_replace_callback`, `call_user_func`.
+`$next` is a callable value built on the runtime that ran the script, and a worker answers the request. The value crosses; the execution does not follow it. Calling it runs the declaration on the worker and what it echoes reaches this request's response, `connection_aborted()` inside it reports this client, and two requests through one wrapper never meet. The same holds for a callable read out of a shared object or an array, and for one handed to a binding that calls back - `usort`, `array_map`, `preg_replace_callback`, `call_user_func`.
 
 This is what makes a runtime per worker sound. A `runner.Runtime` is one goroutine's execution - its frames, its output stack, its statics, its request - and reaching into another one is a concurrent map write. A whole runtime per worker, indexed by the handle the worker holds, is the arrangement; [../design.md](../design.md) records it under program re-entry, and `runner/fork.go` is the code.
 
@@ -155,7 +155,7 @@ $mux->handle("GET /slow", function ($w, $r) {
 
 ## Stopping
 
-`set_time_limit($seconds)` is a deadline on the context the interpreter checks and every binding carries. `wait()` is a binding, so the script runs out of time parked there, and running out of time is a fatal, as in php: nothing after it runs, and `register_shutdown_function` callbacks do run, with the clock off. That is why stopping the server belongs in one:
+`set_time_limit($seconds)` is a deadline on the context the interpreter checks and every binding carries. `wait()` is a binding and the script runs out of time parked there, and running out of time is a fatal, as in php: no statement after it runs, and `register_shutdown_function` callbacks do run, with the clock off. That is why stopping the server belongs in one:
 
 ```php
 register_shutdown_function(function () use ($http) {
@@ -171,6 +171,6 @@ register_shutdown_function(function () use ($http) {
 | Limit                                                 | What happens                                                                                                                                                                                                                      |
 |-------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | A closure as a handler with `flatstack.enabled: true` | Refused on the line registering the route: the bytecode engine compiles a closure literal to a call on the VM that built it rather than to a callable value. `$this->fnName` and the name of a declared function both work there. |
-| A handler writing to what it captured                 | Two requests writing to one value. The engine does not copy a receiver, so read-only is the contract.                                                                                                                             |
+| A handler writing to what it captured                 | Two requests writing to one value. The engine does not copy a receiver and read-only is the contract.                                                                                                                             |
 | `array($object, "method")` as a handler               | Refused on the line registering the route. Every other callable spelling takes it.                                                                                                                                                |
-| A runtime per worker                                  | Forking installs the whole standard library, so the cost lands at `listen()` rather than per request, and the worker count is memory as well as parallelism.                                                                      |
+| A runtime per worker                                  | Forking installs the whole standard library and the cost lands at `listen()` rather than per request, and the worker count is memory as well as parallelism.                                                                      |

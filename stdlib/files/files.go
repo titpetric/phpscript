@@ -4,7 +4,7 @@
 // the standard library bound to a directory on the host, and because a host
 // that runs untrusted scripts may leave them out.
 //
-// Go's fs.FS only reads, so writes (fopen/fwrite/mkdir) use the os package
+// Go's fs.FS only reads and writes (fopen/fwrite/mkdir) use the os package
 // against the same root; the runner's include resolution still uses the fs.FS
 // abstraction passed to runner.New.
 package files
@@ -30,7 +30,7 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the filesystem shims rooted at dir, replacing whatever
-// root stands before it, so a host calls it after stdlib.Register
+// root stands before it and a host calls it after stdlib.Register
 // (stdlib.RegisterFS does exactly that).
 //
 // The boundary every path resolves against, and what writable_paths adds to it,
@@ -53,7 +53,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 
 // root is the directory RegisterRoot bound the shims to, and the runtime they
 // resolve reads through. Every binding that takes a path from PHP resolves
-// through it, so the mapping from script path to host path lives in one place.
+// through it and the mapping from script path to host path lives in one place.
 type root struct {
 	rt  *runner.Runtime
 	dir string
@@ -69,7 +69,7 @@ type root struct {
 // written from "/" names the root itself, the spelling __DIR__ and getcwd()
 // answer in and the shape most concatenated paths take; anything else is
 // relative to the working directory chdir() moved. The source filesystem is
-// what a script can address, so "/" is its root and never the host's: there is
+// what a script can address and "/" is its root and never the host's: there is
 // no spelling for a host path outside it, and a runtime serving an embedded
 // tree could not honour one anyway.
 func (r root) resolve(p string) string {
@@ -88,8 +88,8 @@ func (r root) resolve(p string) string {
 // The runtime states the rule, in resolveFSPath, because an include follows
 // the same one: a path written from "/" names the root, anything else is
 // relative to the working directory, and resolveFSPath cleans both against the
-// root so "a/../../etc/passwd" becomes "etc/passwd" inside it and escapes
-// nothing.
+// root so "a/../../etc/passwd" becomes "etc/passwd" inside it and stays
+// within the root.
 //
 // The second return is false only for an empty path, which names nothing.
 func (r root) fsPath(p string) (string, bool) {
@@ -103,7 +103,7 @@ func (r root) fsPath(p string) (string, bool) {
 //
 // A tmp_name is the one path a script names that is not resolved against the
 // source filesystem. The request runtime writes an uploaded part outside the
-// root by design and returns the absolute tmp_name it wrote, so reading that
+// root by design and returns the absolute tmp_name it wrote and reading that
 // back is reading a file the runtime itself produced. The request's own
 // registry is what says which paths those are, and a path it did not issue is
 // not one of them, which is the same check is_uploaded_file answers with.
@@ -162,9 +162,9 @@ func (r root) globSpelling(pattern string, matches []string) []string {
 // resolveWrite is resolve for a path a script is about to write. A path
 // outside writable_paths is an error and no false return: a refused
 // write is a mistake in the script or an attempt to escape its allowance, and
-// both are worth stopping at, so the script never carries on believing
+// both are worth stopping at and the script never carries on believing
 // the write happened. The runtime promotes the error to a catchable exception,
-// so a script written for the refusal can try/catch it.
+// and a script written for the refusal can try/catch it.
 //
 // Failures the operating system reports keep returning PHP's false, as PHP
 // does.
@@ -177,7 +177,7 @@ func (r root) resolveWrite(fn, p string) (string, error) {
 }
 
 // writableAllows reports whether name is under one of the writable roots. An
-// unconfigured allowlist permits everything, so a project that names no
+// unconfigured allowlist permits everything and a project that names no
 // writable_paths keeps writing wherever its user may.
 func (r root) writableAllows(name string) bool {
 	if len(r.writable) == 0 {
@@ -201,7 +201,7 @@ func Within(name, dir string) bool {
 }
 
 // HostPath maps a path a script supplied onto the host filesystem beneath dir,
-// through the runtime's own rule, so one rule serves every binding. An empty
+// through the runtime's own rule and one rule serves every binding. An empty
 // path names nothing and answers empty.
 func HostPath(rt *runner.Runtime, dir, p string) string {
 	if p == "" {
@@ -211,11 +211,11 @@ func HostPath(rt *runner.Runtime, dir, p string) string {
 }
 
 // WritableRoots resolves the configured writable_paths against the shims' root
-// directory. An entry is a path inside the project, so uploads is the project's
+// directory. An entry is a path inside the project and uploads is the project's
 // uploads directory and public/uploads is the one below the document root.
 //
-// An absolute entry survives verbatim and then matches nothing: resolve clamps
-// the path it compares against into dir, so a script's /srv/shared resolves to
+// An absolute entry survives verbatim and then matches no file: resolve clamps
+// the path it compares against into dir and a script's /srv/shared resolves to
 // dir + /srv/shared, which is not inside /srv/shared. There is no way to grant
 // a write outside the root, and an absolute entry is not it.
 func WritableRoots(dir string, paths []string) []string {

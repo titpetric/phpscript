@@ -34,7 +34,7 @@ func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 
 // NewSharedMemoryBinding returns the store the host bound into the runtime
 // context, and a store of its own when the host bound none. No command in
-// this tree binds one, so `new SharedMemory` holds nothing across requests
+// this tree binds one and `new SharedMemory` holds nothing across requests
 // until an embedding host adds SharedMemoryContext.
 func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	s, _ := ctx.Value(sharedMemoryKey{}).(*SharedMemory)
@@ -57,7 +57,7 @@ func RegisterSharedMemory(rt *runner.Runtime) {
 
 // sharedMemoryInfo reports the store bound into the runtime, for phpinfo().
 //
-// A store outlives the requests that write to it, so memory_get_usage() counts
+// A store outlives the requests that write to it and memory_get_usage() counts
 // none of it. A host that bound none has nothing to report and the section does
 // not print.
 func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {

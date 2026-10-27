@@ -51,7 +51,7 @@ echo $_POST["hours"], ";", file_get_contents("php://input");`)
 }
 
 // TestRawBodyMultipartEmpty pins the shape PHP documents: php://input is not
-// available for a multipart body, so it answers empty while the form fields
+// available for a multipart body and it answers empty while the form fields
 // arrive through $_POST.
 func TestRawBodyMultipartEmpty(t *testing.T) {
 	t.Parallel()
@@ -84,7 +84,7 @@ func TestRawBodyOverLimitIsDropped(t *testing.T) {
 }
 
 // TestPostMaxSize covers a body larger than post_max_size. PHP does not parse
-// one at all, so a script sees empty superglobals; the decode reports the
+// one at all and a script sees empty superglobals; the decode reports the
 // reason to the host, the one place that reads it.
 func TestPostMaxSize(t *testing.T) {
 	t.Parallel()
@@ -108,7 +108,7 @@ func TestPostMaxSize(t *testing.T) {
 		t.Fatalf("error = %v, want it to name post_max_size", errs[0])
 	}
 
-	// The script cannot catch it: there is nothing to catch, only an empty
+	// The script cannot catch it: no error reaches it, only an empty
 	// superglobal. The host gets it through the runtime instead.
 	var recorded []error
 	out := runCtxOptions(t, ctx, opts, func(rt *runner.Runtime) {
@@ -129,7 +129,7 @@ try {
 }
 
 // TestPostMaxSizeUnknownLength covers a body that does not announce its length.
-// Nothing can judge the size before the read, so the cap applies during the
+// No check can judge the size before the read and the cap applies during the
 // parse, and the request ends the same way an announced one does.
 func TestPostMaxSizeUnknownLength(t *testing.T) {
 	t.Parallel()
@@ -168,7 +168,7 @@ func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup 
 }
 
 // Only the two form content types populate $_POST. A JSON body is
-// php://input and nothing else, as in PHP.
+// php://input alone, as in PHP.
 func TestBodyDecodeIsFormOnly(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -195,7 +195,7 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 
 // TestContext_SetRawBody covers what php://input answers for a host that built
 // its Context by hand, with no *http.Request behind it. The bytes are the body
-// and no form to decode, so the request fields stay as the host wrote them.
+// and no form to decode and the request fields stay as the host wrote them.
 func TestContext_SetRawBody(t *testing.T) {
 	t.Parallel()
 	ctx := runner.NewContext()

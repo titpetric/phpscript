@@ -7,7 +7,7 @@ import (
 )
 
 // TestRecord covers the struct a Get answers with. Record exports both fields,
-// so runner.helperGet reads `$rec->key` off them by reflection; an unexported
+// and runner.helperGet reads `$rec->key` off them by reflection; an unexported
 // field would be invisible to a script.
 func TestRecord(t *testing.T) {
 	record := Record{Key: "color", Value: "blue"}
@@ -28,7 +28,7 @@ func TestRecord(t *testing.T) {
 
 // TestStorage covers the capability PHP reaches through `new Storage`: the
 // tenant the constructor reads off the context the runner fills in, and the
-// three readers a fixture calls on it. All() is key-sorted, so a foreach over
+// three readers a fixture calls on it. All() is key-sorted, and a foreach over
 // it reports the same order on every run.
 func TestStorage(t *testing.T) {
 	ctx := context.WithValue(context.Background(), tenantKey, "acme")
@@ -67,7 +67,7 @@ func TestStorage(t *testing.T) {
 
 // TestStorage_Keep covers the predicate shape a host declares in Go's own
 // terms. coerceArgOn wraps a PHP closure into func(key, value string) bool
-// through reflect.MakeFunc, so the method reads two strings and a bool and
+// through reflect.MakeFunc, and the method reads two strings and a bool and
 // knows nothing about the VM.
 func TestStorage_Keep(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
@@ -85,7 +85,7 @@ func TestStorage_Keep(t *testing.T) {
 
 // TestStorage_Walk covers the uniform func(...any) (any, error) shape, whose
 // error slot is where a callback reports a failure without a panic. A failing
-// visit stops the walk, so a caller reads one error and not one per key.
+// visit stops the walk, and a caller reads one error and not one per key.
 func TestStorage_Walk(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
 

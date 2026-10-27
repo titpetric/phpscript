@@ -7,9 +7,9 @@ import (
 )
 
 // stubStorage is a store of one user with no derivation, standing in for the
-// driver a host writes against a table of its own. It proves a driver needs
-// nothing from this package's file, and the interface is the whole surface
-// Session\Manager calls.
+// driver a host writes against a table of its own. It proves a driver can skip
+// this package's file, and the interface is the whole surface Session\Manager
+// calls.
 type stubStorage struct {
 	username string
 	secret   string

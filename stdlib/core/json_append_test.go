@@ -96,7 +96,7 @@ func phpValues() []any {
 // the bytes the jsonEncodeValue tree encodes to.
 //
 // The appender is what the encoder and json_encode() write through, and the
-// tree is what encoding/json walks on the indent path, so the two spellings of
+// tree is what encoding/json walks on the indent path and the two spellings of
 // one document have to agree character for character: the list-or-object
 // decision, the order of the keys, an int key's spelling and the escapes.
 func TestAppendJSONValueMatchesTheConvertedTree(t *testing.T) {

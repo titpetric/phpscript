@@ -8,12 +8,12 @@ import (
 )
 
 // SessionPool keeps registered runtimes alive between the sessions they
-// serve, so a host answering one request after another pays registration once
+// serve and a host answering one request after another pays registration once
 // and a reset per request. A bounded free list and no sync.Pool, because the
 // registered runtime is the asset worth keeping and sync.Pool drops entries on
 // a collection. A Get on an empty list builds through the constructor and a
 // Put over the bound drops. One pool serves one host: the constructor closes
-// over one source root and one set of options, so a server with two or more
+// over one source root and one set of options and a server with two or more
 // virtual hosts keeps a pool per site and a runtime registered against one
 // site's filesystem never answers for another's.
 type SessionPool struct {
@@ -53,14 +53,14 @@ func (p *SessionPool) Get() *Runtime {
 
 // Put resets rt and returns it to the list, dropping it when the list is full.
 //
-// The reset happens here and not at the next Get, so a session lets go of the
+// The reset happens here and not at the next Get and a session lets go of the
 // values it built as it ends and an idle runtime holds nothing of the request
 // it answered: ResetSession drops the session's declarations and state, clears
 // the runtime-local caches keyed by AST nodes unless the include cache owns
 // those nodes, and detaches the context from the request it served.
 func (p *SessionPool) Put(rt *Runtime) {
 	// A frame still on the stack means a run this runtime started never
-	// returned, and no reset covers that state, so this drops the runtime and
+	// returned, and no reset covers that state and this drops the runtime and
 	// the next Get builds a sound one.
 	if rt == nil || len(rt.frames) != 0 {
 		return
@@ -71,7 +71,7 @@ func (p *SessionPool) Put(rt *Runtime) {
 	rt.ResetSession(io.Discard, nil)
 	if !rt.opts.Precompile {
 		// Without precompilation the runtime parses the entrypoint per
-		// request, so AST nodes no cache holds key these maps and they would
+		// request and AST nodes no cache holds key these maps and they would
 		// grow by one program per request. Under precompilation the include
 		// cache owns the nodes and the tree it caches bounds the maps, the
 		// reuse this pool exists for.
@@ -79,7 +79,7 @@ func (p *SessionPool) Put(rt *Runtime) {
 		clear(rt.concatParts)
 		clear(rt.sourceSpans)
 	}
-	// Detached from the request it served, so an idle runtime keeps no
+	// Detached from the request it served and an idle runtime keeps no
 	// connection alive; the next session installs its own.
 	rt.SetContext(context.Background())
 	p.mu.Lock()

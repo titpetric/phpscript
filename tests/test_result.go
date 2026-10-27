@@ -103,7 +103,7 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 		return res
 	}
 
-	// The host stages response headers, so only an in-process runner has any
+	// The host stages response headers and only an in-process runner has any
 	// to check.
 	if headers != nil {
 		for k, wantVal := range f.Response.Headers {

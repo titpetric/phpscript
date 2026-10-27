@@ -72,7 +72,7 @@ func TestTableRowKeepsCellsIntact(t *testing.T) {
 }
 
 // TestTableRowPadsShortRows keeps a caller from having to count columns when a
-// row has nothing to say in the last one.
+// row leaves the last one empty.
 func TestTableRowPadsShortRows(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
@@ -91,7 +91,7 @@ func TestTableRowPadsShortRows(t *testing.T) {
 }
 
 // TestAlign covers which side a column pads on. A label reads from the left
-// and a number reads from the right, so the two alignments put the padding on
+// and a number reads from the right and the two alignments put the padding on
 // opposite sides of the cell. In markdown the alignment rides on the
 // separator row, where a trailing colon is what a renderer reads as right.
 func TestAlign(t *testing.T) {
@@ -121,7 +121,7 @@ func TestAlign(t *testing.T) {
 		})
 	}
 
-	// Left is the zero value, so a Column written without an Align reads as a
+	// Left is the zero value and a Column written without an Align reads as a
 	// label.
 	if Left != 0 {
 		t.Errorf("Left = %d, want the zero value so an unset Align is left", Left)
@@ -134,7 +134,7 @@ func TestAlign(t *testing.T) {
 // TestCell covers the one value a cell carries and the color a terminal prints
 // it
 // in. A caller sets the color once; the terminal table wraps the text in it
-// and markdown drops it, so the same rows render in both formats with no
+// and markdown drops it and the same rows render in both formats with no
 // branch at the call site.
 func TestCell(t *testing.T) {
 	t.Parallel()

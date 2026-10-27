@@ -35,7 +35,7 @@ type Server struct {
 }
 
 // NewServer builds a server for $addr answering through $handler, an HTTP\Mux
-// or anything else that answers a request. Building one listens on nothing:
+// or anything else that answers a request. Building one binds no address:
 // listen() does that.
 //
 // $workers is how many requests the server answers at once, the number of
@@ -60,8 +60,8 @@ func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (
 }
 
 // listen binds the address and starts answering, and returns the address it
-// bound. It does not block: the script goes on, and calls wait() when it has
-// nothing left to do.
+// bound. It does not block: the script goes on, and calls wait() when its work
+// completes.
 func (s *Server) Listen() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -101,7 +101,7 @@ func (s *Server) Wait() {
 
 // Shutdown is http.Server.Shutdown with a second of grace, then Close.
 //
-// It answers nothing and throws nothing: a script writes it into a
+// It returns no value and throws no error: a script writes it into a
 // register_shutdown_function callback, which runs when the script has already
 // ended and has nowhere to put a failure. Calling it twice, or without having
 // listened, is not an error either.

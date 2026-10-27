@@ -108,7 +108,7 @@ func describePart(e model.Expr) string {
 }
 
 // TestInterpolationKeepsSourceSpelling is what the formatter relies on: it
-// prints the literal back from Raw and re-encodes nothing, so a rewrite
+// prints the literal back from Raw and re-encodes nothing and a rewrite
 // cannot change which spelling of an embedded expression the author chose.
 func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 	t.Parallel()

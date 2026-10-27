@@ -42,7 +42,7 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 }
 
 // TestFlatstackPaths covers the path-expanding half of the compatibility
-// check: one diagnostic per file the patterns selected, in filename order, so
+// check: one diagnostic per file the patterns selected, in filename order and
 // a caller pointing at a directory reads a verdict for every file in it and
 // never one for the directory.
 func TestFlatstackPaths(t *testing.T) {
@@ -134,7 +134,7 @@ done
 	}
 }
 
-// A violated interface contract is a lint finding on the class's own line, so
+// A violated interface contract is a lint finding on the class's own line and
 // the author reads the missing method before the file runs.
 func TestFileReportsInterfaceContract(t *testing.T) {
 	t.Parallel()
@@ -167,8 +167,8 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 	}
 }
 
-// The linter reports a JSON_* constant as a warning. Nothing defines the name,
-// so it arrives as null and json_encode ignores it: the call runs and encodes,
+// The linter reports a JSON_* constant as a warning. The runtime defines no name,
+// and it arrives as null and json_encode ignores it: the call runs and encodes,
 // and what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	t.Parallel()
@@ -193,7 +193,7 @@ func TestLintJSONFlags(t *testing.T) {
 			lines: nil,
 		},
 		{
-			// The name inside a string is not a use, so a script probing for
+			// The name inside a string is not a use and a script probing for
 			// the constant reads as written.
 			name:  "a string is not a use",
 			src:   "<?php\nvar_dump(defined(\"JSON_PRETTY_PRINT\"));\n$s = \"JSON_HEX_TAG\";\n",
@@ -404,7 +404,7 @@ func TestLintTypeReassign(t *testing.T) {
 			for _, d := range diags {
 				if strings.Contains(d.Message, "no reassignment") {
 					// Advisory by decision: the runtime retypes the way PHP
-					// does, so the finding must not fail the lint run.
+					// does and the finding must not fail the lint run.
 					if d.Fatal {
 						t.Errorf("finding %q is fatal, want advisory", d.Message)
 					}

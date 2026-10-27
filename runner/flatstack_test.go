@@ -10,7 +10,7 @@ import (
 )
 
 // TestFlatHostBinary covers the operator table the bytecode engine calls back
-// into. Both engines read one definition of PHP's semantics, so `==` cannot
+// into. Both engines read one definition of PHP's semantics and `==` cannot
 // match on a rule the interpreter disagrees with; an operator the table has no
 // entry for is an error and never a silent zero.
 func TestFlatHostBinary(t *testing.T) {
@@ -52,7 +52,7 @@ func TestFlatHostBinary(t *testing.T) {
 }
 
 // TestFlatHostUnary covers the prefix operators the engine calls back for.
-// Unary `+` resolves through the arithmetic helper, so a numeric string reads
+// Unary `+` resolves through the arithmetic helper and a numeric string reads
 // as the number it spells, and `-` keeps the sign of negative zero.
 func TestFlatHostUnary(t *testing.T) {
 	t.Parallel()
@@ -85,7 +85,7 @@ func TestFlatHostUnary(t *testing.T) {
 
 // TestFlatHostEntries covers what the engine's foreach walks. The walk takes an
 // array and an object in the order they read back, and a Go slice or map a
-// binding returned too, so `foreach` over a binding's result behaves the way it
+// binding returned too and `foreach` over a binding's result behaves the way it
 // behaves in the interpreter.
 func TestFlatHostEntries(t *testing.T) {
 	t.Parallel()
@@ -119,8 +119,8 @@ func TestFlatHostEntries(t *testing.T) {
 
 // TestFlatHostSetEntry covers the by-reference foreach write-back. Only a
 // model.Array is script-owned storage; a native Go collection a binding
-// returned belongs to the host, so SetEntry drops the write and reports
-// nothing. Runtime.execForeach takes the same view.
+// returned belongs to the host and SetEntry drops the write and reports
+// no change. Runtime.execForeach takes the same view.
 func TestFlatHostSetEntry(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -177,7 +177,7 @@ func TestFlatHostThrow(t *testing.T) {
 }
 
 // TestFlatHostEcho covers bytecode output going through the runtime output
-// stack and never to the base writer, so ob_start captures what the engine
+// stack and never to the base writer and ob_start captures what the engine
 // emits the way it captures interpreted output.
 func TestFlatHostEcho(t *testing.T) {
 	t.Parallel()
@@ -207,7 +207,7 @@ func TestFlatHostEcho(t *testing.T) {
 
 // TestFlatHostSetProperty covers writing an object property the way the
 // interpreter writes one: a PHP object carries the value in its property map,
-// and a Go binding assigns the struct field the name resolves to, so
+// and a Go binding assigns the struct field the name resolves to and
 // `$db->is_readonly = true` sets IsReadonly.
 func TestFlatHostSetProperty(t *testing.T) {
 	t.Parallel()
@@ -244,7 +244,7 @@ func TestFlatHostSetProperty(t *testing.T) {
 }
 
 // TestFlatHostMemoryCheckInterval covers how often the engine polls the memory
-// limit. A runtime with no limit configured answers zero, so the engine runs
+// limit. A runtime with no limit configured answers zero and the engine runs
 // the poll out of its loop altogether.
 func TestFlatHostMemoryCheckInterval(t *testing.T) {
 	t.Parallel()
@@ -261,7 +261,7 @@ func TestFlatHostMemoryCheckInterval(t *testing.T) {
 
 // TestFlatHostHelpers covers the helpers the engine shares with the
 // interpreter: the array constructor, index access, truthiness, the casts.
-// There is one definition of each, so neither engine can answer a different
+// There is one definition of each and neither engine can answer a different
 // value for the same expression.
 func TestFlatHostHelpers(t *testing.T) {
 	t.Parallel()

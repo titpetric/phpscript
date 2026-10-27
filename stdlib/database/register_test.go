@@ -10,7 +10,7 @@ import (
 
 // TestRegister covers the surface a script reaches once the installer has run:
 // the Database class, the Database\Migrate class, and the two connection
-// statics. The installer registers each under the name a script types, so the
+// statics. The installer registers each under the name a script types and the
 // runtime's own lookup answers for it.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -56,16 +56,16 @@ func TestRegisterConnections(t *testing.T) {
 		t.Error("Database::register() returned false for a name it accepted")
 	}
 
-	// register() lowercases the name on the way in, so a script writing "Shop"
+	// register() lowercases the name on the way in and a script writing "Shop"
 	// and one writing "shop" reach one connection. The list comes back sorted,
-	// so a script can compare it.
+	// and a script can compare it.
 	if list := connectionsOf(t, rt); len(list) != 2 || list[0] != "default" || list[1] != "shop" {
 		t.Errorf("Database::connections() = %v, want default and shop", list)
 	}
 }
 
 // TestRegisterMigrate covers the names Database\Migrate resolves against. It
-// tries each name as "<name>:migrate" before "<name>", so a deployment can
+// tries each name as "<name>:migrate" before "<name>" and a deployment can
 // point migrations at a user allowed to alter tables while the script queries
 // through one that is not. The project stays the first name the script passed,
 // whichever credential answered, and a script naming none migrates "default".

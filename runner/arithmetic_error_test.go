@@ -5,7 +5,7 @@ import (
 )
 
 // TestArithmeticError covers the class name a catch clause takes a shift by a
-// negative number under. There is no class hierarchy here, so matchCatchType
+// negative number under. There is no class hierarchy here and matchCatchType
 // reads the name off ThrowableClass and matches "Error" on its suffix: the
 // name has to end in Error for `catch (Error $e)` to take it.
 func TestArithmeticError(t *testing.T) {
@@ -25,7 +25,7 @@ func TestArithmeticError(t *testing.T) {
 }
 
 // TestDivisionByZeroError covers the class intdiv() and `%` raise on a zero
-// divisor. PHP 8 made it a class of its own under Error, so a script catching
+// divisor. PHP 8 made it a class of its own under Error and a script catching
 // DivisionByZeroError takes it and one catching Exception does not.
 func TestDivisionByZeroError(t *testing.T) {
 	t.Parallel()

@@ -58,7 +58,7 @@ func TestFromRequestMultipart(t *testing.T) {
 
 // TestFilesSuperglobal checks the array shape a script indexes into, which is
 // PHP's keys and not the Go struct behind them. full_path holds the name the
-// client sent whole, name holds its base alone, so a client cannot choose a
+// client sent whole, name holds its base alone and a client cannot choose a
 // directory for the server.
 func TestFilesSuperglobal(t *testing.T) {
 	t.Parallel()
@@ -80,7 +80,7 @@ echo $f["name"] . "|" . $f["full_path"] . "|" . $f["type"] . "|" . $f["size"] . 
 }
 
 // TestFilesSuperglobalRepeatedField covers a plain field sent twice. PHP has
-// nowhere to put the first file in a scalar entry, so the last one wins, the
+// nowhere to put the first file in a scalar entry and the last one wins, the
 // same way a repeated $_POST value does.
 func TestFilesSuperglobalRepeatedField(t *testing.T) {
 	t.Parallel()
@@ -95,7 +95,7 @@ func TestFilesSuperglobalRepeatedField(t *testing.T) {
 	if want := "second.png|4"; out != want {
 		t.Fatalf("got %q, want %q", out, want)
 	}
-	// Both parts are still stored, so Cleanup removes both.
+	// Both parts are still stored and Cleanup removes both.
 	if got := len(ctx.FileMap()["avatar"]); got != 2 {
 		t.Fatalf("uploads for avatar = %d, want 2", got)
 	}
@@ -124,7 +124,7 @@ echo $f["name"][0] . "|" . $f["name"][1] . "|" . $f["size"][0] . "|" . $f["size"
 }
 
 // TestUploadMaxFilesize covers a single file part over the limit. PHP keeps the
-// rest of the form and marks that one entry UPLOAD_ERR_INI_SIZE, so a script
+// rest of the form and marks that one entry UPLOAD_ERR_INI_SIZE and a script
 // can tell the user which file it refuses.
 func TestUploadMaxFilesize(t *testing.T) {
 	t.Parallel()

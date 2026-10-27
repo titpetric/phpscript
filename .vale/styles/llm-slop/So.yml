@@ -1,0 +1,9 @@
+---
+extends: existence
+message: "'%s' joins a padded consequence. Use ' and'."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - ',\s+so\s+(?:[^t]|t[^h]|th[^a]|tha[^t])'
+  - ',\s+so\s*$'

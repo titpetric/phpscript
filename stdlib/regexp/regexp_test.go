@@ -13,7 +13,7 @@ import (
 
 // TestRegister covers the two classes this package installs and the difference
 // between them. Both compile the same expression; POSIX matching is
-// leftmost-longest, so an alternation answers with its longest branch where
+// leftmost-longest and an alternation answers with its longest branch where
 // Perl syntax answers with its first.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -46,7 +46,7 @@ echo (new Regexp\CompilePOSIX('a|ab'))->find_string("abc");`)
 
 // run executes src on both engines and returns what the interpreter printed,
 // failing when the two disagree. Both engines reach the binding through
-// reflection, so a divergence would be the bytecode engine taking a different
+// reflection and a divergence would be the bytecode engine taking a different
 // path to the same registration and no different regexp.
 func run(t *testing.T, src string) string {
 	t.Helper()

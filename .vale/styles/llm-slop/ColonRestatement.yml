@@ -1,0 +1,8 @@
+---
+extends: existence
+message: "'%s' restates the clause before the colon. Cut the restatement."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - ':\s+(?:it|this|that)\s+(?:is|was|means|does)\b'

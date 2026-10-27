@@ -18,7 +18,7 @@ import (
 )
 
 // setVar routes a whole-variable assignment. A superglobal is one binding per
-// request, visible in every scope, so writing the variable itself rebinds the
+// request, visible in every scope and writing the variable itself rebinds the
 // global, the way PHP lets a script replace $_POST wholesale, and clears any
 // scope-local shadow so reads keep resolving through the global. Every other
 // name belongs to the scope. The superglobal set lives in phpval.AutoGlobals,
@@ -43,11 +43,11 @@ type Runtime struct {
 	observers  []Observer
 	funcs      map[string]*funcEntry
 	userFns    map[string]struct{}
-	// funcSites records the site of each user function declaration, so a
+	// funcSites records the site of each user function declaration and a
 	// second one can name the first the way PHP's fatal error does. userFns
 	// alone cannot: a set holds no site, and the message is the useful half.
 	funcSites map[string]FuncSite
-	// hoisted records the programs Run already hoisted, by node identity, so
+	// hoisted records the programs Run already hoisted, by node identity and
 	// re-running a compiled program on the same runtime is idempotent instead
 	// of a redeclaration error. Only the top-level Run entry consults it: an
 	// include re-declaring a function is a real PHP error and keeps being one.
@@ -87,7 +87,7 @@ type Runtime struct {
 	// host environment so mutations remain local to a single request/runtime.
 	Env map[string]string
 
-	// constructors maps a class name to a Go constructor function, so PHP's
+	// constructors maps a class name to a Go constructor function and PHP's
 	// `new Name` instantiates a native Go value in place of a model.Object. This
 	// is the bridge for "bring your own type": a constructor like
 	// func(ctx context.Context) (Storage, error) makes `$s = new Storage;`
@@ -108,7 +108,7 @@ type Runtime struct {
 
 	// host is the context the host set, and ctx derives from it. client is
 	// the connection a handler answers right now: host, until a handler
-	// enters a request. connection_aborted() reads client, so it survives
+	// enters a request. connection_aborted() reads client and it survives
 	// ignore_user_abort detaching ctx from the disconnect. inRequest reports
 	// a request being live, which is when a binding's context derives from
 	// client in place of ctx; see runtime_deadline.go and bindingContext.
@@ -136,11 +136,11 @@ type Runtime struct {
 
 	// prepare is how the host installed this runtime's bindings, recorded so
 	// Fork can install them on a child the same way. Copying the tables is not
-	// enough: a binding closes over its registering runtime, so a copied one
+	// enough: a binding closes over its registering runtime and a copied one
 	// reads and writes the parent. See SetPreparer.
 	prepare func(*Runtime)
 
-	// profile is the area mask this runtime's bindings install under, so
+	// profile is the area mask this runtime's bindings install under and
 	// that rerooting them later installs no area the mount left out. New sets
 	// every area: a runtime nobody narrowed has the whole surface.
 	profile Profile
@@ -160,21 +160,21 @@ type Runtime struct {
 	constsShared bool
 
 	// frozenEnv snapshots Env the way frozenConsts snapshots constants: a
-	// reset restores it, so a putenv() belongs to the program that called it.
+	// reset restores it and a putenv() belongs to the program that called it.
 	// envShared marks Env as being the snapshot itself, which PutEnv copies
 	// before its first write. Nil until FreezeStdlib, which leaves a CLI
 	// runtime's Env mutable in place.
 	frozenEnv map[string]string
 	envShared bool
 
-	// resets run inside resetExecution, so a binding keeping state of its own
+	// resets run inside resetExecution and a binding keeping state of its own
 	// beside the runtime (the ob_* buffer stack) drops it when the runtime is
 	// reset between programs. See OnReset.
 	resets []func()
 
 	// opts holds runtime source root, working directory, and write policy.
 	// opts.WorkDir is the one field a script can move, through chdir; workDirBase
-	// is what the host configured, so a reset session starts where the first one
+	// is what the host configured and a reset session starts where the first one
 	// did, and not wherever the last one wandered to.
 	opts         Options
 	workDirBase  string
@@ -182,12 +182,12 @@ type Runtime struct {
 	included     []string
 
 	// lookupScanned records that a Lookup has already considered parsing the
-	// source root into the include cache, so Lookup walks a tree that yielded
-	// nothing once, not once per symbol. See Runtime.scanTree.
+	// source root into the include cache and Lookup walks a tree that yielded
+	// no result once, not once per symbol. See Runtime.scanTree.
 	lookupScanned bool
 
 	// symbols is the last index of the tree's free functions, held against the
-	// include cache version symbolIndex built it at, so binding a second
+	// include cache version symbolIndex built it at and binding a second
 	// handler does not walk the application again. See Runtime.symbolIndex.
 	symbols        *symbolTable
 	symbolsVersion uint64
@@ -196,7 +196,7 @@ type Runtime struct {
 	classConsts map[string]map[string]any
 
 	// classStatics holds the live value of every `static $name` property, one
-	// bag per class. Unlike a constant a static is mutable and shared, so the
+	// bag per class. Unlike a constant a static is mutable and shared and the
 	// bag is the storage itself and no cache: the declaration's default seeds
 	// it the first time a script touches the class, and every later read and
 	// write of Class::$name resolves through it.
@@ -236,7 +236,7 @@ type Runtime struct {
 	// the method index, its bound signature and whether it takes a context.
 	// MethodByName plus the case-insensitive fallback plus Type() cost an
 	// allocation per call otherwise, which a method loop pays per iteration.
-	// The cache holds misses too, so a probe does not rescan the method set.
+	// The cache holds misses too and a probe does not rescan the method set.
 	goMethods map[goMethodKey]goMethodInfo
 
 	// goFields caches struct field resolution per (struct type, spelled
@@ -260,9 +260,9 @@ type Runtime struct {
 	// pays for it.
 	coverage *coverage.Collector
 
-	// preludeDone records that the runtime included Options.Include, so it
+	// preludeDone records that the runtime included Options.Include and it
 	// installs the declarations that file carries once and redeclares none.
-	// A runtime serves one request, so this is once per request; ResetSession
+	// A runtime serves one request and this is once per request; ResetSession
 	// clears it with everything else a reused runtime drops between them.
 	preludeDone bool
 
@@ -284,7 +284,7 @@ type Runtime struct {
 }
 
 // maxFreeEnvs bounds the per-Runtime free list of evaluation environments. Each
-// entry retains one closure per registered function, so the list stays small;
+// entry retains one closure per registered function and the list stays small;
 // nesting deeper than this simply builds (and discards) an environment the way
 // every Eval used to.
 const maxFreeEnvs = 16
@@ -320,7 +320,7 @@ type evalEnv struct {
 	cenv expr.Env
 }
 
-// slots returns the pooled slot buffer sized to n. releaseEnv cleared it, so
+// slots returns the pooled slot buffer sized to n. releaseEnv cleared it and
 // an evaluation sees only what it wrote.
 func (st *evalEnv) slots(n int) []any {
 	if cap(st.vars) < n {
@@ -350,14 +350,14 @@ func (rt *Runtime) Output() io.Writer {
 }
 
 // emptyStdin is the input stream a runtime with no stdin of its own reads:
-// nothing, from any offset.
+// no bytes, from any offset.
 //
 // One value, shared by every runtime and every reset, because it holds no state
 // to share. A strings.Reader over "" carries a read offset, which makes it a
-// value per use; this carries nothing, and a zero-size value costs no allocation
+// value per use; this carries no state, and a zero-size value costs no allocation
 // to put in an interface. The two readers of Runtime.Stdin - STDIN in
 // stdlib/core and php://input in stdlib/files - take it as an io.Reader and ask
-// nothing else of it.
+// no more of it.
 type emptyStdin struct{}
 
 func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
@@ -369,8 +369,8 @@ func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
 // time inside mapassign on that path went to rehash. The numbers are what the
 // `info` command reports as Internal Functions, Declared Classes and Defined
 // Constants, rounded up to leave room for what a host and a script add. They
-// are a hint and nothing reads them back, so one that drifts low costs a rehash
-// and nothing else.
+// are a hint and nothing reads them back and one that drifts low costs a rehash
+// and no more.
 const (
 	stdlibFuncs   = 384
 	stdlibClasses = 48
@@ -434,13 +434,13 @@ func New(w io.Writer, opts Options) *Runtime {
 // InfrastructurePrefix names the variables that configure phpscript and the
 // platform it runs on: connection strings, the listen address, the telemetry
 // block. They are the host's configuration and getenv() does not answer them,
-// so a tenant cannot read the operator's connection strings.
+// and a tenant cannot read the operator's connection strings.
 const InfrastructurePrefix = "PLATFORM_"
 
 // ScriptEnvironment returns the environment scripts read with getenv().
 //
 // A nil environment means the process environment, as a CLI run has it. A host
-// that configured one passes it instead, and a virtual host always does, so
+// that configured one passes it instead, and a virtual host always does and
 // that a site sees the variables it declared and none of the rest the
 // operator's process happens to carry. Either way ScriptEnvironment drops the
 // infrastructure variables.
@@ -469,7 +469,7 @@ func NewFlatStack(w io.Writer, opts Options) *Runtime {
 }
 
 // FreezeStdlib snapshots constants and the environment after the host
-// registers its bindings, so ResetSession can drop what a script defined
+// registers its bindings and ResetSession can drop what a script defined
 // without losing what the host configured.
 func (rt *Runtime) FreezeStdlib() {
 	rt.frozenConsts = rt.constants
@@ -561,21 +561,21 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	rt.resetLimits()
 }
 
-// Reset returns the runtime to the state a new one is in, so a pool can hand
+// Reset returns the runtime to the state a new one is in and a pool can hand
 // the same value to the next program, with no second one built.
 //
 // Reset is ResetSession plus what outlives a session: the parse caches and the
 // two maps keyed by AST node, which ResetSession keeps because a --count loop
 // runs one program and the keys are the same nodes each time. Across two
 // programs they hold the previous tree alive. Reset clears the maps and never
-// replaces them, so the next program starts on the buckets they grew.
+// replaces them and the next program starts on the buckets they grew.
 func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.ResetSession(out, stdin)
 	clear(rt.compiled)
 	clear(rt.sourceSpans)
 	rt.includeCache.Clear()
 	rt.exprCache.Clear()
-	// The tree a lookup indexed went with the include cache, so the next one
+	// The tree a lookup indexed went with the include cache and the next one
 	// parses it again, and resolves against nothing otherwise.
 	rt.lookupScanned = false
 	// The index is version-guarded and would rebuild on its own, but it holds a
@@ -683,7 +683,7 @@ func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 // relative path resolves against the current one and an absolute path against
 // the source root, and neither climbs out of it.
 //
-// The directory is per-runtime state, so a script moving it moves nothing
+// The directory is per-runtime state and a script moving it moves nothing
 // another request sees and os.Chdir is never called. SetWorkDir returns false
 // for a path naming no directory, as php documents.
 func (rt *Runtime) SetWorkDir(dir string) bool {

@@ -55,7 +55,7 @@ func TestClass_Field(t *testing.T) {
 }
 
 // TestClass_declares covers the check a property write passes through. It
-// answers the declaration and not the value, so a class whose property is unset
+// answers the declaration and not the value and a class whose property is unset
 // still declares it.
 func TestClass_declares(t *testing.T) {
 	t.Parallel()

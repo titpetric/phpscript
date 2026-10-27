@@ -3,7 +3,7 @@
 // @route GET /users/{id}
 
 // {id} arrives in $_REQUEST under the name the annotation declares.
-// REQUEST_URI carries the query string with it, so the path is what stands left
+// REQUEST_URI carries the query string with it, and the path is what stands left
 // of the first question mark.
 
 header("Content-Type: application/json");

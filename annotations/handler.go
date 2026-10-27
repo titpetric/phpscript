@@ -20,7 +20,7 @@ type handler struct {
 	exprCache    *runner.ExprCache
 
 	// pool holds this source tree's registered runtimes between requests. It
-	// belongs to the handler the way the include cache does, so a runtime
+	// belongs to the handler the way the include cache does and a runtime
 	// registered against one tree's root and options can never answer a
 	// request routed to another's; see runner.SessionPool.
 	pool *runner.SessionPool
@@ -33,7 +33,7 @@ func newHandler(root fs.FS, config config) *handler {
 		exprCache = runner.NewExprCache()
 	}
 	// Include paths are relative to one filesystem root. A cache belongs to one
-	// source tree, so two roots containing the same path cannot share a parsed
+	// source tree and two roots containing the same path cannot share a parsed
 	// program accidentally; the host of this tree may pass the one it filled.
 	includeCache := config.includeCache
 	if includeCache == nil {
@@ -53,7 +53,7 @@ func newHandler(root fs.FS, config config) *handler {
 // does for a startup job, minus everything per-request: the standard library,
 // the tree's root, its caches and its observers, installed once and serving
 // every request that takes it from the pool. FreezeStdlib marks the constants
-// and the environment as the host's, so a reset between requests keeps them and
+// and the environment as the host's and a reset between requests keeps them and
 // drops what an endpoint defined.
 func (h *handler) buildRuntime() *runner.Runtime {
 	options := h.config.runnerOptions
@@ -97,7 +97,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	defer request.Cleanup()
 
 	// A pooled runtime, registered once by buildRuntime and reset between
-	// requests: nothing a request wrote survives the Put. The response is a
+	// requests: the Put discards whatever a request wrote. The response is a
 	// pushed redirection, dropped with the rest of the session by the reset,
 	// and the connection enters through BeginRequest the way a Path B worker's
 	// does. The runtime hooks keep the order newRuntime installs for a startup
@@ -123,7 +123,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	}
 
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
-		// Run drops the script's frames before it returns, so the peak is the
+		// Run drops the script's frames before it returns and the peak is the
 		// request's memory footprint; a fresh usage walk would read baseline.
 		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
 		if rt.MemoryLimit() > 0 {
@@ -139,7 +139,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	// before it: half an answer is not one.
 	var notes string
 	if _, exited := runner.IsExit(err); err != nil && !exited {
-		// The trace ID is also the Request-Id header, so a log line and the
+		// The trace ID is also the Request-Id header and a log line and the
 		// recorded trace of the same request find each other.
 		log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, file, err, telemetry.TraceID(r.Context()))
 		notes, body = err.Error(), nil
@@ -153,7 +153,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 		return
 	}
 	if notes != "" {
-		// No page, so the status is the whole answer. The detail is in the log
+		// No page and the status is the whole answer. The detail is in the log
 		// and on the trace, not in a body the client reads.
 		http.Error(w, http.StatusText(status), status)
 		return

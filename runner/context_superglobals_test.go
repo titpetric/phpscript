@@ -98,7 +98,7 @@ echo $_SERVER["REMOTE_PORT"], "|", $_SERVER["CONTENT_LENGTH"], "|", $_SERVER["RE
 	}
 }
 
-// A hand-assembled Context has no request to decode, so Register promotes its
+// A hand-assembled Context has no request to decode and Register promotes its
 // flat maps as they stand: the fixture harness, a CLI run, an embedder.
 func TestRegisterFallsBackToFlatMaps(t *testing.T) {
 	t.Parallel()

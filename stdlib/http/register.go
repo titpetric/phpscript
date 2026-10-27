@@ -6,7 +6,7 @@ import (
 
 // Register installs the HTTP\Client and HTTP\Request bindings on rt.
 func Register(rt *runner.Runtime) {
-	// HTTP\Request is one outbound request, a net/http request, so a script
+	// HTTP\Request is one outbound request, a net/http request and a script
 	// reads and writes it the way Go does: $request->method, $request->host,
 	// $request->url->path, and $request->header->set($name, $value). Building one
 	// sends nothing; a client does that with $client->send($request).
@@ -18,7 +18,7 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterConstructor("HTTP\\Client", NewClient)
 
 	// HTTP\Mux routes requests to the PHP functions that answer them. The mux is
-	// net/http's ServeMux, so $mux->handle("GET /users/{id}", $fn) takes the
+	// net/http's ServeMux and $mux->handle("GET /users/{id}", $fn) takes the
 	// patterns Go takes, and it calls a handler with the response writer and the
 	// request themselves.
 	rt.RegisterConstructor("HTTP\\Mux", func() *Mux { return NewMux(rt) })

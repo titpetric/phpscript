@@ -18,7 +18,7 @@ import (
 //
 // We reproduce that shape with native Go values: a []any of single-char
 // strings and []any{int64 id, string text, int64 line} triples. The VM reads
-// slices through model.RangeValues / reflection, so the result still flows
+// slices through model.RangeValues / reflection and the result still flows
 // straight into transpiled PHP code (foreach, $v[0], $v[1], is_array, count,
 // and element writes such as $v[0] = token_name($v[0])). It does not support
 // `$tokens[] = ...`; no in-tree caller appends to a token list. See
@@ -225,7 +225,7 @@ func TokenName(id int) string {
 // TokenIDs returns every token name with the id token_get_all reports for it,
 // the ids a host registers as PHP constants. A script comparing a token
 // against a name it did not get from here would be comparing against nothing,
-// so the table that names the ids is the table that publishes them.
+// and the table that names the ids is the table that publishes them.
 func TokenIDs() map[string]int {
 	out := make(map[string]int, len(tokenNames))
 	for id, name := range tokenNames {
@@ -237,7 +237,7 @@ func TokenIDs() map[string]int {
 // boxedInts holds pre-boxed int64 values so that emitting a token id or a line
 // number costs no allocation. The runtime only interns 0-255 itself
 // (runtime.staticuint64s); every T_* id is >= 256 and templates run past line
-// 255, so both would otherwise cost 8 bytes per token.
+// 255 and both would otherwise cost 8 bytes per token.
 var boxedInts = func() [boxedIntMax]any {
 	var out [boxedIntMax]any
 	for i := range out {
@@ -269,7 +269,7 @@ var boxedChars = func() [utf8.RuneSelf]any {
 // than allocated one by one. Chunks start small and double so that a two-line
 // minitpl expression does not pay for a large block, and a whole file amortises
 // the per-token allocation away. Each triple reaches PHP as a 3-element
-// slice with cap == len, so a script cannot scribble past its own token.
+// slice with cap == len and a script cannot scribble past its own token.
 const (
 	tokenChunkMin = 8
 	tokenChunkMax = 64
@@ -351,7 +351,7 @@ func (t *phpTokenizer) scanInlineHTML() {
 		if strings.HasPrefix(t.src[t.pos:], "<?php") {
 			t.consume(5)
 			// PHP folds the one whitespace character that ends the open tag
-			// into the token, so `<?php\n` is a six byte T_OPEN_TAG.
+			// into the token and `<?php\n` is a six byte T_OPEN_TAG.
 			text := "<?php"
 			if t.pos < len(t.src) && isOpenTagSpace(t.src[t.pos]) {
 				text += string(t.src[t.pos])

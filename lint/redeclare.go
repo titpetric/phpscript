@@ -9,15 +9,15 @@ import (
 
 // lintRedeclared reports a function name declared twice in one file, and one
 // declared over a name the runtime already registers. Both are fatal errors in
-// PHP and a catchable RedeclareError here, so the finding is the warning that
+// PHP and a catchable RedeclareError here and the finding is the warning that
 // arrives before the program runs.
 //
-// The check skips a name the source guards with function_exists: that is the
+// The check skips a name the source guards with function_exists, the
 // polyfill idiom: declaring over an absent built-in is what it does, and the
 // author has already written both branches.
 //
 // Declarations at any nesting count. The runtime only honours the ones written
-// at the top level of a file, so a nested duplicate diverges today without
+// at the top level of a file and a nested duplicate diverges today without
 // colliding; it stays the same mistake and PHP still refuses it.
 func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 	guarded := map[string]bool{}

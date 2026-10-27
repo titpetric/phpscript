@@ -11,7 +11,7 @@ import (
 //
 // These helpers are one way for every consumer (the runner's foreach and index
 // access, the stdlib's array functions) to walk a collection whatever its
-// concrete type, so a binding returns the cheapest representation of its data
+// concrete type and a binding returns the cheapest representation of its data
 // and pays nothing to build an *Array with no reader: an *Array costs a
 // struct, a map[any]any and a key slice, plus an interface box per key and per
 // value, where the same data as a []string costs one allocation.
@@ -19,12 +19,12 @@ import (
 // *Array remains the right choice for values PHP mutates: the only shape with
 // insertion-ordered hybrid int/string keys and support for `$a[] = v`.
 
-// Collection is a value that answers its own length and iteration, so a type
+// Collection is a value that answers its own length and iteration and a type
 // declared outside this package reads as an array without being one.
 //
 // *Array satisfies it, and so does any view a caller builds over data it would
 // rather not copy into one. Everything here that reads a collection accepts it,
-// so such a view reaches count(), foreach and the array bindings.
+// and such a view reaches count(), foreach and the array bindings.
 type Collection interface {
 	Len() int
 	Range(fn func(key, val any) bool)
@@ -63,7 +63,7 @@ func RangeValues(v any, fn func(key, val any) bool) {
 	case nil:
 		return
 	case []byte:
-		// A byte slice is a PHP string, not a list of integers, so it iterates
+		// A byte slice is a PHP string, not a list of integers and it iterates
 		// zero times the way a string does. See phpval.Bytes.
 		return
 	case *Array:
@@ -132,7 +132,7 @@ func LenValues(v any) (int, bool) {
 	case nil:
 		return 0, false
 	case []byte:
-		// Not a collection, so count() applies its scalar rule and not
+		// Not a collection and count() applies its scalar rule and not
 		// answering a byte count. See phpval.Bytes.
 		return 0, false
 	case *Array:

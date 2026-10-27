@@ -12,9 +12,9 @@ import (
 )
 
 // TestReportArgs covers the invocation the provenance comment names.
-// reportArgs builds it from the run's own options and never hardcodes it, so
+// reportArgs builds it from the run's own options and never hardcodes it and
 // the committed report says which job wrote it and a reader can run the same
-// command. The flags come out in one order, so a regenerated report differs
+// command. The flags come out in one order and a regenerated report differs
 // only where a result differs.
 func TestReportArgs(t *testing.T) {
 	t.Parallel()
@@ -36,7 +36,7 @@ func TestReportArgs(t *testing.T) {
 		t.Errorf("reportArgs = %q, want %q", got, want)
 	}
 
-	// A parallelism of one is the default and says nothing, so a report taken
+	// A parallelism of one is the default and says nothing and a report taken
 	// without the flag does not claim it.
 	if got := strings.Join(reportArgs(Options{Parallel: 1}, nil), " "); got != "test" {
 		t.Errorf("--parallel 1 reconstructs as %q, want \"test\"", got)
@@ -69,7 +69,7 @@ func TestWriteReportHeader(t *testing.T) {
 
 // TestOpenReport covers when openReport creates the -o sink, before the first
 // fixture runs: an unwritable path fails the command immediately and not after
-// the whole suite executed. A run naming no output opens nothing, so the
+// the whole suite executed. A run naming no output opens nothing and the
 // terminal table is the only sink.
 func TestOpenReport(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ func TestOpenReport(t *testing.T) {
 
 // TestTeeResultTable covers the fan-out that lets one run print a terminal
 // table and write a markdown report at the same time. Every call reaches every
-// sink, so the two documents report the same run.
+// sink and the two documents report the same run.
 func TestTeeResultTable(t *testing.T) {
 	t.Parallel()
 	var terminal, markdown bytes.Buffer

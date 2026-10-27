@@ -6,7 +6,7 @@ Read this when the question is which function the cost is in. It runs under the 
 
 ## What this collects
 
-One script, one profile, and nothing else in the frames.
+One script, one profile, and no other work in the frames.
 
 That is why this is the per-function tool. A profile of `phpscript test` carries fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` carries the script.
 
@@ -19,7 +19,7 @@ phpscript writes the profile when the command ends. A script killed with `SIGKIL
 Two parsing traps:
 
 - `-t` before a command name is `--testconfig`, which runs no command. Write global flags where their meaning is unambiguous.
-- `run` is the default command, so `phpscript app.php` and `phpscript run app.php` are the same thing. Both accept the global flags.
+- `run` is the default command and `phpscript app.php` and `phpscript run app.php` are the same thing. Both accept the global flags.
 
 `run` has no flags of its own. It reads the global set: `--cover`, `--coverfile`, `--cpuprofile`, `--memprofile`, `-f`, `--include`, `-v`, `-w`.
 
@@ -99,7 +99,7 @@ go tool pprof -sample_index=alloc_objects -top -nodecount=40 mem-after.pprof
 
 What a one-shot run includes that a benchmark loop does not: process start, the parse, and the whole of `stdlib.Register` - 322 functions, 41 classes and 152 constants. On a short script those frames are most of the profile. That is the honest cost of a single invocation and the wrong profile for a hot loop.
 
-A single run is one sample. It has no interval, so it ranks frames and does not compare two commits on its own. Where a delta is the claim, the delta comes from a benchmark.
+A single run is one sample. It has no interval and it ranks frames and does not compare two commits on its own. Where a delta is the claim, the delta comes from a benchmark.
 
 ## What this cannot answer
 

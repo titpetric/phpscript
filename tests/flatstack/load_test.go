@@ -288,7 +288,7 @@ $storage->get("missing");
 
 // TestFlatstackRejectsWholeProgramBeforeSideEffects checks that a rejected
 // program runs once, on the interpreter, and never partly on each backend.
-// The constructor counts its calls, so a compile that gave up after the `new`
+// The constructor counts its calls, and a compile that gave up after the `new`
 // had already run would report two.
 //
 // An anonymous class is the unsupported construct: the bytecode carries a
@@ -331,7 +331,7 @@ echo 42;
 
 // TestFlatstackSupportsArrayCallbackClosures fails until the compiler learns
 // *model.Closure, and is the only signal that it has: runFlat discards the
-// compile error and reruns the program on the interpreter, so the fixture in
+// compile error and reruns the program on the interpreter, and the fixture in
 // tests/fixtures/arrays/array_callbacks.phpt passes either way.
 //
 // A closure argument is the most common reason a real library drops out of the

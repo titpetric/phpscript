@@ -22,7 +22,7 @@ import (
 // alone may set the keys that describe a whole run.
 type suites struct {
 	// run is the suite the invocation itself is under, or nil. Its directory
-	// is not necessarily below the working directory, so suites holds it
+	// is not necessarily below the working directory and suites holds it
 	// apart from the discovered ones, and resolve answers it for every
 	// fixture that finds no closer file.
 	run *tests.Suite
@@ -68,7 +68,7 @@ func (s suites) resolve(path string) *tests.Suite {
 // phpscript.yml below the argument paths.
 //
 // It reads both halves even where the arguments select no fixture below them,
-// so a narrower path argument does not silently skip a suite's setup. The walk
+// and a narrower path argument does not silently skip a suite's setup. The walk
 // is the fixture walk: a bare directory is not recursive, and `./...` is what
 // reaches a tree.
 func discoverSuites(base config.Config, paths []string) (suites, error) {
@@ -119,7 +119,7 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 			if !d.IsDir() {
 				return nil
 			}
-			// Nothing a dependency installed publishes a suite, and walking an
+			// An installed dependency publishes no suite, and walking an
 			// install tree costs a stat per directory in it.
 			if d.Name() == "vendor" {
 				return filepath.SkipDir
@@ -151,7 +151,7 @@ func runSuite(base config.Config) (*tests.Suite, error) {
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, tests.SuiteFile)); err == nil {
-			// The run's own file sets the keys describing the run, so the
+			// The run's own file sets the keys describing the run and the
 			// run-wide ones are not refused here.
 			return tests.LoadSuite(dir, base, false)
 		}

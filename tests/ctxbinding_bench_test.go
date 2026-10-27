@@ -12,7 +12,7 @@ import (
 
 // BenchmarkScriptContextBinding prices the context a binding receives: one
 // hundred calls of a registered function whose first parameter declares a
-// context.Context, so the per-call cost of building that context is the
+// context.Context and the per-call cost of building that context is the
 // benchmark's slope and the session setup is its floor. runner.bindingContext
 // is the site it prices.
 func BenchmarkScriptContextBinding(b *testing.B) {

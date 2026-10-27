@@ -42,7 +42,7 @@ func registerExec(rt *runner.Runtime, r root) {
 // server, and writable_paths cannot reach it. What the runtime can say is where
 // it starts, and it says the same thing getcwd() does.
 //
-// A host that bound no directory leaves Dir empty, so every command starts in
+// A host that bound no directory leaves Dir empty and every command starts in
 // the process working directory.
 func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
@@ -177,7 +177,7 @@ func (r root) phpPassthru(ctx context.Context, command string, resultCode func(a
 }
 
 // phpShellExec returns everything the command wrote to stdout, and null when it
-// wrote nothing. The null is PHP's, so a caller checking for failure has to
+// wrote nothing. The null is PHP's and a caller checking for failure has to
 // check the string and not the return.
 func (r root) phpShellExec(ctx context.Context, command string) any {
 	if command == "" {

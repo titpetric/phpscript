@@ -6,7 +6,7 @@
 
 Denotes a class as having a `__toString()` method.
 
-PHP adds it implicitly to any class declaring `__toString()`, so the interface exists mainly to let a parameter declare `string|Stringable` and accept either.
+PHP adds it implicitly to any class declaring `__toString()`, and the interface exists mainly to let a parameter declare `string|Stringable` and accept either.
 
 ## Interface synopsis
 

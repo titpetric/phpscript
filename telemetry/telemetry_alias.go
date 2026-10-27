@@ -9,7 +9,7 @@ import (
 )
 
 // The recorded data and the recorder both live in oida. These aliases spell
-// them the way the rest of phpscript spells its own types, so instrumenting a
+// them the way the rest of phpscript spells its own types and instrumenting a
 // package needs this import alone.
 type (
 	// Trace is one recorded unit of work: an HTTP request, a startup step or a
@@ -88,7 +88,7 @@ const (
 	// BackgroundHost is the host label of traces that did not arrive over the
 	// network: startup steps, cron ticks, queue consumers. oida stopped
 	// re-exporting it from its root package; the constant itself is still the
-	// recorded data's, so this reads it from model and invents no
+	// recorded data's and this reads it from model and invents no
 	// second label for the same group.
 	BackgroundHost = model.BackgroundHost
 )
@@ -115,7 +115,7 @@ func New(opts Options) (*Tracer, error) {
 }
 
 // Start records a span in the trace carried by ctx and returns a context
-// carrying it, so spans started from that context nest below this one.
+// carrying it and spans started from that context nest below this one.
 func Start(ctx context.Context, name string, kind ...Kind) (context.Context, *Span) {
 	ctx, span := oida.Start(ctx, name, kind...)
 	return ctx, withSource(ctx, span)

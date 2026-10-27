@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// statRoot builds a project holding one file and one directory, so a script
+// statRoot builds a project holding one file and one directory and a script
 // asking about a path has both kinds to ask about.
 func statRoot(t *testing.T) string {
 	t.Helper()
@@ -68,7 +68,7 @@ func TestScandirListsTheDotEntries(t *testing.T) {
 }
 
 // TestPathinfoSplitsAPath covers the four keys php returns, and that a path
-// without an extension carries no extension key at all, so isset() on it
+// without an extension carries no extension key at all and isset() on it
 // answers false the way it does in php.
 func TestPathinfoSplitsAPath(t *testing.T) {
 	t.Parallel()
@@ -83,7 +83,7 @@ echo "[", isset($bare["extension"]) ? "set" : "unset", ",", $bare["filename"], "
 }
 
 // TestRealpathAnswersInsideTheRoot covers the path spelling realpath reports:
-// a script can only address the bound tree, so the path it reports starts at
+// a script can only address the bound tree and the path it reports starts at
 // that root and carries no host prefix a script could write back out.
 func TestRealpathAnswersInsideTheRoot(t *testing.T) {
 	t.Parallel()

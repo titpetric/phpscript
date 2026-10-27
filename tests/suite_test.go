@@ -39,7 +39,7 @@ func writeSuite(t *testing.T, body string, files ...string) string {
 // TestSuite covers reading one phpscript.yml off a suite root: the directory
 // as the caller spelled it, the settings the file named, and the keys it
 // named apart from the ones it inherited. A folder holding no such file is no
-// suite root, so the load answers nothing and no error.
+// suite root and the load answers nothing and no error.
 func TestSuite(t *testing.T) {
 	dir := writeSuite(t, "test:\n  include: prelude.php\n  hooks:\n    setup: hooks/up.php\n    teardown: hooks/down.php\n")
 
@@ -74,7 +74,7 @@ func TestSuite(t *testing.T) {
 
 // TestSuite_run covers the keys a run of the whole command owns. Two folders
 // answering differently for parallel would leave the run with nothing to act
-// on, so LoadSuite refuses a file discovered below the invocation root and
+// on and LoadSuite refuses a file discovered below the invocation root and
 // names the key.
 func TestSuite_run(t *testing.T) {
 	dir := writeSuite(t, "test:\n  parallel: 4\n")
@@ -128,7 +128,7 @@ func TestLoadSuiteFS(t *testing.T) {
 }
 
 // TestSuite_Provider covers the connections the fixtures below a suite root
-// resolve. A folder that named no env of its own answers nothing, so the
+// resolve. A folder that named no env of its own answers nothing and the
 // binding stays on the process environment; one that named an env gets only
 // what it named, the rule a virtual host is already held to.
 func TestSuite_Provider(t *testing.T) {
@@ -161,7 +161,7 @@ func TestSuite_Provider(t *testing.T) {
 }
 
 // TestSuite_Mail covers the mail servers a fixture may name. A suite that
-// declared no mail block answers nothing, so a fixture cannot reach the
+// declared no mail block answers nothing and a fixture cannot reach the
 // operator's credentials; one that declared the key holds the servers it
 // named and no others.
 func TestSuite_Mail(t *testing.T) {
@@ -194,7 +194,7 @@ func TestSuite_Mail(t *testing.T) {
 }
 
 // TestSuite_Include covers the prelude the fixtures below a suite root load.
-// A nil suite answers "", so a fixture tree with no phpscript.yml takes the
+// A nil suite answers "" and a fixture tree with no phpscript.yml takes the
 // same path as one whose file named no include.
 func TestSuite_Include(t *testing.T) {
 	dir := writeSuite(t, "test:\n  include: bootstrap.php\n")
@@ -235,7 +235,7 @@ func TestSuite_Setup(t *testing.T) {
 }
 
 // TestSuite_Teardown covers the hook that releases what the setup laid down.
-// Teardown reads it the same way Setup does, so a run that ended badly still
+// Teardown reads it the same way Setup does and a run that ended badly still
 // has a name to execute.
 func TestSuite_Teardown(t *testing.T) {
 	dir := writeSuite(t, "test:\n  hooks:\n    teardown: hooks/down.php\n")
@@ -254,7 +254,7 @@ func TestSuite_Teardown(t *testing.T) {
 }
 
 // TestSuite_RunHook covers the runtime one hook executes on. The suite root is
-// its filesystem, so a hook names its files the way an application does, and
+// its filesystem and a hook names its files the way an application does, and
 // RunHook loads the suite's prelude ahead of it: a hook calling the
 // application's own helpers needs what the autoloader declared. A name that is
 // not in the tree fails before any of that.
@@ -282,7 +282,7 @@ func TestSuite_RunHook(t *testing.T) {
 	}
 }
 
-// TestRunSetup covers the order the setup hooks run in: outermost first, so an
+// TestRunSetup covers the order the setup hooks run in: outermost first and an
 // inner suite reads the state its parent laid down. The run stops at the first
 // failure, because fixtures with no state to assert against would report the
 // same missing table once each.
@@ -315,7 +315,7 @@ func TestRunSetup(t *testing.T) {
 }
 
 // TestRunTeardown covers the reverse order, and that every hook runs. The
-// suites are independent, so a caller learns about every failure and not the
+// suites are independent and a caller learns about every failure and not the
 // innermost one alone.
 func TestRunTeardown(t *testing.T) {
 	suites := []*Suite{

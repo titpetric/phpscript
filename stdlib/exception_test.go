@@ -9,10 +9,10 @@ import (
 )
 
 // TestException covers the one Go type behind every PHP throwable. Class
-// records the name the script constructed, so get_class() can answer it and a
+// records the name the script constructed and get_class() can answer it and a
 // catch clause can filter on it, and no two of them stand in a subclass
 // relation: phpscript has no inheritance. The constructor returns a pointer,
-// so the instance a script holds is addressable and `$e->message = "..."`
+// and the instance a script holds is addressable and `$e->message = "..."`
 // writes to it; the nil error is what keeps `new Exception` from throwing
 // where a script constructs one.
 func TestException(t *testing.T) {
@@ -25,7 +25,7 @@ func TestException(t *testing.T) {
 		t.Fatalf("exception = %+v", exception)
 	}
 
-	// A script writing a field mutates the instance it holds, so the accessors
+	// A script writing a field mutates the instance it holds and the accessors
 	// read the write back.
 	exception.Message = "changed"
 	exception.Code = 404
@@ -35,9 +35,9 @@ func TestException(t *testing.T) {
 }
 
 // TestException_ThrowableClass covers the name a catch clause filters on. An
-// exception carrying no class is PHP's base Exception, so a value built as a
+// exception carrying no class is PHP's base Exception and a value built as a
 // zero struct is still catchable; the SPL and Error class names are the same
-// Go type with a different name recorded, so each answers its own.
+// Go type with a different name recorded and each answers its own.
 func TestException_ThrowableClass(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -60,7 +60,7 @@ func TestException_ThrowableClass(t *testing.T) {
 }
 
 // TestException_GetCode covers the accessor behind getCode(). PHP's default
-// code is 0, so an exception constructed with no code answers zero and a
+// code is 0 and an exception constructed with no code answers zero and a
 // script comparing against it needs no null check.
 func TestException_GetCode(t *testing.T) {
 	t.Parallel()
@@ -86,7 +86,7 @@ func TestException_GetCode(t *testing.T) {
 }
 
 // TestException_GetMessage covers the accessor behind getMessage(). It reads
-// the field, so a message a script replaced is the one that comes back, and an
+// the field and a message a script replaced is the one that comes back, and an
 // exception constructed with no message answers an empty string.
 func TestException_GetMessage(t *testing.T) {
 	t.Parallel()
@@ -105,7 +105,7 @@ func TestException_GetMessage(t *testing.T) {
 }
 
 // TestException_Error covers the error interface. A thrown exception reaching a
-// Go caller is an ordinary error carrying the message alone, so a host wraps it
+// Go caller is an ordinary error carrying the message alone and a host wraps it
 // with %w and errors.As finds it again: the class the script named is on the
 // value and never in the text.
 func TestException_Error(t *testing.T) {

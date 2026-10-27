@@ -9,7 +9,7 @@ import (
 // division rules have one home.
 
 // The Overflow* trio performs int64 arithmetic and reports false, and never
-// wrapping, so a caller can fall back to float the way PHP does.
+// wrapping and a caller can fall back to float the way PHP does.
 
 // OverflowAddInt adds x and y.
 func OverflowAddInt(x, y int64) (int64, bool) {
@@ -40,7 +40,7 @@ func OverflowMulInt(x, y int64) (int64, bool) {
 }
 
 // AddInt, SubInt and MulInt add PHP semantics on top: integer arithmetic that
-// overflows becomes float, so PHP_INT_MAX + 1 is 9.2233720368548E+18 rather
+// overflows becomes float and PHP_INT_MAX + 1 is 9.2233720368548E+18 rather
 // than a wrapped negative.
 
 // AddInt is PHP's + on two ints.

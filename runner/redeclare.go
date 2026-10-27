@@ -7,14 +7,14 @@ import (
 )
 
 // RedeclareError is a second declaration of a function name that is already
-// taken. PHP treats it as a fatal error; this runtime has one error path, so
+// taken. PHP treats it as a fatal error; this runtime has one error path and
 // declareFunc returns it as a catchable RuntimeException, and it reaches a Go
 // host as an error from Run.
 //
 // A named type and no bare error, because the two runtimes have to agree on
 // it. A compile failure normally means the bytecode engine does not cover some
 // form yet and the interpreter runs the program; this is a verdict on the
-// program, which the interpreter would reach too, so flatstack raises it and
+// program, which the interpreter would reach too and flatstack raises it and
 // falls back to no second opinion.
 type RedeclareError struct {
 	// Name is the function as a script spells it.
@@ -33,7 +33,7 @@ type RedeclareError struct {
 // against the root the shims bind to, where PHP prints host paths. A
 // runtime serving scripts out of an fs.FS has no host path to print.
 //
-// A program a host assembled itself carries no file or spans, so Error omits
+// A program a host assembled itself carries no file or spans and Error omits
 // the clauses that would name a location and never writes one empty.
 func (e *RedeclareError) Error() string {
 	message := fmt.Sprintf("Cannot redeclare function %s()", e.Name)
@@ -63,8 +63,8 @@ func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 //
 // Only declarations hoist reaches get here, which is every declaration the
 // runtime honours: a `function` written inside an `if` or a function body is
-// not a statement hoist walks, and executing one is a no-op, so there is
-// nothing to collide with. That is also why an `if (!function_exists('f'))`
+// not a statement hoist walks, and executing one is a no-op and there is
+// no earlier declaration to collide with. That is also why an `if (!function_exists('f'))`
 // guard needs no special case here.
 func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	if previous, ok := rt.funcSites[name]; ok {
@@ -81,7 +81,7 @@ func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 }
 
 // declSite reads the source span a program recorded for a statement. A program
-// a host assembled itself carries no spans, so the line is simply absent rather
+// a host assembled itself carries no spans and the line is simply absent rather
 // than wrong.
 func declSite(prog *model.Program, stmt model.Stmt, filename string) FuncSite {
 	return FuncSite{File: filename, Line: prog.SourceSpans[stmt].Start}

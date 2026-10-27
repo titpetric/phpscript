@@ -13,7 +13,7 @@ type compiledExpr struct {
 	// idents holds the identifier for each entry of vars (varIdent), built
 	// once at compile time; resolveVar reads the bare-name kind off it.
 	idents []string
-	// calls holds the registered-function names the expression calls, so
+	// calls holds the registered-function names the expression calls and
 	// Eval installs exactly those closures into the evaluation environment
 	// and not the whole function table (see Runtime.installFunc).
 	calls    []string

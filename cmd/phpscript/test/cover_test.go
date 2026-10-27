@@ -128,8 +128,8 @@ for ($i = 0; $i < 3; $i++) {
 }
 
 // TestRunCommandCoverConflicts holds the flag contract this command owns:
-// coverage counts one run per fixture, so run refuses the benchmark loops, and
-// a report mode owns stdout, so it refuses --json with one. The mode
+// coverage counts one run per fixture and run refuses the benchmark loops, and
+// a report mode owns stdout and it refuses --json with one. The mode
 // vocabulary itself belongs to internal/flags, which every command shares.
 func TestRunCommandCoverConflicts(t *testing.T) {
 	t.Parallel()
@@ -268,8 +268,8 @@ func TestRunCommandCoverFunc(t *testing.T) {
 		"suite/lib/greeter.php:10:":  "Greeter::unused 0.0%",
 		"prelude.php:3:":             "prelude_helper 100.0%",
 		"prelude.php:1:":             "{main} 100.0%",
-		// The interface file holds nothing runnable, so its coverage is the
-		// adjusted 0/0: nothing left uncovered.
+		// The interface file holds no runnable code; its coverage is the
+		// adjusted 0/0 with no line left uncovered.
 		"suite/lib/contract.php:1:": "{main} 100.0%",
 	} {
 		got := reportLine(t, report, prefix)
@@ -340,7 +340,7 @@ func TestRunCommandFolderSummary(t *testing.T) {
 	}
 	// The one-line percentage measures the written profile, which counts the
 	// .phpt entrypoints; the table does not. Printing both invites a comparison
-	// between two numbers answering different questions, so it waits for -v.
+	// between two numbers answering different questions and it waits for -v.
 	if strings.Contains(report, "% of statements") {
 		t.Errorf("folder summary carries the profile percentage without -v:\n%s", report)
 	}
@@ -376,8 +376,8 @@ func TestRunCommandFolderSummaryVerbose(t *testing.T) {
 }
 
 // TestRunCommandFolderSummaryWithoutCover covers the summary a run prints when
-// it measured no coverage: the same one row per folder, without the two columns
-// there is nothing to fill.
+// it measured no coverage: the same one row per folder, without the two
+// coverage columns.
 func TestRunCommandFolderSummaryWithoutCover(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Include: "prelude.php"})

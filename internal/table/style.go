@@ -1,6 +1,6 @@
 // Package table renders a result table as an ansi box-drawing table on a
 // terminal and as markdown everywhere else. Every command that prints a table
-// reads the same style constants, so the output looks like one program.
+// reads the same style constants and the output looks like one program.
 package table
 
 import (
@@ -26,7 +26,7 @@ const (
 )
 
 // Colors of the ansi table. They are 256-color codes and not the basic
-// eight, so a row keeps the same shade whatever palette the terminal ships.
+// eight and a row keeps the same shade whatever palette the terminal ships.
 const (
 	ColorReset     = "\033[0m"
 	ColorSeparator = "\033[38;5;238m"

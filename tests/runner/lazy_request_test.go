@@ -21,7 +21,7 @@ func TestRequestDecodesOnlyWhatIsRead(t *testing.T) {
 
 	ctx := runner.FromRequest(req)
 
-	// Nothing read yet, so nothing decoded.
+	// Building the context decodes no input yet.
 	if len(ctx.Get) != 0 || len(ctx.Post) != 0 || len(ctx.Cookie) != 0 {
 		t.Fatalf("building the context decoded something: get=%v post=%v cookie=%v",
 			ctx.Get, ctx.Post, ctx.Cookie)

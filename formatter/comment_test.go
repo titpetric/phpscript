@@ -5,7 +5,7 @@ import (
 )
 
 // TestComment covers the fields the printer places a comment by. The AST holds
-// no comments, so the printer writes one out before the first statement that
+// no comments and the printer writes one out before the first statement that
 // starts below its line; that makes Line the field everything depends on.
 func TestComment(t *testing.T) {
 	t.Parallel()

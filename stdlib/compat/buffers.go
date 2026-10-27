@@ -60,7 +60,7 @@ func (b *buffers) pop(flush bool) (string, bool) {
 	b.stack = b.stack[:last]
 	b.rt.PopOutput()
 	if flush {
-		// Writing after the pop targets the enclosing level, so nested buffers
+		// Writing after the pop targets the enclosing level and nested buffers
 		// compose. WriteString, not Write: a []byte conversion here would copy
 		// the whole page every time a template engine flushes one.
 		if _, err := io.WriteString(b.rt.Output(), contents); err != nil {

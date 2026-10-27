@@ -30,7 +30,7 @@ func TestDatabaseOption(t *testing.T) {
 
 // TestDatabaseOption_Apply covers writing the sizes onto a pool, and the nil
 // receiver a caller holding no option passes. A nil option leaves the pool as
-// the sql package built it, so a provider with no entry for a driver still
+// the sql package built it and a provider with no entry for a driver still
 // opens one.
 func TestDatabaseOption_Apply(t *testing.T) {
 	t.Parallel()

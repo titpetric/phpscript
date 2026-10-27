@@ -27,7 +27,7 @@ func init() {
 // the same way, and get_class, method_exists and spl_object_id all reflect
 // over it to answer.
 //
-// A collection is an array and no object, so the check comes
+// A collection is an array and no object and the check comes
 // before the struct test: *model.Array is itself a pointer to a struct.
 func isObject(value any) bool {
 	if value == nil {
@@ -51,7 +51,7 @@ func isObject(value any) bool {
 }
 
 // isFloat backs is_float and is_double. A float is the one scalar this runtime
-// holds in a single Go type, so the test is the type assertion: an integer is
+// holds in a single Go type and the test is the type assertion: an integer is
 // not a float here any more than in php, and neither is a numeric string.
 func isFloat(value any) bool {
 	_, ok := value.(float64)
@@ -83,7 +83,7 @@ func phpGetType(value any) string {
 		return "object"
 	}
 	// A closure reaches a binding as a Go func and no instance, but
-	// PHP has it an instance of Closure, so it reports as an object.
+	// PHP has it an instance of Closure and it reports as an object.
 	if reflect.ValueOf(value).Kind() == reflect.Func {
 		return "object"
 	}
@@ -196,7 +196,7 @@ func registerLang(rt *runner.Runtime) {
 	})
 	// empty reports whether $value is empty: null, false, "", "0", 0, 0.0 or an empty array.
 	rt.RegisterFunc("empty", func(value any) bool { return !phpval.Truthy(value) })
-	// A binding's []string is as much a PHP array as an *model.Array is, so
+	// A binding's []string is as much a PHP array as an *model.Array is and
 	// is_array() answers for the whole value model, and never one Go type.
 	rt.RegisterFunc("is_array", model.IsCollection)
 	// is_int reports whether $value is an integer.
@@ -310,7 +310,7 @@ func registerLang(rt *runner.Runtime) {
 }
 
 func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
-	// A []any argument list is already the shape fn wants, so the common case
+	// A []any argument list is already the shape fn wants and the common case
 	// (array_merge's output, func_get_args) forwards without a copy.
 	if callArgs, ok := args.([]any); ok {
 		return fn(callArgs...)
@@ -369,7 +369,7 @@ func strtolInt(s string, base int64) int64 {
 		i++
 	}
 	// strtol takes a 0x prefix only when a hex digit follows; without one it
-	// reads the lone "0" and stops. Both spellings of that are 0, so
+	// reads the lone "0" and stops. Both spellings of that are 0 and
 	// strtolInt takes the prefix unconditionally.
 	switch {
 	case (base == 0 || base == 16) && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X'):
@@ -423,7 +423,7 @@ func strtolInt(s string, base int64) int64 {
 }
 
 // stdinStream is the reader STDIN answers with. It resolves the runtime's
-// current stdin per read, so a read reaches whatever stdin the session set.
+// current stdin per read and a read reaches whatever stdin the session set.
 type stdinStream struct {
 	rt *runner.Runtime
 }

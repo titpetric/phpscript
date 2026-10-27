@@ -42,7 +42,7 @@ func TestParseSize(t *testing.T) {
 }
 
 // TestSizeExceeds pins the meaning of the zero value: no limit, as in
-// php.ini, so nothing is ever over it.
+// php.ini and nothing is ever over it.
 func TestSizeExceeds(t *testing.T) {
 	t.Parallel()
 	limit, err := runner.ParseSize("1M")
@@ -91,7 +91,7 @@ func TestSizeYAML(t *testing.T) {
 // TestSize_UnmarshalYAML covers the decoder hook on its own. Quoted or bare is
 // the same size, because a document naming 8M means the bytes either way, and a
 // refused spelling leaves the field at the value it already held and never
-// zeroes it, so a bad document cannot read as "no limit".
+// zeroes it and a bad document cannot read as "no limit".
 func TestSize_UnmarshalYAML(t *testing.T) {
 	t.Parallel()
 	for _, text := range []string{`"8M"`, "8M", " 8M ", `'8M'`, "8388608"} {
@@ -116,7 +116,7 @@ func TestSize_UnmarshalYAML(t *testing.T) {
 
 // TestSize_MarshalYAML covers the spelling MarshalYAML writes a size back in,
 // which is the one it reads best in: a whole number of megabytes keeps the
-// suffix, so a configuration file a process rewrites still says 8M and not
+// suffix and a configuration file a process rewrites still says 8M and not
 // 8388608. Every spelling round trips to the same byte count.
 func TestSize_MarshalYAML(t *testing.T) {
 	t.Parallel()

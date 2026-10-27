@@ -57,7 +57,7 @@ func TestPHPTypeReflect(t *testing.T) {
 		}
 	}
 
-	// An interface has no value to reflect from, so the two cases spell types.
+	// An interface has no value to reflect from and the two cases spell types.
 	if got := phpTypeReflect(reflect.TypeOf((*any)(nil)).Elem()); got != "mixed" {
 		t.Errorf("phpTypeReflect(any) = %q, want mixed", got)
 	}
@@ -68,7 +68,7 @@ func TestPHPTypeReflect(t *testing.T) {
 
 // TestIsRefSetterType covers the shape the runner passes for a by-reference
 // parameter: one empty-interface argument and no result. preg_match's
-// $matches arrives that way, so the signature carries an ampersand and no
+// $matches arrives that way and the signature carries an ampersand and no
 // type.
 func TestIsRefSetterType(t *testing.T) {
 	t.Parallel()
@@ -151,7 +151,7 @@ func TestReflectParams(t *testing.T) {
 }
 
 // TestReflectReturn covers the one PHP type a Go result list folds into. A
-// trailing error reaches the script as a throw and never as a return, so a
+// trailing error reaches the script as a throw and never as a return and a
 // function returning only an error is void. Two or more non-error results are
 // one array: the runtime packs them into a list for the script to destructure.
 func TestReflectReturn(t *testing.T) {
@@ -170,7 +170,7 @@ func TestReflectReturn(t *testing.T) {
 		{name: "only an error", value: func() error { return nil }, want: "void"},
 		{name: "one value", value: func() string { return "" }, want: "string"},
 		{name: "a value and an error", value: func() (string, error) { return "", nil }, want: "string"},
-		// Two values a script can hold reach it as a list, so the declared
+		// Two values a script can hold reach it as a list and the declared
 		// return is the array and not the pair of types in it.
 		{name: "two values", value: func() (int64, bool) { return 0, false }, want: "array"},
 		{name: "a registered struct", value: func() reflectedStruct { return reflectedStruct{} }, want: "Thing"},

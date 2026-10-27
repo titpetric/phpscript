@@ -1,7 +1,7 @@
 <?php
 
 // titpetric/minitpl comes from composer; every entrypoint includes this file,
-// so one place pulls the autoloader in.
+// and one place pulls the autoloader in.
 include "vendor/autoload.php";
 
 $db = new Database("bookmarks");

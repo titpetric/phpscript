@@ -21,7 +21,7 @@
 //	include $compiled;
 //	$html = ob_get_clean();
 //
-// ob_start pushes a buffer onto the runtime with runner.PushOutput, so the
+// ob_start pushes a buffer onto the runtime with runner.PushOutput and the
 // capture covers everything that reaches Runtime.Output: echo, inline HTML, and
 // builtins that emit text of their own, such as die() with a message.
 //
@@ -32,7 +32,7 @@
 //
 // PHP's preg_* family is PCRE; Go's regexp is RE2, which cannot express
 // backreferences or lookaround. regex.go compiles each pattern with whichever
-// engine can express it, so both `\1` and a linear-time guarantee are
+// engine can express it and both `\1` and a linear-time guarantee are
 // available where they apply.
 package compat
 
@@ -47,7 +47,7 @@ func init() {
 }
 
 // Register installs symbols into the runtime. Each runtime gets its own buffer
-// stack, so concurrent requests capture their own output.
+// stack and concurrent requests capture their own output.
 func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerDatetime(rt)
@@ -55,16 +55,16 @@ func Register(rt *runner.Runtime) {
 }
 
 // registerBuffers installs the ob_* output buffering functions. Each runtime
-// gets its own buffer stack, so concurrent requests capture their own output.
+// gets its own buffer stack and concurrent requests capture their own output.
 func registerBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
 	// A reset between programs drops the levels with the redirections they
-	// mirror, so a reused runtime answers ob_get_level with what this program
+	// mirror and a reused runtime answers ob_get_level with what this program
 	// opened and none of what the last one left.
 	rt.OnReset(buffers.reset)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a
-	// template engine sees, so ob_start accepts and ignores both.
+	// template engine sees and ob_start accepts and ignores both.
 	rt.RegisterFunc("ob_start", func(_ ...any) bool {
 		buffers.push()
 		return true

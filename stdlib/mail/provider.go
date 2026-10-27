@@ -17,7 +17,7 @@ import (
 const DefaultName = "default"
 
 // Default is the provider used when a runtime's options name none. It holds no
-// servers, so mail() and `new Mail` refuse catchably naming what is missing,
+// servers and mail() and `new Mail` refuse catchably naming what is missing,
 // as a CLI run with no mail block has.
 var Default model.MailProvider = NewProvider(nil)
 
@@ -45,7 +45,7 @@ func (deliver Deliver) plain(config Config, message Message) error {
 
 // Provider holds the credentials of a set of named mail servers.
 //
-// Nothing changes the map after the constructor fills it. There is no
+// No call changes the map after the constructor fills it. There is no
 // registration call and no listing call: a script names a server and learns
 // only whether the delivery worked. That is also what lets the constructor
 // check a name and get the same verdict Send makes for itself.
@@ -61,13 +61,13 @@ func NewProvider(servers map[string]Config) *Provider {
 
 // NewProviderFunc is NewProvider with the transport replaced, the way
 // database.NewDatabaseProvider takes its connector. A nil deliver is SMTP. A
-// Deliver reads a plain-text message, so plain refuses a message with an HTML
+// Deliver reads a plain-text message and plain refuses a message with an HTML
 // part or a Reply-To: cut down to fit, it would be a different message.
 //
 // The constructor copies the map and keeps no reference, because configuration
 // layering passes one map to every site that declared no mail block, and a
 // normalisation written into it would reach every one. It lowercases a name
-// and fills in a missing port, so a delivery reads a complete credential.
+// and fills in a missing port and a delivery reads a complete credential.
 func NewProviderFunc(deliver Deliver, servers map[string]Config) *Provider {
 	result := &Provider{
 		servers: make(map[string]Config, len(servers)),
@@ -99,7 +99,7 @@ func (p *Provider) Send(ctx context.Context, name, recipient, subject, body stri
 // SendMessage sends message through the server it names.
 //
 // It reads the credential into a local and drops it when the call returns.
-// Nothing that outlives the delivery holds it: not the PHP object the script
+// No state that outlives the delivery holds it: not the PHP object the script
 // called, and no part of the span or the error.
 func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	config, err := p.resolve(message.Server)

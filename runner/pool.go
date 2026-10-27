@@ -14,10 +14,10 @@ import (
 const DefaultQueue = 1024
 
 // Pool runs PHP on a fixed set of forks, fed from one queue: the workers are
-// the parallelism and the queue is the backpressure, so a run that finds every
+// the parallelism and the queue is the backpressure and a run that finds every
 // worker busy waits its turn and starts no runtime of its own.
 //
-// Nothing here is a sync.Pool. The worker count is the contract, and sync.Pool
+// No type here wraps sync.Pool. The worker count is the contract, and sync.Pool
 // drops entries on a collection.
 type Pool struct {
 	runs    chan poolRun
@@ -27,7 +27,7 @@ type Pool struct {
 	// A Submit about to send takes closing for reading, and the Close that
 	// shuts the channel takes it for writing. Without it the select in Submit
 	// has two ready cases on a closed pool - the send and the stop - and picks
-	// between them at random, so one caller in two panics on a send to a
+	// between them at random and one caller in two panics on a send to a
 	// closed channel and the other hears that the pool has gone.
 	closing sync.RWMutex
 	closed  bool
@@ -78,12 +78,12 @@ func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 			defer pool.done.Done()
 			for run := range pool.runs {
 				run.job.Run(worker)
-				// Reset after the run and not before, so the next run starts
+				// Reset after the run and not before and the next run starts
 				// on a runtime holding nothing and this run drops the values
 				// it built now, not at the next request.
 				worker.resetExecution(output(), nil)
-				// A send and no close, so a lent channel serves the job's
-				// next run. The slot holds one value, so a caller that
+				// A send and no close and a lent channel serves the job's
+				// next run. The slot holds one value and a caller that
 				// stopped waiting leaves this worker free and parks nothing.
 				run.done <- struct{}{}
 			}
@@ -123,7 +123,7 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	run := poolRun{job: job, done: finished}
 
 	// The read lock spans the send alone. A worker is still draining while
-	// Close waits for the write lock, so a send that found the queue full
+	// Close waits for the write lock and a send that found the queue full
 	// completes and never holds the shutdown.
 	p.closing.RLock()
 	if p.closed {

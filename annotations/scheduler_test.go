@@ -73,7 +73,7 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 	if err := s.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	// Stopped before the test returns, so its jobs do not outlive it and write
+	// Stopped before the test returns and its jobs do not outlive it and write
 	// into a buffer the next test is not expecting.
 	defer func() {
 		if err := s.Stop(context.Background()); err != nil {
@@ -123,7 +123,7 @@ func TestSchedulerStartScansFS(t *testing.T) {
 
 // TestSchedulerStopEndsItsJobs pins what a reload depends on. The context
 // the platform passes Start belongs to the caller and not to the
-// generation going away, so a scheduler that ignored Stop would leave the
+// generation going away and a scheduler that ignored Stop would leave the
 // previous tree's jobs running beside every generation that followed.
 func TestSchedulerStopEndsItsJobs(t *testing.T) {
 	var runs atomic.Int64

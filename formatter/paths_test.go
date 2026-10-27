@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// write puts src in a temporary directory and returns the path, so each case
+// write puts src in a temporary directory and returns the path and each case
 // formats a file of its own and no case can see another one's rewrite.
 func write(t *testing.T, name, src string) string {
 	t.Helper()
@@ -46,7 +46,7 @@ func TestFile(t *testing.T) {
 		t.Errorf("the file holds %q, want %q", formatted, want)
 	}
 
-	// A second pass over the same file changes nothing, so a formatter run in
+	// A second pass over the same file changes nothing and a formatter run in
 	// a pipeline reports a clean tree on the run after the one that fixed it.
 	changed, err = File(path)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestFile(t *testing.T) {
 }
 
 // TestFileSkipsWhatItCannotParse covers the refusal: formatting rewrites a
-// file in place, so the formatter leaves a file the parser cannot read byte
+// file in place and the formatter leaves a file the parser cannot read byte
 // for byte and answers a *SkipError naming it. A directory of PHP holds valid code
 // this parser does not support, and one such file does not stop the rest.
 func TestFileSkipsWhatItCannotParse(t *testing.T) {
