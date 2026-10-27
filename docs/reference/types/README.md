@@ -1,13 +1,13 @@
 # Types
 
-| PHP language-reference feature           | Status                | Notes                                                                                                |
-|------------------------------------------|-----------------------|------------------------------------------------------------------------------------------------------|
-| `null`, `bool`, `int`, `float`, `string` | Compatibility         | Scalar values are dynamically typed.                                                                 |
-| Arrays                                   | Partial compatibility | One runtime array type carries ordered list and associative-array behavior.                          |
-| Objects                                  | Partial compatibility | The runtime supports phpscript and Go-backed objects.                                                |
-| Callable values                          | Partial compatibility | Supported APIs invoke closures, function names, and bound methods.                                   |
-| Type declarations                        | Not implemented       | Parameter, return, property, union, intersection, and `mixed` declarations are unavailable.          |
-| Resources                                | Partial compatibility | Some filesystem APIs return host-backed file values; PHP resource semantics are not general-purpose. |
+| PHP language-reference feature           | Status                | Notes                                                                                                                                                      |
+|------------------------------------------|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `null`, `bool`, `int`, `float`, `string` | Compatibility         | Scalar values are dynamically typed.                                                                                                                       |
+| Arrays                                   | Partial compatibility | One runtime array type carries ordered list and associative-array behavior.                                                                                |
+| Objects                                  | Partial compatibility | The runtime supports phpscript and Go-backed objects.                                                                                                      |
+| Callable values                          | Partial compatibility | Supported APIs invoke closures, function names, and bound methods.                                                                                         |
+| Type declarations                        | Parsed, not enforced  | Parameter, return, property, union and `mixed` declarations parse; the linter reads them and the runtime ignores them. Intersection types are unavailable. |
+| Resources                                | Partial compatibility | Some filesystem APIs return host-backed file values; PHP resource semantics are not general-purpose.                                                       |
 
 Values are dynamically typed. The runtime performs PHP-like truthiness and numeric/string coercion for its supported operators, but does not cover PHP's conversion rules in full.
 
@@ -56,9 +56,9 @@ echo "deep {$rows['a']['b']}\n";
 echo "call {$user->label()}\n";
 ```
 
-The braces close on the brace that matches, so a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A `$` that starts no name is literal text, `\$` is a dollar, and a single-quoted literal never interpolates. The runtime converts each embedded expression to a string the way `.` converts it, so an interpolated literal and the matching concatenation produce the same string.
+The braces close on the brace that matches and a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A `$` that starts no name is literal text, `\$` is a dollar, and a single-quoted literal never interpolates. The runtime converts each embedded expression to a string the way `.` converts it and an interpolated literal and the matching concatenation produce the same string.
 
-`${name}` and `${name[$k]}` read as `$name` and `$name[$k]`. `${expression}` does not: in PHP it names the variable whose name the expression returns, which needs `$$name`, and that is not implemented. PHP deprecated both spellings in 8.2 and removes them in 9, so `{$name}` is the form that keeps working.
+`${name}` and `${name[$k]}` read as `$name` and `$name[$k]`. `${expression}` does not: in PHP it names the variable whose name the expression returns, which needs `$$name`, and that spelling is a decision against. PHP deprecated both spellings in 8.2 and removes them in 9 and `{$name}` is the form that keeps working.
 
 ## Arrays
 
@@ -72,7 +72,7 @@ $extended = {"name" => "Ada"}; // phpscript only
 
 ### Keys
 
-An array key is an int or a string and nothing else, and what a script writes between the brackets becomes one of the two the way it does in PHP: `null` is the empty string, `true` and `false` are `1` and `0`, and a float truncates toward zero, so `$a[1.7]` and `$a[1]` are one entry.
+An array key is an int or a string, and what a script writes between the brackets becomes one of the two the way it does in PHP: `null` is the empty string, `true` and `false` are `1` and `0`, and a float truncates toward zero and `$a[1.7]` and `$a[1]` are one entry.
 
 A string becomes an int key only when it spells that integer canonically, which means it reads back identically from the integer it would become:
 
@@ -92,6 +92,6 @@ So `$a["08"]` and `$a[8]` are two entries. The comparison is exact: a form field
 
 phpscript implements the casts `(bool)`, `(boolean)`, `(int)`, `(integer)`, `(float)`, `(double)`, `(real)`, `(string)`, `(array)` and `(object)`. PHP's `(unset)` cast is not implemented.
 
-`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits; a scalar lands under `scalar`, null produces an object with nothing in it, and an object comes back unchanged. `(array)` reads the properties back out, in the order the object reads them back, and a digit-named property is an integer key again, so a cast round trip of a list is a list.
+`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits; a scalar lands under `scalar`, null produces an object with nothing in it, and an object comes back unchanged. `(array)` reads the properties back out, in the order the object reads them back, and a digit-named property is an integer key again and a cast round trip of a list is a list.
 
-Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array because arrays are values there, and here they are handles, so source and result share a nested array. And `(array)` uses the plain property name where PHP prefixes a private or protected one with the class that declared it; phpscript enforces no visibility, and a key holding a NUL byte is one no script could index.
+Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array because arrays are values there, and here they are handles and source and result share a nested array. And `(array)` uses the plain property name where PHP prefixes a private or protected one with the class that declared it; phpscript enforces no visibility, and a key holding a NUL byte is one no script could index.

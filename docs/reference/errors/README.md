@@ -1,13 +1,13 @@
 # Errors
 
-| PHP language-reference feature | Status                | Notes                                                                          |
-|--------------------------------|-----------------------|--------------------------------------------------------------------------------|
-| Parse errors                   | Compatibility         | The parser rejects invalid source with a line-oriented error.                  |
-| Runtime errors                 | Partial compatibility | The runtime models failures as Go errors, and script code can catch them.      |
-| PHP error levels and handlers  | Not implemented       | `E_*`, `set_error_handler()`, and `trigger_error()` semantics are unavailable. |
-| Error-control operator         | Not implemented       | `@` does not suppress failures.                                                |
-| Host error callback            | phpscript extension   | `Runtime.OnError` consumes statement errors after invoking the callback.       |
-| Errors from outside the script | phpscript extension   | `Runtime.RecordError` reports a failure no `try`/`catch` can reach.            |
+| PHP language-reference feature | Status                | Notes                                                                                                                                                                   |
+|--------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Parse errors                   | Compatibility         | The parser rejects invalid source with a line-oriented error.                                                                                                           |
+| Runtime errors                 | Partial compatibility | The runtime models failures as Go errors, and script code can catch them.                                                                                               |
+| PHP error levels and handlers  | Partial compatibility | The `E_*` constants exist and `set_error_handler()` is a registered no-op. `trigger_error()` is unavailable, and no notice, warning or reporting-level semantics exist. |
+| Error-control operator         | Won't build           | `@` does not suppress failures. See [Design decisions](../../design.md#wont-build).                                                                                     |
+| Host error callback            | phpscript extension   | `Runtime.OnError` consumes statement errors after invoking the callback.                                                                                                |
+| Errors from outside the script | phpscript extension   | `Runtime.RecordError` reports a failure no `try`/`catch` can reach.                                                                                                     |
 
 phpscript uses one error path for explicit `throw` statements and errors returned by Go-backed functions. It does not model PHP notices, warnings, recoverable errors, or configurable reporting levels.
 
@@ -15,11 +15,11 @@ phpscript uses one error path for explicit `throw` statements and errors returne
 
 Use `try` and `catch` for failures script code can recover from. The runtime returns an uncaught failure to the Go host. See [Exceptions](../exceptions/README.md).
 
-Installing `Runtime.OnError` changes that propagation: the runtime passes each non-exit statement error to the callback and execution continues. The runtime consumes the error at that point, so the callback can prevent an enclosing script `try`/`catch` from seeing it.
+Installing `Runtime.OnError` changes that propagation: the runtime passes each non-exit statement error to the callback and execution continues. The runtime consumes the error at that point and the callback can prevent an enclosing script `try`/`catch` from seeing it.
 
 ## Errors a script cannot catch
 
-Some failures belong to the request and not to the script: a body larger than `post_max_size`, a file part larger than `upload_max_filesize`. They happen before the first statement runs, so there is no statement to wrap in `try`/`catch` and nothing throws. All a script sees is the result: an empty `$_POST` and `$_FILES`, or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`.
+Some failures belong to the request and not to the script: a body larger than `post_max_size`, a file part larger than `upload_max_filesize`. They happen before the first statement runs and there is no statement to wrap in `try`/`catch` and nothing throws. All a script sees is the result: an empty `$_POST` and `$_FILES`, or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`.
 
 A Go host sees the reason. `Runtime.RecordError` is where they arrive, and it does two things with each: records it on the trace of the request, where it shows up in the debug front end under a `php error` span, and passes it to a handler installed with `Runtime.OnError`. `Context.Errors` holds the same list, for a host that would rather answer the request itself, with a 413 say, than run the script at all.
 

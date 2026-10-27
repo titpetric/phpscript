@@ -21,13 +21,13 @@ runner:
   # The mode move_uploaded_file() gives a stored upload. Octal, as chmod takes
   # it; the temporary copy an upload arrives in is private to the process.
   upload_file_mode: "0644"
-  # Execution limits. NOT ENFORCED YET: the keys parse and are carried so a
-  # configuration written today keeps working when enforcement lands. 0 is no
-  # limit for all three. memory_limit is php.ini's, spelled the same way as
-  # the upload limits above; time_limit is php.ini's max_execution_time, in
-  # seconds; concurrency_limit is how many scripts may run at once and has no
-  # php.ini equivalent, because there the SAPI owns it and here one process
-  # serves several sites.
+  # Execution limits. memory_limit is enforced and raises the memory-exhausted
+  # error php.ini names. time_limit and concurrency_limit parse and carry a
+  # value for a later release, and no code reads them yet. 0 is no limit.
+  # memory_limit and time_limit are php.ini's, spelled the same way as the
+  # upload limits above; concurrency_limit is how many scripts may run at once
+  # and has no php.ini equivalent, because there the SAPI owns it and here one
+  # process serves several sites.
   memory_limit: 0
   time_limit: 0
   concurrency_limit: 0

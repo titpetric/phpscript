@@ -11,7 +11,7 @@
 | Static methods                 | Compatibility         | The runtime supports `Class::method()`, `self::method()` and `static::method()`.                                                                                                 |
 | Static properties              | Compatibility         | The runtime supports `static $name` declarations and `Class::$name` read/write.                                                                                                  |
 | `Class::class`                 | Compatibility         | Resolves to the fully-qualified class name without requiring the class to exist.                                                                                                 |
-| Magic methods                  | Partial compatibility | The runtime supports `__construct` and `__invoke`, and nothing else of the magic-method contract.                                                                                |
+| Magic methods                  | Partial compatibility | The runtime supports `__construct` and `__invoke`, and no other magic method.                                                                                                    |
 | `instanceof`                   | Compatibility         | Tests a value against a class name, following `extends`.                                                                                                                         |
 | Anonymous classes              | Compatibility         | `new class [(args)] [implements ...] { ... }` declares and constructs in one expression. `get_class()` returns a synthesized name, and the bytecode engine does not compile one. |
 | Enums, cloning                 | Not implemented       | These PHP object features are unavailable.                                                                                                                                       |
@@ -62,11 +62,11 @@ echo count(Registry::all());          // 1
 echo Registry::class;                 // Registry
 ```
 
-`self::` and `static::` both resolve to the class of the running method. There is no inheritance, so late static binding has nothing to bind late to and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()`, so the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound inside it, as in PHP.
+`self::` and `static::` both resolve to the class of the running method. There is no inheritance: late static binding has nothing to bind late to, and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()` and the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound inside it, as in PHP.
 
 `new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-build recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, which is the one class either keyword could ever name here.
 
-`Class::method` is also a callable value, so `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
+`Class::method` is also a callable value and `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
 
 ## Interfaces
 
@@ -94,9 +94,9 @@ class Store implements Listing
 
 `interface A extends B, C` widens the contract: the check tests a class against the union of the names every listed interface declares. A class receives nothing from them, because an interface declares no body and holds no storage.
 
-`phpscript lint` reports a missing method, which raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked, so `implements Countable` loads: phpscript does not declare PHP's built-in interfaces.
+`phpscript lint` reports a missing method, which raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked and `implements Countable` loads: phpscript does not declare PHP's built-in interfaces.
 
-`instanceof` does not consult an interface. It tests class-name equality, so `$store instanceof Reader` is false and `$store instanceof Store` is true. The parser reads a constant declared on an interface and the formatter prints it back; reading one through `Interface::NAME` is not implemented.
+`instanceof` tests the class name and every interface name the class declares, following `extends` on an interface, and `$store instanceof Reader` is true for the example above. A constant declared on an interface reads through `Interface::NAME`; a class that implements the interface acquires none of its constants.
 
 ## Host-backed objects
 

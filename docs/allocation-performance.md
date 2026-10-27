@@ -8,9 +8,9 @@ This document is the guideline, the reasoning behind it, and a checklist of ever
 
 ## The measured baseline
 
-All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`), so the floor the table reports is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which covers the shapes a runtime survey finds the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and the trim/sprintf variadic families among them; a covered shape dispatches directly and pays no reflect allocations at all.
+All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`) and the floor the table reports is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which covers the shapes a runtime survey finds the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and the trim/sprintf variadic families among them; a covered shape dispatches directly and pays no reflect allocations at all.
 
-The switch matches a whole signature, so **adding an error return moves a binding off the fast path** unless the switch lists the error-returning spelling too. That is not a visible change at the call site and no test fails for it: `sprintf` carries `func(string, ...any) (string, error)` since it stopped handing its arguments to `fmt`, and a spelling the switch does not list dispatches through `reflect.Value.Call`. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` is what prices it.
+The switch matches a whole signature and **adding an error return moves a binding off the fast path** unless the switch lists the error-returning spelling too. That is not a visible change at the call site and no test fails for it: `sprintf` carries `func(string, ...any) (string, error)` since it stopped handing its arguments to `fmt`, and a spelling the switch does not list dispatches through `reflect.Value.Call`. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` is what prices it.
 
 Same five-element list, five representations:
 
@@ -73,9 +73,9 @@ rt.RegisterFunc("explode", func(delim, s string) *model.Array {
 
 **4. Return `*model.Array` for exactly three reasons.**
 
-- **The script appends to it.** A Go slice cannot grow through the interface value holding it, so `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`. So does `unset($m["k"])` on a returned map, and `unset($a[0])` on a returned slice, which renumbers what follows; see `TestBindingCollectionsUnset`.
+- **The script appends to it.** A Go slice cannot grow through the interface value holding it and `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`. So does `unset($m["k"])` on a returned map, and `unset($a[0])` on a returned slice, which renumbers what follows; see `TestBindingCollectionsUnset`.
 - **Insertion order is part of the contract.** A Go map re-randomises on every `foreach`. If a script iterates a value more than once and the output must match, that value needs an `*model.Array`. This is why `json_decode` returns one for JSON objects and why the introspection listings keep theirs.
-- **Hybrid int/string keys with PHP's ordering.** Nothing else models it.
+- **Hybrid int/string keys with PHP's ordering.** Only `*model.Array` models it.
 
 Everything else (projections, listings, query results, regex captures) is a read-only collection the script walks once.
 
@@ -83,11 +83,11 @@ Everything else (projections, listings, query results, regex captures) is a read
 
 **6. Presize everything.** `model.NewArraySize(n)`, `make([]any, 0, n)`, `make(map[string]any, n)`. A five-element `*model.Array` built by `Append` grows its key slice 1->2->4->8: four allocations before any data. Map size hints are hints, not capacity, but they still avoid the rehash-and-copy cycle.
 
-**7. Hoist per-call setup to package scope.** The binding closure must not construct anything built from constants (a `strings.Replacer`, a compiled `regexp`, a lookup table). The regex shims already cache compiled patterns (`regexpCache`); `htmlspecialchars` still does not (see the TODO).
+**7. Hoist per-call setup to package scope.** The binding closure must not construct anything built from constants (a `strings.Replacer`, a compiled `regexp`, a lookup table). The regex shims already cache compiled patterns (`regexpCache`); `htmlspecialchars` runs one package-level `strings.Replacer` (`stdlib/core/strings.go`), built once.
 
 ## Why the numbers look like this
 
-**Interface boxing is a heap allocation, with one exception.** Converting a non-pointer value to `any` calls a `runtime.convT*` helper. `convT64` returns a pointer into the runtime's preallocated `staticuint64s` array for values 0-255 and calls `mallocgc` for anything larger, so boxing the integer `7` is free and boxing `4096` costs 8 bytes. Pointers, slices headers into existing backing arrays, and maps box without a fresh allocation for the pointee. This is why `*model.Array` is expensive twice over: it boxes every key *and* every value into a `map[any]any`.
+**Interface boxing is a heap allocation, with one exception.** Converting a non-pointer value to `any` calls a `runtime.convT*` helper. `convT64` returns a pointer into the runtime's preallocated `staticuint64s` array for values 0-255 and calls `mallocgc` for anything larger and boxing the integer `7` is free and boxing `4096` costs 8 bytes. Pointers, slices headers into existing backing arrays, and maps box without a fresh allocation for the pointee. This is why `*model.Array` is expensive twice over: it boxes every key *and* every value into a `map[any]any`.
 
 **`map[any]any` pays for hashing too.** An interface-keyed map cannot use a compile-time-specialised hash function; it dispatches through the type descriptor at runtime. Go 1.24's Swiss Table maps improved lookup and insert throughput measurably (roughly 20-30% on microbenchmarks) but did not change that dispatch cost; a concrete key type still beats an interface key.
 
@@ -105,7 +105,7 @@ The size of the function table is not the dominant cost. `runner.baseEnv` once r
 
 `runner` does three things that keep the table off the per-`Eval` path:
 
-- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection, so one environment serves every `Eval`;
+- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection and one environment serves every `Eval`;
 - populates an environment with the functions an expression calls, on demand (`Runtime.installFunc`, fed by `Transpiler.Calls`), leaving the rest of the table out;
 - caches the expr compile configuration per function-table generation (`Runtime.exprConfig`) and builds its type-env nature directly (`typeEnvNature`), with no reflective walk of the table.
 
@@ -130,7 +130,7 @@ So the env stays for as long as expr-lang compiles anything; the per-compile cos
 
 `Pool.Submit` keeps no free list of channels, and that refusal holds: `Submit` answers false when the context ends first, and that path cannot prove the entry is free, because the worker goes on running with the channel it holds. A channel the pool recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, never a slow one, and no test here catches it.
 
-What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel the pool signals its completion through, and a job living for the length of its run carries one channel over every run it serves. The pool sends one buffered slot in place of closing it, so a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: it drops a job submitted and not seen to finish, and never reuses it. `stdlib/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
+What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel the pool signals its completion through, and a job living for the length of its run carries one channel over every run it serves. The pool sends one buffered slot in place of closing it and a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: it drops a job submitted and not seen to finish, and never reuses it. `stdlib/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
 
 A `Submit` whose job lends no channel builds one, as before.
 
@@ -142,7 +142,7 @@ With the env fixed, the remaining eval cost is the VM's dispatch itself: every h
 - the pure `__*` helpers with constant op strings
 - `&&`, `||`, `!` and the ternary
 
-The engine compiles the tree into a chain of typed Go closures that call `phpArith`, `phpCompare` and friends directly, with a single panic guard per evaluation covering every call inside it. The technique is expr-cls's (guamoko995/expr-cls compiles expressions to typed closure chains); its API takes a struct-typed env fixed at compile time, which PHP's per-expression variable map rules out, so the technique is rebuilt over the model AST. It lands as a fast path in front of the expr-lang pipeline and replaces it outright once its coverage is total. Calls that re-enter the interpreter (`__call`, `__get`, registered functions) stay env lookups; the `[]any` slice their variadic signature requires is the allocation that remains.
+The engine compiles the tree into a chain of typed Go closures that call `phpArith`, `phpCompare` and friends directly, with a single panic guard per evaluation covering every call inside it. The technique is expr-cls's (guamoko995/expr-cls compiles expressions to typed closure chains); its API takes a struct-typed env fixed at compile time, which PHP's per-expression variable map rules out and the technique is rebuilt over the model AST. It lands as a fast path in front of the expr-lang pipeline and replaces it outright once its coverage is total. Calls that re-enter the interpreter (`__call`, `__get`, registered functions) stay env lookups; the `[]any` slice their variadic signature requires is the allocation that remains.
 
 The closure compiler binds variables by slot, not by map: it assigns each per-evaluation identifier an index, and Eval fills a pooled `[]any`, with no env map to layer and delete on release; with the engine in place, map writes, deletes and hashing are half of what the profile still holds. Functions and helpers still resolve through the persistent base map.
 
@@ -194,13 +194,13 @@ When changing a shape, keep the old implementation as a second binding (`bind_ex
 
 Every registered function and class, its return shape, and whether that shape is optimal. Regenerate the function list with `go run ./scripts/list-apis`; discover Go signatures with `go doc -short -u ./stdlib` (see also `go doc ./stdlib/database.Database`).
 
-Legend: **OK**: optimal, nothing to do. **OK (by design)**: allocates, but the allocation buys required semantics. **TODO**: a real improvement is available.
+Legend: **OK**: optimal, no change needed. **OK (by design)**: allocates, but the allocation buys required semantics. **TODO**: a real improvement is available.
 
 ### Arrays
 
 | Binding            | Returns                                                | Status                                                                                                                                                                                                                               |
 |--------------------|--------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `array_column`     | `[]any`, presized, or `*model.Array` with `$index_key` | OK (by design): the keyed form carries hybrid int/string keys (rule 4). The binding reads rows through `model.RangeValues`, so the `[]map[string]any` of `Database::get_all` needs no conversion                                     |
+| `array_column`     | `[]any`, presized, or `*model.Array` with `$index_key` | OK (by design): the keyed form carries hybrid int/string keys (rule 4). The binding reads rows through `model.RangeValues` and the `[]map[string]any` of `Database::get_all` needs no conversion                                     |
 | `array_filter`     | `(*model.Array, error)`, presized                      | OK (by design): preserves keys, holes included                                                                                                                                                                                       |
 | `array_flip`       | `*model.Array`, presized                               | OK (by design): the values become keys, normalised through `phpval.Key`                                                                                                                                                              |
 | `array_key_exists` | `bool`                                                 | OK: constant time on `*model.Array` and `map[string]any`, a walk on any other shape                                                                                                                                                  |
@@ -210,23 +210,23 @@ Legend: **OK**: optimal, nothing to do. **OK (by design)**: allocates, but the a
 | `array_reduce`     | `(any, error)`                                         | OK: one carry value, no intermediate collection                                                                                                                                                                                      |
 | `array_reverse`    | `[]any`, presized, or `*model.Array` when keys survive | OK (by design): `$preserve_keys`, or any string key, needs ordered keys (rule 4); an all-integer-keyed array renumbers to a plain list                                                                                               |
 | `array_slice`      | `[]any`, exact size                                    | OK                                                                                                                                                                                                                                   |
-| `array_splice`     | `([]any, error)`                                       | OK (by design): resizes its argument, so it requires `*model.Array` and now errors instead of panicking on a slice                                                                                                                   |
+| `array_splice`     | `([]any, error)`                                       | OK (by design): resizes its argument and it requires `*model.Array` and now errors instead of panicking on a slice                                                                                                                   |
 | `array_sum`        | `any` (`int64` or `float64`)                           | OK (by design): PHP's return type, promoting to `float64` at the first float or on overflow                                                                                                                                          |
 | `array_unique`     | `*model.Array`, presized                               | OK (by design): preserves keys                                                                                                                                                                                                       |
 | `array_values`     | `[]any`, presized                                      | OK                                                                                                                                                                                                                                   |
 | `compact`          | `map[string]any`                                       | OK                                                                                                                                                                                                                                   |
 | `count`            | `int64` via `model.LenValues`                          | OK                                                                                                                                                                                                                                   |
 | `in_array`         | `bool`                                                 | OK                                                                                                                                                                                                                                   |
-| `range`            | `[]any`, presized                                      | OK: the binding computes the element count up front, so a float range neither reallocates nor accumulates rounding error                                                                                                             |
+| `range`            | `[]any`, presized                                      | OK: the binding computes the element count up front and a float range neither reallocates nor accumulates rounding error                                                                                                             |
 | `usort`            | `bool`, sorts `*model.Array` or a Go slice in place    | OK                                                                                                                                                                                                                                   |
 
 ### Array sorting
 
-The key-preserving half of the sort family. `sort`, `rsort` and `usort` only permute values, so `sortValues` can sort a Go slice in place through its backing array. These six move the key with the value, which means rebuilding the array: `arrayEntries` snapshots the pairs, the sort orders the snapshot, then `Clear` plus `arrayReplay` in restore mode writes every pair back with `Set`. `Append` would hand out fresh integer keys and quietly turn the call into `sort()`.
+The key-preserving half of the sort family. `sort`, `rsort` and `usort` only permute values and `sortValues` can sort a Go slice in place through its backing array. These six move the key with the value, which means rebuilding the array: `arrayEntries` snapshots the pairs, the sort orders the snapshot, then `Clear` plus `arrayReplay` in restore mode writes every pair back with `Set`. `Append` would hand out fresh integer keys and quietly turn the call into `sort()`.
 
-Cost is one `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. The sort orders the snapshot and never the live storage, so the rewrite never iterates what it overwrites; `array_shift` snapshots for the same reason.
+Cost is one `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. The sort orders the snapshot and never the live storage and the rewrite never iterates what it overwrites; `array_shift` snapshots for the same reason.
 
-All six require a `*model.Array` and error on a native Go slice, following `arrayTarget` (`array_splice`, `array_shift`). A Go slice has no keys to preserve, so sorting one would be `sort()` under another name.
+All six require a `*model.Array` and error on a native Go slice, following `arrayTarget` (`array_splice`, `array_shift`). A Go slice has no keys to preserve and sorting one would be `sort()` under another name.
 
 | Binding  | Returns                                           | Status                                                                                       |
 |----------|---------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -252,9 +252,9 @@ All six require a `*model.Array` and error on a native Go slice, following `arra
 | `strpos`                                                                     | `any` (`false` or `int64`)           | OK (by design): PHP's return contract; offsets ≥ 256 cost one 8-byte box                                                                                                |
 | `stream_get_contents`                                                        | `(string, error)`                    | OK (by design): `io.ReadAll` plus one string copy                                                                                                                       |
 | `ucfirst`, `lcfirst`, `ucwords`                                              | `string`                             | OK: byte-wise, and the binding copies into `[]byte` only when a byte actually changes                                                                                   |
-| `chr`                                                                        | `string`                             | OK: a package-level table of the 256 one-byte strings, so the return is a shared constant: 1 alloc -> 0                                                                 |
+| `chr`                                                                        | `string`                             | OK: a package-level table of the 256 one-byte strings and the return is a shared constant: 1 alloc -> 0                                                                 |
 | `ord`                                                                        | `int64`                              | OK                                                                                                                                                                      |
-| `fnmatch`                                                                    | `bool`                               | OK: the matcher walks both strings in place with one saved backtrack point per star, so it allocates nothing and a run of stars costs the same as one                   |
+| `fnmatch`                                                                    | `bool`                               | OK: the matcher walks both strings in place with one saved backtrack point per star and it allocates nothing and a run of stars costs the same as one                   |
 | `mb_strtolower`, `mb_strtoupper`                                             | `string`                             | OK: `strings.ToLower`/`ToUpper`, which return the input unchanged when no case maps                                                                                     |
 | `mb_strlen`                                                                  | `int64`                              | OK: `utf8.RuneCountInString` counts in place, where a `[]rune` conversion would copy the whole string again                                                             |
 | `mb_substr`                                                                  | `string`, subslice, no copy          | OK: a walk over the string finds the two byte offsets, again avoiding a `[]rune` round trip                                                                             |
@@ -298,7 +298,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `preg_match_all` | `int64`; `$matches` is `[]any` of `[]string`                    | OK                  |
 | `preg_replace`   | `string`, compiled patterns cached                              | OK                  |
 
-`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are, so the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. A `[]byte` reads as a PHP string with no conversion, so the byte shapes cost nothing extra.
+`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are and the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. A `[]byte` reads as a PHP string with no conversion and the byte shapes cost nothing extra.
 
 ### Filesystem
 
@@ -318,7 +318,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | Binding              | Returns                     | Status                                                                                                                                                     |
 |----------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `exec`               | `any` (`string` or `false`) | OK: `cmd.Output()` allocates the captured stdout, which is the value; `$output` appends into the caller's `*model.Array` rather than building a second one |
-| `system`, `passthru` | `any`                       | OK: the process writes straight through to `rt.Output()`, so the binding buffers nothing; `system` keeps one line rather than the stream                   |
+| `system`, `passthru` | `any`                       | OK: the process writes straight through to `rt.Output()` and the binding buffers nothing; `system` keeps one line rather than the stream                   |
 | `shell_exec`         | `any` (`string` or `null`)  | OK: the captured stdout is the value                                                                                                                       |
 | `escapeshellarg`     | `string`                    | OK: one `strings.ReplaceAll`, which returns the input unchanged when there is no quote to escape                                                           |
 | `escapeshellcmd`     | `string`                    | OK: a presized `strings.Builder`, one pass                                                                                                                 |
@@ -358,9 +358,9 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `getenv`                                | `any` (`string` or `false`)                     | OK                      |
 | `putenv`                                | `bool`                                          | OK                      |
 | `set_include_path`                      | `string`                                        | OK                      |
-| `header`                                | nothing                                         | OK                      |
+| `header`                                | no value                                        | OK                      |
 | `defer`                                 | `error`                                         | OK                      |
-| `register_shutdown_function`            | nothing                                         | OK                      |
+| `register_shutdown_function`            | no value                                        | OK                      |
 | `start_span`                            | `*telemetry.Span`                               | OK: pointer, boxes free |
 
 ### Classes

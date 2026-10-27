@@ -1,12 +1,12 @@
 # Exceptions
 
-| PHP language-reference feature | Status                | Notes                                                                                     |
-|--------------------------------|-----------------------|-------------------------------------------------------------------------------------------|
-| `throw`                        | Compatibility         | A script throws a value or a constructed throwable object.                                |
-| `try`, `catch`, `finally`      | Compatibility         | The runtime tries clauses in source order; `finally` always runs.                         |
-| Catch type filters             | Partial compatibility | A clause filters on the class name a throwable records. There is no hierarchy to descend. |
-| Exception hierarchy            | Not implemented       | Every throwable class is one type; none is a subclass of another.                         |
-| Extending exceptions           | Not implemented       | `extends` confers nothing. See [Design decisions](../../design.md).                       |
+| PHP language-reference feature | Status                | Notes                                                                                                                 |
+|--------------------------------|-----------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `throw`                        | Compatibility         | A script throws a value or a constructed throwable object.                                                            |
+| `try`, `catch`, `finally`      | Compatibility         | The runtime tries clauses in source order; `finally` always runs.                                                     |
+| Catch type filters             | Partial compatibility | A clause filters on the class name a throwable records. There is no hierarchy to descend.                             |
+| Exception hierarchy            | Won't build           | Every throwable class is one type; none is a subclass of another. See [Design decisions](../../design.md#wont-build). |
+| Extending exceptions           | Won't build           | `extends` confers nothing. See [Design decisions](../../design.md).                                                   |
 
 ## Throwing and catching
 
@@ -20,16 +20,16 @@ try {
 }
 ```
 
-The catch variable receives the thrown object, so `getMessage()` and `getCode()` report its constructor arguments, and `get_class()` reports the class the `throw` named.
+The catch variable receives the thrown object and `getMessage()` and `getCode()` report its constructor arguments, and `get_class()` reports the class the `throw` named.
 
 ## Which clause takes it
 
-Every throwable class is one type carrying the name a script constructed, so the runtime answers a clause from that name, with no hierarchy to descend:
+Every throwable class is one type carrying the name a script constructed and the runtime answers a clause from that name, with no hierarchy to descend:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|
-| nothing, or `Throwable`                         | everything                                                                   |
-| anything, when the error is no PHP class at all | everything, so a Go binding's error reaches the catch a script already wrote |
+| `Throwable`, or no name                         | everything                                                                   |
+| anything, when the error is no PHP class at all | everything and a Go binding's error reaches the catch a script already wrote |
 | `Exception`                                     | any class whose name does not end in `Error`                                 |
 | `Error`                                         | any class whose name ends in `Error`                                         |
 | any other name                                  | that class name, case-insensitively                                          |
@@ -70,7 +70,7 @@ The method set answers on whatever reached the catch, including an error a Go bi
 
 ## Errors from Go
 
-An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class, so every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the runtime returns the error to the embedding host.
+An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class and every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the runtime returns the error to the embedding host.
 
 ## References
 

@@ -1,14 +1,14 @@
 # Functions
 
-| PHP language-reference feature | Status                | Notes                                                                                                |
-|--------------------------------|-----------------------|------------------------------------------------------------------------------------------------------|
-| User-defined functions         | Compatibility         | phpscript supports named functions, parameters, defaults, calls, and returns.                        |
-| Anonymous functions            | Compatibility         | Closures, `use (...)` captures, `static function`, and calling a callable value.                     |
-| Arrow functions                | Incompatible syntax   | `fn` introduces a normal block-bodied function/closure; PHP's `fn (...) => ...` form is unavailable. |
-| First-class callable syntax    | Compatibility         | `callable(...)` takes the callable a call site names, as a Closure. `new C(...)` is a parse error.   |
-| Arguments by value             | Partial compatibility | A call binds names in a new local scope, but mutable arrays do not have PHP copy-on-write behavior.  |
-| References and variadics       | Not implemented       | Named arguments and argument unpacking `f(...$args)` are unavailable; `&` parses but binds by value. |
-| Type declarations              | Parsed, not enforced  | The parser accepts parameter and return types and discards them; nothing checks or coerces values.   |
+| PHP language-reference feature | Status                | Notes                                                                                                                                                    |
+|--------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| User-defined functions         | Compatibility         | phpscript supports named functions, parameters, defaults, calls, and returns.                                                                            |
+| Anonymous functions            | Compatibility         | Closures, `use (...)` captures, `static function`, and calling a callable value.                                                                         |
+| Arrow functions                | Incompatible syntax   | `fn` introduces a normal block-bodied function/closure; PHP's `fn (...) => ...` form is unavailable.                                                     |
+| First-class callable syntax    | Compatibility         | `callable(...)` takes the callable a call site names, as a Closure. `new C(...)` is a parse error.                                                       |
+| Arguments by value             | Partial compatibility | A call binds names in a new local scope, but mutable arrays do not have PHP copy-on-write behavior.                                                      |
+| References and variadics       | Partial compatibility | Variadic parameters and first-class callables work. Named arguments and argument unpacking `f(...$args)` are unavailable; `&` parses but binds by value. |
+| Type declarations              | Parsed, not enforced  | The parser accepts parameter and return types and discards them; nothing checks or coerces values.                                                       |
 
 ## Defining functions
 
@@ -30,7 +30,7 @@ $callback = function ($value) {
 };
 ```
 
-A `use (...)` list captures by value: creating the closure value snapshots the named variables, so a later write to the enclosing variable is not visible inside the closure.
+A `use (...)` list captures by value: creating the closure value snapshots the named variables and a later write to the enclosing variable is not visible inside the closure.
 
 ```php
 $greeting = "Hello";
@@ -41,13 +41,13 @@ $greeting = "Goodbye";
 echo $greet("world");                     // Hello, world
 ```
 
-`&$name` parses but binds by value like the plain form: the runtime has no reference cells, so a closure cannot write back into the frame it came from. The same is true of a `&$x` parameter; see [Value semantics](../types/value-semantics.md).
+`&$name` parses but binds by value like the plain form: the runtime has no reference cells and a closure cannot write back into the frame it came from. The same is true of a `&$x` parameter; see [Value semantics](../types/value-semantics.md).
 
 A closure declared inside a method captures `$this`; `static function () {}` declares one that does not.
 
-The `use (...)` list is the whole of what comes along. An invocation gets a frame holding those values, the parameters, `__FILE__` and `__DIR__`, and the bound `$this`: a variable of the enclosing frame that the list did not name is unset inside the body, neither shadowed nor inherited, and a nested closure names again whatever it needs. `get_defined_vars()` inside a closure reads that frame back, as [tests/fixtures/functions/closure_capture_scope.phpt](../../../tests/fixtures/functions/closure_capture_scope.phpt) states on both engines. Creating the closure value takes the capture, so a later write to a captured variable is not visible to it. The invocation binds a parameter sharing a name with a capture last, so the parameter wins; php rejects that program outright, as "Cannot use lexical variable $x as a parameter name".
+The `use (...)` list is the whole of what comes along. An invocation gets a frame holding those values, the parameters, `__FILE__` and `__DIR__`, and the bound `$this`: a variable of the enclosing frame that the list did not name is unset inside the body, neither shadowed nor inherited, and a nested closure names again whatever it needs. `get_defined_vars()` inside a closure reads that frame back, as [tests/fixtures/functions/closure_capture_scope.phpt](../../../tests/fixtures/functions/closure_capture_scope.phpt) states on both engines. Creating the closure value takes the capture and a later write to a captured variable is not visible to it. The invocation binds a parameter sharing a name with a capture last and the parameter wins; php rejects that program outright, as "Cannot use lexical variable $x as a parameter name".
 
-`static $x` in a closure body belongs to the closure value, so two closures built by one factory count independently, and a call on another runtime gets a bag of its own. The bytecode engine does not compile that form; the program runs on the interpreter.
+`static $x` in a closure body belongs to the closure value and two closures built by one factory count independently, and a call on another runtime gets a bag of its own. The bytecode engine does not compile that form; the program runs on the interpreter.
 
 ## Calling a callable value
 
@@ -72,9 +72,9 @@ $method = $obj->method(...);      // a method bound to the receiver it was read 
 $again = $closure(...);           // a value that is callable already
 ```
 
-The value is php's `Closure`: `get_class()` answers `Closure`, `is_callable()` is true, and it fills any parameter an API declares as a callable. Resolution is the same one the call would have used, so a name reaches a declared function, a registered binding or a host static registered under the whole `Class::method` spelling, and taking the callable resolves the name a variable holds; the call does not. Taking the callable reports a name nothing answers for, with the message the call reports: `nosuch(...)` raises "call to undefined function nosuch()".
+The value is php's `Closure`: `get_class()` answers `Closure`, `is_callable()` is true, and it fills any parameter an API declares as a callable. Resolution is the same one the call would have used and a name reaches a declared function, a registered binding or a host static registered under the whole `Class::method` spelling, and taking the callable resolves the name a variable holds; the call does not. Taking the callable reports a name nothing answers for, with the message the call reports: `nosuch(...)` raises "call to undefined function nosuch()".
 
-`(...)` over a value that is already callable answers that value itself, with no wrapper, so `$fn(...) === $fn` for a Closure the syntax itself produced, as in php. A closure literal is the one value the two engines disagree about; see [Closure identity](../../flatstack.md#closure-identity).
+`(...)` over a value that is already callable answers that value itself, with no wrapper and `$fn(...) === $fn` for a Closure the syntax itself produced, as in php. A closure literal is the one value the two engines disagree about; see [Closure identity](../../flatstack.md#closure-identity).
 
 `new C(...)` is a parse error, as in php: a construction names no callable to take.
 

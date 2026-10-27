@@ -10,7 +10,8 @@
 | `return`                       | Compatibility         | A value is optional.                                                                                                      |
 | `include`, `require`           | Compatibility         | All four keywords run, and the `*_once` pair executes a file only when it has not run yet.                                |
 | `declare`                      | Parsed, ignored       | The parser drops a directive it reads; a block form runs its body. See [Basic syntax](../basic-syntax/README.md#declare). |
-| `goto`, alternate syntax       | Not implemented       | These PHP control structures are a parse error.                                                                           |
+| `goto`                         | Won't build           | A decision. See [Design decisions](../../design.md#wont-build).                                                           |
+| Alternate syntax               | Not implemented       | `endif`, `endforeach` and the rest are a parse error.                                                                     |
 | Parenthesis-free conditions    | phpscript extension   | The parser accepts `if $value {}` and `foreach $items as $item {}`.                                                       |
 
 ## Conditions
@@ -47,11 +48,11 @@ do {
 } while ($attempts < 3);
 ```
 
-`do-while` runs the body before the condition is first checked, so it executes at least once. `continue` jumps to the condition check.
+`do-while` runs the body before the condition is first checked and it executes at least once. `continue` jumps to the condition check.
 
 `foreach` assignment targets may be variables, indexes, or properties. `list(...)` destructuring works in ordinary assignment but not as a `foreach` target.
 
-`foreach ($a as &$v)` binds the element itself, so writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for what the two spellings cost and where they stop matching PHP.
+`foreach ($a as &$v)` binds the element itself and writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for what the two spellings cost and where they stop matching PHP.
 
 ## Switch
 

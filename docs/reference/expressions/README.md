@@ -8,7 +8,8 @@
 | Function and method calls      | Compatibility         | Calls are expressions.                                                                                  |
 | `new` expressions              | Compatibility         | Parentheses are optional when `new` takes no constructor arguments.                                     |
 | `include` expressions          | Partial compatibility | Include forms occur as statements or expressions. A file the runtime cannot load fails the request.     |
-| `match`, `yield`, cloning      | Not implemented       | These PHP expression forms are unavailable.                                                             |
+| `match`, cloning               | Not implemented       | These PHP expression forms are unavailable.                                                             |
+| `yield`                        | Won't build           | Generators are a decision. See [Design decisions](../../design.md#wont-build).                          |
 
 ## Assignment expressions
 
