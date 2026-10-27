@@ -51,7 +51,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	// installed closures persist across evaluations (see installFunc). An
 	// immediately invoked anonymous function appears in ce.calls under its
 	// synthetic identifier, which is in no function table; the loop below
-	// binds it per evaluation, so installFunc must not stub it as undefined.
+	// binds it per evaluation and installFunc must not stub it as undefined.
 	for _, name := range ce.calls {
 		if _, ok := ce.closures[name]; ok {
 			continue
@@ -102,7 +102,7 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 // table (PHP constants are visible in every scope, whereas plain variables
 // belong to their frame), then the superglobals. A bare name nothing
 // defines is an error - PHP 8 raises Error there, while an unset variable of
-// the same spelling stays null, so the two carry different
+// the same spelling stays null and the two carry different
 // identifiers.
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
@@ -125,7 +125,7 @@ func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 
 // resolveAuto answers a superglobal read: the bound value, or the view the
 // request's lazy binder builds on the first read of that name. It binds what
-// the binder answers, so the next read is one field read, and a write through
+// the binder answers and the next read is one field read, and a write through
 // the view reaches every later reader the way an eagerly bound view did.
 func (rt *Runtime) resolveAuto(name string) (any, bool) {
 	if v, ok := rt.auto.Lookup(name); ok {
@@ -190,7 +190,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 	}
 	// Built once per environment, for the runtime's lifetime: the helpers
 	// close over the stable scope reference and installed functions resolve
-	// per call, so a function-table change invalidates nothing here.
+	// per call and a function-table change invalidates nothing here.
 	if !st.built {
 		rt.buildEnv(st)
 	}
@@ -199,7 +199,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 }
 
 // buildEnv fills st with the env shared by every evaluation: the PHP-semantic
-// helpers. The engine carries no builtins of its own, so a registered function
+// helpers. The engine carries no builtins of its own and a registered function
 // resolves as a bare identifier the engine calls by name, but buildEnv
 // installs *no* such function: installFunc adds the ones an expression
 // actually calls, on demand (see Eval). Eval layers variables and other
@@ -244,10 +244,10 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 		}
 		return rt.Eval(e, ref.scope)
 	})
-	// func_get_args() needs the current frame's arguments, so buildEnv installs
+	// func_get_args() needs the current frame's arguments and buildEnv installs
 	// it as a scope-aware helper and not a plain forwarded function.
 	// The frame already holds its arguments as a []any, which the VM indexes and
-	// iterates directly, so func_get_args() returns that slice and not
+	// iterates directly and func_get_args() returns that slice and not
 	// rebuilding it as an *model.Array.
 	env["func_get_args"] = adapt(func() []any { return funcGetArgs(ref.scope) })
 	st.built = true
@@ -255,13 +255,13 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 
 // installFunc adds the registered function name to st's environment, unless it
 // already carries one. The closure stays in the environment (releaseEnv strips
-// only the per-expression keys), so installFunc wraps a function at most
+// only the per-expression keys) and installFunc wraps a function at most
 // once per environment per function-table generation: buildEnv clears the map
 // whenever the generation moves, the one point at which a name could have been
 // re-registered with a different implementation.
 //
 // A name that is in no function table installs a stub that reports the call as
-// undefined, so this engine and flatstack (see helperFunc) report the same
+// undefined and this engine and flatstack (see helperFunc) report the same
 // message to a script where the VM would say "cannot call nil". The stub
 // belongs to the current generation like any other entry: declaring the
 // function afterwards re-registers it, which moves the generation and
@@ -280,7 +280,7 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	// Resolution happens per call, not at install. The closure then survives
 	// every function-table change - a script re-declaring its functions on
 	// each run, a conditionally declared function appearing after the first
-	// call reported it undefined, so a built environment
+	// call reported it undefined and a built environment
 	// lives for the runtime's lifetime and is never rebuilt on every
 	// registration.
 	st.env[name] = func(args ...any) (any, error) {
@@ -304,7 +304,7 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 	}
 	st.vars = st.vars[:0]
 	// The arena's backing array survives the release; its values do not. The
-	// length is zero whenever the calls balanced, so the clear covers what a
+	// length is zero whenever the calls balanced and the clear covers what a
 	// panic left behind and the references parked beyond the length.
 	scratch := st.cenv.Scratch
 	clear(scratch[:cap(scratch)])
@@ -398,9 +398,9 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 				return result, nameCallError(err, fallback)
 			}
 			// Frame-aware builtins live in the evaluation environment rather
-			// than the function table, so the bare-name fast path finds them
+			// than the function table and the bare-name fast path finds them
 			// but this dispatch would not. Inside a namespaced file every
-			// global call arrives here, so this dispatch resolves them.
+			// global call arrives here and this dispatch resolves them.
 			if v, ok := scopeBuiltin(fallback, scope); ok {
 				return v, nil
 			}
@@ -436,7 +436,7 @@ func funcGetArgs(scope *Scope) []any {
 func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 	return func(name string) func(any) {
 		// A shim takes the setter and may call it after this expression
-		// finishes, so it binds the scope value and not the reference.
+		// finishes and it binds the scope value and not the reference.
 		scope := ref.scope
 		return func(v any) { scope.Set(name, v) }
 	}
@@ -447,9 +447,13 @@ func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any, error) {
 	return func(class, name string) (any, error) {
 		scope := ref.scope
-		class = resolveClassName(class, scope)
+		resolved, err := resolveClassName(class, scope)
+		if err != nil {
+			return nil, err
+		}
+		class = resolved
 		// `Class::class` is the class name itself. PHP resolves it at compile
-		// time, so the class need not exist, and composer's generated
+		// time and the class need not exist, and composer's generated
 		// autoloader relies on that.
 		if name == "class" {
 			return class, nil

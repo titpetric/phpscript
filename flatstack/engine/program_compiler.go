@@ -14,7 +14,7 @@ type loopContext struct {
 	// writeBack emits the instructions a by-reference foreach needs before
 	// control leaves its body: they copy the loop variable back into the
 	// element it came from. Every other loop leaves it nil. `break` and
-	// `return` leave without reaching the end of the body, so they emit it
+	// `return` leave without reaching the end of the body and they emit it
 	// too: a reference makes the element live, and PHP keeps a write made
 	// before the jump.
 	writeBack func() error
@@ -32,7 +32,7 @@ type compiler struct {
 	// statics maps a `static $x` name of the function under compilation to
 	// the constant-pool index of its declaring *model.StaticVar node.
 	// References after the declaration compile against the live bag and no
-	// frame slot, so a recursive call observes the caller's writes. It stays
+	// frame slot and a recursive call observes the caller's writes. It stays
 	// nil at top level and inside closures, where the compiler rejects the
 	// statement.
 	statics map[string]int
@@ -200,7 +200,7 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		// declarations are a no-op here, matching the interpreter.
 	case *model.InterfaceDecl:
 		// An interface is a contract checked by collectClasses. It declares no
-		// storage and no body, so it emits no code.
+		// storage and no body and it emits no code.
 	case *model.Include:
 		if err := c.include(node, path); err != nil {
 			return err
@@ -225,10 +225,10 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		} else {
 			c.emit(instruction{op: opPushConst, a: c.constant(nil)})
 		}
-		// Returning leaves every enclosing loop at once, so each by-reference
+		// Returning leaves every enclosing loop at once and each by-reference
 		// foreach on the way out writes its loop variable back first. The
 		// return value is already on the stack and each write-back is stack
-		// balanced, so it stays on top.
+		// balanced and it stays on top.
 		for i := len(c.loops) - 1; i >= 0; i-- {
 			if c.loops[i].writeBack == nil {
 				continue
@@ -266,7 +266,7 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 
 // collectClasses registers the classes a program declares, after holding every
 // one of them that declares `implements` to its contract. The check is the same
-// AST name comparison the interpreter runs in hoist, so a violated contract
+// AST name comparison the interpreter runs in hoist and a violated contract
 // fails on both backends and not on one of them; the caller turns the error
 // into the RuntimeException a script catches.
 func (c *compiler) collectClasses(prog *model.Program) error {
@@ -407,7 +407,10 @@ func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 	case *model.StaticProp:
 		// `self::$entries[$k] = $v`: the emitted code makes the static property
 		// an array and writes it back, then indexing vivifies below it.
-		class := c.resolveClass(node.Class)
+		class, err := c.resolveClass(node.Class)
+		if err != nil {
+			return err
+		}
 		c.emit(instruction{op: opStaticProp, name: class, extra: node.Name})
 		c.emit(instruction{op: opEnsureArray})
 		c.emit(instruction{op: opDup})
@@ -437,8 +440,8 @@ func (c *compiler) include(node *model.Include, path string) error {
 //
 // A clause that ran, and a body that completed, jump to the finally block. An
 // error no clause matched goes there too, after the VM parks it in a hidden
-// local, so the finally block runs before opRethrow resumes the search in the
-// enclosing try. That local is an ordinary slot, one per call frame, so a
+// local and the finally block runs before opRethrow resumes the search in the
+// enclosing try. That local is an ordinary slot, one per call frame and a
 // recursive call cannot see an outer frame's pending error.
 func (c *compiler) tryStmt(node *model.Try, path string) error {
 	if len(node.Catches) == 0 {
@@ -495,7 +498,7 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 
 	// A function body is its own control-flow scope: a loop around the
 	// declaration is not a loop this body can break out of or write back to.
-	// The body also sits outside any class, so `self::` resolves to nothing.
+	// The body also sits outside any class and `self::` resolves to nothing.
 	enclosing := c.loops
 	c.loops = nil
 	enclosingClass := c.class
@@ -616,7 +619,7 @@ func (c *compiler) forStmt(node *model.For, path string) error {
 
 // doWhileStmt lowers `do { ... } while (cond);`: the body precedes the
 // condition, and a truthy condition jumps back to the body's first
-// instruction, so the body runs at least once. continue lands on the
+// instruction and the body runs at least once. continue lands on the
 // condition check, break past the back-jump.
 func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 	startPC := len(c.program.code)
@@ -646,7 +649,7 @@ func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 // array("a" => $a, "b" => $b), with a name that is not set left out.
 //
 // The binding reads the caller's scope by name, which a flat frame has
-// erased into slots. The compiler still has both, so it writes the entries
+// erased into slots. The compiler still has both and it writes the entries
 // out, with no lookup at run time. Only literal names resolve that way;
 // anything else keeps the program with the interpreter.
 func (c *compiler) compactCall(node *model.Call, path string) error {
@@ -654,7 +657,7 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 		return unsupported(path, "compact() with no names")
 	}
 
-	// A function static lives in a bag and no slot, so a name that
+	// A function static lives in a bag and no slot and a name that
 	// resolves to one has nothing for either form to read.
 	for _, argument := range node.Args {
 		if literal, ok := model.UnwrapParenthesized(argument).(*model.Lit); ok {
@@ -688,7 +691,7 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 
 // unsetStmt lowers `unset($a, $b[$k])`. It clears a local in place and removes
 // an array entry through the host. Property and static-property targets have
-// no instruction yet, so a program using one falls back to the interpreter.
+// no instruction yet and a program using one falls back to the interpreter.
 func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 	for i, target := range node.Targets {
 		targetPath := fmt.Sprintf("%s.target[%d]", path, i)
@@ -713,7 +716,7 @@ func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 			}
 			// Removing from a native slice answers a shorter one, which has
 			// to go back where the base came from. A local is the only lvalue
-			// the stack still knows at that point, so any other base keeps
+			// the stack still knows at that point and any other base keeps
 			// the program with the interpreter and drops no
 			// replacement on the floor.
 			slot := -1
@@ -801,7 +804,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 		return err
 	}
 
-	// Falling off the end of the body and `continue` both resume the loop, so
+	// Falling off the end of the body and `continue` both resume the loop and
 	// they share one write-back.
 	continuePC := len(c.program.code)
 	if writeBack != nil {
@@ -812,7 +815,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	c.emit(instruction{op: opJump, target: nextPC})
 
 	// `break` leaves the loop, and needs its own write-back because it skips
-	// the one above. A by-value loop has none, so its breaks jump straight to
+	// the one above. A by-value loop has none and its breaks jump straight to
 	// the close and this block emits nothing.
 	breakPC := len(c.program.code)
 	if writeBack != nil {
@@ -845,7 +848,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 // storeTop consumes a value already on the operand stack and writes it to a
 // destructuring target. An index target runs its base and index once per
 // write. kind names the construct the target belongs to, "foreach" or
-// "list()", so a rejection reports the one the source actually contains.
+// "list()" and a rejection reports the one the source actually contains.
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
@@ -914,7 +917,11 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 	case *model.StaticProp:
 		// The operator travels through the constant pool: name and extra
 		// already carry the class and the property.
-		c.emit(instruction{op: opSetStaticProp, a: c.constant(operator), b: boolInt(keep), name: c.resolveClass(target.Class), extra: target.Name})
+		class, err := c.resolveClass(target.Class)
+		if err != nil {
+			return err
+		}
+		c.emit(instruction{op: opSetStaticProp, a: c.constant(operator), b: boolInt(keep), name: class, extra: target.Name})
 	case *model.ListExpr:
 		return c.listAssignment(target.Elems, keep, path)
 	case *model.ArrayLit:
@@ -1030,7 +1037,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	case *model.Call:
 		if node.FirstClass {
 			// `greet(...)` is the name as a value, resolved by the host the way a
-			// call resolves it, so a registered binding and a declared function
+			// call resolves it and a registered binding and a declared function
 			// both answer and the result is a Closure.
 			c.emit(instruction{op: opPushConst, a: c.constant(node.Name)})
 			c.emit(instruction{op: opCallable, name: node.Fallback})
@@ -1038,13 +1045,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		// func_get_args() reads the arguments of the call in flight. A compiled
 		// frame seeds its declared parameters into slots and keeps no argument
-		// list, so an argument past the last parameter is not in the frame at
+		// list and an argument past the last parameter is not in the frame at
 		// all; the whole program goes to the interpreter and answers
-		// an empty list. runner.ScopeBuiltins names it, and nothing else.
+		// an empty list. runner.ScopeBuiltins names it and no other package does.
 		//
 		// The first-class form above reads no frame and is not refused: the
 		// host resolves the name through the function table, which carries no
-		// scope builtin, so both engines report the same undefined function.
+		// scope builtin and both engines report the same undefined function.
 		if callNames(node, "func_get_args") {
 			return unsupported(path, "func_get_args()")
 		}
@@ -1143,8 +1150,12 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opInvoke, a: len(node.Args)})
 	case *model.StaticCall:
+		class, err := c.resolveClass(node.Class)
+		if err != nil {
+			return err
+		}
 		if node.FirstClass {
-			c.emit(instruction{op: opPushConst, a: c.constant(c.resolveClass(node.Class))})
+			c.emit(instruction{op: opPushConst, a: c.constant(class)})
 			if err := c.methodName(node.Method, node.MethodExpr, path); err != nil {
 				return err
 			}
@@ -1165,16 +1176,24 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 				return err
 			}
 		}
-		c.emit(instruction{op: opCallStatic, a: len(node.Args), b: dynamic, name: c.resolveClass(node.Class), extra: node.Method})
+		c.emit(instruction{op: opCallStatic, a: len(node.Args), b: dynamic, name: class, extra: node.Method})
 	case *model.StaticProp:
-		c.emit(instruction{op: opStaticProp, name: c.resolveClass(node.Class), extra: node.Name})
+		class, err := c.resolveClass(node.Class)
+		if err != nil {
+			return err
+		}
+		c.emit(instruction{op: opStaticProp, name: class, extra: node.Name})
 	case *model.PropAccess:
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
 		}
 		c.emit(instruction{op: opGetProperty, name: node.Name})
 	case *model.ClassConst:
-		c.emit(instruction{op: opClassConst, name: c.resolveClass(node.Class), extra: node.Name})
+		class, err := c.resolveClass(node.Class)
+		if err != nil {
+			return err
+		}
+		c.emit(instruction{op: opClassConst, name: class, extra: node.Name})
 	case *model.Cast:
 		if err := c.expr(node.X, path+".operand"); err != nil {
 			return err
@@ -1200,7 +1219,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 // left behind builds the callable value when control reaches it.
 //
 // The value is a func(...any) (any, error), the one shape Runtime.Callable
-// reduces every PHP callable to, so usort() and array_map() invoke a compiled
+// reduces every PHP callable to and usort() and array_map() invoke a compiled
 // closure without knowing which backend produced it.
 func (c *compiler) closure(node *model.Closure, path string) error {
 	def := closureDef{thisSlot: -1}
@@ -1230,7 +1249,7 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 	}
 	// A closure written in a method carries `$this` away with it, and a
 	// `static function` declares that it does not. The interpreter drops the
-	// class with the receiver, so `self::` in a static closure resolves the
+	// class with the receiver and `self::` in a static closure resolves the
 	// same way on both backends.
 	if !node.Static && c.class != "" {
 		def.thisSlot = c.slot("this")
@@ -1296,7 +1315,7 @@ func (c *compiler) incDec(node *model.Unary, path string) error {
 }
 
 // interp compiles an interpolated string literal as a concatenation.
-// opBinary "." applies PHP's string conversion to both operands, so an embedded
+// opBinary "." applies PHP's string conversion to both operands and an embedded
 // value becomes text the same way it does in a concatenation the source wrote
 // out. The empty leading run is what a literal holding one expression and
 // no surrounding text a string result.
@@ -1344,7 +1363,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		c.program.code[end].target = len(c.program.code)
 	case "instanceof":
 		// A bare class name on the right names the class, and no constant to look
-		// up, so the compiler emits it as a string.
+		// up and the compiler emits it as a string.
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}
@@ -1370,7 +1389,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 }
 
 // staticVar lowers `static $x [= expr][, $y ...];`. The bag is the same
-// per-statement storage the interpreter uses, fetched live from the host, so
+// per-statement storage the interpreter uses, fetched live from the host and
 // a recursive call sees the writes of the frame above it, and no copy.
 // The initializers run only on the pass that finds the bag unseeded, which is
 // once per function lifetime; after the statement, every reference to the
@@ -1412,18 +1431,21 @@ func (c *compiler) staticSlot(name string) (int, bool) {
 }
 
 // resolveClass collapses the contextual class names onto the class under
-// compilation. There is no inheritance in this tree, so `self`, `static` and
-// `parent` all name the enclosing class, exactly as the interpreter's
-// resolveClassName decides at run time. Outside a class body it returns the
-// name unchanged, so the host reports it the way the interpreter would.
-func (c *compiler) resolveClass(name string) string {
+// compilation. There is no inheritance in this tree and `self` and `static`
+// name the enclosing class, exactly as the interpreter's resolveClassName
+// decides at run time. `parent` names no class at all and the program is not
+// lowered and the interpreter reports the refusal. Outside a class body a
+// name comes back unchanged and the host reports it as the interpreter would.
+func (c *compiler) resolveClass(name string) (string, error) {
 	switch name {
-	case "self", "static", "parent":
+	case "self", "static":
 		if c.class != "" {
-			return c.class
+			return c.class, nil
 		}
+	case "parent":
+		return "", fmt.Errorf("flatstack: unsupported parent::, no inheritance at runtime")
 	}
-	return name
+	return name, nil
 }
 
 func unsupported(path, format string, args ...any) error {

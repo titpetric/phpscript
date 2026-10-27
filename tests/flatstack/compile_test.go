@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackCompilesConstructs pins the constructs that would otherwise drop a whole
 // program back to the compatibility interpreter. A fixture cannot tell a
-// bytecode run from a fallback that happened to agree, so every case asserts
+// bytecode run from a fallback that happened to agree, and every case asserts
 // Supports before it checks the output.
 func TestFlatstackCompilesConstructs(t *testing.T) {
 	t.Parallel()
@@ -28,14 +28,6 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 		{
 			name:   "static class constant",
 			source: `<?php class A { const X = "x"; function get() { return static::X; } } $a = new A(); echo $a->get();`,
-			want:   "x",
-		},
-		{
-			// php rejects parent with no parent class; the interpreter's
-			// resolveClassName collapses it to the current class, so this pins
-			// the two backends to each other and not to php.
-			name:   "parent class constant resolves to the enclosing class",
-			source: `<?php class A { const X = "x"; function get() { return parent::X; } } $a = new A(); echo $a->get();`,
 			want:   "x",
 		},
 		{
@@ -139,8 +131,8 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 
 // TestFlatstackClassConstOutsideClass pins the message a contextual class name
 // used outside a class body produces. The compiler leaves the name alone when
-// there is nothing to resolve it to, so the host reports it exactly as the
-// interpreter does, and invents no class.
+// no class resolves it; the host reports it exactly as the interpreter does and
+// invents no class.
 func TestFlatstackClassConstOutsideClass(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php class A { const X = 1; } echo self::X;`)
@@ -160,6 +152,20 @@ func TestFlatstackClassConstOutsideClass(t *testing.T) {
 	const want = "class constant self::X: unknown class"
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("error = %v, want one containing %q", err, want)
+	}
+}
+
+// TestFlatstackRefusesParent pins the contextual class name the compiler does
+// not lower. `parent` names no class without inheritance, and the program falls
+// back to the interpreter, which reports the refusal.
+func TestFlatstackRefusesParent(t *testing.T) {
+	t.Parallel()
+	program, err := parser.Parse(`<?php class A { const X = "x"; function get() { return parent::X; } } $a = new A(); echo $a->get();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err == nil {
+		t.Fatal("expected the program to be refused")
 	}
 }
 
@@ -204,7 +210,7 @@ func TestFlatstackDestructuringTargetKind(t *testing.T) {
 
 // TestFlatstackRejectsFuncGetArgs pins the one function call the compiler
 // refuses by name. A compiled frame seeds its declared parameters into slots and
-// keeps no argument list, so the call used to answer an empty one wherever it
+// keeps no argument list, and the call used to answer an empty one wherever it
 // appeared - in a function, a closure or a method - while the interpreter and
 // php answered the arguments. Refusing it sends the whole program to the
 // interpreter, which answers it.

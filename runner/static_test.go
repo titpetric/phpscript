@@ -10,37 +10,50 @@ import (
 // TestResolveClassName covers the contextual class names a static reference
 // accepts. `self` and `static` both name the class of the running method,
 // because there is no inheritance and late static binding resolves to the same
-// class; `parent` has nothing to resolve to. A leading separator comes off a
-// written name.
+// class. `parent` has no class behind it: extends builds nothing and the
+// reference fails. A leading separator comes off a written name.
 func TestResolveClassName(t *testing.T) {
 	t.Parallel()
 	inMethod := NewScope()
 	inMethod.Set("__class__", "Store")
 
 	for _, tc := range []struct {
-		name  string
-		class string
-		scope *Scope
-		want  string
+		name    string
+		class   string
+		scope   *Scope
+		want    string
+		wantErr bool
 	}{
-		{"self inside a method", "self", inMethod, "Store"},
-		{"static inside a method", "static", inMethod, "Store"},
-		{"parent inside a method", "parent", inMethod, "Store"},
-		{"self outside a method", "self", NewScope(), "self"},
-		{"self with no scope", "self", nil, "self"},
-		{"a written name", `\App\Store`, inMethod, "App\\Store"},
-		{"a plain name", "Store", inMethod, "Store"},
+		{"self inside a method", "self", inMethod, "Store", false},
+		{"static inside a method", "static", inMethod, "Store", false},
+		{"parent inside a method", "parent", inMethod, "", true},
+		{"parent with no scope", "parent", nil, "", true},
+		{"self outside a method", "self", NewScope(), "self", false},
+		{"self with no scope", "self", nil, "self", false},
+		{"a written name", `\App\Store`, inMethod, "App\\Store", false},
+		{"a plain name", "Store", inMethod, "Store", false},
 	} {
-		if got := resolveClassName(tc.class, tc.scope); got != tc.want {
+		got, err := resolveClassName(tc.class, tc.scope)
+		if tc.wantErr {
+			if err == nil {
+				t.Errorf("%s: resolveClassName() = %q, want an error", tc.name, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("%s: resolveClassName(): %v", tc.name, err)
+			continue
+		}
+		if got != tc.want {
 			t.Errorf("%s: resolveClassName() = %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }
 
 // TestClassDefaultScope covers the scope a class's declared defaults run in. A
-// default sits inside the class body, so `self::X` in one resolves to that
+// default sits inside the class body and `self::X` in one resolves to that
 // class; the scope holding the `new` knows nothing about it. __FILE__ and
-// __DIR__ cross from the caller, so a default naming either reads its
+// __DIR__ cross from the caller and a default naming either reads its
 // declaring file.
 func TestClassDefaultScope(t *testing.T) {
 	t.Parallel()
@@ -72,7 +85,7 @@ func TestClassDefaultScope(t *testing.T) {
 
 // TestStaticBag covers the live storage of a class's static properties, seeded
 // from the declared defaults on first access. One bag per class on the Runtime,
-// so composer's `self::$registeredLoaders` is the same storage every instance
+// and composer's `self::$registeredLoaders` is the same storage every instance
 // and every later static call reads.
 func TestStaticBag(t *testing.T) {
 	t.Parallel()
@@ -151,7 +164,7 @@ func TestStaticProp(t *testing.T) {
 
 // TestStaticVarBag covers the persistent storage of one `static $x` statement.
 // Named functions and methods share one bag per statement on the Runtime; a
-// closure frame carries its own table, so each closure value counts on its own.
+// closure frame carries its own table and each closure value counts on its own.
 // The second return reports whether the bag already held values, and keeps an
 // initializer from running twice.
 func TestStaticVarBag(t *testing.T) {
@@ -186,7 +199,7 @@ func TestStaticVarBag(t *testing.T) {
 
 // TestExecStaticVar covers `static $x = expr;`. The initializer runs only the
 // first time the declaring function executes the statement; every call after
-// that rebinds the name to the value the last call left behind, so a counter
+// that rebinds the name to the value the last call left behind and a counter
 // keeps counting.
 func TestExecStaticVar(t *testing.T) {
 	t.Parallel()
