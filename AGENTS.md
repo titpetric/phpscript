@@ -45,7 +45,7 @@ These are decisions. A prompt that proposes one of them gets the pointer to the 
 
 ## Checkouts
 
-This checkout tracks `main`. The sibling checkout at `../../phpscript-goplugins/phpscript` is the diverged `feat/go-plugins-poc` branch: flat fixture layout, a `plugins:` fixture key, `stdlib/ps` where this tree has `stdlib/core`, its own plugin contract in its `docs/reference/extensions/plugins.md`. Rules from one do not transfer to the other; check which tree you are in before applying either.
+This checkout tracks `main`. Pull with --rebase before starting work, rebase any PR work in flight.
 
 ## Git
 
