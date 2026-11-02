@@ -22,7 +22,7 @@ func TestRunListsPaths(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := run(&out, []string{dir}, false); err != nil {
+	if err := run(&out, []string{dir}, false, false, false); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{"Route", "Filename", "Classes", "GET /hello", "hello.php", "Greeter"} {
@@ -37,7 +37,7 @@ func TestRunListsPaths(t *testing.T) {
 func TestRunListsBindings(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	if err := run(&out, nil, true); err != nil {
+	if err := run(&out, nil, true, false, false); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{"| Kind", "| function |", "| class    |", "| constant |", "fnmatch", "glob"} {
@@ -93,7 +93,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = writer
-	runErr := Run([]string{dir}, false)
+	runErr := Run([]string{dir}, false, false, false)
 	writer.Close()
 	os.Stdout = saved
 	if runErr != nil {
@@ -117,7 +117,7 @@ func TestRun(t *testing.T) {
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	err := run(&out, []string{"."}, true)
+	err := run(&out, []string{"."}, true, false, false)
 	if err == nil {
 		t.Fatal("run returned nil error for --bindings with a path argument")
 	}
@@ -126,5 +126,45 @@ func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("wrote %q, want nothing", out.String())
+	}
+}
+
+// TestRunAPI covers --api: one table row per method, read from the parser.
+func TestRunAPI(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	source := "<?php\nnamespace App;\nclass Greeter {\n\t/** Says hello. */\n\tfunction hello(string $name): string {\n\t\treturn $name;\n\t}\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := run(&out, []string{dir}, false, true, false); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	for _, want := range []string{"| Class", "| Member", "| Signature", "| Doc", `App\Greeter`, "hello", "hello(string $name): string", "Says hello."} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output does not contain %q:\n%s", want, out.String())
+		}
+	}
+}
+
+// TestRunAPIJSON covers --api --json: the rows a template consumes.
+func TestRunAPIJSON(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	source := "<?php\nnamespace App;\nclass Greeter {\n\tfunction hello(): string {\n\t\treturn \"hi\";\n\t}\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := run(&out, []string{dir}, false, true, true); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	for _, want := range []string{`"class": "App\\Greeter"`, `"member": "hello"`, `"signature": "hello(): string"`} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output does not contain %q:\n%s", want, out.String())
+		}
 	}
 }

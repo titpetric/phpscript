@@ -15,9 +15,9 @@ import (
 
 // Row is one markdown table row.
 type Row struct {
-	Route    string // e.g. "GET /users/{id}", "@startup", or empty
-	Filename string // slash-separated path relative to the working directory
-	Classes  string // comma-separated FQNs, or empty
+	Route    string `json:"route"`    // e.g. "GET /users/{id}", "@startup", or empty
+	Filename string `json:"filename"` // slash-separated path relative to the working directory
+	Classes  string `json:"classes"`  // comma-separated FQNs, or empty
 }
 
 // Paths scans path arguments and returns inventory rows.
