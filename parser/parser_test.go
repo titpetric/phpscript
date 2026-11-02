@@ -944,3 +944,47 @@ func BenchmarkParse(b *testing.B) {
 		}
 	}
 }
+
+// TestParseDynamicProperty covers the two spellings of a property named by a
+// value: `$obj->$name` and `$obj->{$expr}`. Both are PropAccess with
+// NameExpr set, and the method spellings still parse as calls.
+func TestParseDynamicProperty(t *testing.T) {
+	t.Parallel()
+	prog := mustParse(t, `<?php
+$o->$name = 1;
+$o->{$expr} = 2;
+$x = $o->$name;
+$y = $o->{$a["k"]};
+$o->$m();
+$o->{$m["call"]}();
+`)
+	cases := []int{0, 1, 2, 3, 4, 5}
+	for _, i := range cases {
+		switch stmt := prog.Stmts[i].(type) {
+		case *model.Assign:
+			target := stmt.Target
+			if i >= 2 && i <= 3 {
+				target = stmt.Value
+			}
+			prop, ok := target.(*model.PropAccess)
+			if !ok {
+				t.Errorf("stmt %d target = %T, want *model.PropAccess", i, target)
+				continue
+			}
+			if prop.NameExpr == nil {
+				t.Errorf("stmt %d NameExpr is nil, want the dynamic name", i)
+			}
+		case *model.ExprStmt:
+			call, ok := stmt.X.(*model.MethodCall)
+			if !ok {
+				t.Errorf("stmt %d = %T, want *model.MethodCall", i, stmt.X)
+				continue
+			}
+			if call.MethodExpr == nil {
+				t.Errorf("stmt %d MethodExpr is nil, want the dynamic method", i)
+			}
+		default:
+			t.Errorf("stmt %d = %T, want *model.Assign or *model.ExprStmt", i, prog.Stmts[i])
+		}
+	}
+}

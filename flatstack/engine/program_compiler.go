@@ -399,6 +399,9 @@ func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 		c.emit(instruction{op: opVivifyIndex})
 		return nil
 	case *model.PropAccess:
+		if node.NameExpr != nil {
+			return unsupported(path, "dynamic property name")
+		}
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
 		}
@@ -706,6 +709,9 @@ func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 			}
 			c.emit(instruction{op: opUnsetLocal, a: c.slot(t.Name)})
 		case *model.PropAccess:
+			if t.NameExpr != nil {
+				return unsupported(targetPath, "dynamic property name")
+			}
 			if err := c.expr(t.Base, targetPath+".base"); err != nil {
 				return err
 			}
@@ -869,6 +875,9 @@ func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 		}
 		c.emit(instruction{op: opSetIndex, name: "="})
 	case *model.PropAccess:
+		if target.NameExpr != nil {
+			return unsupported(path, "dynamic property name")
+		}
 		// opSetProperty pops the receiver and then the value, the order the
 		// *model.PropAccess branch of assignment emits.
 		if err := c.expr(target.Base, path+".base"); err != nil {
@@ -910,6 +919,9 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 		}
 		c.emit(instruction{op: opSetIndex, b: boolInt(appendValue), c: boolInt(keep), name: operator})
 	case *model.PropAccess:
+		if target.NameExpr != nil {
+			return unsupported(path, "dynamic property name")
+		}
 		if err := c.expr(target.Base, path+".target.base"); err != nil {
 			return err
 		}
@@ -1184,6 +1196,9 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opStaticProp, name: class, extra: node.Name})
 	case *model.PropAccess:
+		if node.NameExpr != nil {
+			return unsupported(path, "dynamic property name")
+		}
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
 		}
@@ -1293,6 +1308,9 @@ func (c *compiler) incDec(node *model.Unary, path string) error {
 		}
 		c.emit(instruction{op: opIncDecLocal, a: c.slot(target.Name), b: boolInt(node.Postfix), name: node.Op})
 	case *model.PropAccess:
+		if target.NameExpr != nil {
+			return unsupported(path, "dynamic property name")
+		}
 		if err := c.expr(target.Base, path+".base"); err != nil {
 			return err
 		}

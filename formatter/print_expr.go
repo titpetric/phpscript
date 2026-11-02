@@ -40,6 +40,12 @@ func (p *printer) expr(e model.Expr) string {
 		}
 		return p.expr(n.Base) + "[" + p.expr(n.Index) + "]"
 	case *model.PropAccess:
+		if n.NameExpr != nil {
+			if v, ok := model.UnwrapParenthesized(n.NameExpr).(*model.Var); ok {
+				return p.expr(n.Base) + "->$" + v.Name
+			}
+			return p.expr(n.Base) + "->{" + p.expr(n.NameExpr) + "}"
+		}
 		return p.expr(n.Base) + "->" + n.Name
 	case *model.Call:
 		name := n.Name

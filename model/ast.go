@@ -522,10 +522,13 @@ type Index struct {
 }
 
 // PropAccess is field access. The README allows both `$obj->field` and the new
-// `obj.field` notation; both parse to this node.
+// `obj.field` notation; both parse to this node. NameExpr carries the property
+// name when a variable or a braced expression supplies it (`$obj->$name`,
+// `$obj->{$expr}`); Name is empty then.
 type PropAccess struct {
-	Base Expr
-	Name string
+	Base     Expr
+	Name     string
+	NameExpr Expr
 }
 
 // Call is a free-function call: `name(args...)`.

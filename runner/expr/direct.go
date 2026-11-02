@@ -178,7 +178,11 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		if err != nil {
 			return nil, err
 		}
-		return baseCall("__get", []closure{base, constClosure(n.Name)}), nil
+		name, err := dc.nameOrExpr(n.Name, n.NameExpr)
+		if err != nil {
+			return nil, err
+		}
+		return baseCall("__get", []closure{base, name}), nil
 
 	case *model.Call:
 		return dc.compileCall(n)

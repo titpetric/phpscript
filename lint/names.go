@@ -386,6 +386,7 @@ func (w *astWalker) one(e model.Expr) {
 		w.one(n.Index)
 	case *model.PropAccess:
 		w.one(n.Base)
+		w.one(n.NameExpr)
 	case *model.Call:
 		w.exprs(n.Args)
 	case *model.MethodCall:

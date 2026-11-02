@@ -53,15 +53,19 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
+		name, err := rt.propName(tgt, scope)
+		if err != nil {
+			return err
+		}
 		if obj, ok := base.(*model.Object); ok {
-			next, err := applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
+			next, err := applyAssignOp(n.Op, obj.Props[name], rhs)
 			if err != nil {
 				return err
 			}
-			obj.SetProp(tgt.Name, next)
+			obj.SetProp(name, next)
 			return nil
 		}
-		return assignGoField(base, tgt.Name, func(current any) (any, error) {
+		return assignGoField(base, name, func(current any) (any, error) {
 			return applyAssignOp(n.Op, current, rhs)
 		})
 
@@ -160,6 +164,19 @@ func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
 	return created, nil
 }
 
+// propName resolves the property name of an access: the source identifier, or
+// the value `$obj->$name` / `$obj->{expr}` supplies.
+func (rt *Runtime) propName(tgt *model.PropAccess, scope *Scope) (string, error) {
+	if tgt.NameExpr == nil {
+		return tgt.Name, nil
+	}
+	v, err := rt.Eval(tgt.NameExpr, scope)
+	if err != nil {
+		return "", err
+	}
+	return phpString(v), nil
+}
+
 // assignable reports whether e names storage a write can reach.
 func assignable(e model.Expr) bool {
 	switch model.UnwrapParenthesized(e).(type) {
@@ -182,8 +199,12 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 			if err != nil {
 				return err
 			}
+			name, err := rt.propName(tgt, scope)
+			if err != nil {
+				return err
+			}
 			if obj, ok := base.(*model.Object); ok {
-				obj.DeleteProp(tgt.Name)
+				obj.DeleteProp(name)
 			}
 		case *model.StaticProp:
 			bag, err := rt.staticStorage(tgt.Class, scope)
@@ -235,11 +256,15 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		name, err := rt.propName(tgt, scope)
+		if err != nil {
+			return nil, err
+		}
 		obj, ok := base.(*model.Object)
 		if !ok {
-			return nil, fmt.Errorf("assign: %q is not an object property", tgt.Name)
+			return nil, fmt.Errorf("assign: %q is not an object property", name)
 		}
-		return obj.Props[tgt.Name], nil
+		return obj.Props[name], nil
 	case *model.StaticProp:
 		bag, err := rt.staticStorage(tgt.Class, scope)
 		if err != nil {
@@ -281,11 +306,15 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		if err != nil {
 			return err
 		}
+		name, err := rt.propName(tgt, scope)
+		if err != nil {
+			return err
+		}
 		if obj, ok := base.(*model.Object); ok {
-			obj.SetProp(tgt.Name, val)
+			obj.SetProp(name, val)
 			return nil
 		}
-		return assignGoField(base, tgt.Name, func(any) (any, error) { return val, nil })
+		return assignGoField(base, name, func(any) (any, error) { return val, nil })
 	case *model.StaticProp:
 		bag, err := rt.staticStorage(tgt.Class, scope)
 		if err != nil {
