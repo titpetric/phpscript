@@ -32,10 +32,12 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(dc.exprs) > 0 && len(dc.vars) > 0 {
-		// A marked sub-expression writes the scope mid-evaluation, and a
-		// slot snapshot taken before the run would miss it: $w++ . $w must
-		// read the incremented $w. Recompile with variables read live
+	if (len(dc.exprs) > 0 || dc.outParams) && len(dc.vars) > 0 {
+		// A marked sub-expression or a by-reference output argument writes
+		// the scope mid-evaluation, and a slot snapshot taken before the run
+		// would miss it: $w++ . $w must read the incremented $w, and the
+		// right operand of `preg_match(..., $m) && isset($m[1])` must see
+		// the matches the call wrote. Recompile with variables read live
 		// through the __var helper.
 		dc = &directCompiler{h: h, liveVars: true, slots: map[string]int{}}
 		if body, err = dc.compile(e); err != nil {
@@ -56,6 +58,10 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 type directCompiler struct {
 	h        *Helpers
 	liveVars bool
+	// outParams records that a builtin with by-reference output arguments
+	// was compiled. The setter writes the scope and a slot snapshot would
+	// hide that write from a later operand of the same expression.
+	outParams bool
 	slots    map[string]int
 	vars     []BoundVar
 	calls    []string

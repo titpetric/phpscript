@@ -292,6 +292,7 @@ func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 				// The transpiler also registers the variable itself; Eval
 				// resolving it keeps the two paths' bindings identical.
 				dc.bindVar(v.Name, false)
+				dc.outParams = true
 				args[i] = baseCall("__ref", []closure{constClosure(v.Name)})
 				continue
 			}
