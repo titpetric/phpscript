@@ -1669,7 +1669,7 @@ func repeatableExpr(e model.Expr) bool {
 	case *model.Index:
 		return repeatableExpr(n.Base) && repeatableExpr(n.Index)
 	case *model.PropAccess:
-		return repeatableExpr(n.Base)
+		return repeatableExpr(n.Base) && (n.NameExpr == nil || repeatableExpr(n.NameExpr))
 	case *model.StaticProp:
 		return true
 	case *model.ClassConst:

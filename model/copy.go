@@ -183,7 +183,7 @@ func exprAssignsTo(e Expr, root string) bool {
 	case *Index:
 		return exprAssignsTo(n.Base, root) || exprAssignsTo(n.Index, root)
 	case *PropAccess:
-		return exprAssignsTo(n.Base, root)
+		return exprAssignsTo(n.Base, root) || exprAssignsTo(n.NameExpr, root)
 	case *MethodCall:
 		return exprAssignsTo(n.Base, root) || exprsAssignTo(n.Args, root)
 	case *Call:

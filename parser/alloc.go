@@ -139,6 +139,14 @@ func (p *parser) newProp(base model.Expr, name string) *model.PropAccess {
 	return n
 }
 
+// newPropExpr is newProp for `$obj->$name` / `$obj->{$expr}`, where the
+// property name is a value rather than a source identifier.
+func (p *parser) newPropExpr(base, name model.Expr) *model.PropAccess {
+	n := p.propNodes.new()
+	n.Base, n.NameExpr = base, name
+	return n
+}
+
 func (p *parser) newMethodCall(base model.Expr, method string, args []model.Expr) *model.MethodCall {
 	n := p.methodNodes.new()
 	n.Base, n.Method, n.Args = base, method, args

@@ -175,6 +175,7 @@ func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
 		collectAssignExprs(n.Index, out)
 	case *model.PropAccess:
 		collectAssignExprs(n.Base, out)
+		collectAssignExprs(n.NameExpr, out)
 	case *model.MethodCall:
 		collectAssignExprs(n.Base, out)
 		collectAssignExprList(n.Args, out)

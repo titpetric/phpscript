@@ -285,13 +285,22 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				e = &model.MethodCall{Base: e, MethodExpr: &model.Var{Name: varName}, Args: args, FirstClass: firstClass}
 				continue
 			}
-			// `$obj->{expr}(...)` calls the method the expression names. The
-			// braces carry a name no plain variable can spell
-			// since PHP 7: `$obj->{$calls["read"]}()` is the method `$calls`
-			// holds, where the unbraced form would subscript a property.
+			// `$obj->$name` reads the property the variable names. An index
+			// after it subscripts the property, which is PHP 7's uniform
+			// variable syntax.
+			if p.cur().kind == tVar {
+				varName := p.next().val
+				e = p.newPropExpr(e, p.newVar(varName))
+				continue
+			}
+			// `$obj->{expr}(...)` calls the method the expression names and
+			// `$obj->{expr}` reads the property it names. The braces carry a
+			// name no plain variable can spell since PHP 7:
+			// `$obj->{$calls["read"]}()` is the method `$calls` holds, where
+			// the unbraced form would subscript a property.
 			if p.isOp("{") {
 				p.next()
-				method, err := p.parseExpr()
+				member, err := p.parseExpr()
 				if err != nil {
 					return nil, err
 				}
@@ -299,13 +308,14 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 					return nil, err
 				}
 				if !p.isOp("(") {
-					return nil, fmt.Errorf("line %d: expected %q after a braced member name", p.cur().line, "(")
+					e = p.newPropExpr(e, member)
+					continue
 				}
 				args, firstClass, err := p.parseCallArgs()
 				if err != nil {
 					return nil, err
 				}
-				e = &model.MethodCall{Base: e, MethodExpr: method, Args: args, FirstClass: firstClass}
+				e = &model.MethodCall{Base: e, MethodExpr: member, Args: args, FirstClass: firstClass}
 				continue
 			}
 			if p.cur().kind != tIdent {
