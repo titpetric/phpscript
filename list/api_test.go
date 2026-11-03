@@ -68,7 +68,7 @@ func TestAPIReportsMethods(t *testing.T) {
 }
 
 // TestAPIMarkdownHeadings covers the table the command prints: the four
-// columns the issue asks for, with an empty doc shown as <none>.
+// columns of the issue, with an empty doc shown as <none>.
 func TestAPIMarkdownHeadings(t *testing.T) {
 	out := list.APIMarkdown([]list.MethodRow{
 		{Class: `Task\Workspace`, Member: "byFolder", Signature: "byFolder(string $folder): ?Model\\Workspace", Doc: "One workspace by folder, or null."},
@@ -81,7 +81,7 @@ func TestAPIMarkdownHeadings(t *testing.T) {
 }
 
 // TestAPISkipsRefusedFile covers the fallback boundary: a file the parser
-// refuses contributes no rows rather than failing the whole listing.
+// refuses contributes no rows and the listing still succeeds.
 func TestAPISkipsRefusedFile(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "broken.php"), []byte("<?php class {"), 0o644); err != nil {

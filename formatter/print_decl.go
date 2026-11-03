@@ -323,7 +323,7 @@ func (p *printer) typeName(name string) string {
 	}
 	// A stored name equal to the namespace is an absolute reference: a
 	// relative bare name inside `namespace Task` qualifies to `Task\Task`,
-	// so `Task` here can only have been written `\Task`, and shortening it
+	// `Task` here can only come from `\Task`; shortening it
 	// would change which class the call names.
 	// An imported name prints as the file imported it. The parser resolves a
 	// use statement while parsing and by here the reference carries the full

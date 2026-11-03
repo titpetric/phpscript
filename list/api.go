@@ -21,7 +21,7 @@ type MethodRow struct {
 }
 
 // API scans path arguments and returns one row per method of every class and
-// interface the files declare. Interfaces are included because an `implements`
+// interface the files declare. The API includes interfaces because an `implements`
 // contract is part of the API a reader needs.
 func API(paths []string) ([]MethodRow, error) {
 	files, err := ExpandFiles(paths)
@@ -59,9 +59,8 @@ func APIFile(path string) ([]MethodRow, error) {
 }
 
 // collectAPIMethods walks the statement tree and appends the methods of every
-// class and interface it finds. The declaration order inside a file is kept;
-// sorting is left to the caller because a template usually wants the source
-// order.
+// class and interface it finds. It keeps the declaration order inside a file;
+// the caller sorts, because a template needs the source order.
 func collectAPIMethods(stmts []model.Stmt, spans map[model.Stmt]model.SourceSpan, lines []string, out *[]MethodRow) {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -111,7 +110,7 @@ func appendMethods(class string, methods []*model.FuncDecl, spans map[model.Stmt
 }
 
 // methodSignature renders `name(params): type`, with `static` ahead of the name
-// when the declaration is static. Visibility is left out: the inventory is an
+// when the declaration is static. It omits visibility: the inventory is an
 // API document, and a private method is an implementation detail a reader does
 // not need the modifier for.
 func methodSignature(m *model.FuncDecl) string {
@@ -164,7 +163,7 @@ func paramSignature(p model.Param) string {
 
 // defaultSignature renders a parameter default. The shapes a default takes in
 // practice are literals, constants, arrays and small arithmetic expressions;
-// a shape outside them contributes nothing rather than an invented spelling.
+// a shape outside them contributes nothing, never an invented spelling.
 func defaultSignature(e model.Expr) string {
 	switch n := model.UnwrapParenthesized(e).(type) {
 	case *model.Lit:
@@ -227,7 +226,7 @@ func defaultSignature(e model.Expr) string {
 // ends the search, as it does for the tools that render Go documentation.
 func docAbove(lines []string, line int) string {
 	// line is 1-based and lines is 0-based: the declaration is lines[line-1]
-	// and the line above it is lines[line-2].
+	// and lines[line-2] holds the line above.
 	i := line - 2
 	if i < 0 || i >= len(lines) {
 		return ""
