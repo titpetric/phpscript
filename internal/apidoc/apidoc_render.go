@@ -169,6 +169,11 @@ func (m Method) Signature() string {
 	return fmt.Sprintf("public function %s(%s): %s", m.Name, paramList(m.Params), m.Returns)
 }
 
+// Signature renders the property as a script would declare it.
+func (f Field) Signature() string {
+	return fmt.Sprintf("public %s $%s", f.Type, f.Name)
+}
+
 // paramList renders parameters in signature order.
 func paramList(params []Param) string {
 	parts := make([]string, 0, len(params))

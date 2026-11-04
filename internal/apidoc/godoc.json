@@ -1,0 +1,2348 @@
+{
+  "classes": {
+    "ArgumentCountError": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "ArithmeticError": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Auth\\Storage\\PasswordFile": {
+      "comment": [
+        "Auth\\Storage\\PasswordFile authenticates against an apache-format",
+        "password file of `username:hash` lines, $path inside the application",
+        "root; with no path it reads .htpasswd there. Lines may be bcrypt,",
+        "argon2, apache md5 or {SHA}; the constructor refuses anything else and",
+        "names the line."
+      ],
+      "params": [
+        "paths"
+      ]
+    },
+    "BadFunctionCallException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "BadMethodCallException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Database": {
+      "comment": [
+        "Database is the database client scripts query. $name selects a connection",
+        "registered with the host; the constructor throws when the name is not",
+        "registered or the pool fails to open."
+      ],
+      "params": [
+        "name"
+      ]
+    },
+    "Database\\Migrate": {
+      "comment": [
+        "Database\\Migrate loads a set of SQL migrations from the script filesystem",
+        "and runs them against the named connection.",
+        "",
+        "The first name is also the project name mig records under and two",
+        "schemas sharing one database keep separate records when they open",
+        "under separate names. A script that names no connection migrates",
+        "\"default\": the connection an unnamed one resolves to anyway.",
+        "",
+        "The constructor tries each name as \"\u003cname\u003e:migrate\" before \"\u003cname\u003e\" and a",
+        "deployment can point migrations at a user allowed to alter tables while",
+        "the script queries through one that is not, without the script naming",
+        "either. The project stays \"\u003cname\u003e\" whichever credential answered: what a",
+        "migration connects with is not what it records under. A \"\u003cname\u003e:migrate\"",
+        "credential cannot come from the PLATFORM_DB_\u003cNAME\u003e=\u003cdsn\u003e environment",
+        "form, because an environment variable name holds no colon; it arrives",
+        "through Database::register and a virtual host owning its own connections",
+        "already supplies them.",
+        "",
+        "A name longer than 16 characters fails the run with mig's ErrNoProject,",
+        "because 16 is the width of the project column."
+      ],
+      "params": [
+        "names"
+      ]
+    },
+    "DivisionByZeroError": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "DomainException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Error": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "ErrorException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Exception": {
+      "comment": [
+        "Exception is PHP's base exception class; the SPL exception and Error",
+        "classes are the same Go type carrying a different class name and a",
+        "catch clause filters on the name and not on a subclass relation."
+      ],
+      "params": [
+        "message",
+        "code"
+      ]
+    },
+    "HTTP\\Client": {
+      "comment": [
+        "HTTP\\Client sends requests, one at a time with send() or all at once with",
+        "parallel(). It takes its settings as an associative array, and with no",
+        "argument builds a client with a 30 second timeout that follows redirects."
+      ],
+      "params": [
+        "options"
+      ]
+    },
+    "HTTP\\Mux": {
+      "comment": [
+        "HTTP\\Mux routes requests to the PHP functions that answer them. The mux is",
+        "net/http's ServeMux and $mux-\u003ehandle(\"GET /users/{id}\", $fn) takes the",
+        "patterns Go takes, and it calls a handler with the response writer and the",
+        "request themselves."
+      ]
+    },
+    "HTTP\\Request": {
+      "comment": [
+        "HTTP\\Request is one outbound request, a net/http request and a script",
+        "reads and writes it the way Go does: $request-\u003emethod, $request-\u003ehost,",
+        "$request-\u003eurl-\u003epath, and $request-\u003eheader-\u003eset($name, $value). Building one",
+        "sends nothing; a client does that with $client-\u003esend($request)."
+      ],
+      "params": [
+        "method",
+        "url",
+        "body"
+      ]
+    },
+    "HTTP\\Server": {
+      "comment": [
+        "HTTP\\Server listens on $addr and answers through $handler, an HTTP\\Mux or",
+        "anything else that answers a request; $workers bounds how many requests the",
+        "server answers at once and defaults to the number of cores.",
+        "$server-\u003elisten() binds and returns the address, $server-\u003ewait() blocks",
+        "until the script runs out of time, and $server-\u003eshutdown() stops it,",
+        "letting what is in flight finish."
+      ],
+      "params": [
+        "addr",
+        "handler",
+        "workers"
+      ]
+    },
+    "InvalidArgumentException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "JSON\\Decoder": {
+      "comment": [
+        "JSON\\Decoder returns a decoder reading from $stream.",
+        "",
+        "UseNumber is on, as in json_decode(): without it Go reads every number as a",
+        "float, and the 7 in a document would come back as 7.0. With it a whole",
+        "number is an int and only a fractional one is a float, as php",
+        "answers and what a row written back out has to preserve."
+      ],
+      "params": [
+        "stream"
+      ]
+    },
+    "JSON\\Encoder": {
+      "comment": [
+        "The streaming pair. json_encode() and json_decode() work on a whole",
+        "string, which means holding the whole document; these work on a stream,",
+        "as a request body and a response are.",
+        "`new JSON\\Decoder(fopen(\"php://input\", \"r\"))` reads a POST body without a",
+        "string of it existing first, and an encoder over php://output writes the",
+        "response as the script builds it. Both take the io.Reader or io.Writer",
+        "they wrap and any handle fopen() returns works, and so do STDIN and",
+        "STDOUT."
+      ],
+      "params": [
+        "stream"
+      ]
+    },
+    "JsonException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "LengthException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "LogicException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Mail": {
+      "comment": [
+        "Mail sends through one of the mail servers the host configured,",
+        "selected by $name; `new Mail` selects \"default\". The credentials stay",
+        "with the host: a script names a server and never spells, or reads back,",
+        "a host, a username or a password. The constructor throws when $name is",
+        "not a configured server.",
+        "",
+        "\t$mail = new Mail;              // the \"default\" server",
+        "\t$mail = new Mail(\"marketing\"); // a server the host named",
+        "\t$mail-\u003esend(\"hello@example.com\", \"Subject\", \"Body\");",
+        "\t$mail-\u003esend(\"hello@example.com\", \"Subject\", \"Body\", \"\u003cp\u003eBody\u003c/p\u003e\", \"support@example.com\");"
+      ],
+      "params": [
+        "names"
+      ]
+    },
+    "OutOfBoundsException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "OutOfRangeException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "OverflowException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "RangeException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Regexp\\Compile": {
+      "comment": [
+        "Regexp\\Compile compiles $expr as an RE2 expression and throws when it",
+        "does not parse; the value it builds carries every method Go's",
+        "regexp.Regexp has."
+      ],
+      "params": [
+        "expr"
+      ]
+    },
+    "Regexp\\CompilePOSIX": {
+      "comment": [
+        "Regexp\\CompilePOSIX compiles $expr as POSIX ERE, where a match is the",
+        "leftmost-longest one and not the leftmost one Perl syntax finds."
+      ],
+      "params": [
+        "expr"
+      ]
+    },
+    "RuntimeException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "Session\\Manager": {
+      "comment": [
+        "Session\\Manager starts, reads and validates the request's session",
+        "against the given $storage, and logs a user in against the given",
+        "$users. With no arguments it takes disk storage and the application's",
+        "own .htpasswd and `new Session\\Manager` is a working login.",
+        "",
+        "The default store opens the file and defers the parse to the login",
+        "that reads it: a manager constructs on every request, and a page",
+        "that never calls login() does not pay for the account list."
+      ],
+      "params": [
+        "storage",
+        "users"
+      ]
+    },
+    "Session\\Storage\\Disk": {
+      "comment": [
+        "Session\\Storage\\Disk is session storage backed by files under",
+        "$storage_path, which resolves inside the application root and must be",
+        "writable; with no path it uses a directory of this application's own",
+        "under the operating system's temporary directory."
+      ],
+      "params": [
+        "storage_paths"
+      ]
+    },
+    "Session\\Storage\\Memory": {
+      "comment": [
+        "Session\\Storage\\Memory is session storage backed by process memory;",
+        "sessions vanish when the process exits."
+      ]
+    },
+    "SharedMemory": {
+      "comment": [
+        "SharedMemory returns the store the host bound into the runtime",
+        "context, and a store of its own when the host bound none. No command in",
+        "this tree binds one and `new SharedMemory` holds nothing across requests",
+        "until an embedding host adds SharedMemoryContext."
+      ]
+    },
+    "Time": {
+      "comment": [
+        "Time constructs the current instant in the runtime's default location."
+      ]
+    },
+    "Time\\Duration": {
+      "comment": [
+        "Time\\Duration constructs a Go duration from a duration string such as",
+        "\"30m\", or from an integer nanosecond count."
+      ],
+      "params": [
+        "value"
+      ]
+    },
+    "Time\\Location": {
+      "comment": [
+        "Time\\Location loads an IANA location such as \"Europe/Ljubljana\"."
+      ],
+      "params": [
+        "string"
+      ]
+    },
+    "TypeError": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "UnderflowException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "UnexpectedValueException": {
+      "params": [
+        "string",
+        "num"
+      ]
+    },
+    "ValueError": {
+      "params": [
+        "string",
+        "num"
+      ]
+    }
+  },
+  "types": {
+    "github.com/titpetric/phpscript/stdlib.Exception": {
+      "methods": {
+        "GetCode": {
+          "comment": [
+            "get_code returns the error code of the exception."
+          ]
+        },
+        "GetMessage": {
+          "comment": [
+            "get_message returns the error message of the exception."
+          ]
+        },
+        "ThrowableClass": {
+          "comment": [
+            "throwable_class returns the PHP class the exception declares,",
+            "implementing runner.Throwable."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/auth.PasswordFile": {
+      "methods": {
+        "Authenticate": {
+          "comment": [
+            "authenticate reports the user $key names when $secret is theirs.",
+            "",
+            "A missing user and a wrong password are one answer and nothing a caller can",
+            "see distinguishes them. What does distinguish them is time: a key the file",
+            "does not carry costs no derivation, and one it carries costs whatever that",
+            "line's format does. Closing that gap belongs to rate limiting, which bounds",
+            "what any timing is worth; see docs/reference/extensions/hashing.md."
+          ],
+          "params": [
+            "key",
+            "secret"
+          ]
+        },
+        "Exists": {
+          "comment": [
+            "exists reports whether there is a user database to ask: the password file",
+            "is there, and at least one of its lines is an account. A file of comments",
+            "and blank lines alone answers false and a login page says there are no",
+            "accounts where a form refusing every password would name no cause."
+          ]
+        },
+        "Users": {
+          "comment": [
+            "users is every record in the file, ordered by username.",
+            "",
+            "It carries no hash and a script may hold it: everything above here sees a",
+            "table of two columns, and the third column never leaves this package. A",
+            "caller writes the rows into a table of its own and rebuilds it when the file",
+            "changes."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/core.JSONDecoder": {
+      "methods": {
+        "Decode": {
+          "comment": [
+            "decode reads the next value from the stream, throwing at the end of it."
+          ]
+        },
+        "More": {
+          "comment": [
+            "more reports another value waiting in the stream, ending a decode loop."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/core.JSONEncoder": {
+      "methods": {
+        "Encode": {
+          "comment": [
+            "encode writes $value to the stream as JSON, followed by a newline.",
+            "",
+            "The newline is Go's, not php's: an Encoder writes a stream of values, and the",
+            "newline is what separates one from the next. A single value followed by a",
+            "newline is still valid JSON to any reader."
+          ],
+          "params": [
+            "value"
+          ]
+        },
+        "SetIndent": {
+          "comment": [
+            "set_indent is json.Encoder.SetIndent: the encoder breaks each value across",
+            "lines, $indent per level under $prefix, and two empty strings go back to one",
+            "line per value."
+          ],
+          "params": [
+            "prefix",
+            "indent"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/core.SharedMemory": {
+      "methods": {
+        "Clear": {
+          "comment": [
+            "clear resets all keys and counters."
+          ]
+        },
+        "Count": {
+          "comment": [
+            "count returns a counter as a formatted string."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "Delete": {
+          "comment": [
+            "delete removes a key from storage."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "Get": {
+          "comment": [
+            "get retrieves a string value by key, or returns empty string if missing."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "Has": {
+          "comment": [
+            "has checks if a key exists in data or counters."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "Incr": {
+          "comment": [
+            "incr atomically increments and returns a counter."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "Set": {
+          "comment": [
+            "set stores a string value."
+          ],
+          "params": [
+            "key",
+            "value"
+          ]
+        },
+        "Usage": {
+          "comment": [
+            "usage reports what the store holds: how many entries, how many counters, and",
+            "the bytes of the keys and values behind them.",
+            "",
+            "The byte figure is the strings themselves, not the map overhead around them,",
+            "which is the same basis memory_get_usage() reports a PHP value on."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/database.Database": {
+      "fields": {
+        "IsReadonly": [
+          "IsReadonly restricts the client to statements that only read. The flag",
+          "belongs to the client and not the connection: PHP reads and writes it as",
+          "`$db-\u003eis_readonly`, and it lives as long as the client does, which for a",
+          "served request is the request.",
+          "",
+          "It refuses insert(), replace() and update() outright, and refuses any",
+          "statement passed to query(), get() or get_all() that does not start with",
+          "a read-only keyword (see readOnlyStatements). Transactions, connection",
+          "pinning and the result accessors stay available, since a read-only",
+          "transaction is a read.",
+          "",
+          "The restriction is a boundary for the code holding this client, and no",
+          "sandbox around the script: the script that set it can unset it. A",
+          "connection that must not write belongs to a database user without the",
+          "grant to, and this marks the code that must not write."
+        ]
+      },
+      "methods": {
+        "Begin": {
+          "comment": [
+            "begin starts a transaction and opens the span measuring it. The span stays",
+            "open until Commit or Rollback and a transaction is one region in the trace",
+            "and no open marker and close marker to pair up."
+          ]
+        },
+        "Close": {
+          "comment": [
+            "close releases an exclusive connection back to the pool."
+          ]
+        },
+        "Commit": {
+          "comment": [
+            "commit commits the active transaction and ends its span."
+          ]
+        },
+        "Connect": {
+          "comment": [
+            "connect reserves an exclusive connection from the pool."
+          ]
+        },
+        "Get": {
+          "comment": [
+            "get returns the first result row, or false when the query matches no rows.",
+            "",
+            "A row is a native map: foreach walks it, $row[\"col\"] indexes it,",
+            "$row[\"extra\"] = 1 writes to it and unset($row[\"col\"]) takes a column out of",
+            "it. A map carries no column order and",
+            "`foreach ($row as $column =\u003e $value)` visits columns in arbitrary order;",
+            "a script that needs a stable order names its columns in the SELECT and",
+            "indexes them."
+          ],
+          "params": [
+            "query",
+            "args"
+          ]
+        },
+        "GetAll": {
+          "comment": [
+            "get_all returns all result rows. See Get for the row representation."
+          ],
+          "params": [
+            "query",
+            "args"
+          ]
+        },
+        "Insert": {
+          "comment": [
+            "insert inserts a dynamically typed named value."
+          ],
+          "params": [
+            "table",
+            "value"
+          ]
+        },
+        "InsertID": {
+          "comment": [
+            "insert_id returns the ID generated by the last insert."
+          ]
+        },
+        "Query": {
+          "comment": [
+            "query executes a statement with dynamically typed arguments."
+          ],
+          "params": [
+            "query",
+            "args"
+          ]
+        },
+        "Replace": {
+          "comment": [
+            "replace replaces a row using a dynamically typed named value."
+          ],
+          "params": [
+            "table",
+            "value"
+          ]
+        },
+        "Rollback": {
+          "comment": [
+            "rollback rolls back the active transaction and ends its span."
+          ]
+        },
+        "RowsAffected": {
+          "comment": [
+            "rows_affected returns the affected row count from the last write."
+          ]
+        },
+        "Update": {
+          "comment": [
+            "update updates a row using dynamically typed named values and key columns."
+          ],
+          "params": [
+            "table",
+            "value",
+            "key_columns"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/database.DatabaseMigrate": {
+      "methods": {
+        "Load": {
+          "comment": [
+            "load selects the migrations to run, as a glob against the runtime source",
+            "filesystem. Load itself opens no file: mig reads the files it applies, and a",
+            "pattern matching no file shows up as wrong only once Run looks.",
+            "",
+            "A script names its migrations relative to itself (\"./schema/*.up.sql\") and",
+            "Load joins the work directory in. What the pattern matched is what mig",
+            "records and a database migrated by the older binding - which recorded the",
+            "base name under no project - applies every file again."
+          ],
+          "params": [
+            "pattern"
+          ]
+        },
+        "Run": {
+          "comment": [
+            "run applies the loaded migrations. It opens one span and not one per file:",
+            "migrations run at startup, where what matters is how long the schema took and",
+            "whether it failed, with no row per statement."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/http.Client": {
+      "methods": {
+        "Get": {
+          "comment": [
+            "get sends a GET request to $url and returns the response."
+          ],
+          "params": [
+            "url"
+          ]
+        },
+        "Parallel": {
+          "comment": [
+            "parallel sends every request in $requests at once and returns the responses",
+            "under the same keys and the call takes as long as the slowest request rather",
+            "than the sum. $requests is an array of HTTP\\Request keyed by a name the",
+            "script chooses, each bounded by the client's timeout.",
+            "",
+            "One request failing does not fail the others and does not throw: that",
+            "response reports $response-\u003eok() as false and $response-\u003eerr() as the reason,",
+            "and a script sees every outcome. A throw means the argument is no array of",
+            "requests."
+          ],
+          "params": [
+            "requests"
+          ]
+        },
+        "Post": {
+          "comment": [
+            "post sends a POST request to $url with $body and returns the response."
+          ],
+          "params": [
+            "url",
+            "body"
+          ]
+        },
+        "Send": {
+          "comment": [
+            "send sends $request and returns the response. A transport failure or a",
+            "timeout throws; an HTTP error status does not and check $response-\u003estatus()."
+          ],
+          "params": [
+            "request"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/http.Mux": {
+      "methods": {
+        "Handle": {
+          "comment": [
+            "handle registers $handler for $pattern, which is ServeMux.HandleFunc's",
+            "pattern, with {name} segments the handler reads through $r-\u003epath_value($name).",
+            "",
+            "$handler is a callable: a closure, a method read off its receiver as",
+            "$this-\u003efnName, or the name of a declared function. The mux calls it with the",
+            "response writer and the request, what it echoes reaches the response, and a",
+            "throw becomes a 500. docs/use-cases/http-server.md is the contract."
+          ],
+          "params": [
+            "pattern",
+            "handler"
+          ]
+        },
+        "ServeHTTP": {
+          "comment": [
+            "serve_http answers one request, the script listening on nothing."
+          ],
+          "params": [
+            "w",
+            "r"
+          ]
+        },
+        "UsePoolForTest": {
+          "comment": [
+            "use_pool_for_test is usePool under a name a test can reach."
+          ],
+          "params": [
+            "pool"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/http.Server": {
+      "methods": {
+        "Addr": {
+          "comment": [
+            "addr answers the address the server bound, empty until it has listened."
+          ]
+        },
+        "Close": {
+          "comment": [
+            "close stops the server at once, dropping everything in flight, and returns",
+            "the error shutdown() swallows. To let a request in flight finish, a script",
+            "calls shutdown()."
+          ]
+        },
+        "Listen": {
+          "comment": [
+            "listen binds the address and starts answering, and returns the address it",
+            "bound. It does not block: the script goes on, and calls wait() when its work",
+            "completes."
+          ]
+        },
+        "Shutdown": {
+          "comment": [
+            "shutdown is http.Server.Shutdown with a second of grace, then Close.",
+            "",
+            "It returns no value and throws no error: a script writes it into a",
+            "register_shutdown_function callback, which runs when the script has already",
+            "ended and has nowhere to put a failure. Calling it twice, or without having",
+            "listened, is not an error either."
+          ]
+        },
+        "Wait": {
+          "comment": [
+            "wait blocks until the script runs out of time or its client goes away."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/mail.Mail": {
+      "methods": {
+        "Send": {
+          "comment": [
+            "send sends an email through the server this client names. $body is the plain",
+            "text; a non-empty $html travels beside it as the alternative a mail client",
+            "prefers, and a non-empty $reply_to, one address, is where a reply goes. It",
+            "throws, sending nothing, when $reply_to is not one address. The runtime",
+            "injects the context and a script calls",
+            "`$mail-\u003esend($to, $subject, $body, $html, $reply_to)`, the last two optional."
+          ],
+          "params": [
+            "recipient",
+            "subject",
+            "body",
+            "html",
+            "reply_to"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/session.Manager": {
+      "fields": {
+        "SessionCookieName": [
+          "SessionCookieName is the mutable name this package reads and writes the session",
+          "cookie. PHP may change it with `$session-\u003eSessionCookieName = \"sid\"`."
+        ]
+      },
+      "methods": {
+        "DeleteByUser": {
+          "comment": [
+            "delete_by_user signs one user out of every client, answering how many sessions",
+            "it took. It clears this manager's own session when the sweep took it and",
+            "valid() answers false in the same request the account went away in."
+          ],
+          "params": [
+            "user_id"
+          ]
+        },
+        "Destroy": {
+          "comment": [
+            "destroy ends the current session: it drops the data behind the cookie and",
+            "expires the cookie on the way out.",
+            "",
+            "A session that is not there is no error. Logging out twice, and logging out",
+            "of a session a prune already took, are the same request to the client, and",
+            "both end with no session and no cookie."
+          ]
+        },
+        "Get": {
+          "comment": [
+            "get returns the user ID stored for the current session cookie."
+          ]
+        },
+        "Login": {
+          "comment": [
+            "login authenticates $key and $secret against the user database and starts a",
+            "session for the user it names. It reports whether the credential held; a",
+            "wrong password is false and no error.",
+            "",
+            "The session carries the user's primary key and a row written during the",
+            "session references the user the way any other table does. The username",
+            "stays in the user database, and a caller that needs it reads it there."
+          ],
+          "params": [
+            "key",
+            "secret"
+          ]
+        },
+        "SetAuth": {
+          "comment": [
+            "set_auth replaces the user database login() authenticates against."
+          ],
+          "params": [
+            "users"
+          ]
+        },
+        "SetStorage": {
+          "comment": [
+            "set_storage replaces the storage sessions live in.",
+            "",
+            "This is the setter half of the constructor: a script that took the",
+            "manager's defaults and then needs memory storage says so here, and the rest",
+            "of the manager holds. It wraps the storage for tracing as the constructor",
+            "does and the trace names whichever backend answered."
+          ],
+          "params": [
+            "storage"
+          ]
+        },
+        "Start": {
+          "comment": [
+            "start creates a new session, stores userID, and stages its HTTP-only cookie."
+          ],
+          "params": [
+            "user_id"
+          ]
+        },
+        "Valid": {
+          "comment": [
+            "valid reports whether the request has a well-formed cookie whose session is",
+            "present in storage. Missing and malformed cookies are invalid, not errors."
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/session.StorageDisk": {
+      "methods": {
+        "Delete": {
+          "comment": [
+            "delete removes a session from disk."
+          ],
+          "params": [
+            "id"
+          ]
+        },
+        "DeleteByUser": {
+          "comment": [
+            "delete_by_user removes every session file holding userID, counting what it",
+            "took. The walk reads each session because the payload is the only place the",
+            "user appears: a file carries its session id as its name alone."
+          ],
+          "params": [
+            "user_id"
+          ]
+        },
+        "Load": {
+          "comment": [
+            "load retrieves a session from disk."
+          ],
+          "params": [
+            "id"
+          ]
+        },
+        "Prune": {
+          "comment": [
+            "prune removes sessions whose last save is older than maxAge."
+          ],
+          "params": [
+            "max_age"
+          ]
+        },
+        "Save": {
+          "comment": [
+            "save atomically writes a session to disk."
+          ],
+          "params": [
+            "id",
+            "data"
+          ]
+        }
+      }
+    },
+    "github.com/titpetric/phpscript/stdlib/session.StorageMemory": {
+      "methods": {
+        "Delete": {
+          "comment": [
+            "delete removes a session from memory."
+          ],
+          "params": [
+            "id"
+          ]
+        },
+        "DeleteByUser": {
+          "comment": [
+            "delete_by_user removes every session holding userID, counting what it took."
+          ],
+          "params": [
+            "user_id"
+          ]
+        },
+        "Load": {
+          "comment": [
+            "load retrieves a copy of a session's data."
+          ],
+          "params": [
+            "id"
+          ]
+        },
+        "Prune": {
+          "comment": [
+            "prune removes sessions whose last save is older than maxAge."
+          ],
+          "params": [
+            "max_age"
+          ]
+        },
+        "Save": {
+          "comment": [
+            "save stores a copy of the session data."
+          ],
+          "params": [
+            "id",
+            "data"
+          ]
+        }
+      }
+    },
+    "net/http.Request": {
+      "fields": {
+        "Body": [
+          "Body is the request's body.",
+          "",
+          "For client requests, a nil body means the request has no",
+          "body, such as a GET request. The HTTP Client's Transport",
+          "is responsible for calling the Close method.",
+          "",
+          "For server requests, the Request Body is always non-nil",
+          "but will return EOF immediately when no body is present.",
+          "The Server will close the request body. The ServeHTTP",
+          "Handler does not need to.",
+          "",
+          "Body must allow Read to be called concurrently with Close.",
+          "In particular, calling Close should unblock a Read waiting",
+          "for input."
+        ],
+        "Cancel": [
+          "Cancel is an optional channel whose closure indicates that the client",
+          "request should be regarded as canceled. Not all implementations of",
+          "RoundTripper may support Cancel.",
+          "",
+          "For server requests, this field is not applicable.",
+          "",
+          "Deprecated: Set the Request's context with NewRequestWithContext",
+          "instead. If a Request's Cancel field and context are both",
+          "set, it is undefined whether Cancel is respected."
+        ],
+        "Close": [
+          "Close indicates whether to close the connection after",
+          "replying to this request (for servers) or after sending this",
+          "request and reading its response (for clients).",
+          "",
+          "For server requests, the HTTP server handles this automatically",
+          "and this field is not needed by Handlers.",
+          "",
+          "For client requests, setting this field prevents re-use of",
+          "TCP connections between requests to the same hosts, as if",
+          "Transport.DisableKeepAlives were set."
+        ],
+        "ContentLength": [
+          "ContentLength records the length of the associated content.",
+          "The value -1 indicates that the length is unknown.",
+          "Values \u003e= 0 indicate that the given number of bytes may",
+          "be read from Body.",
+          "",
+          "For client requests, a value of 0 with a non-nil Body is",
+          "also treated as unknown."
+        ],
+        "Form": [
+          "Form contains the parsed form data, including both the URL",
+          "field's query parameters and the PATCH, POST, or PUT form data.",
+          "This field is only available after ParseForm is called.",
+          "The HTTP client ignores Form and uses Body instead."
+        ],
+        "GetBody": [
+          "GetBody defines an optional func to return a new copy of",
+          "Body. It is used for client requests when a redirect requires",
+          "reading the body more than once. Use of GetBody still",
+          "requires setting Body.",
+          "",
+          "For server requests, it is unused."
+        ],
+        "Header": [
+          "Header contains the request header fields either received",
+          "by the server or to be sent by the client.",
+          "",
+          "If a server received a request with header lines,",
+          "",
+          "\tHost: example.com",
+          "\taccept-encoding: gzip, deflate",
+          "\tAccept-Language: en-us",
+          "\tfOO: Bar",
+          "\tfoo: two",
+          "",
+          "then",
+          "",
+          "\tHeader = map[string][]string{",
+          "\t\t\"Accept-Encoding\": {\"gzip, deflate\"},",
+          "\t\t\"Accept-Language\": {\"en-us\"},",
+          "\t\t\"Foo\": {\"Bar\", \"two\"},",
+          "\t}",
+          "",
+          "For incoming requests, the Host header is promoted to the",
+          "Request.Host field and removed from the Header map.",
+          "",
+          "HTTP defines that header names are case-insensitive. The",
+          "request parser implements this by using CanonicalHeaderKey,",
+          "making the first character and any characters following a",
+          "hyphen uppercase and the rest lowercase.",
+          "",
+          "For client requests, certain headers such as Content-Length",
+          "and Connection are automatically written when needed and",
+          "values in Header may be ignored. See the documentation",
+          "for the Request.Write method."
+        ],
+        "Host": [
+          "For server requests, Host specifies the host on which the",
+          "URL is sought. For HTTP/1 (per RFC 7230, section 5.4), this",
+          "is either the value of the \"Host\" header or the host name",
+          "given in the URL itself. For HTTP/2, it is the value of the",
+          "\":authority\" pseudo-header field.",
+          "It may be of the form \"host:port\". For international domain",
+          "names, Host may be in Punycode or Unicode form. Use",
+          "golang.org/x/net/idna to convert it to either format if",
+          "needed.",
+          "To prevent DNS rebinding attacks, server Handlers should",
+          "validate that the Host header has a value for which the",
+          "Handler considers itself authoritative. The included",
+          "ServeMux supports patterns registered to particular host",
+          "names and thus protects its registered Handlers.",
+          "",
+          "For client requests, Host optionally overrides the Host",
+          "header to send. If empty, the Request.Write method uses",
+          "the value of URL.Host. Host may contain an international",
+          "domain name."
+        ],
+        "Method": [
+          "Method specifies the HTTP method (GET, POST, PUT, etc.).",
+          "For client requests, an empty string means GET."
+        ],
+        "MultipartForm": [
+          "MultipartForm is the parsed multipart form, including file uploads.",
+          "This field is only available after ParseMultipartForm is called.",
+          "The HTTP client ignores MultipartForm and uses Body instead."
+        ],
+        "Pattern": [
+          "Pattern is the [ServeMux] pattern that matched the request.",
+          "It is empty if the request was not matched against a pattern."
+        ],
+        "PostForm": [
+          "PostForm contains the parsed form data from PATCH, POST",
+          "or PUT body parameters.",
+          "",
+          "This field is only available after ParseForm is called.",
+          "The HTTP client ignores PostForm and uses Body instead."
+        ],
+        "Proto": [
+          "The protocol version for incoming server requests.",
+          "",
+          "For client requests, these fields are ignored. The HTTP",
+          "client code always uses either HTTP/1.1 or HTTP/2.",
+          "See the docs on Transport for details."
+        ],
+        "RemoteAddr": [
+          "RemoteAddr allows HTTP servers and other software to record",
+          "the network address that sent the request, usually for",
+          "logging. This field is not filled in by ReadRequest and",
+          "has no defined format. The HTTP server in this package",
+          "sets RemoteAddr to an \"IP:port\" address before invoking a",
+          "handler.",
+          "This field is ignored by the HTTP client."
+        ],
+        "RequestURI": [
+          "RequestURI is the unmodified request-target of the",
+          "Request-Line (RFC 7230, Section 3.1.1) as sent by the client",
+          "to a server. Usually the URL field should be used instead.",
+          "It is an error to set this field in an HTTP client request."
+        ],
+        "Response": [
+          "Response is the redirect response which caused this request",
+          "to be created. This field is only populated during client",
+          "redirects."
+        ],
+        "TLS": [
+          "TLS allows HTTP servers and other software to record",
+          "information about the TLS connection on which the request",
+          "was received. This field is not filled in by ReadRequest.",
+          "The HTTP server in this package sets the field for",
+          "TLS-enabled connections before invoking a handler;",
+          "otherwise it leaves the field nil.",
+          "This field is ignored by the HTTP client."
+        ],
+        "Trailer": [
+          "Trailer specifies additional headers that are sent after the request",
+          "body.",
+          "",
+          "For server requests, the Trailer map initially contains only the",
+          "trailer keys, with nil values. (The client declares which trailers it",
+          "will later send.)  While the handler is reading from Body, it must",
+          "not reference Trailer. After reading from Body returns EOF, Trailer",
+          "can be read again and will contain non-nil values, if they were sent",
+          "by the client.",
+          "",
+          "For client requests, Trailer must be initialized to a map containing",
+          "the trailer keys to later send. The values may be nil or their final",
+          "values. The ContentLength must be 0 or -1, to send a chunked request.",
+          "After the HTTP request is sent the map values can be updated while",
+          "the request body is read. Once the body returns EOF, the caller must",
+          "not mutate Trailer.",
+          "",
+          "Writing a request whose Trailer contains a key with invalid bytes",
+          "(such as CR or LF), or such a value present when Write begins,",
+          "returns an error.",
+          "",
+          "Few HTTP clients, servers, or proxies support HTTP trailers."
+        ],
+        "TransferEncoding": [
+          "TransferEncoding lists the transfer encodings from outermost to",
+          "innermost. An empty list denotes the \"identity\" encoding.",
+          "TransferEncoding can usually be ignored; chunked encoding is",
+          "automatically added and removed as necessary when sending and",
+          "receiving requests."
+        ],
+        "URL": [
+          "URL specifies either the URI being requested (for server",
+          "requests) or the URL to access (for client requests).",
+          "",
+          "For server requests, the URL is parsed from the URI",
+          "supplied on the Request-Line as stored in RequestURI.  For",
+          "most requests, fields other than Path and RawQuery will be",
+          "empty. (See RFC 7230, Section 5.3)",
+          "",
+          "For client requests, the URL's Host specifies the server to",
+          "connect to, while the Request's Host field optionally",
+          "specifies the Host header value to send in the HTTP",
+          "request."
+        ]
+      },
+      "methods": {
+        "AddCookie": {
+          "comment": [
+            "add_cookie adds a cookie to the request. Per RFC 6265 section 5.4,",
+            "AddCookie does not attach more than one [Cookie] header field. That",
+            "means all cookies, if any, are written into the same line,",
+            "separated by semicolon.",
+            "AddCookie only sanitizes c's name and value, and does not sanitize",
+            "a Cookie header already present in the request."
+          ],
+          "params": [
+            "c"
+          ]
+        },
+        "BasicAuth": {
+          "comment": [
+            "basic_auth returns the username and password provided in the request's",
+            "Authorization header, if the request uses HTTP Basic Authentication.",
+            "See RFC 2617, Section 2."
+          ]
+        },
+        "Clone": {
+          "comment": [
+            "clone returns a deep copy of r with its context changed to ctx.",
+            "The provided ctx must be non-nil.",
+            "",
+            "Clone only makes a shallow copy of the Body field.",
+            "",
+            "For an outgoing client request, the context controls the entire",
+            "lifetime of a request and its response: obtaining a connection,",
+            "sending the request, and reading the response headers and body."
+          ]
+        },
+        "Context": {
+          "comment": [
+            "context returns the request's context. To change the context, use",
+            "[Request.Clone] or [Request.WithContext].",
+            "",
+            "The returned context is always non-nil; it defaults to the",
+            "background context.",
+            "",
+            "For outgoing client requests, the context controls cancellation.",
+            "",
+            "For incoming server requests, the context is canceled when the",
+            "client's connection closes, the request is canceled (with HTTP/2),",
+            "or when the ServeHTTP method returns."
+          ]
+        },
+        "Cookie": {
+          "comment": [
+            "cookie returns the named cookie provided in the request or",
+            "[ErrNoCookie] if not found.",
+            "If multiple cookies match the given name, only one cookie will",
+            "be returned."
+          ],
+          "params": [
+            "name"
+          ]
+        },
+        "Cookies": {
+          "comment": [
+            "cookies parses and returns the HTTP cookies sent with the request."
+          ]
+        },
+        "CookiesNamed": {
+          "comment": [
+            "cookies_named parses and returns the named HTTP cookies sent with the request",
+            "or an empty slice if none matched."
+          ],
+          "params": [
+            "name"
+          ]
+        },
+        "FormFile": {
+          "comment": [
+            "form_file returns the first file for the provided form key.",
+            "FormFile calls [Request.ParseMultipartForm] and [Request.ParseForm] if necessary."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "FormValue": {
+          "comment": [
+            "form_value returns the first value for the named component of the query.",
+            "The precedence order:",
+            " 1. application/x-www-form-urlencoded form body (POST, PUT, PATCH only)",
+            " 2. query parameters (always)",
+            " 3. multipart/form-data form body (always)",
+            "",
+            "FormValue calls [Request.ParseMultipartForm] and [Request.ParseForm]",
+            "if necessary and ignores any errors returned by these functions.",
+            "If key is not present, FormValue returns the empty string.",
+            "To access multiple values of the same key, call ParseForm and",
+            "then inspect [Request.Form] directly."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "MultipartReader": {
+          "comment": [
+            "multipart_reader returns a MIME multipart reader if this is a",
+            "multipart/form-data or a multipart/mixed POST request, else returns nil and an error.",
+            "Use this function instead of [Request.ParseMultipartForm] to",
+            "process the request body as a stream."
+          ]
+        },
+        "ParseForm": {
+          "comment": [
+            "parse_form populates r.Form and r.PostForm.",
+            "",
+            "For all requests, ParseForm parses the raw query from the URL and updates",
+            "r.Form.",
+            "",
+            "For POST, PUT, and PATCH requests, it also reads the request body, parses it",
+            "as a form and puts the results into both r.PostForm and r.Form. Request body",
+            "parameters take precedence over URL query string values in r.Form.",
+            "",
+            "If the request Body's size has not already been limited by [MaxBytesReader],",
+            "the size is capped at 10MB.",
+            "",
+            "For other HTTP methods, or when the Content-Type is not",
+            "application/x-www-form-urlencoded, the request Body is not read, and",
+            "r.PostForm is initialized to a non-nil, empty value.",
+            "",
+            "[Request.ParseMultipartForm] calls ParseForm automatically.",
+            "ParseForm is idempotent."
+          ]
+        },
+        "ParseMultipartForm": {
+          "comment": [
+            "parse_multipart_form parses a request body as multipart/form-data.",
+            "The whole request body is parsed and up to a total of maxMemory bytes of",
+            "its file parts are stored in memory, with the remainder stored on",
+            "disk in temporary files.",
+            "ParseMultipartForm calls [Request.ParseForm] if necessary.",
+            "If ParseForm returns an error, ParseMultipartForm returns it but also",
+            "continues parsing the request body.",
+            "After one call to ParseMultipartForm, subsequent calls have no effect."
+          ],
+          "params": [
+            "max_memory"
+          ]
+        },
+        "PathValue": {
+          "comment": [
+            "path_value returns the value for the named path wildcard in the [ServeMux] pattern",
+            "that matched the request.",
+            "It returns the empty string if the request was not matched against a pattern",
+            "or there is no such wildcard in the pattern.",
+            "",
+            "The value is unescaped. For example, if the pattern \"/b/{bucket}\" matches",
+            "the path \"/b/a%2fb\", PathValue(\"bucket\") returns \"a/b\"."
+          ],
+          "params": [
+            "name"
+          ]
+        },
+        "PostFormValue": {
+          "comment": [
+            "post_form_value returns the first value for the named component of the POST,",
+            "PUT, or PATCH request body. URL query parameters are ignored.",
+            "PostFormValue calls [Request.ParseMultipartForm] and [Request.ParseForm] if necessary and ignores",
+            "any errors returned by these functions.",
+            "If key is not present, PostFormValue returns the empty string."
+          ],
+          "params": [
+            "key"
+          ]
+        },
+        "ProtoAtLeast": {
+          "comment": [
+            "proto_at_least reports whether the HTTP protocol used",
+            "in the request is at least major.minor."
+          ],
+          "params": [
+            "major",
+            "minor"
+          ]
+        },
+        "Referer": {
+          "comment": [
+            "referer returns the referring URL, if sent in the request.",
+            "",
+            "Referer is misspelled as in the request itself, a mistake from the",
+            "earliest days of HTTP.  This value can also be fetched from the",
+            "[Header] map as Header[\"Referer\"]; the benefit of making it available",
+            "as a method is that the compiler can diagnose programs that use the",
+            "alternate (correct English) spelling req.Referrer() but cannot",
+            "diagnose programs that use Header[\"Referrer\"]."
+          ]
+        },
+        "SetBasicAuth": {
+          "comment": [
+            "set_basic_auth sets the request's Authorization header to use HTTP",
+            "Basic Authentication with the provided username and password.",
+            "",
+            "With HTTP Basic Authentication the provided username and password",
+            "are not encrypted. It should generally only be used in an HTTPS",
+            "request.",
+            "",
+            "The username may not contain a colon. Some protocols may impose",
+            "additional requirements on pre-escaping the username and",
+            "password. For instance, when used with OAuth2, both arguments must",
+            "be URL encoded first with [url.QueryEscape]."
+          ],
+          "params": [
+            "username",
+            "password"
+          ]
+        },
+        "SetPathValue": {
+          "comment": [
+            "set_path_value sets name to value, so that subsequent calls to r.PathValue(name)",
+            "return value.",
+            "It does not unescape value."
+          ],
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        "UserAgent": {
+          "comment": [
+            "user_agent returns the client's User-Agent, if sent in the request."
+          ]
+        },
+        "WithContext": {
+          "comment": [
+            "with_context returns a shallow copy of r with its context changed",
+            "to ctx. The provided ctx must be non-nil.",
+            "",
+            "For outgoing client request, the context controls the entire",
+            "lifetime of a request and its response: obtaining a connection,",
+            "sending the request, and reading the response headers and body.",
+            "",
+            "To create a new request with a context, use [NewRequestWithContext].",
+            "To make a deep copy of a request with a new context, use [Request.Clone]."
+          ]
+        },
+        "Write": {
+          "comment": [
+            "write writes an HTTP/1.1 request, which is the header and body, in wire format.",
+            "This method consults the following fields of the request:",
+            "",
+            "\tHost",
+            "\tURL",
+            "\tMethod (defaults to \"GET\")",
+            "\tHeader",
+            "\tContentLength",
+            "\tTransferEncoding",
+            "\tBody",
+            "",
+            "If Body is present, Content-Length is \u003c= 0 and [Request.TransferEncoding]",
+            "hasn't been set to \"identity\", Write adds \"Transfer-Encoding:",
+            "chunked\" to the header. Body is closed after it is sent.",
+            "",
+            "Header values for Host, Content-Length, Transfer-Encoding,",
+            "and Trailer are not used; these are derived from other Request fields.",
+            "If the Header does not contain a User-Agent value, Write uses",
+            "\"Go-http-client/1.1\"."
+          ],
+          "params": [
+            "w"
+          ]
+        },
+        "WriteProxy": {
+          "comment": [
+            "write_proxy is like [Request.Write] but writes the request in the form",
+            "expected by an HTTP proxy. In particular, [Request.WriteProxy] writes the",
+            "initial Request-URI line of the request with an absolute URI, per",
+            "section 5.3 of RFC 7230, including the scheme and host.",
+            "In either case, WriteProxy also writes a Host header, using",
+            "either r.Host or r.URL.Host."
+          ],
+          "params": [
+            "w"
+          ]
+        }
+      }
+    },
+    "regexp.Regexp": {
+      "methods": {
+        "AppendText": {
+          "comment": [
+            "append_text implements [encoding.TextAppender]. The output",
+            "matches that of calling the [Regexp.String] method.",
+            "",
+            "Note that the output is lossy in some cases: This method does not indicate",
+            "POSIX regular expressions (i.e. those compiled by calling [CompilePOSIX]), or",
+            "those for which the [Regexp.Longest] method has been called."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "Copy": {
+          "comment": [
+            "copy returns a new [Regexp] object copied from re.",
+            "Calling [Regexp.Longest] on one copy does not affect another.",
+            "",
+            "Deprecated: In earlier releases, when using a [Regexp] in multiple goroutines,",
+            "giving each goroutine its own copy helped to avoid lock contention.",
+            "As of Go 1.12, using Copy is no longer necessary to avoid lock contention.",
+            "Copy may still be appropriate if the reason for its use is to make",
+            "two copies with different [Regexp.Longest] settings."
+          ]
+        },
+        "Expand": {
+          "comment": [
+            "expand appends template to dst and returns the result; during the",
+            "append, Expand replaces variables in the template with corresponding",
+            "matches drawn from src. The match slice should have been returned by",
+            "[Regexp.FindSubmatchIndex].",
+            "",
+            "In the template, a variable is denoted by a substring of the form",
+            "$name or ${name}, where name is a non-empty sequence of letters,",
+            "digits, and underscores. A purely numeric name like $1 refers to",
+            "the submatch with the corresponding index; other names refer to",
+            "capturing parentheses named with the (?P\u003cname\u003e...) syntax. A",
+            "reference to an out of range or unmatched index or a name that is not",
+            "present in the regular expression is replaced with an empty slice.",
+            "",
+            "In the $name form, name is taken to be as long as possible: $1x is",
+            "equivalent to ${1x}, not ${1}x, and, $10 is equivalent to ${10}, not ${1}0.",
+            "",
+            "To insert a literal $ in the output, use $$ in the template."
+          ],
+          "params": [
+            "dst",
+            "template",
+            "src",
+            "match"
+          ]
+        },
+        "ExpandString": {
+          "comment": [
+            "expand_string is like [Regexp.Expand] but the template and source are strings.",
+            "It appends to and returns a byte slice in order to give the calling",
+            "code control over allocation."
+          ],
+          "params": [
+            "dst",
+            "template",
+            "src",
+            "match"
+          ]
+        },
+        "Find": {
+          "comment": [
+            "find returns the text of the leftmost match for re in b.",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "FindAll": {
+          "comment": [
+            "find_all returns all the matches for re in b.",
+            "If n \u003e= 0, FindAll returns no more than n matches.",
+            "See [Regexp.All] for the equivalent iterator form."
+          ],
+          "params": [
+            "b",
+            "n"
+          ]
+        },
+        "FindAllIndex": {
+          "comment": [
+            "find_all_index returns the locations of all matches for re in b.",
+            "If n \u003e= 0, FindAllIndex returns no more than n matches.",
+            "See [Regexp.AllIndex] for the equivalent iterator form."
+          ],
+          "params": [
+            "b",
+            "n"
+          ]
+        },
+        "FindAllString": {
+          "comment": [
+            "find_all_string returns all the matches for re in s.",
+            "If n \u003e= 0, FindAllString returns no more than n matches.",
+            "See [Regexp.AllString] for the equivalent iterator form."
+          ],
+          "params": [
+            "s",
+            "n"
+          ]
+        },
+        "FindAllStringIndex": {
+          "comment": [
+            "find_all_string_index returns the locations of all matches for re in s.",
+            "If n \u003e= 0, FindAllStringIndex returns no more than n matches.",
+            "See [Regexp.AllStringIndex] for the equivalent iterator form."
+          ],
+          "params": [
+            "s",
+            "n"
+          ]
+        },
+        "FindAllStringSubmatch": {
+          "comment": [
+            "find_all_string_submatch returns the locations of all matches for re in s,",
+            "including submatch locations.",
+            "In each returned match m, m[0] is the overall match,",
+            "m[1] is the first submatch, and so on.",
+            "If n \u003e= 0, FindAllStringSubmatch returns no more than n matches.",
+            "See [Regexp.AllStringSubmatch] for the equivalent iterator form."
+          ],
+          "params": [
+            "s",
+            "n"
+          ]
+        },
+        "FindAllStringSubmatchIndex": {
+          "comment": [
+            "find_all_string_submatch_index returns the locations of all matches for re in s,",
+            "including submatch locations.",
+            "In each returned match m, the overall match is s[m[0]:m[1]],",
+            "the first submatch is s[m[2]:m[3]], and so on.",
+            "If n \u003e= 0, FindAllStringSubmatchIndex returns no more than n matches.",
+            "See [Regexp.AllStringSubmatchIndex] for the equivalent iterator form."
+          ],
+          "params": [
+            "s",
+            "n"
+          ]
+        },
+        "FindAllSubmatch": {
+          "comment": [
+            "find_all_submatch returns the locations of all matches for re in b,",
+            "including submatch locations.",
+            "In each returned match m, the overall match is m[0],",
+            "the first submatch is m[1], and so on.",
+            "If n \u003e= 0, FindAllSubmatch returns no more than n matches.",
+            "See [Regexp.AllSubmatch] for the equivalent iterator form."
+          ],
+          "params": [
+            "b",
+            "n"
+          ]
+        },
+        "FindAllSubmatchIndex": {
+          "comment": [
+            "find_all_submatch_index returns the locations of all matches for re in b,",
+            "including submatch locations.",
+            "In each returned match m, the overall match is b[m[0]:m[1]],",
+            "the first submatch is b[m[2]:m[3]], and so on.",
+            "If n \u003e= 0, FindAllSubmatchIndex returns no more than n matches.",
+            "See [Regexp.AllSubmatchIndex] for the equivalent iterator form."
+          ],
+          "params": [
+            "b",
+            "n"
+          ]
+        },
+        "FindIndex": {
+          "comment": [
+            "find_index returns the location of the leftmost match for re in b.",
+            "The match itself is at b[m[0]:m[1]].",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "FindReaderIndex": {
+          "comment": [
+            "find_reader_index returns the location of the leftmost match for re in r.",
+            "The match starts at byte index m[0] and ends just before byte index m[1].",
+            "The return value is nil for no match.",
+            "",
+            "FindReaderIndex may read arbitrarily far from r,",
+            "including reading beyond the returned match."
+          ],
+          "params": [
+            "r"
+          ]
+        },
+        "FindReaderSubmatchIndex": {
+          "comment": [
+            "find_reader_submatch_index returns the first match for re in r, including submatches.",
+            "The overall match is at byte index m[0] up to m[1],",
+            "the first submatch is at byte index m[2] up to m[3], and so on.",
+            "The return value is nil for no match.",
+            "",
+            "FindReaderSubmatchIndex may read arbitrarily far from r,",
+            "including reading beyond the returned match."
+          ],
+          "params": [
+            "r"
+          ]
+        },
+        "FindString": {
+          "comment": [
+            "find_string returns the text of the leftmost match for re in s.",
+            "The return value is the empty string both for an empty match and for no match.",
+            "To distinguish those two cases, use [Regexp.FindStringIndex] or [Regexp.FindStringSubmatch]."
+          ],
+          "params": [
+            "s"
+          ]
+        },
+        "FindStringIndex": {
+          "comment": [
+            "find_string_index returns the location of the leftmost match for re in s.",
+            "The match itself is at s[m[0]:m[1]].",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "s"
+          ]
+        },
+        "FindStringSubmatch": {
+          "comment": [
+            "find_string_submatch returns the first match for re in s, including submatches.",
+            "The overall match is s[0], the first submatch is s[1], and so on.",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "s"
+          ]
+        },
+        "FindStringSubmatchIndex": {
+          "comment": [
+            "find_string_submatch_index returns the first match for re in s, including submatches.",
+            "The overall match is s[m[0]:m[1]], the first submatch is s[m[2]:m[3]], and so on.",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "s"
+          ]
+        },
+        "FindSubmatch": {
+          "comment": [
+            "find_submatch returns the first match for re in b, including submatches.",
+            "The overall match is m[0], the first submatch is m[1], and so on.",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "FindSubmatchIndex": {
+          "comment": [
+            "find_submatch_index returns the first match for re in b, including submatches.",
+            "The overall match is b[m[0]:m[1]], the first submatch is b[m[2]:m[3]], and so on.",
+            "The return value is nil for no match."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "LiteralPrefix": {
+          "comment": [
+            "literal_prefix returns a literal string that must begin any match",
+            "of the regular expression re. It returns the boolean true if the",
+            "literal string comprises the entire regular expression."
+          ]
+        },
+        "Longest": {
+          "comment": [
+            "longest makes future searches prefer the leftmost-longest match.",
+            "That is, when matching against text, the regexp returns a match that",
+            "begins as early as possible in the input (leftmost), and among those",
+            "it chooses a match that is as long as possible.",
+            "This method modifies the [Regexp] and may not be called concurrently",
+            "with any other methods."
+          ]
+        },
+        "MarshalText": {
+          "comment": [
+            "marshal_text implements [encoding.TextMarshaler]. The output",
+            "matches that of calling the [Regexp.AppendText] method.",
+            "",
+            "See [Regexp.AppendText] for more information."
+          ]
+        },
+        "Match": {
+          "comment": [
+            "match reports whether the byte slice b",
+            "contains any match of the regular expression re."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "MatchReader": {
+          "comment": [
+            "match_reader reports whether the text returned by the [io.RuneReader]",
+            "contains any match of the regular expression re."
+          ],
+          "params": [
+            "r"
+          ]
+        },
+        "MatchString": {
+          "comment": [
+            "match_string reports whether the string s",
+            "contains any match of the regular expression re."
+          ],
+          "params": [
+            "s"
+          ]
+        },
+        "NumSubexp": {
+          "comment": [
+            "num_subexp returns the number of parenthesized subexpressions in this [Regexp]."
+          ]
+        },
+        "ReplaceAll": {
+          "comment": [
+            "replace_all returns a copy of src, replacing matches of the [Regexp]",
+            "with the replacement text repl.",
+            "Inside repl, $ signs are interpreted as in [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "ReplaceAllFunc": {
+          "comment": [
+            "replace_all_func returns a copy of src in which all matches of the",
+            "[Regexp] have been replaced by the return value of function repl applied",
+            "to the matched byte slice. The replacement returned by repl is substituted",
+            "directly, without using [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "ReplaceAllLiteral": {
+          "comment": [
+            "replace_all_literal returns a copy of src, replacing matches of the [Regexp]",
+            "with the replacement bytes repl. The replacement repl is substituted directly,",
+            "without using [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "ReplaceAllLiteralString": {
+          "comment": [
+            "replace_all_literal_string returns a copy of src, replacing matches of the [Regexp]",
+            "with the replacement string repl. The replacement repl is substituted directly,",
+            "without using [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "ReplaceAllString": {
+          "comment": [
+            "replace_all_string returns a copy of src, replacing matches of the [Regexp]",
+            "with the replacement string repl.",
+            "Inside repl, $ signs are interpreted as in [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "ReplaceAllStringFunc": {
+          "comment": [
+            "replace_all_string_func returns a copy of src in which all matches of the",
+            "[Regexp] have been replaced by the return value of function repl applied",
+            "to the matched substring. The replacement returned by repl is substituted",
+            "directly, without using [Regexp.Expand]."
+          ],
+          "params": [
+            "src",
+            "repl"
+          ]
+        },
+        "Split": {
+          "comment": [
+            "split slices s into substrings separated by the expression and returns a slice of",
+            "the substrings between those expression matches.",
+            "",
+            "The slice returned by this method consists of all the substrings of s",
+            "not contained in the slice returned by [Regexp.FindAllString]. When called on an expression",
+            "that contains no metacharacters, it is equivalent to [strings.SplitN].",
+            "",
+            "Example:",
+            "",
+            "\ts := regexp.MustCompile(\"a*\").Split(\"abaabaccadaaae\", 5)",
+            "\t// s: [\"\", \"b\", \"b\", \"c\", \"cadaaae\"]",
+            "",
+            "The count determines the number of substrings to return:",
+            "  - n \u003e 0: at most n substrings; the last substring will be the unsplit remainder;",
+            "  - n == 0: the result is nil (zero substrings);",
+            "  - n \u003c 0: all substrings."
+          ],
+          "params": [
+            "s",
+            "n"
+          ]
+        },
+        "SubexpIndex": {
+          "comment": [
+            "subexp_index returns the index of the first subexpression with the given name,",
+            "or -1 if there is no subexpression with that name.",
+            "",
+            "Note that multiple subexpressions can be written using the same name, as in",
+            "(?P\u003cbob\u003ea+)(?P\u003cbob\u003eb+), which declares two subexpressions named \"bob\".",
+            "In this case, SubexpIndex returns the index of the leftmost such subexpression",
+            "in the regular expression."
+          ],
+          "params": [
+            "name"
+          ]
+        },
+        "SubexpNames": {
+          "comment": [
+            "subexp_names returns the names of the parenthesized subexpressions",
+            "in this [Regexp]. The name for the first sub-expression is names[1],",
+            "so that if m is a match slice, the name for m[i] is SubexpNames()[i].",
+            "Since the Regexp as a whole cannot be named, names[0] is always",
+            "the empty string. The slice should not be modified."
+          ]
+        },
+        "UnmarshalText": {
+          "comment": [
+            "unmarshal_text implements [encoding.TextUnmarshaler] by calling",
+            "[Compile] on the encoded value."
+          ],
+          "params": [
+            "text"
+          ]
+        }
+      }
+    },
+    "time.Duration": {
+      "methods": {
+        "Abs": {
+          "comment": [
+            "abs returns the absolute value of d.",
+            "As a special case, Duration([math.MinInt64]) is converted to Duration([math.MaxInt64]),",
+            "reducing its magnitude by 1 nanosecond."
+          ]
+        },
+        "Hours": {
+          "comment": [
+            "hours returns the duration as a floating point number of hours."
+          ]
+        },
+        "Microseconds": {
+          "comment": [
+            "microseconds returns the duration as an integer microsecond count."
+          ]
+        },
+        "Milliseconds": {
+          "comment": [
+            "milliseconds returns the duration as an integer millisecond count."
+          ]
+        },
+        "Minutes": {
+          "comment": [
+            "minutes returns the duration as a floating point number of minutes."
+          ]
+        },
+        "Nanoseconds": {
+          "comment": [
+            "nanoseconds returns the duration as an integer nanosecond count."
+          ]
+        },
+        "Round": {
+          "comment": [
+            "round returns the result of rounding d to the nearest multiple of m.",
+            "The rounding behavior for halfway values is to round away from zero.",
+            "If the result exceeds the maximum (or minimum)",
+            "value that can be stored in a [Duration],",
+            "Round returns the maximum (or minimum) duration.",
+            "If m \u003c= 0, Round returns d unchanged."
+          ],
+          "params": [
+            "m"
+          ]
+        },
+        "Seconds": {
+          "comment": [
+            "seconds returns the duration as a floating point number of seconds."
+          ]
+        },
+        "Truncate": {
+          "comment": [
+            "truncate returns the result of rounding d toward zero to a multiple of m.",
+            "If m \u003c= 0, Truncate returns d unchanged."
+          ],
+          "params": [
+            "m"
+          ]
+        }
+      }
+    },
+    "time.Time": {
+      "methods": {
+        "Add": {
+          "comment": [
+            "add returns the time t+d."
+          ],
+          "params": [
+            "d"
+          ]
+        },
+        "AddDate": {
+          "comment": [
+            "add_date returns the time corresponding to adding the",
+            "given number of years, months, and days to t.",
+            "For example, AddDate(-1, 2, 3) applied to January 1, 2011",
+            "returns March 4, 2010.",
+            "",
+            "Note that dates are fundamentally coupled to timezones, and calendrical",
+            "periods like days don't have fixed durations. AddDate uses the Location of",
+            "the Time value to determine these durations. That means that the same",
+            "AddDate arguments can produce a different shift in absolute time depending on",
+            "the base Time value and its Location. For example, AddDate(0, 0, 1) applied",
+            "to 12:00 on March 27 always returns 12:00 on March 28. At some locations and",
+            "in some years this is a 24 hour shift. In others it's a 23 hour shift due to",
+            "daylight savings time transitions.",
+            "",
+            "AddDate normalizes its result in the same way that Date does,",
+            "so, for example, adding one month to October 31 yields",
+            "December 1, the normalized form for November 31."
+          ],
+          "params": [
+            "years",
+            "months",
+            "days"
+          ]
+        },
+        "After": {
+          "comment": [
+            "after reports whether the time instant t is after u."
+          ],
+          "params": [
+            "u"
+          ]
+        },
+        "AppendBinary": {
+          "comment": [
+            "append_binary implements the [encoding.BinaryAppender] interface."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "AppendFormat": {
+          "comment": [
+            "append_format is like [Time.Format] but appends the textual",
+            "representation to b and returns the extended buffer."
+          ],
+          "params": [
+            "b",
+            "layout"
+          ]
+        },
+        "AppendText": {
+          "comment": [
+            "append_text implements the [encoding.TextAppender] interface.",
+            "The time is formatted in RFC 3339 format with sub-second precision.",
+            "If the timestamp cannot be represented as valid RFC 3339",
+            "(e.g., the year is out of range), then an error is returned."
+          ],
+          "params": [
+            "b"
+          ]
+        },
+        "Before": {
+          "comment": [
+            "before reports whether the time instant t is before u."
+          ],
+          "params": [
+            "u"
+          ]
+        },
+        "Clock": {
+          "comment": [
+            "clock returns the hour, minute, and second within the day specified by t."
+          ]
+        },
+        "Compare": {
+          "comment": [
+            "compare compares the time instant t with u. If t is before u, it returns -1;",
+            "if t is after u, it returns +1; if they're the same, it returns 0."
+          ],
+          "params": [
+            "u"
+          ]
+        },
+        "Date": {
+          "comment": [
+            "date returns the year, month, and day in which t occurs."
+          ]
+        },
+        "Day": {
+          "comment": [
+            "day returns the day of the month specified by t."
+          ]
+        },
+        "Equal": {
+          "comment": [
+            "equal reports whether t and u represent the same time instant.",
+            "Two times can be equal even if they are in different locations.",
+            "For example, 6:00 +0200 and 4:00 UTC are Equal.",
+            "See the documentation on the Time type for the pitfalls of using == with",
+            "Time values; most code should use Equal instead."
+          ],
+          "params": [
+            "u"
+          ]
+        },
+        "Format": {
+          "comment": [
+            "format returns a textual representation of the time value formatted according",
+            "to the layout defined by the argument. See the documentation for the",
+            "constant called [Layout] to see how to represent the layout format.",
+            "",
+            "The executable example for [Time.Format] demonstrates the working",
+            "of the layout string in detail and is a good reference."
+          ],
+          "params": [
+            "layout"
+          ]
+        },
+        "GobEncode": {
+          "comment": [
+            "gob_encode implements the gob.GobEncoder interface."
+          ]
+        },
+        "Hour": {
+          "comment": [
+            "hour returns the hour within the day specified by t, in the range [0, 23]."
+          ]
+        },
+        "ISOWeek": {
+          "comment": [
+            "iso_week returns the ISO 8601 year and week number in which t occurs.",
+            "Week ranges from 1 to 53. Jan 01 to Jan 03 of year n might belong to",
+            "week 52 or 53 of year n-1, and Dec 29 to Dec 31 might belong to week 1",
+            "of year n+1."
+          ]
+        },
+        "In": {
+          "comment": [
+            "in returns a copy of t representing the same time instant, but",
+            "with the copy's location information set to loc for display",
+            "purposes.",
+            "",
+            "In panics if loc is nil."
+          ],
+          "params": [
+            "loc"
+          ]
+        },
+        "IsDST": {
+          "comment": [
+            "is_dst reports whether the time in the configured location is in Daylight Savings Time."
+          ]
+        },
+        "IsZero": {
+          "comment": [
+            "is_zero reports whether t represents the zero time instant,",
+            "January 1, year 1, 00:00:00 UTC."
+          ]
+        },
+        "Local": {
+          "comment": [
+            "local returns t with the location set to local time."
+          ]
+        },
+        "Location": {
+          "comment": [
+            "location returns the time zone information associated with t."
+          ]
+        },
+        "MarshalBinary": {
+          "comment": [
+            "marshal_binary implements the [encoding.BinaryMarshaler] interface."
+          ]
+        },
+        "MarshalText": {
+          "comment": [
+            "marshal_text implements the [encoding.TextMarshaler] interface. The output",
+            "matches that of calling the [Time.AppendText] method.",
+            "",
+            "See [Time.AppendText] for more information."
+          ]
+        },
+        "Minute": {
+          "comment": [
+            "minute returns the minute offset within the hour specified by t, in the range [0, 59]."
+          ]
+        },
+        "Month": {
+          "comment": [
+            "month returns the month of the year specified by t."
+          ]
+        },
+        "Nanosecond": {
+          "comment": [
+            "nanosecond returns the nanosecond offset within the second specified by t,",
+            "in the range [0, 999999999]."
+          ]
+        },
+        "Round": {
+          "comment": [
+            "round returns the result of rounding t to the nearest multiple of d (since the zero time).",
+            "The rounding behavior for halfway values is to round up.",
+            "If d \u003c= 0, Round returns t stripped of any monotonic clock reading but otherwise unchanged.",
+            "",
+            "Round operates on the time as an absolute duration since the",
+            "zero time; it does not operate on the presentation form of the",
+            "time. Thus, Round(Hour) may return a time with a non-zero",
+            "minute, depending on the time's Location."
+          ],
+          "params": [
+            "d"
+          ]
+        },
+        "Second": {
+          "comment": [
+            "second returns the second offset within the minute specified by t, in the range [0, 59]."
+          ]
+        },
+        "Sub": {
+          "comment": [
+            "sub returns the duration t-u. If the result exceeds the maximum (or minimum)",
+            "value that can be stored in a [Duration], the maximum (or minimum) duration",
+            "will be returned.",
+            "To compute t-d for a duration d, use t.Add(-d)."
+          ],
+          "params": [
+            "u"
+          ]
+        },
+        "Truncate": {
+          "comment": [
+            "truncate returns the result of rounding t down to a multiple of d (since the zero time).",
+            "If d \u003c= 0, Truncate returns t stripped of any monotonic clock reading but otherwise unchanged.",
+            "",
+            "Truncate operates on the time as an absolute duration since the",
+            "zero time; it does not operate on the presentation form of the",
+            "time. Thus, Truncate(Hour) may return a time with a non-zero",
+            "minute, depending on the time's Location."
+          ],
+          "params": [
+            "d"
+          ]
+        },
+        "UTC": {
+          "comment": [
+            "utc returns t with the location set to UTC."
+          ]
+        },
+        "Unix": {
+          "comment": [
+            "unix returns t as a Unix time, the number of seconds elapsed",
+            "since January 1, 1970 UTC. The result does not depend on the",
+            "location associated with t.",
+            "Unix-like operating systems often record time as a 32-bit",
+            "count of seconds, but since the method here returns a 64-bit",
+            "value it is valid for billions of years into the past or future."
+          ]
+        },
+        "UnixMicro": {
+          "comment": [
+            "unix_micro returns t as a Unix time, the number of microseconds elapsed since",
+            "January 1, 1970 UTC. The result is undefined if the Unix time in",
+            "microseconds cannot be represented by an int64 (a date before year -290307 or",
+            "after year 294246). The result does not depend on the location associated",
+            "with t."
+          ]
+        },
+        "UnixMilli": {
+          "comment": [
+            "unix_milli returns t as a Unix time, the number of milliseconds elapsed since",
+            "January 1, 1970 UTC. The result is undefined if the Unix time in",
+            "milliseconds cannot be represented by an int64 (a date more than 292 million",
+            "years before or after 1970). The result does not depend on the",
+            "location associated with t."
+          ]
+        },
+        "UnixNano": {
+          "comment": [
+            "unix_nano returns t as a Unix time, the number of nanoseconds elapsed",
+            "since January 1, 1970 UTC. The result is undefined if the Unix time",
+            "in nanoseconds cannot be represented by an int64 (a date before the year",
+            "1678 or after 2262). Note that this means the result of calling UnixNano",
+            "on the zero Time is undefined. The result does not depend on the",
+            "location associated with t."
+          ]
+        },
+        "Weekday": {
+          "comment": [
+            "weekday returns the day of the week specified by t."
+          ]
+        },
+        "Year": {
+          "comment": [
+            "year returns the year in which t occurs."
+          ]
+        },
+        "YearDay": {
+          "comment": [
+            "year_day returns the day of the year specified by t, in the range [1,365] for non-leap years,",
+            "and [1,366] in leap years."
+          ]
+        },
+        "Zone": {
+          "comment": [
+            "zone computes the time zone in effect at time t, returning the abbreviated",
+            "name of the zone (such as \"CET\") and its offset in seconds east of UTC."
+          ]
+        },
+        "ZoneBounds": {
+          "comment": [
+            "zone_bounds returns the bounds of the time zone in effect at time t.",
+            "The zone begins at start and the next zone begins at end.",
+            "If the zone begins at the beginning of time, start will be returned as a zero Time.",
+            "If the zone goes on forever, end will be returned as a zero Time.",
+            "The Location of the returned times will be the same as t."
+          ]
+        }
+      }
+    }
+  }
+}

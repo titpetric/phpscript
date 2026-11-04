@@ -40,20 +40,42 @@ type Func struct {
 // Method is one PHP-callable method on a registered class.
 type Method struct {
 	Name    string // PHP spelling, snake_case
+	GoName  string
 	Comment []string
 	Params  []Param
 	Returns string
 }
 
 // Class is one registered class. Classes sharing a constructor (the SPL
-// exception set) collapse into one entry with the extra names in Aliases.
+// exception set) collapse into one entry with the extra names in Aliases, and
+// Rename answers the entry under whichever of them a caller asked about.
+//
+// PHP renders it the way `go doc` renders a Go type, in PHP spelling: the
+// description, the properties the bound Go type carries, then the constructor
+// and the methods. A declaration ends at the semicolon and carries no body,
+// because the implementation is Go and no PHP a reader could open.
 type Class struct {
 	Name    string
 	Aliases []string
 	Package string
 	Comment []string
 	Params  []Param // constructor parameters
+	Fields  []Field
 	Methods []Method
+
+	// GoType is the import path and name of the Go type the constructor
+	// returns, the key the doc index holds this class's godoc under.
+	GoType string
+
+	// Binds is the import path of the package the bound Go type lives in.
+	Binds string
+
+	// Uses cites the Go symbol behind the class: the standard library type a
+	// wrapper holds, or the bound type itself.
+	Uses Citation
+
+	// Implements cites the interfaces the bound Go type satisfies.
+	Implements []Citation
 }
 
 type constructorGroup struct {
@@ -178,6 +200,13 @@ func buildClass(names []string, ctor any, src *sources, classTypes map[reflect.T
 	if out.Params == nil {
 		out.Params = reflectParams(t)
 	}
+	if bound, ok := constructorResultType(ctor); ok {
+		out.GoType = goTypeKey(bound)
+		out.Binds = cite(bound).Package
+		out.Uses = reflectBinds(bound)
+		out.Implements = reflectImplements(bound)
+		out.Fields = reflectFields(bound, classTypes)
+	}
 	if t.NumOut() > 0 && t.Out(0).Kind() != reflect.Interface {
 		out.Methods = reflectMethods(t.Out(0), src, classTypes)
 	}
@@ -300,6 +329,7 @@ func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]st
 		}
 		out := Method{
 			Name:    camelToSnake(m.Name),
+			GoName:  m.Name,
 			Params:  reflectParams(m.Func.Type())[1:], // drop the receiver
 			Returns: reflectReturn(m.Func.Type(), classTypes),
 		}

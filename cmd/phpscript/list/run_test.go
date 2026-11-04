@@ -22,7 +22,7 @@ func TestRunListsPaths(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := run(&out, []string{dir}, false, false, false); err != nil {
+	if err := run(&out, []string{dir}, false, false, false, false); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{"Route", "Filename", "Classes", "GET /hello", "hello.php", "Greeter"} {
@@ -37,13 +37,54 @@ func TestRunListsPaths(t *testing.T) {
 func TestRunListsBindings(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	if err := run(&out, nil, true, false, false); err != nil {
+	if err := run(&out, nil, true, false, false, false); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{"| Kind", "| function |", "| class    |", "| constant |", "fnmatch", "glob"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output does not contain %q", want)
 		}
+	}
+}
+
+// TestRunListsClasses covers --classes: the registered classes as PHP class
+// definitions, the shape `go doc` prints a Go type in. The arguments are class
+// names and not paths, and asking about one answers about one.
+func TestRunListsClasses(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	if err := run(&out, []string{`HTTP\Client`}, false, true, false, false); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	for _, want := range []string{
+		`class HTTP\Client`,
+		"[net/http.Client](https://pkg.go.dev/net/http#Client)",
+		"public function get(string $url): object;",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output does not contain %q:\n%s", want, out.String())
+		}
+	}
+	if strings.Contains(out.String(), "class Database") {
+		t.Error("a class nobody asked about is listed")
+	}
+}
+
+// TestRunRejectsClassesWithTables pins the refusal. --classes prints PHP source
+// and --api and --json both answer with table rows, and a caller that named
+// both named one of them by mistake.
+func TestRunRejectsClassesWithTables(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	err := run(&out, nil, false, true, false, true)
+	if err == nil {
+		t.Fatal("run returned nil error for --classes with --json")
+	}
+	if want := "list --classes takes neither --api nor --json"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error = %q, want it to contain %q", err, want)
+	}
+	if out.Len() != 0 {
+		t.Errorf("wrote %q, want nothing", out.String())
 	}
 }
 
@@ -93,7 +134,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = writer
-	runErr := Run([]string{dir}, false, false, false)
+	runErr := Run([]string{dir}, false, false, false, false)
 	writer.Close()
 	os.Stdout = saved
 	if runErr != nil {
@@ -117,7 +158,7 @@ func TestRun(t *testing.T) {
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	err := run(&out, []string{"."}, true, false, false)
+	err := run(&out, []string{"."}, true, false, false, false)
 	if err == nil {
 		t.Fatal("run returned nil error for --bindings with a path argument")
 	}
@@ -139,7 +180,7 @@ func TestRunAPI(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := run(&out, []string{dir}, false, true, false); err != nil {
+	if err := run(&out, []string{dir}, false, false, true, false); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{"| Class", "| Member", "| Signature", "| Doc", `App\Greeter`, "hello", "hello(string $name): string", "Says hello."} {
@@ -159,7 +200,7 @@ func TestRunAPIJSON(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := run(&out, []string{dir}, false, true, true); err != nil {
+	if err := run(&out, []string{dir}, false, false, true, true); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	for _, want := range []string{`"class": "App\\Greeter"`, `"member": "hello"`, `"signature": "hello(): string"`} {

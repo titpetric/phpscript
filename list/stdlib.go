@@ -78,6 +78,55 @@ func Stdlib() []Symbol {
 	return symbols
 }
 
+// StdlibDefinitions renders the named registered classes as PHP class
+// definitions, and with no name every class a script can construct.
+func StdlibDefinitions(names ...string) (string, error) {
+	// The structure comes from reflection over the live runtime, which is
+	// what this build binds. The prose and the PHP spelling of a parameter
+	// name come from the index the binary embeds, because a shipped binary
+	// carries no Go source to scan.
+	rt := stdlibRuntime()
+	_, classes := apidoc.Reflect(rt)
+	apidoc.Embedded().Apply(classes)
+
+	byName := map[string]apidoc.Class{}
+	for _, c := range classes {
+		for _, name := range append([]string{c.Name}, c.Aliases...) {
+			byName[name] = c
+		}
+	}
+	if len(names) == 0 {
+		names = constructedClasses(rt, byName)
+	}
+
+	defs := make([]string, 0, len(names))
+	for _, name := range names {
+		c, ok := byName[name]
+		if !ok {
+			// stdClass is the declared class with no Go constructor: a
+			// script writes new stdClass() and there is no bound type to
+			// report properties, methods or a citation for.
+			return "", fmt.Errorf("%s: not a class with a Go constructor to describe", name)
+		}
+		defs = append(defs, c.Rename(name).PHP())
+	}
+	return strings.Join(defs, "\n"), nil
+}
+
+// constructedClasses names every declared class a constructor builds, in name
+// order. A name sharing its constructor with others is still a name a script
+// types and it gets its own definition.
+func constructedClasses(rt *runner.Runtime, byName map[string]apidoc.Class) []string {
+	names := make([]string, 0, len(byName))
+	for _, name := range rt.DeclaredClasses() {
+		if _, ok := byName[name]; ok {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
 // StdlibMarkdown renders the registered surface as a markdown table, the same
 // shape Markdown uses for a source listing.
 func StdlibMarkdown(symbols []Symbol) string {
