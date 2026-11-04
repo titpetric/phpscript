@@ -31,10 +31,11 @@ type declInfo struct {
 	decl     *ast.FuncDecl
 }
 
-// typeInfo is a type declaration's doc comment and package.
+// typeInfo is a type declaration's doc comment, package and field comments.
 type typeInfo struct {
 	pkg     string
 	comment []string
+	fields  map[string][]string // doc comment by Go field name
 }
 
 // sources is the result of scanning a source tree.
@@ -43,6 +44,7 @@ type sources struct {
 	ctors map[string]*sourceEntry // by registered class name
 	decls map[string][]*declInfo  // by Go function or method name
 	types map[string][]typeInfo   // by type name
+	paths map[string]*typeInfo    // by import path and type name
 }
 
 // typeDoc returns the doc comment for a type name. Two packages declaring
@@ -77,6 +79,7 @@ func emptySources() *sources {
 		ctors: map[string]*sourceEntry{},
 		decls: map[string][]*declInfo{},
 		types: map[string][]typeInfo{},
+		paths: map[string]*typeInfo{},
 	}
 }
 
@@ -142,10 +145,16 @@ func scan(root string) (*sources, error) {
 					if doc == nil {
 						doc = d.Doc
 					}
+					info := typeInfo{pkg: pf.pkg, fields: fieldComments(ts.Type)}
+					// The by-name table holds a commented type and no
+					// other, the set typeDoc picks from. Widening it would
+					// let a type carrying field comments and no doc comment
+					// shadow a namesake in another package that has one.
 					if doc != nil {
-						src.types[ts.Name.Name] = append(src.types[ts.Name.Name],
-							typeInfo{pkg: pf.pkg, comment: cleanComment(doc)})
+						info.comment = cleanComment(doc)
+						src.types[ts.Name.Name] = append(src.types[ts.Name.Name], info)
 					}
+					src.paths[importPath(pf.pkg)+"."+ts.Name.Name] = &info
 				}
 			}
 		}
