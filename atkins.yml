@@ -147,9 +147,15 @@ tasks:
         dir: demos/${{ demo }}/tests
         run: atkins --final test
 
+  # The index comes first and the markdown second, because the index is a Go
+  # file the next build embeds: a shipped binary carries no source tree, and
+  # `phpscript list --classes` answers out of the index. The generator writes
+  # the file itself rather than taking a redirection, which would truncate what
+  # the compiler is about to embed.
   test:introspection:
     passthru: true
     cmds:
+      - go run ./scripts/list-apis --index
       - go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
       - phpscript info
       - cd docs/reference && php README.php > README.md
