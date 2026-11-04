@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// goRun executes src on a runtime carrying the default surface, which is where
-// the import does its work: Run installs what the source opted into.
+// goRun executes src on a runtime carrying the default surface, the surface
+// the import adds to: Run installs what the source opted into.
 func goRun(t *testing.T, src string) (string, error) {
 	t.Helper()
 	var out strings.Builder
@@ -24,8 +24,8 @@ func goRun(t *testing.T, src string) (string, error) {
 	return out.String(), err
 }
 
-// goOutput runs src and pins what it echoed, which is where go's semantics are
-// visible: a length, a capacity, and what a conversion returns.
+// goOutput runs src and pins what it echoed, the one view of go's semantics a
+// script has: a length, a capacity, and what a conversion returns.
 func goOutput(t *testing.T, src, want string) {
 	t.Helper()
 	out, err := goRun(t, src)
@@ -38,7 +38,7 @@ func goOutput(t *testing.T, src, want string) {
 }
 
 // TestRegisterGo pins the opt-in: a runtime answers for none of go's names
-// until a program imports the namespace, which is what keeps them out of
+// until a program imports the namespace, and that keeps them out of
 // function_exists and the generated reference. After the import every name the
 // tables carry resolves qualified, and none of them resolves bare: binding the
 // short name is the parser's job, per file.
@@ -81,7 +81,7 @@ echo len($s), cap($s), $s[0], int8(300), "\n";
 `, "12a44\n")
 	}
 	// A class is an element type too. php carries an object in a value of any
-	// type, which is what the slice holds and what make zeroes it with.
+	// type, the element the slice holds and the one make zeroes it with.
 	goOutput(t, `<?php
 use Runtime\Go;
 
@@ -94,15 +94,15 @@ $users = append(make([]User, 1), new User());
 echo len($users), $users[1]->name, "\n";
 `, "2ada\n")
 	// `use function Ns\f;` imports the one name php says it does. The install
-	// reads the namespace the symbol is in, so the binding resolves; the rest
-	// of go's builtins stay unbound and a qualified call reaches them.
+	// reads the namespace the symbol sits in and the binding resolves; the
+	// rest of go's builtins stay unbound and a qualified call reaches them.
 	goOutput(t, `<?php
 use function Runtime\Go\make;
 
 echo Runtime\Go\len(make("[]int", 2)), "\n";
 `, "2\n")
 	// The parser folds a conversion of a literal and the binding converts the
-	// same value at run time. Both read one table, so both answer the same.
+	// same value at run time. Both read one table and both answer the same.
 	goOutput(t, `<?php
 use Runtime\Go;
 
@@ -140,8 +140,8 @@ echo "\n";
 }
 
 // TestGoArrays covers the same builtins over php's own values: append writes
-// through the array handle a script holds, a null is the empty slice it is in
-// go, and len is go's, which counts a string's bytes.
+// through the array handle a script holds, a null stands for go's empty slice,
+// and len is go's, which counts a string's bytes.
 func TestGoArrays(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -157,9 +157,9 @@ echo Go\len("héllo"), ",", Go\len([1, 2, 3]), ",", Go\len(null), "\n";
 }
 
 // TestGoConversions covers a builtin type's conversion: php reduces the value
-// and go's width truncates it, which is what makes int8(300) 44. A type is a
-// class too, a missing argument is the zero value, and float32 is the width
-// that loses precision.
+// and go's width truncates it, leaving int8(300) at 44. A type is a class too,
+// a missing argument is the zero value, and float32 is the width that loses
+// precision.
 func TestGoConversions(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php

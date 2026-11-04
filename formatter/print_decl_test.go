@@ -155,7 +155,7 @@ final class Suite extends TestCase implements \Countable, Local {
 }
 
 // php has no slice type and a file that imported the go runtime may declare
-// one. The formatter rewrites files in place, so a type it cannot print is a
+// one. The formatter rewrites files in place, and a type it cannot print is a
 // type it deletes: the declaration keeps the spelling it read, on a parameter,
 // on a return type and on a property.
 func TestGoSliceTypeHintIsKept(t *testing.T) {

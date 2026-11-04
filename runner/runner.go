@@ -398,9 +398,9 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	case *model.Use:
 		// The parser resolves imports, and the node exists so the formatter
 		// can print the statement back out. An import that names a
-		// contributed namespace installs it: this is the seam an included
-		// file reaches, under either engine, because an include runs its
-		// statements here whichever engine included it.
+		// contributed namespace installs it here, which is the seam an
+		// included file reaches under either engine: an include runs its
+		// statements here whichever engine ran the include.
 		for _, imported := range n.Imports {
 			rt.useImport(imported.Path)
 		}

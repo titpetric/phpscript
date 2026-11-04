@@ -9,7 +9,7 @@ import (
 // bind go's builtins, the names that import binds, and the conversion a
 // builtin type name applies. The parser reads them to bind a name and fold a
 // literal while it parses, the bindings read them to register and to convert,
-// and the list is written once.
+// and this file spells the list once.
 
 // GoNamespace is the namespace a script imports to bind go's builtins.
 const GoNamespace = `Runtime\Go`
@@ -17,7 +17,7 @@ const GoNamespace = `Runtime\Go`
 // goBuiltins are the names the import binds where a script writes them
 // unqualified. php's own copy, min, max and print are not among them: a file
 // that imported the go runtime still calls php's when it writes one, and
-// `Go\copy` is how it asks for the other.
+// `Go\copy` names the other.
 var goBuiltins = map[string]struct{}{
 	"append":  {},
 	"cap":     {},
@@ -34,7 +34,7 @@ var goBuiltins = map[string]struct{}{
 //
 // A pair this table will not decide reports false and reaches the binding,
 // which reduces the value through phpval first. A string becoming a number has
-// one definition and it is there, and this package cannot import it.
+// one definition, phpval holds it, and this package cannot import phpval.
 var goTypes = map[string]func(any) (any, bool){
 	"any":     func(v any) (any, bool) { return v, true },
 	"bool":    goBool,
@@ -104,7 +104,7 @@ func goString(v any) (any, bool) {
 	return s, ok
 }
 
-// goSigned is the conversion of a signed integer type of the given width.
+// goSigned is the conversion of a signed integer type at the given width.
 //
 // The carrier is php's int, which is 64 bits wide: a narrower type keeps the
 // low bits of the value and sign-extends them, as go's conversion does, and
@@ -137,8 +137,8 @@ func goUnsigned(bits int) func(any) (any, bool) {
 }
 
 // goFloat is the conversion of a float type. 32 is the width that loses
-// precision: the value reads back as the float64 nearest the float32, because
-// php carries one float type and it is the wide one.
+// precision: the value reads back as the float64 nearest the float32, php
+// carrying one float type and that one wide.
 func goFloat(bits int) func(any) (any, bool) {
 	return func(v any) (any, bool) {
 		f, ok := goFloat64(v)

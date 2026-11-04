@@ -7,21 +7,21 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// A namespace binding is a binding area a script asks for by name. The
+// A namespace binding is a binding area a script imports by name. The
 // installers in bindings.go are the surface every runtime carries; these are
-// the ones a program opts into with `use Namespace`, and a runtime nobody
-// opted in on answers for none of their names. That is what keeps an opt-in
-// area out of function_exists, get_defined_functions and the generated
-// reference, where stdlib.Mount's areas all appear.
+// the ones a program opts into with `use Namespace`, and a runtime that saw no
+// such import answers for none of their names. An opt-in area stays out of
+// function_exists, get_defined_functions and the generated reference, where
+// stdlib.Mount's areas all appear.
 //
 // A namespace registers and resolves under a case-insensitive key, as every
 // other name PHP resolves does, and the import drops a leading separator:
 // `use \Runtime\Go` and `use Runtime\Go` name the same namespace.
 //
-// The install outlives the program that asked for it. Nothing un-registers a
-// binding, so a runtime reused for a second program carries what the first one
-// imported; the names a script may call are decided by the parser, per file,
-// and the import is what binds them there.
+// The install outlives the program that imported it, and no call un-registers
+// a binding: a runtime serving a second program carries what the first one
+// imported. The parser decides the names a script may call, per file, and the
+// import binds them there.
 
 // namespaces holds the installers contributed per namespace.
 var namespaces struct {
@@ -29,8 +29,8 @@ var namespaces struct {
 	installers map[string]func(*Runtime)
 }
 
-// RegisterNamespace contributes the installer a `use name` import runs. A nil
-// installer and an empty name are dropped.
+// RegisterNamespace contributes the installer a `use name` import runs. It
+// drops a nil installer and an empty name.
 func RegisterNamespace(name string, installer func(*Runtime)) {
 	if name == "" || installer == nil {
 		return
@@ -83,8 +83,8 @@ func (rt *Runtime) useImport(path string) {
 
 // useImports installs the namespace bindings the statements import.
 //
-// Both engines pass through here: the bytecode compiler resolves a call
-// through the runtime's function table at run time, so an install before
+// Both engines pass through here. The bytecode compiler resolves a call
+// through the runtime's function table at run time, and an install before
 // execution serves it as it serves the interpreter.
 func (rt *Runtime) useImports(stmts []model.Stmt) {
 	for _, s := range stmts {

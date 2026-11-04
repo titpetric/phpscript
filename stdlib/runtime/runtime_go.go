@@ -15,14 +15,14 @@ import (
 
 // The Runtime\Go bindings are go's builtins, and a script opts into them with
 // `use Runtime\Go`. They are the one binding area no runtime carries by
-// default: `make` and `len` are not php's and a program that never asked for
-// them keeps the surface php defines, which is why the import installs them
-// rather than stdlib.Mount.
+// default: `make` and `len` are not php's and a program that imported neither
+// keeps the surface php defines, and the import installs them where
+// stdlib.Mount would install an area every runtime carries.
 //
 // Each one reads php's values and answers go's semantics. A length is go's,
 // over php's arrays as well as go's slices; a conversion applies go's width to
-// a value php reduced to one of its own scalars; a panic is a RuntimeException,
-// which is what a php `catch` can see.
+// a value php reduced to one of its own scalars; a panic throws a
+// RuntimeException, the class a php `catch` can filter on.
 
 func init() {
 	runner.RegisterNamespace(model.GoNamespace, RegisterGo)
@@ -75,8 +75,9 @@ func RegisterGo(rt *runner.Runtime) {
 }
 
 // registerGoTypes installs the conversion each builtin type name applies, and
-// the same conversion as a constructor, which is what puts a go type in the
-// class table: `new Go\int64(5)` allocates through it and class_exists reads it.
+// the same conversion as a constructor, the registration that puts a go type
+// in the class table: `new Go\int64(5)` converts through it and class_exists
+// reads it.
 func registerGoTypes(rt *runner.Runtime) {
 	for _, name := range model.GoTypeNames() {
 		// Runtime\Go\<type> converts a value to a go builtin type: int64(0), float64($n).
@@ -95,7 +96,7 @@ func goFail(format string, args ...any) error {
 }
 
 // goConvert is one builtin type's conversion. A missing argument reads as null,
-// which reduces to the type's zero value, so `new Go\int64` is 0.
+// which reduces to the type's zero value, and `new Go\int64` is 0.
 func goConvert(name string) func(args ...any) (any, error) {
 	return func(args ...any) (any, error) {
 		if len(args) > 1 {
@@ -118,9 +119,9 @@ func goConvert(name string) func(args ...any) (any, error) {
 }
 
 // goReduce reads a value the way the named type's conversion needs it: through
-// php's own semantics, which is where a string becomes a number. model.GoFold
-// applies go's width to what comes out, so this answer and the literal the
-// parser folds agree by construction.
+// php's own semantics, where a string becomes a number. model.GoFold applies
+// go's width to what comes out, and this value and the literal the parser
+// folds agree by construction.
 func goReduce(name string, value any) (any, error) {
 	switch name {
 	case "any":
@@ -178,8 +179,8 @@ func goElemNames() []string {
 	return slices.Sorted(maps.Keys(goElems))
 }
 
-// goElem reads a type spelling into the element type of the slice it names. A
-// nested slice composes, and a name that is no builtin type is a class name,
+// goElem reads a type spelling into the element type the slice it names holds.
+// A nested slice composes, and a name that is no builtin type is a class name,
 // which php carries as any.
 func goElem(spelling string) (reflect.Type, bool) {
 	rest, ok := strings.CutPrefix(spelling, "[]")
@@ -199,8 +200,8 @@ func goElem(spelling string) (reflect.Type, bool) {
 }
 
 // goAppend appends to what php appends to and to what go appends to. A php
-// array takes the values at its next integer index and is the value a nil
-// takes, there being no element type to allocate from.
+// array takes the values at its next integer index, and a nil grows into one
+// too, with no element type to build a slice from.
 func goAppend(dst any, values ...any) (any, error) {
 	switch target := dst.(type) {
 	case nil:
@@ -230,8 +231,8 @@ func goAppend(dst any, values ...any) (any, error) {
 	return slice.Interface(), nil
 }
 
-// goValue converts a php value into a go element type, which is what a slice
-// or a map key needs before it holds one.
+// goValue converts a php value into a go element type, the shape a slice or a
+// map key needs before it holds one.
 func goValue(elem reflect.Type, value any) (reflect.Value, error) {
 	if elem.Kind() == reflect.Interface && elem.NumMethod() == 0 {
 		return reflect.ValueOf(&value).Elem(), nil
@@ -293,8 +294,8 @@ func goCap(value any) (int64, error) {
 	return 0, goFail(`Runtime\Go\cap: a %T has no capacity`, value)
 }
 
-// goCopyArray copies src's values over dst's leading indexes, which is what
-// go's copy does to a slice and the nearest thing a php array has.
+// goCopyArray copies src's values over dst's leading indexes, as go's copy
+// does to a slice and as near as a php array comes to one.
 func goCopyArray(dst *model.Array, src any) (int64, error) {
 	limit, copied := int64(dst.Len()), int64(0)
 	model.RangeValues(src, func(_, value any) bool {

@@ -7,8 +7,8 @@ import (
 )
 
 // goCall returns the call the last statement of src compiled to. A namespaced
-// file declares only functions, so the statement is read out of the last
-// declaration where there is one.
+// file declares functions alone, and the statement then comes out of the last
+// declaration.
 func goCall(t *testing.T, src string) *model.Call {
 	t.Helper()
 	prog := mustParse(t, src)
@@ -27,10 +27,10 @@ func goCall(t *testing.T, src string) *model.Call {
 	return call
 }
 
-// TestGoRuntimeBinding covers what the import binds and what it leaves alone: a
-// go builtin written bare in an importing file, and nothing else. The call
-// keeps the source's spelling as its fallback, which is the name php would have
-// resolved and the name the formatter prints.
+// TestGoRuntimeBinding covers what the import binds and what it leaves alone:
+// a bare go builtin in an importing file, and no other name. The call keeps
+// the source's spelling as its fallback, the name php would have resolved and
+// the name the formatter prints.
 func TestGoRuntimeBinding(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ src, name, fallback string }{
@@ -61,9 +61,9 @@ func TestGoRuntimeBinding(t *testing.T) {
 }
 
 // TestGoRuntimeFold covers the conversion of a literal, which the parser
-// applies and no engine sees: the call is gone and a literal is in its place,
-// under every width go has. A conversion php has to read the value for is not
-// the parser's and stays a call, and so does anything but one literal.
+// applies and no engine sees: a literal stands where the call stood, under
+// every width go has. A conversion php has to read the value for stays a call
+// at run time, and so does a call over anything but one literal.
 func TestGoRuntimeFold(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -112,8 +112,8 @@ func TestGoRuntimeFold(t *testing.T) {
 	}
 }
 
-// TestGoRuntimeMakeType covers make's first argument, the one place a type is
-// written where php writes an expression. The binding reads the spelling with a
+// TestGoRuntimeMakeType covers make's first argument, the one place a type
+// stands where php puts an expression. The binding reads the spelling with a
 // class name qualified, and the formatter prints the spelling the source wrote.
 func TestGoRuntimeMakeType(t *testing.T) {
 	t.Parallel()
@@ -161,8 +161,8 @@ func TestGoRuntimeMakeType(t *testing.T) {
 
 // TestGoRuntimeSliceHint covers the `[]T` type hint, which php has no spelling
 // for and phpscript reads in a file that imported the go runtime: on a
-// parameter, on a return type and on a property. Nothing downstream reads a
-// type, and the parser keeps the spelling so the formatter prints it back.
+// parameter, on a return type and on a property. No engine downstream reads a
+// type, and the parser keeps the spelling for the formatter to print back.
 func TestGoRuntimeSliceHint(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ src, params, returns string }{
@@ -170,8 +170,8 @@ func TestGoRuntimeSliceHint(t *testing.T) {
 		{"function f([][]string $a): []Row {}", "[][]string", "[]Row"},
 		{"function f(?[]int $a) {}", "?[]int", ""},
 		{"function f([]\\Other\\Row $a) {}", `[]\Other\Row`, ""},
-		// A bracket in a type position is a type and nothing else, and a hint
-		// php does spell still reads as it did.
+		// A bracket in a type position opens a type and no array literal, and
+		// a hint php does spell still reads as it did.
 		{"function f(array $a): string {}", "array", "string"},
 	} {
 		fn := mustParse(t, "<?php\nuse Runtime\\Go;\n"+test.src).Stmts[1].(*model.FuncDecl)
@@ -187,8 +187,8 @@ func TestGoRuntimeSliceHint(t *testing.T) {
 		t.Errorf("the property reads %q, want []int64", class.Fields[0].Type)
 	}
 
-	// The syntax comes with the import, as the bare names do: a file that asked
-	// for none of it reads php's grammar, which has no slice type.
+	// The syntax comes with the import, as the bare names do: a file that
+	// imported none of it reads php's grammar, which has no slice type.
 	if _, err := Parse("<?php\nfunction f([]int $a) {}"); err == nil {
 		t.Error("a slice hint parsed in a file that imported nothing")
 	}

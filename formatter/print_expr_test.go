@@ -87,9 +87,9 @@ func TestFirstClassCallableIsNotACall(t *testing.T) {
 }
 
 // A go builtin a file imported resolves to a binding under the go namespace and
-// prints as the source wrote it: the qualified name is the one the runtime
-// looks up and the spelling is the one a reader sees, so a file that uses go's
-// builtins is still a round trip through the formatter.
+// prints as the source wrote it: the runtime looks the qualified name up, a
+// reader sees the spelling, and a file that calls go's builtins round-trips
+// through the formatter.
 func TestGoBuiltinCallKeepsItsSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\n$s = make([]int64, 0, 10);\n$s = append($s, int64($n));\necho len($s), cap($s);\n"

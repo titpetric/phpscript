@@ -9,14 +9,14 @@ import (
 
 // The go runtime is the one binding area a file opts into. `use Runtime\Go`
 // binds go's builtin names for the rest of that file: a bare `make(...)` is the
-// binding and not a name php resolves, and the call prints as the source wrote
-// it, so the formatter round-trips.
+// binding and no name php resolves, and the call prints as the source wrote
+// it, which keeps the formatter round-tripping.
 //
 // The binding is per file, as every `use` is, and it wins over the enclosing
-// namespace: a file that imported go's `make` meant go's, which is how php
-// reads an imported name against one it would otherwise resolve. It binds the
-// spelling go uses and no other, where php folds a function's case: a file that
-// writes `Make()` asked php for it.
+// namespace: a file that imported go's `make` meant go's, the way php reads an
+// imported name against one it would otherwise resolve. It binds the spelling
+// go uses and no other, where php folds a function's case: a file that writes
+// `Make()` reaches php for it.
 //
 // A qualified call decides for itself and needs no import, here and in the
 // runtime both: `\strlen($s)` is php's whatever the file imported, and
@@ -45,9 +45,9 @@ func (p *parser) atGoSlice() bool {
 	return p.peek(2).kind == tIdent || p.isOpAt(2, "[") || p.isOpAt(2, "\\")
 }
 
-// atGoMake reports whether the call being read is `make([]`, the one place a
-// type is written where php writes an expression. Everywhere else `[` opens an
-// array literal, and `foreach ([] as $v)` is what reads it there.
+// atGoMake reports whether the call ahead reads `make([]`, the one place a
+// type stands where php puts an expression. Everywhere else `[` opens an
+// array literal, and `foreach ([] as $v)` reads it there.
 func (p *parser) atGoMake(name string) bool {
 	return name == "make" && p.isOpAt(1, "[") && p.isOpAt(2, "]")
 }
@@ -106,7 +106,7 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 
 // goFold is the conversion a builtin type applies to a literal, applied where
 // the file parses: `int64(0)` is the literal 0, it reaches no function table at
-// run time and both engines read what is left.
+// run time and both engines read the literal.
 //
 // Only a pair the conversion decides on its own folds. A value php has to read
 // first, a string under a numeric type, reaches the binding, which reads it

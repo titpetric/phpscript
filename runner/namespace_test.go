@@ -8,11 +8,12 @@ import (
 )
 
 // TestRegisterNamespace covers the registry and the install. The registry is
-// process-wide and append-only, so the namespace a test registers is one no
-// binding package claims, and its installer touches nothing but its own name.
+// process-wide and append-only, and the namespace a test registers is one no
+// binding package claims, with an installer that touches its own name alone.
 //
-// A nil installer and an empty name are dropped: both would reach a runtime
-// mid-install, after a program had already resolved part of its calls.
+// RegisterNamespace drops a nil installer and an empty name, and either one
+// would reach a runtime mid-install, after a program had resolved part of its
+// calls already.
 func TestRegisterNamespace(t *testing.T) {
 	RegisterNamespace("Test\\Area", func(rt *Runtime) {
 		rt.RegisterFunc("test_area_probe", func() string { return "installed" })
@@ -38,10 +39,11 @@ func TestRegisterNamespace(t *testing.T) {
 	}
 }
 
-// TestUseNamespace covers what an import does to a runtime: nothing until it
-// names a contributed namespace, the installer once when it does, and nothing
-// a second time. The surface a runtime carries before the import is the
-// guarantee the mechanism exists for.
+// TestUseNamespace covers what an import does to a runtime. An import that
+// names no contributed namespace leaves the surface alone, an import that
+// names one runs the installer, and a second import of the same namespace
+// runs it no further time. The surface a runtime carries before the import is
+// the guarantee the mechanism exists for.
 func TestUseNamespace(t *testing.T) {
 	installs := 0
 	RegisterNamespace("Test\\Counted", func(rt *Runtime) {
@@ -70,10 +72,10 @@ func TestUseNamespace(t *testing.T) {
 	}
 }
 
-// TestUseImports covers the program-level seam Run uses, which is what serves
-// the bytecode engine: it compiles and runs a program whole and reaches no
-// statement interpreter, so the install happens before either engine starts.
-// A statement that is not an import is passed over.
+// TestUseImports covers the program-level seam Run uses, the one the bytecode
+// engine needs. That engine compiles and runs a program whole and reaches no
+// statement interpreter, and the install happens before either engine starts.
+// The loop passes over a statement that imports no namespace.
 func TestUseImports(t *testing.T) {
 	RegisterNamespace("Test\\Program", func(rt *Runtime) {
 		rt.RegisterFunc("test_program_probe", func() string { return "installed" })
@@ -91,8 +93,8 @@ func TestUseImports(t *testing.T) {
 
 // TestUseImportPaths covers the three ways a file can name a contributed namespace:
 // the namespace, and a `use function` or `use const` import of a symbol in it,
-// which names one segment more. A path that is a namespace nobody contributed
-// to installs nothing, whichever segment of it is read.
+// which names one segment more. A path below a contributed namespace installs
+// it no deeper than one segment, whichever segment the install reads.
 func TestUseImportPaths(t *testing.T) {
 	RegisterNamespace("Test\\Symbol", func(rt *Runtime) {
 		rt.RegisterFunc("test_symbol_probe", func() string { return "installed" })
