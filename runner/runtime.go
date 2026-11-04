@@ -94,6 +94,8 @@ type Runtime struct {
 	// behave like `s, err := NewStorage(ctx)` (the error surfaces as a throw).
 	constructors map[string]*funcEntry
 	autoloaders  []any
+	// classSources are the PHP sources RegisterClassSource declared on demand.
+	classSources []classSource
 	includePath  string
 
 	// ctx is the request/lifecycle context auto-injected into any registered
