@@ -42,9 +42,23 @@ The platform's middleware records the request and starts the trace. The observer
 - `UpdateStatus` moves the trace through the scoreboard states.
 - `UpdateFilename` records the PHP entrypoint the request resolved to.
 - `UpdateIncludedFiles` records how many files it included beyond that.
-- `Trace` records a span for interpreter work: an include, a call, a template.
+- `Trace` records a span for interpreter work: a call, a template, an include. How much of it arrives is [the trace level](#trace-level).
 
 `TrackLifecycle` records a background trace for work that does not arrive over the network, such as a `@startup` file.
+
+## Trace level
+
+An interpreter reports work a host never would. A frame of PHP is a span, and a page that calls two hundred methods fills a trace with two hundred spans of a microsecond each, with the request they belong to somewhere under them. `runner.trace_level` is the `log_level` of that instrumentation: how much of its own work the runtime publishes.
+
+| Level   | What the interpreter publishes                                                                                      |
+|---------|---------------------------------------------------------------------------------------------------------------------|
+| `off`   | Nothing of its own. A binding's span, a `start_span` from PHP and the error span of a failed run are unaffected     |
+| `info`  | A span per frame, marked as detail, and one `includes` span at the end of the request naming the files. The default |
+| `debug` | Everything unmarked, a span per include among it                                                                    |
+
+The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans, so a frame worth reading stays and a microsecond of dispatch does not, and the dropped frame gives its slot in `max_spans_per_trace` back to the work that needs it. Set that minimum to zero and every frame is kept, which is `trace_level: debug` arrived at from the other side.
+
+The level is a runner option, so a virtual host sets its own in the `runner` block of its `phpscript.yml`, and a host embedding the runtime sets `runner.Options.TraceLevel`.
 
 Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier and a log line carrying it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.
 
@@ -75,7 +89,8 @@ Span names are stable and low cardinality, because a name is an identity: the sp
 | Span                                       | Kind                              | Attributes                                                                           |
 |--------------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------|
 | `GET /path` (the request)                  | `http`                            | `filename`, `included_files`                                                         |
-| `include file.php`                         | `internal`, `template` for `.tpl` | none                                                                                 |
+| `includes`                                 | `internal`                        | `count`, `files`                                                                     |
+| `include file.php`                         | `internal`, `template` for `.tpl` | none, and `trace_level: debug` only                                                  |
 | `new Class`, `$var.method`                 | `internal`                        | none                                                                                 |
 | `php error`                                | `internal`                        | the message is the recorded error                                                    |
 | `$db.Get`, `$db.Query`, ...                | `database`                        | `query`, `query_type`, `query_comment`, `args`, `transaction_depth`, `rows` on reads |
@@ -83,6 +98,8 @@ Span names are stable and low cardinality, because a name is an identity: the sp
 | `migrate`                                  | `database`                        | `migrations`                                                                         |
 | `session load`/`save`/`delete`/`prune`     | `cache`                           | `hit`, `bytes`                                                                       |
 | `mail`                                     | `external`                        | `server`, `to`, `subject`, `bytes`                                                   |
+
+`includes` is the inventory of the run: what `get_included_files()` answers with, recorded as one span at the end of the request in place of the span per file the debug level publishes. It measures nothing; `count` is how many files and `files` is which.
 
 `query_type` is the keyword the statement starts with, lowercased, and `query_comment` is the text of a `/* */` comment in front of it: a query written as `/* userGet */ SELECT * FROM user ...` records `select` and `userGet`. Both group a trace by the query behind it, which the statement text alone does not. The comment stays in the statement sent to the server and `SHOW PROCESSLIST` and the slow query log show the same tag as the trace does.
 

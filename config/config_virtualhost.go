@@ -173,6 +173,13 @@ func (c Config) CheckVirtualHosts() error {
 			return fmt.Errorf("virtualhost %q: %w", name, err)
 		}
 
+		// The site's own runner block, the same way: a trace level spelled
+		// wrong in a site's phpscript.yml would otherwise read as the default
+		// and the site would be instrumented as nobody asked for.
+		if err := loaded.Runner.Check(); err != nil {
+			return fmt.Errorf("virtualhost %q: %w", name, err)
+		}
+
 		if strings.EqualFold(strings.TrimSpace(loaded.Telemetry.Driver), "disk") {
 			path := loaded.Telemetry.StoragePath
 			if other, ok := storagePaths[path]; ok {

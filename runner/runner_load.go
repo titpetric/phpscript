@@ -149,11 +149,17 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 		return true, nil
 	}
 
-	kind := telemetry.KindInternal
-	if strings.EqualFold(filepath.Ext(path), ".tpl") {
-		kind = telemetry.KindTemplate
+	// A span per include is the debug level's. Every other level reports the
+	// files as one span at the end of the request, because an application that
+	// autoloads a class per file includes dozens of them and each is a name
+	// and a microsecond rather than a region of a request worth reading.
+	if rt.opts.TraceLevel.Debug() {
+		kind := telemetry.KindInternal
+		if strings.EqualFold(filepath.Ext(path), ".tpl") {
+			kind = telemetry.KindTemplate
+		}
+		defer rt.trace(scope, "include "+path, kind)()
 	}
-	defer rt.trace(scope, "include "+path, kind)()
 
 	if hook, ok := rt.includeHooks[resolved]; ok {
 		rt.included = append(rt.included, rootPath(resolved))

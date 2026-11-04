@@ -17,6 +17,9 @@ func (c Config) Check(filename, root string) error {
 	if err := c.Telemetry.Check(); err != nil {
 		return err
 	}
+	if err := c.Runner.Check(); err != nil {
+		return err
+	}
 
 	if len(c.VirtualHost) > 0 {
 		if root != "" {

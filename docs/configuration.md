@@ -18,6 +18,7 @@ Two commands read a second file called `phpscript.yml`, discovered by its positi
 runner:
   work_dir: "."
   precompile: true
+  trace_level: info
   writable_paths: []
   include: ""
   upload_max_filesize: 2M
@@ -81,6 +82,7 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 |---------------------------|--------:|------------------------------------------------------------------------------------------------------------------------------------------------|
 | `work_dir`                |     `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
 | `precompile`              |  `true` | Parse and compile the source tree at startup rather than per request. See [Precompilation](#precompilation).                                   |
+| `trace_level`             |  `info` | How much of its own work the interpreter reports: `off`, `info` or `debug`. See [Telemetry](./telemetry.md#trace-level).                       |
 | `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
 | `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
 | `upload_max_filesize`     |    `2M` | Largest file part a request may carry. `$_FILES` reports a larger part as refused.                                                             |

@@ -9,6 +9,12 @@ import (
 )
 
 // Options configures a Runtime.
+//
+// Check refuses a value no runtime could run under, which is the trace level
+// and nothing else. Every other field holds a value only Go can give it, or a
+// number where zero means the default; the level is the one key a
+// configuration file spells as a word, and a word that is not a level would
+// otherwise read as the default.
 type Options struct {
 	// RootFS is the filesystem used to load PHP entrypoints and includes.
 	RootFS fs.FS `yaml:"-"`
@@ -60,6 +66,21 @@ type Options struct {
 	// No call invalidates a cache entry. A reload or a restart takes up an
 	// edited file, and what the tree parsed to stays resident until then.
 	Precompile bool `yaml:"precompile"`
+
+	// TraceLevel is how much of its own work the interpreter reports to the
+	// observers: off, info or debug, with info the default and the zero value.
+	//
+	// An interpreter reports work a host never would: a frame of PHP is a
+	// span, and a page that calls two hundred methods fills a trace with two
+	// hundred spans of a microsecond each and the request they belong to is
+	// unreadable. info publishes them marked as detail, which hands the
+	// recorder the choice (oida drops a debug span that ran under
+	// Options.DebugSpanMinDuration), and publishes one span at the end of the
+	// request naming the files it included instead of one span each. debug
+	// publishes everything unmarked, a span per include among it, for a
+	// request being taken apart. off publishes none of it, and what a binding
+	// or a script measured still records.
+	TraceLevel TraceLevel `yaml:"trace_level"`
 
 	// WritablePaths optionally restricts filesystem writes. When empty, normal
 	// OS/user permissions govern a write. Filesystem shims enforce the list.
@@ -116,6 +137,11 @@ type Options struct {
 	//
 	// NOT ENFORCED YET. See TimeLimit.
 	ConcurrencyLimit int `yaml:"concurrency_limit"`
+}
+
+// Check reports options a runtime could not run under.
+func (o Options) Check() error {
+	return o.TraceLevel.Check()
 }
 
 // inputLimits renders the two input limits as the form decoder takes them.

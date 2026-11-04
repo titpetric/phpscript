@@ -6,6 +6,16 @@ runner:
   # on. Nothing is invalidated: an edited file needs `kill -HUP` or a restart.
   # A virtual host sets its own in the runner block of its phpscript.yml.
   precompile: true
+  # How much of its own work the interpreter reports to the recorder: off,
+  # info or debug. info, the default, reports a span per PHP frame marked as
+  # detail, which the recorder keeps when the frame was slow and drops when it
+  # was not, and reports the includes as one span at the end of the request
+  # naming the files. debug reports everything unmarked, a span per include
+  # among it, for a request being taken apart. off reports none of the
+  # interpreter's own work, and what a binding or a script measured still
+  # records. A virtual host sets its own in the runner block of its
+  # phpscript.yml.
+  trace_level: info
   writable_paths: []
   # A file included ahead of every entrypoint, once per request, for the
   # functions and classes an application expects to be there whatever it is

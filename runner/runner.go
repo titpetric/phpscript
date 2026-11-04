@@ -26,6 +26,9 @@ const (
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) (err error) {
+	// Last of the defers: a shutdown function includes files too, and the
+	// inventory names what the whole run loaded.
+	defer rt.traceIncludes()
 	// The limit belonged to the program that set it. Left armed, it ends the
 	// next program run on this runtime, which set none.
 	defer rt.resetLimits()
@@ -419,13 +422,20 @@ func noopTrace() {}
 // trace measures one region of interpreter work: a call, an include, a
 // template. The returned closer ends the span and callers defer it where the
 // region begins.
+//
+// Options.TraceLevel decides whether the region is reported at all, and
+// whether the span carries the debug mark: at info it does, and the recorder
+// keeps the regions that were slow and drops the microsecond ones.
 func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) func() {
-	if len(rt.observers) == 0 {
+	if len(rt.observers) == 0 || rt.opts.TraceLevel.Off() {
 		return noopTrace
 	}
 	span := rt.traceContext(rt.contextWithScope(rt.ctx, scope), message, kind...)
 	if span == nil {
 		return noopTrace
+	}
+	if rt.opts.TraceLevel.Info() {
+		span.SetDebug()
 	}
 
 	// Spans started while the region runs nest below it and a

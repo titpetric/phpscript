@@ -347,15 +347,22 @@ func TestRuntimeObserverReceivesEntrypointFilename(t *testing.T) {
 	}
 }
 
+// includeTree is the tree the include tests run: an entrypoint including two
+// files, one of which includes a template.
+var includeTree = fstest.MapFS{
+	"main.php":   {Data: []byte(`<?php include "one.php"; include "two.php";`)},
+	"one.php":    {Data: []byte(`<?php include "nested.tpl";`)},
+	"nested.tpl": {Data: []byte(`<?php $nested = 1;`)},
+	"two.php":    {Data: []byte(`<?php $two = 2;`)},
+}
+
+// TestRuntimeObserverReceivesIncludedFileCount covers the count, which every
+// level publishes, and the span per include, which is the debug level's: the
+// default collapses those into one span, covered below.
 func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
-	rt := New(nil, Options{RootFS: fstest.MapFS{
-		"main.php":   {Data: []byte(`<?php include "one.php"; include "two.php";`)},
-		"one.php":    {Data: []byte(`<?php include "nested.tpl";`)},
-		"nested.tpl": {Data: []byte(`<?php $nested = 1;`)},
-		"two.php":    {Data: []byte(`<?php $two = 2;`)},
-	}})
+	rt := New(nil, Options{RootFS: includeTree, TraceLevel: TraceLevelDebug})
 	rt.Observe(recorder)
 	program, err := rt.LoadFile("main.php")
 	if err != nil {
@@ -405,6 +412,123 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 		if recorder.spans[i].Filename != filename {
 			t.Fatalf("span %d filename = %q, want %q", i, recorder.spans[i].Filename, filename)
 		}
+	}
+}
+
+// TestRuntimeObserverCollapsesIncludes covers what the default level reports
+// of a request's includes: one span at the end naming the files, instead of
+// the span per file the debug level publishes. An application that autoloads a
+// class per file includes dozens of them, and a name and a microsecond each is
+// a listing rather than a request.
+func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
+	t.Parallel()
+	recorder := newTelemetryRecorder(t)
+	rt := New(nil, Options{RootFS: includeTree})
+	rt.Observe(recorder)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if want := []string{"includes"}; !reflect.DeepEqual(recorder.traces, want) {
+		t.Fatalf("traces = %q, want %q", recorder.traces, want)
+	}
+	span := recorder.spans[len(recorder.spans)-1]
+	if !span.Ended() {
+		t.Errorf("the inventory span = %+v, want it ended where the run did", span)
+	}
+	if span.Debug {
+		t.Error("the inventory span is marked as detail, which a minimum duration would drop")
+	}
+	if got := span.Attributes["count"]; got != 3 {
+		t.Errorf("count = %v, want every file the run included", got)
+	}
+	want := []string{"/one.php", "/nested.tpl", "/two.php"}
+	if got, ok := span.Attributes["files"].([]string); !ok || !reflect.DeepEqual(got, want) {
+		t.Errorf("files = %v, want %q", span.Attributes["files"], want)
+	}
+
+	// The count still arrives per include: it is the attribute on the request
+	// span, which a reader sees without opening the inventory.
+	if want := []int{1, 2, 3}; !reflect.DeepEqual(recorder.included, want) {
+		t.Fatalf("included = %v, want %v", recorder.included, want)
+	}
+}
+
+// TestRuntimeObserverTraceLevelMarksFrames covers the mark the default level
+// puts on a frame, which is the whole of how a trace of an interpreter stays
+// readable: the recorder keeps the frames that were slow and drops the rest,
+// and the debug level asks it to keep them all.
+func TestRuntimeObserverTraceLevelMarksFrames(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		level TraceLevel
+		debug bool
+	}{
+		{level: "", debug: true},
+		{level: TraceLevelInfo, debug: true},
+		{level: TraceLevelDebug, debug: false},
+	}
+	for _, test := range tests {
+		t.Run(string(test.level.Level()), func(t *testing.T) {
+			t.Parallel()
+			recorder := newTelemetryRecorder(t)
+			rt := New(nil, Options{TraceLevel: test.level, RootFS: fstest.MapFS{
+				"main.php": {Data: []byte(`<?php class Example {} $value = new Example;`)},
+			}})
+			rt.Observe(recorder)
+			program, err := rt.LoadFile("main.php")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := rt.Run(program); err != nil {
+				t.Fatal(err)
+			}
+			if len(recorder.spans) != 1 {
+				t.Fatalf("spans = %+v, want the constructor alone", recorder.spans)
+			}
+			if got := recorder.spans[0].Debug; got != test.debug {
+				t.Errorf("the constructor span's debug mark = %v, want %v", got, test.debug)
+			}
+		})
+	}
+}
+
+// TestRuntimeObserverTraceLevelOff covers the level that silences the
+// interpreter: no frame, no include, no inventory. What a binding or a script
+// measured is not the interpreter's own work and still records, and so does
+// the error of a run that failed.
+func TestRuntimeObserverTraceLevelOff(t *testing.T) {
+	t.Parallel()
+	recorder := newTelemetryRecorder(t)
+	rt := New(nil, Options{RootFS: includeTree, TraceLevel: TraceLevelOff})
+	rt.SetContext(telemetry.WithTrace(context.Background(), recorder.trace))
+	rt.Observe(recorder)
+	rt.RegisterFunc("measure", func(ctx context.Context) {
+		telemetry.StartSpan(ctx, "binding work").End()
+	})
+	program, err := rt.Load(`<?php include "one.php"; measure();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(recorder.traces) != 0 {
+		t.Fatalf("traces = %q, want none of the interpreter's own", recorder.traces)
+	}
+	if findSpan(recorder.trace, "binding work") == nil {
+		t.Error("the binding's span went with the interpreter's; the level is not the recorder's")
+	}
+
+	// The count is the request span's attribute and not an interpreter span,
+	// so the level does not silence it.
+	if want := []int{1, 2}; !reflect.DeepEqual(recorder.included, want) {
+		t.Fatalf("included = %v, want %v", recorder.included, want)
 	}
 }
 
