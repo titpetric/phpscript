@@ -22,28 +22,29 @@ const Name = "List routes, files and classes"
 // The configuration and the global options are what every command constructor
 // takes and one signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
-	var bindings, api, asJSON bool
+	var bindings, classes, api, asJSON bool
 
 	return &cli.Command{
 		Name:  "list",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
 			fs.BoolVar(&bindings, "bindings", false, "List the functions, classes and constants the runtime registers instead of scanning paths")
+			fs.BoolVar(&classes, "classes", false, "Print the registered classes as PHP class definitions, all of them or the ones named as arguments")
 			fs.BoolVar(&api, "api", false, "List the methods of every class and interface, one row per method")
 			fs.BoolVar(&asJSON, "json", false, "Write the rows as JSON instead of a markdown table")
 		},
 		Run: func(ctx context.Context, args []string) error {
-			return Run(args, bindings, api, asJSON)
+			return Run(args, bindings, classes, api, asJSON)
 		},
 	}
 }
 
 // Run prints a markdown table for the paths, or for the runtime surface.
-func Run(args []string, bindings, api, asJSON bool) error {
-	return run(os.Stdout, args, bindings, api, asJSON)
+func Run(args []string, bindings, classes, api, asJSON bool) error {
+	return run(os.Stdout, args, bindings, classes, api, asJSON)
 }
 
-func run(out io.Writer, args []string, bindings, api, asJSON bool) error {
+func run(out io.Writer, args []string, bindings, classes, api, asJSON bool) error {
 	// --bindings reports on the binary, and a tree or path argument selects no
 	// file, and the command refuses it: a caller that passed both meant one of
 	// the two.
@@ -51,10 +52,24 @@ func run(out io.Writer, args []string, bindings, api, asJSON bool) error {
 		if len(args) > 0 {
 			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))
 		}
-		if api || asJSON {
-			return fmt.Errorf("list --bindings takes neither --api nor --json")
+		if classes || api || asJSON {
+			return fmt.Errorf("list --bindings takes none of --classes, --api or --json")
 		}
 		fmt.Fprint(out, phplist.StdlibMarkdown(phplist.Stdlib()))
+		return nil
+	}
+	// --classes reports on the binary too, and its arguments are class names
+	// and not paths. The rendering is PHP source and --json encodes table rows,
+	// which this mode produces none of.
+	if classes {
+		if api || asJSON {
+			return fmt.Errorf("list --classes takes neither --api nor --json")
+		}
+		defs, err := phplist.StdlibDefinitions(args...)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(out, defs)
 		return nil
 	}
 	if api {

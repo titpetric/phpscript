@@ -77,6 +77,131 @@ func TestStdlibSignatures(t *testing.T) {
 	}
 }
 
+// TestStdlibDefinitions covers the definition the command prints for the class
+// the fidelity target names. `go doc net/http.Client` reads as the type's doc
+// paragraph, then its fields with their docs, then its methods with their
+// signatures and their docs, and this is that in PHP spelling.
+//
+// HTTP\Client's bound type holds a *net/http.Client and a timeout of its own
+// and publishes neither, leaving no property section to print, and it satisfies
+// no interface in the set, leaving no implements clause.
+func TestStdlibDefinitions(t *testing.T) {
+	t.Parallel()
+	got, err := list.StdlibDefinitions(`HTTP\Client`)
+	if err != nil {
+		t.Fatalf("StdlibDefinitions: %v", err)
+	}
+
+	want := `/**
+ * HTTP\Client sends requests, one at a time with send() or all at once with
+ * parallel(). It takes its settings as an associative array, and with no
+ * argument builds a client with a 30 second timeout that follows redirects.
+ *
+ * Binds github.com/titpetric/phpscript/stdlib/http package, uses [net/http.Client](https://pkg.go.dev/net/http#Client).
+ */
+class HTTP\Client
+{
+    public function __construct(mixed $options);
+`
+	if !strings.HasPrefix(got, want) {
+		t.Errorf("definition opens as\n%s\nwant it to open as\n%s", got, want)
+	}
+	for _, line := range []string{
+		"     * get sends a GET request to $url and returns the response.",
+		"    public function get(string $url): object;",
+		"    public function send(object $request): object;",
+	} {
+		if !strings.Contains(got, line) {
+			t.Errorf("the definition does not carry %q:\n%s", line, got)
+		}
+	}
+	if strings.Contains(got, "public mixed $") || strings.Contains(got, "implements") {
+		t.Errorf("HTTP\\Client carries a property or an implements clause:\n%s", got)
+	}
+}
+
+// TestStdlibDefinitionsProperties covers a class that does carry properties.
+// Database holds three, in the order the Go struct declares them, and
+// $is_readonly is the folded spelling: Runtime.structField resolves
+// is_readonly back to IsReadonly through the underscores, and a listing
+// printing isReadonly would name a property no script can read.
+func TestStdlibDefinitionsProperties(t *testing.T) {
+	t.Parallel()
+	got, err := list.StdlibDefinitions("Database")
+	if err != nil {
+		t.Fatalf("StdlibDefinitions: %v", err)
+	}
+
+	order := []string{"public object $bridge;", "public string $id;", "public bool $is_readonly;"}
+	at := -1
+	for _, want := range order {
+		next := strings.Index(got, want)
+		if next < 0 {
+			t.Fatalf("the definition does not carry %q:\n%s", want, got)
+		}
+		if next < at {
+			t.Errorf("%q prints out of declaration order", want)
+		}
+		at = next
+	}
+	// The property's godoc reaches the listing as a docblock, word for word
+	// from the Go field.
+	if !strings.Contains(got, "     * IsReadonly restricts the client to statements that only read.") {
+		t.Errorf("$is_readonly carries no docblock:\n%s", got)
+	}
+	// The constructor follows every property, and no declaration carries a
+	// body: the implementation is Go and no PHP a reader could open.
+	if strings.Index(got, "public bool $is_readonly;") > strings.Index(got, "public function __construct") {
+		t.Error("a property prints after the constructor")
+	}
+	if strings.Contains(got, ") {") || strings.Contains(got, "{}") {
+		t.Errorf("a declaration carries a body:\n%s", got)
+	}
+}
+
+// TestStdlibDefinitionsAliasAndUnbound covers the two names a caller can name
+// that are not a class's own: an SPL name sharing the Exception constructor
+// prints under the name on the command line, and stdClass has no Go constructor
+// and no bound type to report anything about.
+func TestStdlibDefinitionsAliasAndUnbound(t *testing.T) {
+	t.Parallel()
+	got, err := list.StdlibDefinitions("RuntimeException")
+	if err != nil {
+		t.Fatalf("StdlibDefinitions: %v", err)
+	}
+	if !strings.Contains(got, "class RuntimeException implements Throwable") {
+		t.Errorf("the definition does not head on the name asked about:\n%s", got)
+	}
+
+	if _, err := list.StdlibDefinitions("stdClass"); err == nil {
+		t.Error("stdClass answered a definition, and it has no Go constructor to describe")
+	}
+}
+
+// TestStdlibDefinitionsAll covers the listing with no name: every class a
+// script can construct, each as its own definition, and stdClass left out.
+func TestStdlibDefinitionsAll(t *testing.T) {
+	t.Parallel()
+	got, err := list.StdlibDefinitions()
+	if err != nil {
+		t.Fatalf("StdlibDefinitions: %v", err)
+	}
+	for _, want := range []string{
+		"class Database\n",
+		"class Exception implements Throwable\n",
+		"class HTTP\\Client\n",
+		"class HTTP\\Mux implements http.Handler\n",
+		`class Time implements encoding.TextMarshaler, fmt.Stringer, json.Marshaler`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the listing does not carry %q", want)
+		}
+	}
+	if strings.Contains(got, "class stdClass") {
+		t.Error("stdClass is listed, and it has no bound Go type to describe")
+	}
+}
+
 // TestStdlibMarkdownIsATable checks the rendering has a heading row, a
 // separator, and one row per symbol.
 func TestStdlibMarkdownIsATable(t *testing.T) {
