@@ -6,6 +6,8 @@ The import binds go's builtin functions and type names, which [godoc](https://pk
 
 An import is the more specific name, and `min`, `max` and `copy` shadow php's functions of those names in the importing file. `\min([3, 1, 2])` is php's, the way `\strlen($s)` is php's whatever the file imported, and `MAKE()` reaches php, which folds a function's case where this binds one spelling.
 
+php's own `use Runtime\Go;` imports a name and no function with it: php aliases `Go\make()` onto `Runtime\Go\make()` and leaves a bare `min()` at php's. Binding the bare names is this runtime's addition, on the precedent of php's `use function Acme\min;`, which makes the short name the imported one and leaves `\min` for php's. phpscript reads the plain `use` alone; `use function Runtime\Go\min;` imports nothing here.
+
 The names arrive with the import and no other way. A file that imported none of them resolves `make` and `len` the way php does, `function_exists("make")` reports false, and the [implemented API inventory](implemented-apis.md) covers the surface php defines. An embedding host installs the area with `rt.UseNamespace("Runtime\\Go")`.
 
 php rejects a file that uses the syntax: `make([]string, 0, 10)` is a parse error under php and `len($s)` resolves to no php function. Keep the import out of source that must also run on php.
