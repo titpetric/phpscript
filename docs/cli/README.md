@@ -97,6 +97,8 @@ Like `git-st` runs as `git st`, an executable named `<binary>-<tool>` on `PATH` 
 
 The prefix is the base name of the running binary (`os.Args[0]`), never a fixed string. `phpscript` loads `phpscript-*` and nothing else, a copy renamed `phpx` loads `phpx-*` and nothing else, and neither sees the other's tools. A name only matches when the prefix is followed by `-`, so `phpxy-gen` belongs to neither. Within one prefix the first directory on `PATH` holding a name wins. The tool must come first on the command line: `phpscript gen -v`, not `phpscript -v gen`.
 
+A tool binary can be a copy of the program itself. When `argv[0]` has the form `<binary>-<tool>`, the tool part is the command: `phpx-test --matrix x` runs as `phpx-test test --matrix x`, which is what makes a coverage build of phpx usable as `phpx test`. A release file name such as `phpscript-linux-amd64` is not a tool name and is left alone. A binary built with `go build -cover` and started without `GOCOVERDIR` sets it to `cover/<binary>` and starts itself again, because the coverage runtime reads the variable before any code runs. See [how to collect Go code coverage](../guides/how-to-collect-go-code-coverage-from-phpscript-phpx-test.md).
+
 Discovery reads `PATH` once per process and memoizes it, along with each tool's `--help`. The code is `cmd/phpscript/toolchain`.
 
 ## Docker image
