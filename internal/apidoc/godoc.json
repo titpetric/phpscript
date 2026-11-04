@@ -722,6 +722,16 @@
     },
     "github.com/titpetric/phpscript/stdlib/http.Mux": {
       "methods": {
+        "Group": {
+          "comment": [
+            "group calls $fn with a mux that shares this one's routes and starts with its",
+            "middleware. What $fn passes to Use stays inside the group, which is how a",
+            "module isolates its routes from the rest of the router."
+          ],
+          "params": [
+            "fn"
+          ]
+        },
         "Handle": {
           "comment": [
             "handle registers $handler for $pattern, which is ServeMux.HandleFunc's",
@@ -744,6 +754,14 @@
           "params": [
             "w",
             "r"
+          ]
+        },
+        "Use": {
+          "comment": [
+            "use wraps the handlers registered after it with $middleware, chi's shape."
+          ],
+          "params": [
+            "middleware"
           ]
         },
         "UsePoolForTest": {
