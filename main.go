@@ -37,6 +37,10 @@ import (
 )
 
 func main() {
+	// A <binary>-<tool> name carries its command, and a coverage build needs
+	// GOCOVERDIR before the process starts: both are settled up front.
+	os.Args = toolchain.CommandArgs(os.Args)
+	toolchain.CoverRelaunch()
 	// An external <binary>-<tool> on PATH takes the line before anything else
 	// parses it, so its flags are its own.
 	if code, ok := runTool(os.Args, os.Getenv("PATH")); ok {
