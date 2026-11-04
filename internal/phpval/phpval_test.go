@@ -205,6 +205,49 @@ func TestInt(t *testing.T) {
 	}
 }
 
+// TestDigits covers the decimal %d prints. An unsigned width prints the value
+// it holds, where php's int clips at PHP_INT_MAX.
+func TestDigits(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		in       any
+		want     string
+		negative bool
+	}{
+		{in: int64(42), want: "42"},
+		{in: int64(-42), want: "-42", negative: true},
+		{in: "12abc", want: "12"},
+		{in: int8(-5), want: "-5", negative: true},
+		{in: uint8(255), want: "255"},
+		{in: uint64(math.MaxUint64), want: "18446744073709551615"},
+		{in: uint(math.MaxUint64), want: "18446744073709551615"},
+		{in: float32(2.5), want: "2"},
+	} {
+		got, negative := Digits(test.in)
+		if got != test.want || negative != test.negative {
+			t.Errorf("Digits(%#v) = %q/%t, want %q/%t", test.in, got, negative, test.want, test.negative)
+		}
+	}
+}
+
+// TestUint covers the bits %u, %b, %o and %x print: a typed value answers the
+// bits it holds, and php's int the unsigned reading of them.
+func TestUint(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[any]uint64{
+		int64(255):             255,
+		int64(-1):              math.MaxUint64,
+		int8(-1):               math.MaxUint64,
+		uint8(255):             255,
+		uint64(math.MaxUint64): math.MaxUint64,
+		"7":                    7,
+	} {
+		if got := Uint(in); got != want {
+			t.Errorf("Uint(%#v) = %d, want %d", in, got, want)
+		}
+	}
+}
+
 func TestFloat(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

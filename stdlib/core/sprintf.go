@@ -189,22 +189,21 @@ func (spec formatSpec) render(arg any) (string, error) {
 		}
 		return spec.pack(s, false), nil
 	case 'd':
-		n := phpval.Int(arg)
-		s := strconv.FormatInt(n, 10)
-		if spec.sign && n >= 0 {
+		s, negative := phpval.Digits(arg)
+		if spec.sign && !negative {
 			s = "+" + s
 		}
 		return spec.pack(s, true), nil
 	case 'u':
-		return spec.pack(strconv.FormatUint(uint64(phpval.Int(arg)), 10), true), nil
+		return spec.pack(strconv.FormatUint(phpval.Uint(arg), 10), true), nil
 	case 'b':
-		return spec.pack(strconv.FormatUint(uint64(phpval.Int(arg)), 2), true), nil
+		return spec.pack(strconv.FormatUint(phpval.Uint(arg), 2), true), nil
 	case 'o':
-		return spec.pack(strconv.FormatUint(uint64(phpval.Int(arg)), 8), true), nil
+		return spec.pack(strconv.FormatUint(phpval.Uint(arg), 8), true), nil
 	case 'x':
-		return spec.pack(strconv.FormatUint(uint64(phpval.Int(arg)), 16), true), nil
+		return spec.pack(strconv.FormatUint(phpval.Uint(arg), 16), true), nil
 	case 'X':
-		s := strconv.FormatUint(uint64(phpval.Int(arg)), 16)
+		s := strconv.FormatUint(phpval.Uint(arg), 16)
 		return spec.pack(strings.ToUpper(s), true), nil
 	case 'c':
 		// A character conversion takes neither width nor precision in php.

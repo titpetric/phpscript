@@ -129,6 +129,35 @@ func TestGoInt(t *testing.T) {
 	}
 }
 
+// TestGoClipInt covers the integer php reads a typed value as. An unsigned
+// value past PHP_INT_MAX clips there, where the bits read -1 and the float php
+// holds the value in reduces to 0. A float width answers no integer at all,
+// the float domain holding the value php reads.
+func TestGoClipInt(t *testing.T) {
+	t.Parallel()
+	for value, want := range map[any]int64{
+		int8(-5):               -5,
+		uint8(255):             255,
+		uint64(math.MaxUint64): math.MaxInt64,
+		uint(math.MaxUint64):   math.MaxInt64,
+		uint64(7):              7,
+	} {
+		got, ok := model.GoClipInt(value)
+		if !ok {
+			t.Errorf("GoClipInt(%#v) = false", value)
+			continue
+		}
+		if got != want {
+			t.Errorf("GoClipInt(%#v) = %d, want %d", value, got, want)
+		}
+	}
+	for _, value := range []any{float32(1), int64(1), "1", nil} {
+		if got, ok := model.GoClipInt(value); ok {
+			t.Errorf("GoClipInt(%#v) = %d, want php's own reading", value, got)
+		}
+	}
+}
+
 // TestGoWidthNarrow covers the conversion. A value wider than the width keeps
 // its low bits and sign-extends them, as go's conversion does, and a negative
 // value into an unsigned width wraps: uint8(-1) is 255.

@@ -18,16 +18,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// GoString renders a value that is none of PHP's own scalars: something a Go
-// binding returned or a database row scanned. The final return reports whether
-// it knew how.
-//
-// A time.Time takes time.DateTime, and neither Go's String nor RFC3339. PHP has
-// no string form for a date to copy: `echo $dateTime` is a fatal Error. The
-// rule comes from where PHP writes one itself. The `date` field of var_dump,
-// print_r and json_encode is Y-m-d H:i:s, and PDO returns a DATETIME column
-// as the stored text. Anything else that can spell itself does and a
-// Duration is "1h30m0s" and a Month is "August".
+// GoString renders a value outside php's scalars, reporting whether it has one.
 func GoString(v any) (string, bool) {
 	switch x := v.(type) {
 	case time.Time:
@@ -40,9 +31,7 @@ func GoString(v any) (string, bool) {
 	return "", false
 }
 
-// Bytes answers the string a []byte carries, and whether v holds one. A PHP
-// string is a byte string and a binding's []byte is one of those and never a
-// list of integers.
+// Bytes answers the string a []byte carries, and whether v holds one.
 func Bytes(v any) (string, bool) {
 	b, ok := v.([]byte)
 	if !ok {
@@ -64,50 +53,38 @@ func String(v any) string {
 		}
 		return ""
 	case int64:
-		// strconv formats in place; fmt.Sprintf would box x into an any
-		// (an allocation of its own for values over 255) and run the
-		// formatter. String sits under implode, str_replace, in_array and
-		// array_unique, which earns the two lines.
+		// strconv formats in place, where fmt.Sprintf boxes x and formats.
 		return strconv.FormatInt(x, 10)
 	case int:
 		return strconv.Itoa(x)
 	case float64:
 		return FloatString(x)
 	case uint64:
-		// An unsigned width renders its own value, where widening it to one
-		// of php's numbers would reach a float and lose the low bits:
-		// uint64(-1) is 18446744073709551615 and no 1.8446744073709552E+19.
+		// An unsigned width renders its own value: widening reaches a float.
 		return strconv.FormatUint(x, 10)
 	case uint:
 		return strconv.FormatUint(uint64(x), 10)
 	case float32:
-		// go's shortest round-trip at 32 bits: float32(0.1) renders 0.1,
-		// where php's precision over the widened float64 writes the
-		// 0.10000000149012 the wide type holds.
+		// go's shortest round-trip at 32 bits: float32(0.1) renders 0.1.
 		return strconv.FormatFloat(float64(x), 'g', -1, 32)
 	default:
 		if s, ok := GoString(x); ok {
 			return s
 		}
-		// A typed go value renders as the number it holds: `echo int8(44)`
-		// writes 44, and var_dump is the one reader that names the type.
+		// A typed go value renders as the number it holds.
 		if widened, ok := model.GoWiden(v); ok {
 			return String(widened)
 		}
-		// PHP spells every array "Array" in a string context, whatever is in
-		// it, and warns. A value with no string form at all - an object, there
-		// being no __toString here - is the empty string; StringContext is the
-		// one that reports it as the Error PHP raises.
+		// php spells every array "Array" in a string context.
 		if model.IsCollection(v) {
 			return "Array"
 		}
+		// An object has no string form here, and StringContext refuses it.
 		return ""
 	}
 }
 
-// StringContext is String with the refusal PHP raises where a script's own
-// conversion reaches a value that has no string form. There is no __toString
-// here and an object is that value; an array key and var_dump refuse nothing.
+// StringContext is String, refusing an object as php's Error does.
 func StringContext(v any) (string, error) {
 	if _, ok := v.(*model.Object); ok {
 		return "", &ConversionError{Class: classNameOf(v)}
@@ -115,9 +92,7 @@ func StringContext(v any) (string, error) {
 	return String(v), nil
 }
 
-// ConversionError reports a value a string context cannot convert, under the
-// class PHP raises for it: an object with no __toString. It names that class and
-// `catch (Error $e)` matches it and `catch (Exception $e)` does not, as in PHP.
+// ConversionError reports a value a string context cannot convert.
 type ConversionError struct {
 	Class string
 }
@@ -134,8 +109,7 @@ func (e *ConversionError) Error() string {
 // ThrowableClass names the PHP class, implementing runner.Throwable.
 func (e *ConversionError) ThrowableClass() string { return "Error" }
 
-// classNameOf answers the class an object declares, for the conversion
-// error's message.
+// classNameOf answers the class an object declares.
 func classNameOf(v any) string {
 	object, ok := v.(*model.Object)
 	if !ok || object == nil || object.Class == nil {
@@ -144,11 +118,7 @@ func classNameOf(v any) string {
 	return object.Class.Name
 }
 
-// FloatString renders a float the way PHP's echo does: precision=14 significant
-// digits and 0.1*0.2 echoes as 0.02 and never the round-tripping
-// 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
-// always carries a decimal point and the exponent has no leading zero and 1e20
-// echoes as 1.0E+20, not 1E+20 or 1e+20.
+// FloatString renders a float the way php's echo does, at precision 14.
 func FloatString(x float64) string {
 	switch {
 	case math.IsInf(x, 1):
@@ -176,8 +146,7 @@ func FloatString(x float64) string {
 	return s
 }
 
-// Int reads v as PHP's (int) cast does: the leading numeric prefix of a string,
-// zero for what has none.
+// Int reads v as php's (int) cast does.
 func Int(v any) int64 {
 	switch x := v.(type) {
 	case int64:
@@ -201,22 +170,40 @@ func Int(v any) int64 {
 		}
 		return ToInt64(parseFloat(prefix))
 	default:
-		// A typed go value reads as the number it holds.
+		// A typed integer reads as php's int, clipping at PHP_INT_MAX.
+		if clipped, ok := model.GoClipInt(v); ok {
+			return clipped
+		}
+		// Every other typed value reads as the number it holds.
 		if widened, ok := model.GoWiden(v); ok {
 			return Int(widened)
 		}
-		// A collection answers zero here, as the numeric context reads it:
-		// php refuses arithmetic on an array with a TypeError and never
-		// coercing it and this value never reaches an operator as a number. The
-		// explicit (int) cast is the one context that converts one, and it does
-		// so in runner.helperCast.
+		// A collection is zero here; runner.helperCast owns the (int) cast.
 		return 0
 	}
 }
 
-// Float is PHP's float cast. It reads the same leading numeric prefix Int does,
-// and "12abc" is 12 to both of them and "-3.5" is -3.5 here and -3 there. A
-// string with no numeric prefix, and every value that is not a scalar, is 0.
+// Digits renders the decimal %d prints, reporting a negative value.
+func Digits(v any) (string, bool) {
+	// An unsigned width prints its own value, as fmt's %d does.
+	if w, typed := model.GoWidthOf(v); typed && !w.Float && !w.Signed {
+		bits, _ := model.GoUint(v)
+		return strconv.FormatUint(bits, 10), false
+	}
+	n := Int(v)
+	return strconv.FormatInt(n, 10), n < 0
+}
+
+// Uint reads the bits %u, %b, %o and %x print.
+func Uint(v any) uint64 {
+	// A typed integer answers its own bits, whatever its sign.
+	if bits, typed := model.GoUint(v); typed {
+		return bits
+	}
+	return uint64(Int(v))
+}
+
+// Float reads v as php's (float) cast does.
 func Float(v any) float64 {
 	switch x := v.(type) {
 	case float64:
@@ -241,18 +228,7 @@ func Float(v any) float64 {
 	}
 }
 
-// leadingFloat reads the numeric prefix of s: leading whitespace, an optional
-// sign, digits, an optional fraction and an optional exponent, stopping at the
-// first character that is not part of one ("12abc" is 12, "1.5x" is 1.5, ".5"
-// is 0.5, "1e3" is 1000, "abc" is 0).
-//
-// Int, Float and Number all read the string through here and no two of them can
-// take a different number out of it, which this package exists to prevent.
-// The prefix is the one runner.numericPrefix reads for a cast and
-// (int)"1e3" and phpval.Int("1e3") agree as well.
-//
-// isInt reports a prefix carrying no fraction and no exponent,
-// the case Number returns an int64 for.
+// leadingFloat reads the numeric prefix of s, reporting an integer spelling.
 func leadingFloat(s string) (prefix string, isInt bool) {
 	i := 0
 	for i < len(s) {
@@ -277,8 +253,7 @@ func leadingFloat(s string) (prefix string, isInt bool) {
 		for ; end < len(s) && isDigit(s[end]); end++ {
 			fraction++
 		}
-		// A lone '.' is not a fraction: "abc.def" and "." have no prefix at
-		// all, and "5." keeps its digit either way.
+		// A lone '.' is no fraction, and "5." keeps its digit either way.
 		if digits > 0 || fraction > 0 {
 			i, digits, isInt = end, digits+fraction, false
 		}
@@ -286,8 +261,7 @@ func leadingFloat(s string) (prefix string, isInt bool) {
 	if digits == 0 {
 		return "", true
 	}
-	// An exponent takes the prefix with it, and makes the value a float:
-	// PHP reads "1e3" as 1000.0 and (int)"1e3" as 1000.
+	// An exponent joins the prefix and makes the value a float.
 	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
 		end := i + 1
 		if end < len(s) && (s[end] == '+' || s[end] == '-') {
@@ -304,8 +278,7 @@ func leadingFloat(s string) (prefix string, isInt bool) {
 	return s[start:i], isInt
 }
 
-// parseInt reads an integer prefix, saturating at the int64 bounds the way PHP
-// does: (int)"99999999999999999999" is PHP_INT_MAX and never 0.
+// parseInt reads an integer prefix, saturating at the int64 bounds as php does.
 func parseInt(prefix string) int64 {
 	n, err := strconv.ParseInt(prefix, 10, 64)
 	if err == nil {
@@ -317,20 +290,13 @@ func parseInt(prefix string) int64 {
 	return math.MaxInt64
 }
 
-// parseFloat reads a float prefix. Digits past float64's range return +Inf or
-// -Inf with ErrRange, the value PHP reads for them too and the error
-// is not consulted.
+// parseFloat reads a float prefix, where digits past float64 reach an infinity.
 func parseFloat(prefix string) float64 {
 	f, _ := strconv.ParseFloat(prefix, 64)
 	return f
 }
 
-// Number returns v in PHP's numeric domain: an int64 for what PHP treats as an
-// integer, a float64 for what it treats as a float. It lets abs(), min(),
-// max() and array_sum() return the argument's own type and that abs(-1) is
-// int(1) and abs(-1.5) is float(1.5). Number reads a string through the
-// same numeric prefix Int and Float read and the three never disagree: "12abc"
-// is int64(12), "-3.5" is float64(-3.5) and "abc" is int64(0).
+// Number returns v in php's numeric domain, an int64 or a float64.
 func Number(v any) any {
 	switch x := v.(type) {
 	case float64:
@@ -341,8 +307,7 @@ func Number(v any) any {
 			return int64(0)
 		}
 		if isInt {
-			// An integer literal past int64 is a float in PHP too:
-			// "99999999999999999999" + 0 is float(1.0E+20).
+			// An integer spelling past int64 is a float, as php reads it.
 			if n, err := strconv.ParseInt(prefix, 10, 64); err == nil {
 				return n
 			}
@@ -350,22 +315,16 @@ func Number(v any) any {
 		}
 		return parseFloat(prefix)
 	default:
-		// A typed go value answers the number it holds, which carries its
-		// width: an unsigned value past PHP_INT_MAX is a float, the only php
-		// number holding one.
+		// A typed value answers the number it holds, a float past PHP_INT_MAX.
 		if widened, ok := model.GoWiden(v); ok {
 			return widened
 		}
-		// int, int64, bool, null and everything else PHP counts as an
-		// integer, which Int already spells out.
+		// int, int64, bool, null and the rest are integers, which Int spells.
 		return Int(v)
 	}
 }
 
-// Key normalises an array key the way PHP does: only int and string keys
-// exist, null is "", a bool is 1 or 0, a float truncates toward zero, and a
-// canonical decimal string is its number - "08" and "+1" are not, see
-// NumericKey.
+// Key normalises an array key the way php does, to an int or a string.
 func Key(v any) any {
 	switch x := v.(type) {
 	case nil:
@@ -378,8 +337,7 @@ func Key(v any) any {
 	case int:
 		return int64(x)
 	case int64:
-		// v, not x: returning the typed value would box it again, an
-		// allocation for every int64 key outside the small-int cache.
+		// v, not x: returning x boxes the value a second time.
 		return v
 	case float64:
 		return floatKey(x)
@@ -392,9 +350,7 @@ func Key(v any) any {
 		// v, not x, for the same reason as int64 above.
 		return v
 	default:
-		// A typed go value keys as the number it holds: an array keyed by
-		// int8(44) and one keyed by 44 are one entry, as php has two key
-		// types and no more.
+		// A typed value keys as the number it holds: int8(44) keys 44.
 		if widened, ok := model.GoWiden(v); ok {
 			return Key(widened)
 		}
@@ -402,8 +358,7 @@ func Key(v any) any {
 	}
 }
 
-// floatKey truncates toward zero. Go leaves an out-of-range float-to-int
-// conversion undefined and floatKey names the ends the compiler would not.
+// floatKey truncates toward zero, naming the ends go leaves undefined.
 func floatKey(f float64) int64 {
 	switch {
 	case math.IsNaN(f):
@@ -416,11 +371,7 @@ func floatKey(f float64) int64 {
 	return int64(f)
 }
 
-// NumericKey reports whether s is the canonical spelling of an integer, and so
-// becomes an int key. The string has to read back identically from the integer
-// it would become, which rules out "08", "+1", "-0", " 1", "1.0", "1e2" and
-// anything past int64. Each stays a string key and $a["08"] and $a[8] are two
-// entries. ParseInt accepts most of them, hence the hand-rolled check.
+// NumericKey reports whether s is the canonical spelling of an integer key.
 func NumericKey(s string) (int64, bool) {
 	digits := s
 	if strings.HasPrefix(digits, "-") {
@@ -444,14 +395,13 @@ func NumericKey(s string) (int64, bool) {
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		// Out of int64 range. PHP keeps it as a string and saturates nothing.
+		// Past int64, where php keeps the string key and saturates nothing.
 		return 0, false
 	}
 	return n, true
 }
 
-// Truthy reads v the way `if ($v)` does: "" and "0" are false where "0.0" and
-// "00" are true, and an empty collection is false.
+// Truthy reads v the way `if ($v)` does.
 func Truthy(v any) bool {
 	switch x := v.(type) {
 	case nil:
@@ -469,9 +419,11 @@ func Truthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
+		// A typed value reads as the number it holds, where int8(0) is false.
 		if widened, ok := model.GoWiden(v); ok {
 			return Truthy(widened)
 		}
+		// An empty collection is false whatever its go type.
 		if n, ok := model.LenValues(v); ok {
 			return n > 0
 		}

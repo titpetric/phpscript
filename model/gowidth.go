@@ -135,6 +135,21 @@ func GoInt(v any) (int64, bool) {
 	return 0, false
 }
 
+// GoClipInt reads a typed integer as php's int, clipping an unsigned value
+// past PHP_INT_MAX at PHP_INT_MAX: go's conversion answers -1 there and the
+// float php holds it in reduces to 0.
+func GoClipInt(v any) (int64, bool) {
+	w, typed := GoWidthOf(v)
+	if !typed || w.Float {
+		return 0, false
+	}
+	bits, _ := GoInt(v)
+	if !w.Signed && bits < 0 {
+		return math.MaxInt64, true
+	}
+	return bits, true
+}
+
 // GoUint is GoInt over unsigned bits, the domain an unsigned width computes in.
 func GoUint(v any) (uint64, bool) {
 	n, ok := GoInt(v)

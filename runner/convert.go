@@ -90,10 +90,12 @@ func toInt(v any) int64 {
 	case string:
 		return stringToInt(x)
 	default:
-		// A Go binding returns named scalar types (time.Month, time.Weekday,
-		// time.Duration), which are integers wearing a name. Arithmetic on them
-		// is ordinary PHP arithmetic and `$t->month() + 1` counts months rather
-		// than answering zero.
+		// A typed integer clips at PHP_INT_MAX, as phpval.Int reads one.
+		if clipped, ok := model.GoClipInt(v); ok {
+			return clipped
+		}
+		// A named Go scalar (time.Month, time.Duration) is an integer wearing
+		// a name, and `$t->month() + 1` counts months.
 		return namedScalarInt(v)
 	}
 }

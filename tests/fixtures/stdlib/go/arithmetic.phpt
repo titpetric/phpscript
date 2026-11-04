@@ -55,6 +55,12 @@ var_dump(int32(1) << 31);
 var_dump(uint8(255) >> 4);
 var_dump(int8(-8) >> 1);
 
+// An unsigned value past PHP_INT_MAX prints the value go prints, and clips
+// where php's int takes it.
+$big = uint64(0) - 1;
+echo $big, " ", sprintf("%d|%u", $big, $big), "\n";
+var_dump((int) $big, intval($big), (float) $big);
+
 // php's own comparisons read the number the value holds, and `===` reads the
 // type: php's int is 64 bits wide and int8(44) is not it.
 var_dump(int8(44) == 44, int8(44) === 44, int8(44) < 100);
@@ -91,6 +97,10 @@ uint8(255)
 int32(-2147483648)
 uint8(15)
 int8(-4)
+18446744073709551615 18446744073709551615|18446744073709551615
+int(9223372036854775807)
+int(9223372036854775807)
+float(1.8446744073709552E+19)
 bool(true)
 bool(false)
 bool(true)

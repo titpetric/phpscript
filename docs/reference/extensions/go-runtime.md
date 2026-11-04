@@ -73,6 +73,8 @@ var_dump($i);                       // int8(-128)
 
 php's own operators read the number the value holds: `==` and `<` compare numerically, `gettype` answers `integer` or `double`, and the casts convert. `===` reads the type, and `float32(0.1) === 0.1` is false. A php function answers php's types over a typed argument, and `abs(int8(-5))` is php's 5.
 
+An unsigned value past `PHP_INT_MAX` prints what go prints. `echo`, `%d` and `%u` write `18446744073709551615`, and the integer domain clips: `(int)` and `intval()` answer `PHP_INT_MAX`, where `(float)` answers the float holding the value.
+
 `var_export` prints the conversion back, `int8(44)`, which reproduces the value in a file that imported the runtime. `echo`, `print_r` and `json_encode` print the number alone.
 
 ## Slices

@@ -11,26 +11,18 @@ const (
 	twoPow64 = 18446744073709551616.0 // 2^64
 )
 
-// ToInt64 converts a float to the integer PHP converts it to.
-//
-// Go saturates an out-of-range float to math.MinInt64 on amd64 and leaves the
-// result implementation defined. PHP wraps, modulo 2^64 into the signed range,
-// as zend_dval_to_lval does: (int)1.0e20 is 7766279631452241920 in php.
-// NaN and both infinities are zero, as PHP 8 answers them.
-//
-// A value inside the range takes a plain conversion and only a float that does
-// not fit reaches the arithmetic below.
+// ToInt64 converts a float to the integer php converts it to.
 func ToInt64(f float64) int64 {
+	// A value inside the range takes a plain conversion.
 	if f >= -twoPow63 && f < twoPow63 {
 		return int64(f)
 	}
+	// NaN and both infinities are zero, as php 8 answers them.
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return 0
 	}
 
-	// Reduce modulo 2^64, then fold the upper half of the unsigned range onto
-	// the negative half of the signed one. ToInt64 needs both branches: fmod
-	// keeps the sign of its argument and a negative input lands in (-2^64, 0].
+	// php wraps modulo 2^64 into the signed range, as zend_dval_to_lval does.
 	mod := math.Mod(f, twoPow64)
 	if mod < 0 {
 		mod += twoPow64
