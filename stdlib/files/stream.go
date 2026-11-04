@@ -24,6 +24,12 @@ func registerStreams(rt *runner.Runtime, r root) {
 			case "input":
 				return &inputStream{Reader: inputSource(rt)}, nil
 			}
+			if handle, ok, err := openWrapper(rt, scheme, mode); ok {
+				if err != nil {
+					return false, err
+				}
+				return handle, nil
+			}
 			// The other wrappers (memory, temp) are not implemented;
 			// false is PHP's answer for a stream it cannot open, and
 			// resolving the name would invent a file called php:/memory
