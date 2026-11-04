@@ -197,6 +197,9 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 }
 
 func (rt *Runtime) autoload(class string, scope *Scope) error {
+	if rt.declareClassSource(class) {
+		return nil
+	}
 	for _, loader := range rt.autoloaders {
 		// Every PHP callable spelling reaches here: composer registers
 		// array($this, "loadClass"), its bootstrap registers the

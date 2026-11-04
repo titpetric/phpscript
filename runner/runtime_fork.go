@@ -98,6 +98,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// the autoloading. The child records the file each one includes and every
 	// worker includes it once.
 	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
+	child.classSources = append(child.classSources, rt.classSources...)
 
 	// The declarations the tree contributed, replayed and never copied and
 	// the fork's own tables record where each one came from.
