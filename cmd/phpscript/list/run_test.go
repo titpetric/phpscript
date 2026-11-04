@@ -2,6 +2,7 @@ package list
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
+	"github.com/titpetric/phpscript/internal/apidoc"
 )
 
 // TestRunListsPaths covers the default behaviour: a markdown table of the PHP
@@ -70,17 +72,73 @@ func TestRunListsClasses(t *testing.T) {
 	}
 }
 
-// TestRunRejectsClassesWithTables pins the refusal. --classes prints PHP source
-// and --api and --json both answer with table rows, and a caller that named
-// both named one of them by mistake.
-func TestRunRejectsClassesWithTables(t *testing.T) {
+// TestRunListsClassesAsJSON covers --classes --json: the class the definition
+// is rendered from, for a generator that links each member rather than
+// printing a block of PHP. Both spellings of every symbol are in it, which is
+// what such a generator cannot recover on its own: the Go field name behind a
+// property, the Go method name behind a method, and the Go interface behind
+// the PHP name a script types in a catch clause.
+func TestRunListsClassesAsJSON(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	err := run(&out, nil, false, true, false, true)
-	if err == nil {
-		t.Fatal("run returned nil error for --classes with --json")
+	if err := run(&out, []string{`HTTP\Mux`, "Exception"}, false, true, false, true); err != nil {
+		t.Fatalf("run: %v", err)
 	}
-	if want := "list --classes takes neither --api nor --json"; !strings.Contains(err.Error(), want) {
+
+	var classes []apidoc.Class
+	if err := json.Unmarshal(out.Bytes(), &classes); err != nil {
+		t.Fatalf("decode: %v\n%s", err, out.String())
+	}
+	if len(classes) != 2 {
+		t.Fatalf("decoded %d classes, want 2", len(classes))
+	}
+
+	mux, exception := classes[0], classes[1]
+	if mux.Name != `HTTP\Mux` || exception.Name != "Exception" {
+		t.Fatalf("names = %q and %q, want the two asked about", mux.Name, exception.Name)
+	}
+	if want := "github.com/titpetric/phpscript/stdlib/http"; mux.Binds != want {
+		t.Errorf("Binds = %q, want %q", mux.Binds, want)
+	}
+	if want := "net/http.ServeMux"; mux.Uses.Symbol() != want {
+		t.Errorf("Uses = %q, want %q", mux.Uses.Symbol(), want)
+	}
+	if len(mux.Implements) != 1 || mux.Implements[0].Symbol() != "net/http.Handler" {
+		t.Errorf("Implements = %v, want net/http.Handler", mux.Implements)
+	}
+	if len(mux.Methods) == 0 {
+		t.Fatal("Methods is empty, want the bound type's methods")
+	}
+	for _, m := range mux.Methods {
+		if m.GoName == "" {
+			t.Errorf("method %q carries no Go name", m.Name)
+		}
+	}
+	// Throwable is the one interface of this module a script names, and the
+	// citation carries both spellings: the PHP one for a catch clause, the Go
+	// one for the contract the binding implements.
+	if len(exception.Implements) != 1 {
+		t.Fatalf("Exception implements %d interfaces, want Throwable", len(exception.Implements))
+	}
+	if got, want := exception.Implements[0].PHP, "Throwable"; got != want {
+		t.Errorf("PHP spelling = %q, want %q", got, want)
+	}
+	if got, want := exception.Implements[0].Symbol(), "github.com/titpetric/phpscript/runner.Throwable"; got != want {
+		t.Errorf("Go symbol = %q, want %q", got, want)
+	}
+}
+
+// TestRunRejectsClassesWithAPI pins the refusal. --classes answers about the
+// registered classes of this build and --api lists the methods of a scanned
+// tree, and a caller that named both named one of them by mistake.
+func TestRunRejectsClassesWithAPI(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	err := run(&out, nil, false, true, true, false)
+	if err == nil {
+		t.Fatal("run returned nil error for --classes with --api")
+	}
+	if want := "list --classes takes no --api"; !strings.Contains(err.Error(), want) {
 		t.Errorf("error = %q, want it to contain %q", err, want)
 	}
 	if out.Len() != 0 {

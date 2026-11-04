@@ -9,10 +9,10 @@ import (
 type Field struct {
 	// Name is the snake_case spelling Runtime.structField resolves back to
 	// the Go field, and what a script writes to reach it.
-	Name    string
-	GoName  string
-	Type    string // PHP type name
-	Comment []string
+	Name    string   `json:"name"`
+	GoName  string   `json:"go_name,omitempty"`
+	Type    string   `json:"type,omitempty"` // PHP type name
+	Comment []string `json:"comment,omitempty"`
 }
 
 // reflectFields lists the properties a script reads off the Go type a

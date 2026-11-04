@@ -59,11 +59,20 @@ func run(out io.Writer, args []string, bindings, classes, api, asJSON bool) erro
 		return nil
 	}
 	// --classes reports on the binary too, and its arguments are class names
-	// and not paths. The rendering is PHP source and --json encodes table rows,
-	// which this mode produces none of.
+	// and not paths. --json writes the class the definition is rendered from,
+	// for a generator that links each member rather than printing a block of
+	// PHP: both spellings of every symbol, the parameters, the citation of the
+	// bound Go type and the interfaces it satisfies.
 	if classes {
-		if api || asJSON {
-			return fmt.Errorf("list --classes takes neither --api nor --json")
+		if api {
+			return fmt.Errorf("list --classes takes no --api")
+		}
+		if asJSON {
+			defs, err := phplist.StdlibClasses(args...)
+			if err != nil {
+				return err
+			}
+			return writeJSON(out, defs)
 		}
 		defs, err := phplist.StdlibDefinitions(args...)
 		if err != nil {
