@@ -70,6 +70,17 @@ func (rt *Runtime) UseNamespace(name string) bool {
 	return true
 }
 
+// useImport installs what one import names: the namespace, or the namespace a
+// `use function` or `use const` import names a symbol in.
+func (rt *Runtime) useImport(path string) {
+	if rt.UseNamespace(path) {
+		return
+	}
+	if i := strings.LastIndexByte(path, '\\'); i > 0 {
+		rt.UseNamespace(path[:i])
+	}
+}
+
 // useImports installs the namespace bindings the statements import.
 //
 // Both engines pass through here: the bytecode compiler resolves a call
@@ -82,7 +93,7 @@ func (rt *Runtime) useImports(stmts []model.Stmt) {
 			continue
 		}
 		for _, imported := range use.Imports {
-			rt.UseNamespace(imported.Path)
+			rt.useImport(imported.Path)
 		}
 	}
 }

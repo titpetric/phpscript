@@ -88,3 +88,26 @@ func TestUseImports(t *testing.T) {
 		t.Error("the binding does not resolve after the program's imports ran")
 	}
 }
+
+// TestUseImportPaths covers the three ways a file can name a contributed namespace:
+// the namespace, and a `use function` or `use const` import of a symbol in it,
+// which names one segment more. A path that is a namespace nobody contributed
+// to installs nothing, whichever segment of it is read.
+func TestUseImportPaths(t *testing.T) {
+	RegisterNamespace("Test\\Symbol", func(rt *Runtime) {
+		rt.RegisterFunc("test_symbol_probe", func() string { return "installed" })
+	})
+
+	for _, path := range []string{"Test\\Symbol", "Test\\Symbol\\thing", "\\Test\\Symbol"} {
+		rt := New(&strings.Builder{}, Options{})
+		rt.useImport(path)
+		if !rt.FunctionExists("test_symbol_probe") {
+			t.Errorf("%s installed nothing", path)
+		}
+	}
+	rt := New(&strings.Builder{}, Options{})
+	rt.useImport("Test\\Symbol\\thing\\deeper")
+	if rt.FunctionExists("test_symbol_probe") {
+		t.Error("an import two segments below the namespace installed it")
+	}
+}

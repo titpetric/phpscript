@@ -402,7 +402,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		// file reaches, under either engine, because an include runs its
 		// statements here whichever engine included it.
 		for _, imported := range n.Imports {
-			rt.UseNamespace(imported.Path)
+			rt.useImport(imported.Path)
 		}
 		return nil, flowNormal, nil
 

@@ -80,7 +80,10 @@ type parser struct {
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
-	imports       map[string]string
+	imports map[string]string
+	// goRuntime records that the file imported the go runtime, which binds go's
+	// builtin names for the rest of it. See goruntime.go.
+	goRuntime     bool
 	inClass       bool
 	topLevel      bool
 	topSeen       bool
@@ -401,6 +404,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 			p.imports = map[string]string{}
 		}
 		p.imports[alias] = name
+		p.useGo(name)
 		imports = append(imports, model.UseImport{Path: name, Alias: aliasSpelling(name, alias)})
 		if p.isOp(",") {
 			p.next()

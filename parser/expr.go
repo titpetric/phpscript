@@ -513,9 +513,14 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 			return nil, err
 		}
 		var call *model.Call
-		if !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\') {
+		switch {
+		case !absolute && p.goBound(name):
+			// A go builtin the file imported: the call resolves to the binding
+			// and keeps the spelling the source used. See goruntime.go.
+			call = p.newCall(model.GoNamespace+`\`+name, name, args)
+		case !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\'):
 			call = p.newCall(p.qualify(name, false), name, args)
-		} else {
+		default:
 			call = p.newCall(p.qualify(name, absolute), "", args)
 		}
 		call.FirstClass = firstClass

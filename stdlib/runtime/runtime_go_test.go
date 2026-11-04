@@ -69,6 +69,34 @@ func TestRegisterGo(t *testing.T) {
 	}
 }
 
+// TestGoBareNames covers what the import is for: the builtins read as go writes
+// them, with no namespace in the source. A leading separator and the case of
+// the namespace are php's to ignore, and php's own name wins where php has one.
+func TestGoBareNames(t *testing.T) {
+	t.Parallel()
+	for _, use := range []string{"use Runtime\\Go;", "use \\runtime\\go;"} {
+		goOutput(t, "<?php\n"+use+`
+$s = append(make("[]string", 0, 2), "a");
+echo len($s), cap($s), $s[0], int8(300), "\n";
+`, "12a44\n")
+	}
+	// `use function Ns\f;` imports the one name php says it does. The install
+	// reads the namespace the symbol is in, so the binding resolves; the rest
+	// of go's builtins stay unbound and a qualified call reaches them.
+	goOutput(t, `<?php
+use function Runtime\Go\make;
+
+echo Runtime\Go\len(make("[]int", 2)), "\n";
+`, "2\n")
+	// min is php's, which reads an array, and go's reads values: a file that
+	// imported the namespace still calls php's by its bare name.
+	goOutput(t, `<?php
+use Runtime\Go;
+
+echo min([3, 1, 2]), Runtime\Go\min(3, 1, 2), "\n";
+`, "11\n")
+}
+
 // TestGoSlices covers make, append, len and cap over a go slice: the length and
 // the capacity are the ones make allocated, append fills within the capacity,
 // and a foreach reads the slice back by index.
