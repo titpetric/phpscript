@@ -8,6 +8,7 @@
 | `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function.       |
 | Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.            |
 | `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                               |
+| `use Runtime\Go`            | PHP-incompatible    | Go's builtins, the `[]T` type, and go's width conversions.         |
 
 These features have no match in the PHP language reference, or use syntax differently. Avoid them when source must also run on PHP.
 
@@ -183,6 +184,20 @@ foreach $items as $item {
 
 Standard PHP requires the parentheses. Parenthesized forms remain supported; use them for portable scripts.
 
+## Go runtime
+
+`use Runtime\Go;` binds go's builtins for the file that writes the import: `make`, `append`, `len`, `cap`, `delete`, `clear`, `panic`, `println`, go's builtin type names as width conversions, and the `[]T` type php has no spelling for. A file that imported none of it keeps the surface php defines, and `function_exists("make")` reports false there.
+
+```php
+use Runtime\Go;
+
+$s = make([]int64, 0, 10);
+$s = append($s, int64("12"));
+echo len($s), ",", cap($s);     // 1,10
+```
+
+[Go runtime](go-runtime.md) has the builtins, the element types `make` allocates, the conversions, and the names that stay PHP's.
+
 ## Implemented APIs
 
 See the generated [implemented API inventory](implemented-apis.md) for the functions and classes in the standard CLI runtime. Regular-expression shims use Go's RE2 engine where PHP uses PCRE, and filesystem shims take the host-provided filesystem as their root.
@@ -200,6 +215,7 @@ Embedding hosts opt into runtime services separately:
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
 - `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector that opens its pools. Name resolution and the rule that a script cannot read a credential sit above the seam and neither changes.
 - `mail.NewMemory(names...)` is a provider that queues messages in memory and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name.
+- `rt.UseNamespace("Runtime\\Go")` installs a namespace binding area, the install a script triggers by writing `use Runtime\Go`. An area registered this way stays off `stdlib.Register`'s surface: `function_exists`, `get_defined_functions` and the generated reference carry none of its names until an import installs them.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
 Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host needing a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.

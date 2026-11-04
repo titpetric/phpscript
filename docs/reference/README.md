@@ -226,6 +226,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Auth\Storage\PasswordFile`](extensions/README.md#authstoragepasswordfile)
   - [Function keyword aliases](extensions/README.md#function-keyword-aliases)
   - [Parenthesis-free conditions](extensions/README.md#parenthesis-free-conditions)
+  - [Go runtime](extensions/README.md#go-runtime)
   - [Implemented APIs](extensions/README.md#implemented-apis)
   - [Runtime registration](extensions/README.md#runtime-registration)
 - [Go bindings](extensions/bindings.md) - Exposing Go constructors, functions, methods, contexts, and values to PHP.
@@ -240,6 +241,12 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Context propagation](extensions/bindings.md#context-propagation)
   - [Value conversion](extensions/bindings.md#value-conversion)
   - [HTTP binding benchmark](extensions/bindings.md#http-binding-benchmark)
+- [Go runtime](extensions/go-runtime.md) - The go builtins `use Runtime\Go` binds, the `[]T` type, the width conversions, and what stays PHP's.
+  - [Builtins](extensions/go-runtime.md#builtins)
+  - [Slices](extensions/go-runtime.md#slices)
+  - [Conversions](extensions/go-runtime.md#conversions)
+  - [What stays php's](extensions/go-runtime.md#what-stays-phps)
+  - [Fixtures](extensions/go-runtime.md#fixtures)
 - [Regular expressions](extensions/regexp.md) - How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
   - [Two engines](extensions/regexp.md#two-engines)
   - [What still differs from PCRE](extensions/regexp.md#what-still-differs-from-pcre)
