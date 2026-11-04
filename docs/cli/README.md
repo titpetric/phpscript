@@ -87,6 +87,18 @@ One page per command. `phpscript --help` prints the same set as one document, wi
 | [`phpscript ast <file.php>`](ast.md)        | The token stream a file parses to.                                           |
 | [`phpscript version`](version.md)           | Build and module information.                                                |
 
+## External tools
+
+Like `git-st` runs as `git st`, an executable named `<binary>-<tool>` on `PATH` runs as `<binary> <tool>`. Put `phpscript-gen` on `PATH` and:
+
+- `phpscript gen args...` runs it with `args...`, whole and unparsed: its flags are its own.
+- `phpscript --help` lists `gen` among the commands, with the first line of its `--help` as the title, and prints its full `--help` under a `phpscript gen` heading. The text is sanitized, so `phpscript-gen` reads `phpscript gen`.
+- A tool named like a built-in replaces it. A coverage-built `phpx-test` on `PATH` handles `phpx test`.
+
+The prefix is the base name of the running binary (`os.Args[0]`), never a fixed string. `phpscript` loads `phpscript-*` and nothing else, a copy renamed `phpx` loads `phpx-*` and nothing else, and neither sees the other's tools. A name only matches when the prefix is followed by `-`, so `phpxy-gen` belongs to neither. Within one prefix the first directory on `PATH` holding a name wins. The tool must come first on the command line: `phpscript gen -v`, not `phpscript -v gen`.
+
+Discovery reads `PATH` once per process and memoizes it, along with each tool's `--help`. The code is `cmd/phpscript/toolchain`.
+
 ## Docker image
 
 Build a local binary and image from source:

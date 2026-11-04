@@ -8,6 +8,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
+	"github.com/titpetric/phpscript/cmd/phpscript/toolchain"
 	"github.com/titpetric/phpscript/internal/flags"
 )
 
@@ -99,6 +100,60 @@ func TestWriteHelp(t *testing.T) {
 	}
 	if got := strings.Count(document, shared); got != 1 {
 		t.Errorf("the shared flag %q is printed %d times, want once", shared, got)
+	}
+}
+
+// TestRunToolPrefix pins the ambiguity rule: the prefix is the name the binary
+// runs as, so phpscript never runs phpx-* tools and phpx never runs phpscript-*.
+func TestRunToolPrefix(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for name, body := range map[string]string{"phpscript-gen": "exit 4", "phpx-test": "exit 5", "phpscript-test": "exit 6"} {
+		if err := os.WriteFile(dir+"/"+name, []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		argv []string
+		code int
+		ok   bool
+	}{
+		{[]string{"/bin/phpscript", "gen"}, 4, true},
+		{[]string{"/bin/phpscript", "test"}, 6, true},
+		{[]string{"/bin/phpx", "test"}, 5, true},
+		{[]string{"/bin/phpx", "gen"}, 0, false},
+		{[]string{"/bin/phpscript", "run"}, 0, false},
+		{[]string{"/bin/phpscript"}, 0, false},
+	}
+	for _, tc := range cases {
+		code, ok := runTool(tc.argv, dir)
+		if code != tc.code || ok != tc.ok {
+			t.Errorf("runTool(%v) = %d, %v; want %d, %v", tc.argv, code, ok, tc.code, tc.ok)
+		}
+	}
+}
+
+// TestWithToolsReplacesBuiltin pins that a discovered test tool replaces the
+// built-in and a new tool is appended.
+func TestWithToolsReplacesBuiltin(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, name := range []string{"phpx-test", "phpx-gen"} {
+		if err := os.WriteFile(dir+"/"+name, []byte("#!/bin/sh\necho \"Tool $0\"\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tools := toolchain.Discover("phpx", dir)
+	got := withTools(commands(), "phpx", tools)
+	if len(got) != len(commands())+1 {
+		t.Fatalf("got %d commands, want built-ins plus gen", len(got))
+	}
+	titles := map[string]string{}
+	for _, c := range got {
+		titles[c.name] = c.title
+	}
+	if !strings.HasPrefix(titles["test"], "Tool ") || titles["gen"] == "" {
+		t.Errorf("titles = %v", titles)
 	}
 }
 

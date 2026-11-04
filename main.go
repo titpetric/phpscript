@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
+	"github.com/titpetric/phpscript/cmd/phpscript/toolchain"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
@@ -34,6 +37,11 @@ import (
 )
 
 func main() {
+	// An external <binary>-<tool> on PATH takes the line before anything else
+	// parses it, so its flags are its own.
+	if code, ok := runTool(os.Args, os.Getenv("PATH")); ok {
+		os.Exit(code)
+	}
 	err := start()
 	switch {
 	case err == nil:
@@ -101,7 +109,9 @@ func start() error {
 		Branch:     Branch,
 	}
 
-	commands := commands()
+	binary := toolchain.Binary(os.Args[0])
+	tools := toolchain.Discover(binary, os.Getenv("PATH"))
+	commands := withTools(commands(), binary, tools)
 
 	app := cli.NewApp("phpscript")
 	for _, command := range commands {
@@ -114,7 +124,11 @@ func start() error {
 	// <command> --help` still resolves through the library, which prints the
 	// command's flags and the Usage text decorate attached.
 	if wantsHelp(args) {
-		return writeHelp(os.Stdout, commands)
+		if err := writeHelp(os.Stdout, commands); err != nil {
+			return err
+		}
+		writeToolHelp(os.Stdout, binary, tools)
+		return nil
 	}
 	args = flags.Hoist(args, app.HasCommand)
 	if len(scriptArgs) > 0 {
@@ -235,4 +249,54 @@ func writeHelp(f *os.File, commands []registration) error {
 		entries = append(entries, helpdocs.Command{Name: command.name, Title: command.title, Flags: own})
 	}
 	return helpdocs.Write(f, "phpscript", shared, entries, markdown)
+}
+
+// runTool execs the tool named by argv[1] when <binary>-<tool> is on path, and
+// reports its exit code. A tool named like a built-in replaces the built-in.
+func runTool(argv []string, path string) (int, bool) {
+	if len(argv) < 2 {
+		return 0, false
+	}
+	tools := toolchain.Discover(toolchain.Binary(argv[0]), path)
+	tool, ok := toolchain.Find(tools, argv[1])
+	if !ok {
+		return 0, false
+	}
+	return toolchain.Exec(tool, argv[2:]), true
+}
+
+// withTools lists the discovered tools among the commands. A tool replaces the
+// built-in of its name and the rest are appended.
+func withTools(base []registration, binary string, tools []toolchain.Tool) []registration {
+	out := append([]registration{}, base...)
+	for _, tool := range tools {
+		entry := registration{tool.Name, toolchain.Title(binary, tool, tools), func(*config.Config, *flags.Options) *cli.Command {
+			return &cli.Command{
+				Name:  tool.Name,
+				Title: toolchain.Title(binary, tool, tools),
+				Run: func(_ context.Context, args []string) error {
+					os.Exit(toolchain.Exec(tool, args))
+					return nil
+				},
+				Usage: func() string { return toolchain.Help(binary, tool, tools) },
+			}
+		}}
+		replaced := false
+		for i := range out {
+			if out[i].name == tool.Name {
+				out[i], replaced = entry, true
+			}
+		}
+		if !replaced {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// writeToolHelp prints the sanitized --help of each discovered tool.
+func writeToolHelp(f *os.File, binary string, tools []toolchain.Tool) {
+	for _, tool := range tools {
+		fmt.Fprintf(f, "\n## %s %s\n\n%s\n", binary, tool.Name, toolchain.Help(binary, tool, tools))
+	}
 }
