@@ -21,8 +21,8 @@ func Register(rt *runner.Runtime) {
 			return nil, err
 		}
 
-		database := &Database{Bridge: newBridge(handle)}
-		database.Bridge.WithObserver(database.observe)
+		database := &Database{bridge: newBridge(handle)}
+		database.bridge.WithObserver(database.observe)
 		return database, nil
 	})
 
