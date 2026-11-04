@@ -92,7 +92,7 @@ func TestFirstClassCallableIsNotACall(t *testing.T) {
 // builtins is still a round trip through the formatter.
 func TestGoBuiltinCallKeepsItsSpelling(t *testing.T) {
 	t.Parallel()
-	in := "<?php\n\nuse Runtime\\Go;\n\n$s = make(\"[]int64\", 0, 10);\n$s = append($s, int64($n));\necho len($s), cap($s);\n"
+	in := "<?php\n\nuse Runtime\\Go;\n\n$s = make([]int64, 0, 10);\n$s = append($s, int64($n));\necho len($s), cap($s);\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)

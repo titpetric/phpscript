@@ -508,6 +508,15 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	// Function call vs. bare identifier (treated as constant lookup via a Call
 	// with no args is wrong; use a zero-arg function only when parens present).
 	if p.isOp("(") {
+		// `make([]T, 0, 10)` writes a type where php writes an expression, and
+		// it is the one call that does. See goruntime.go.
+		if !absolute && p.goBound(name) && p.atGoMake(name) {
+			args, err := p.parseGoMakeArgs()
+			if err != nil {
+				return nil, err
+			}
+			return p.newCall(model.GoNamespace+`\`+name, name, args), nil
+		}
 		args, firstClass, err := p.parseCallArgs()
 		if err != nil {
 			return nil, err

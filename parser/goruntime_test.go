@@ -112,6 +112,53 @@ func TestGoRuntimeFold(t *testing.T) {
 	}
 }
 
+// TestGoRuntimeMakeType covers make's first argument, the one place a type is
+// written where php writes an expression. The binding reads the spelling with a
+// class name qualified, and the formatter prints the spelling the source wrote.
+func TestGoRuntimeMakeType(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct{ src, value, raw string }{
+		{"<?php\nuse Runtime\\Go;\nmake([]string, 0, 10);", "[]string", "[]string"},
+		{"<?php\nuse Runtime\\Go;\nmake([][]int64, 1);", "[][]int64", "[][]int64"},
+		{"<?php\nuse Runtime\\Go;\nmake([]User, 1);", "[]User", "[]User"},
+		{"<?php\nnamespace App;\nuse Runtime\\Go;\nfunction f() { make([]User, 1); }", `[]App\User`, "[]User"},
+		{"<?php\nuse Runtime\\Go;\nmake([]\\Other\\User, 1);", `[]Other\User`, `[]Other\User`},
+		// A class the file imported qualifies as every other name does, and the
+		// source keeps the short spelling it wrote.
+		{"<?php\nuse Runtime\\Go;\nuse Other\\User;\nmake([]User, 1);", `[]Other\User`, "[]User"},
+		// The type is a string a script may write by hand, which is the same
+		// call and takes the same path to the binding.
+		{`<?php` + "\nuse Runtime\\Go;\nmake(\"[]string\", 1);", "[]string", `"[]string"`},
+	} {
+		call := goCall(t, test.src)
+		if call.Name != `Runtime\Go\make` {
+			t.Errorf("%q calls %s, want the make binding", test.src, call.Name)
+			continue
+		}
+		lit, ok := call.Args[0].(*model.Lit)
+		if !ok {
+			t.Errorf("%q: the type argument is a %T, want a literal", test.src, call.Args[0])
+			continue
+		}
+		if lit.Value != test.value || lit.Raw != test.raw {
+			t.Errorf("%q = %q / %q, want %q / %q", test.src, lit.Value, lit.Raw, test.value, test.raw)
+		}
+	}
+
+	// A length and a capacity are expressions, and the call takes them as any
+	// other call takes its arguments.
+	call := goCall(t, "<?php\nuse Runtime\\Go;\nmake([]int, count($a), 2 * $n);")
+	if len(call.Args) != 3 {
+		t.Errorf("make([]int, count($a), 2 * $n) took %d arguments, want 3", len(call.Args))
+	}
+
+	for _, src := range []string{"make([], 1);", "make([]$type, 1);", "make([]int 1);"} {
+		if _, err := Parse("<?php\nuse Runtime\\Go;\n" + src); err == nil {
+			t.Errorf("%s parsed, want an error", src)
+		}
+	}
+}
+
 // TestGoRuntimeImportSpellings covers the three ways a file can name the
 // namespace in a `use`, which the parser reads for the binding and the runtime
 // reads for the install.

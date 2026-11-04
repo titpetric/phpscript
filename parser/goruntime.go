@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -32,6 +33,65 @@ func (p *parser) useGo(name string) {
 // goBound reports whether a bare name is a go builtin this file's imports bind.
 func (p *parser) goBound(name string) bool {
 	return p.goRuntime && model.GoBuiltin(name)
+}
+
+// atGoMake reports whether the call being read is `make([]`, the one place a
+// type is written where php writes an expression. Everywhere else `[` opens an
+// array literal, and `foreach ([] as $v)` is what reads it there.
+func (p *parser) atGoMake(name string) bool {
+	return name == "make" && p.isOpAt(1, "[") && p.isOpAt(2, "]")
+}
+
+// parseGoMakeArgs reads make's argument list: a type, then the length and the
+// capacity, which are expressions like any other.
+func (p *parser) parseGoMakeArgs() ([]model.Expr, error) {
+	if err := p.eatOp("("); err != nil {
+		return nil, err
+	}
+	mark := p.exprs.mark()
+	elem, err := p.parseGoTypeArg()
+	if err != nil {
+		p.exprs.drop(mark)
+		return nil, err
+	}
+	p.exprs.push(elem)
+	for p.isOp(",") {
+		p.next()
+		if p.isOp(")") {
+			break
+		}
+		size, err := p.parseExpr()
+		if err != nil {
+			p.exprs.drop(mark)
+			return nil, err
+		}
+		p.exprs.push(size)
+	}
+	return p.exprs.take(mark), p.eatOp(")")
+}
+
+// parseGoTypeArg reads a type spelling, which php has no expression for: one
+// `[]` per dimension and then the element type, go's or a class.
+//
+// The value is the spelling the binding reads, with a class name qualified the
+// way the file qualifies any other name, and the source spelling goes in as the
+// one the formatter prints.
+func (p *parser) parseGoTypeArg() (model.Expr, error) {
+	dims := ""
+	for p.isOp("[") && p.isOpAt(1, "]") {
+		p.next()
+		p.next()
+		dims += "[]"
+	}
+	name, absolute, err := p.parseQualifiedName(true)
+	if err != nil {
+		return nil, fmt.Errorf("line %d: %s: %w", p.cur().line, model.GoNamespace+`\make`, err)
+	}
+	qualified := name
+	if !model.GoType(name) {
+		qualified = p.qualify(name, absolute)
+	}
+	return p.newStringLit(dims+qualified, dims+name), nil
 }
 
 // goFold is the conversion a builtin type applies to a literal, applied where

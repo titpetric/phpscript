@@ -76,10 +76,23 @@ func TestGoBareNames(t *testing.T) {
 	t.Parallel()
 	for _, use := range []string{"use Runtime\\Go;", "use \\runtime\\go;"} {
 		goOutput(t, "<?php\n"+use+`
-$s = append(make("[]string", 0, 2), "a");
+$s = append(make([]string, 0, 2), "a");
 echo len($s), cap($s), $s[0], int8(300), "\n";
 `, "12a44\n")
 	}
+	// A class is an element type too. php carries an object in a value of any
+	// type, which is what the slice holds and what make zeroes it with.
+	goOutput(t, `<?php
+use Runtime\Go;
+
+class User
+{
+	public $name = "ada";
+}
+
+$users = append(make([]User, 1), new User());
+echo len($users), $users[1]->name, "\n";
+`, "2ada\n")
 	// `use function Ns\f;` imports the one name php says it does. The install
 	// reads the namespace the symbol is in, so the binding resolves; the rest
 	// of go's builtins stay unbound and a qualified call reaches them.
