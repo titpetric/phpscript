@@ -240,7 +240,7 @@ func (h flatHost) Binary(op string, left, right any) (any, error) {
 	case ".":
 		return helperConcat(left, right), nil
 	case "+", "-", "*", "/", "%", "**":
-		return phpArith(op, left, right), nil
+		return phpArith(op, left, right)
 	case "&", "|", "^", "<<", ">>":
 		return phpBitwise(op, left, right)
 	case "instanceof":
@@ -261,7 +261,7 @@ func (h flatHost) Unary(op string, value any) (any, error) {
 	case "!":
 		return !phpTruthy(value), nil
 	case "+":
-		return phpArith("+", int64(0), value), nil
+		return phpArith("+", int64(0), value)
 	case "-":
 		return phpNegate(value), nil
 	case "~":

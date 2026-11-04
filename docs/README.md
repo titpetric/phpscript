@@ -121,6 +121,8 @@ The bitwise operators `&`, `|`, `^`, `<<`, `>>` and `~` follow PHP's precedence 
 - phpscript casts an operand PHP 8 refuses outright. `~null` is `-1` and `~true` is `-2` where PHP raises `TypeError`, and an array operand of a binary bitwise operator counts as `0` where PHP raises `TypeError: Unsupported operand types`.
 - Casting a leading-numeric string (`"12abc" & 3`) does not emit PHP's "A non-numeric value encountered" warning. The value is the same.
 
+A file that imported `Runtime\Go` holds typed values, which php has no value that carries: `int8(300)` answers an int8 and `var_dump` names the width, `int8(44)` where php prints `int(44)`. Arithmetic over one keeps the width and wraps in it, as go's does, and two different widths answer a `TypeError`. The import is what admits them and a file without it holds php's own types alone, var_dump included. See [the go runtime](reference/extensions/go-runtime.md#typed-values).
+
 Memory reporting differs from PHP's allocator view:
 
 - `memory_get_usage()` estimates the payload of live PHP values by walking every execution frame and absolute numbers are far below PHP's (no zval or allocator overhead). Relative behavior matches: growth, `unset`, and frame release move the number the way PHP's does.

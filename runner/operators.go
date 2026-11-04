@@ -148,16 +148,21 @@ func identicalArrays(x, y *model.Array) bool {
 }
 
 // phpArith applies + - * / % with the same int coercion used by += and -=.
-func phpArith(op string, a, b any) any {
+func phpArith(op string, a, b any) (any, error) {
 	// `+` on two arrays is PHP's union, not addition: every entry of the left
 	// operand, plus the entries of the right whose keys it does not already
 	// have. composer's ClassLoader prepends a loader with it.
 	if op == "+" {
 		if left, ok := a.(*model.Array); ok {
 			if right, ok := b.(*model.Array); ok {
-				return unionArrays(left, right)
+				return unionArrays(left, right), nil
 			}
 		}
+	}
+	// A typed go value keeps its type and wraps at its width, which php has
+	// no arithmetic for. See operators_gowidth.go.
+	if result, typed, err := goArith(op, a, b); typed {
+		return result, err
 	}
 	// A numeric string operand is its number, keeping PHP's int/float
 	// distinction by the string's own spelling: "5.5" + 1 is float 6.5 and
@@ -177,30 +182,30 @@ func phpArith(op string, a, b any) any {
 	if op == "%" {
 		y := toInt(b)
 		if y == 0 {
-			return int64(0)
+			return int64(0), nil
 		}
-		return toInt(a) % y
+		return toInt(a) % y, nil
 	}
 	if op == "**" {
-		return phpPow(a, b)
+		return phpPow(a, b), nil
 	}
 	// A float operand makes the whole expression float, as in PHP.
 	if isFloat(a) || isFloat(b) {
 		x, y := toFloat(a), toFloat(b)
 		switch op {
 		case "+":
-			return x + y
+			return x + y, nil
 		case "-":
-			return x - y
+			return x - y, nil
 		case "*":
-			return x * y
+			return x * y, nil
 		case "/":
 			if y == 0 {
-				return float64(0)
+				return float64(0), nil
 			}
-			return x / y
+			return x / y, nil
 		default:
-			return float64(0)
+			return float64(0), nil
 		}
 	}
 	// Integer arithmetic that overflows becomes float in PHP and
@@ -209,15 +214,15 @@ func phpArith(op string, a, b any) any {
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
-		return phpval.AddInt(x, y)
+		return phpval.AddInt(x, y), nil
 	case "-":
-		return phpval.SubInt(x, y)
+		return phpval.SubInt(x, y), nil
 	case "*":
-		return phpval.MulInt(x, y)
+		return phpval.MulInt(x, y), nil
 	case "/":
-		return phpval.DivInt(x, y)
+		return phpval.DivInt(x, y), nil
 	default:
-		return int64(0)
+		return int64(0), nil
 	}
 }
 
@@ -240,6 +245,9 @@ func phpBitwise(op string, a, b any) (any, error) {
 				return bitwiseString(op, left, right), nil
 			}
 		}
+		if result, typed, err := goBitwise(op, a, b); typed {
+			return result, err
+		}
 		x, y := toInt(a), toInt(b)
 		switch op {
 		case "&":
@@ -250,6 +258,9 @@ func phpBitwise(op string, a, b any) (any, error) {
 			return x ^ y, nil
 		}
 	case "<<", ">>":
+		if result, typed, err := goBitwise(op, a, b); typed {
+			return result, err
+		}
 		x, count := toInt(a), toInt(b)
 		if count < 0 {
 			return nil, &ArithmeticError{Message: "Bit shift by negative number"}
@@ -301,7 +312,13 @@ func phpNegate(v any) any {
 	if f, ok := v.(float64); ok {
 		return -f
 	}
-	return phpArith("-", int64(0), v)
+	// A typed go value negates at its own width, which wraps where php's
+	// widens: -int8(-128) is int8(-128).
+	if negated, typed := goNegate(v); typed {
+		return negated
+	}
+	result, _ := phpArith("-", int64(0), v)
+	return result
 }
 
 // phpBitNot implements `~`. On a string it flips every byte; on anything else it
@@ -317,6 +334,11 @@ func phpBitNot(v any) any {
 			out[i] = ^s[i]
 		}
 		return string(out)
+	}
+	// A typed go value inverts within its width: ~uint8(0) is uint8(255),
+	// where php's int answers -1.
+	if inverted, typed := goBitNot(v); typed {
+		return inverted
 	}
 	return ^toInt(v)
 }

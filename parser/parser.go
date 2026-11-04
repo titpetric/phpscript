@@ -80,7 +80,10 @@ type parser struct {
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
-	imports       map[string]string
+	imports map[string]string
+	// goRuntime records that the file imported the go runtime, which binds go's
+	// builtin names for the rest of it. See goruntime.go.
+	goRuntime     bool
 	inClass       bool
 	topLevel      bool
 	topSeen       bool
@@ -401,6 +404,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 			p.imports = map[string]string{}
 		}
 		p.imports[alias] = name
+		p.useGo(name)
 		imports = append(imports, model.UseImport{Path: name, Alias: aliasSpelling(name, alias)})
 		if p.isOp(",") {
 			p.next()
@@ -1096,10 +1100,10 @@ func (p *parser) parseParamDecoration(pr *model.Param) {
 	}
 }
 
-// parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
-// `A|B` unions, and returns its spelling. It stops at the first token that
-// cannot continue a type and a parameter list with no hints costs one
-// comparison.
+// parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, `A|B`
+// unions and the `[]T` a file that imported the go runtime may write, and
+// returns its spelling. It stops at the first token that cannot continue a type
+// and a parameter list with no hints costs one comparison.
 //
 // The runtime ignores types, but the formatter rewrites files in place and a
 // type it cannot see is a type it deletes.
@@ -1115,6 +1119,13 @@ func (p *parser) parseTypeHint() string {
 			continue
 		}
 		if p.isOp("\\") {
+			take()
+			continue
+		}
+		// `[]T` is the slice type a file that imported the go runtime may
+		// write, here and in make's first argument. See goruntime.go.
+		if p.atGoSlice() {
+			take()
 			take()
 			continue
 		}
@@ -1324,9 +1335,10 @@ func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 			fd.Static = isStatic
 			p.spans[fd] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			cd.Methods = append(cd.Methods, fd)
-		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?"):
+		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?") || p.atGoSlice():
 			// Property declared without `var`, with or without a type hint
-			// (`protected $stack = array();`, `private ?string $dir = null;`).
+			// (`protected $stack = array();`, `private ?string $dir = null;`,
+			// `public []int64 $counts;` where the file imported go's types).
 			fieldType := p.parseTypeHint()
 			if p.cur().kind != tVar {
 				return fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())

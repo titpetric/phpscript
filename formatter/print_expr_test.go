@@ -85,3 +85,19 @@ func TestFirstClassCallableIsNotACall(t *testing.T) {
 		t.Fatalf("call and callable did not stay distinct:\n%s", out)
 	}
 }
+
+// A go builtin a file imported resolves to a binding under the go namespace and
+// prints as the source wrote it: the runtime looks the qualified name up, a
+// reader sees the spelling, and a file that calls go's builtins round-trips
+// through the formatter.
+func TestGoBuiltinCallKeepsItsSpelling(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n\nuse Runtime\\Go;\n\n$s = make([]int64, 0, 10);\n$s = append($s, int64($n));\necho len($s), cap($s);\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("formatting a go builtin changed the source:\n%s\nwant:\n%s", out, in)
+	}
+}

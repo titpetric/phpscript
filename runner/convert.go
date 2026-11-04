@@ -58,6 +58,11 @@ func phpTruthy(v any) bool {
 		if s, ok := phpval.Bytes(v); ok {
 			return s != "" && s != "0"
 		}
+		// A typed go value reads as the number it holds: int8(0) is falsey, as
+		// php's 0 is.
+		if widened, ok := model.GoWiden(v); ok {
+			return phpTruthy(widened)
+		}
 		// An empty collection is falsey whatever its Go type and a binding that
 		// returns a []string behaves like one that returns an *Array in
 		// `if ($rows)` and `empty($rows)`.
@@ -85,10 +90,12 @@ func toInt(v any) int64 {
 	case string:
 		return stringToInt(x)
 	default:
-		// A Go binding returns named scalar types (time.Month, time.Weekday,
-		// time.Duration), which are integers wearing a name. Arithmetic on them
-		// is ordinary PHP arithmetic and `$t->month() + 1` counts months rather
-		// than answering zero.
+		// A typed integer clips at PHP_INT_MAX, as phpval.Int reads one.
+		if clipped, ok := model.GoClipInt(v); ok {
+			return clipped
+		}
+		// A named Go scalar (time.Month, time.Duration) is an integer wearing
+		// a name, and `$t->month() + 1` counts months.
 		return namedScalarInt(v)
 	}
 }
@@ -310,6 +317,11 @@ func toFloat(v any) float64 {
 		f, _ := strconv.ParseFloat(prefix, 64)
 		return f
 	default:
+		// A typed go value reads as the number php holds it in: float32(0.5) is
+		// 0.5 and uint8(3) is 3.
+		if widened, ok := model.GoWiden(v); ok {
+			return toFloat(widened)
+		}
 		return 0
 	}
 }

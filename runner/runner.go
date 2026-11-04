@@ -51,6 +51,10 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	if err = rt.runPrelude(); err != nil {
 		return err
 	}
+	// Before either engine: an opt-in binding area has to be in the function
+	// table by the time the first call resolves, and the bytecode engine runs
+	// a program whole and reaches no statement interpreter to install it.
+	rt.useImports(p.Stmts)
 	// Coverage forces the interpreter: flatstack carries no coverage support,
 	// and the fallback is atomic and the whole program runs where exec counts it.
 	if rt.flat && rt.coverage == nil {
@@ -392,8 +396,14 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
 	case *model.Use:
-		// The parser resolves imports; the node exists so the formatter
-		// can print the statement back out.
+		// The parser resolves imports, and the node exists so the formatter
+		// can print the statement back out. An import that names a
+		// contributed namespace installs it here, which is the seam an
+		// included file reaches under either engine: an include runs its
+		// statements here whichever engine ran the include.
+		for _, imported := range n.Imports {
+			rt.useImport(imported.Path)
+		}
 		return nil, flowNormal, nil
 
 	case *model.Declare:

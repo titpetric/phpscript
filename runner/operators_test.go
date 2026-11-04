@@ -130,7 +130,12 @@ func TestPHPArith(t *testing.T) {
 		{"a negative exponent", "**", int64(2), int64(-1), 0.5},
 		{"overflow becomes float", "+", int64(math.MaxInt64), int64(1), float64(math.MaxInt64) + 1},
 	} {
-		if got := phpArith(tc.op, tc.a, tc.b); got != tc.want {
+		got, err := phpArith(tc.op, tc.a, tc.b)
+		if err != nil {
+			t.Errorf("%s: phpArith(%q): %v", tc.name, tc.op, err)
+			continue
+		}
+		if got != tc.want {
 			t.Errorf("%s: phpArith(%q) = %#v, want %#v", tc.name, tc.op, got, tc.want)
 		}
 	}
@@ -149,7 +154,11 @@ func TestUnionArrays(t *testing.T) {
 	right.Append(int64(9))
 	right.Append(int64(9))
 
-	out := phpArith("+", left, right).(*model.Array)
+	union, err := phpArith("+", left, right)
+	if err != nil {
+		t.Fatalf("phpArith: %v", err)
+	}
+	out := union.(*model.Array)
 	if out.Len() != 3 {
 		t.Fatalf("the union has %d entries, want 3", out.Len())
 	}

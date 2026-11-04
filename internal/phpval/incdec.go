@@ -2,6 +2,8 @@ package phpval
 
 import (
 	"math"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // Increment applies PHP's ++ operator: numbers and numeric strings step by
@@ -9,6 +11,9 @@ import (
 // becomes int 1, and a non-numeric string takes the Perl-style alphanumeric
 // increment. A boolean stays put, as does any type PHP only warns about.
 func Increment(v any) any {
+	if next, typed := model.GoStep(v, 1); typed {
+		return next
+	}
 	if num, ok := phpNumeric(v); ok {
 		if num.isInt {
 			if num.i == math.MaxInt64 {
@@ -33,6 +38,9 @@ func Increment(v any) any {
 // empty string, which PHP reads as 0 and returns int -1 for. It leaves null
 // and booleans alone too.
 func Decrement(v any) any {
+	if next, typed := model.GoStep(v, -1); typed {
+		return next
+	}
 	if num, ok := phpNumeric(v); ok {
 		if num.isInt {
 			if num.i == math.MinInt64 {

@@ -189,6 +189,11 @@ func exportScalar(value any) string {
 	case string:
 		return exportString(x)
 	}
+	// A typed go value exports as the conversion that builds it, which is php
+	// a file importing Runtime\Go can run: `int8(44)`.
+	if width, ok := model.GoWidthOf(value); ok {
+		return width.Name + "(" + phpval.String(value) + ")"
+	}
 	return exportString(phpval.String(value))
 }
 

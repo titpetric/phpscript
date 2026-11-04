@@ -154,6 +154,35 @@ final class Suite extends TestCase implements \Countable, Local {
 	}
 }
 
+// php has no slice type and a file that imported the go runtime may declare
+// one. The formatter rewrites files in place, and a type it cannot print is a
+// type it deletes: the declaration keeps the spelling it read, on a parameter,
+// on a return type and on a property.
+func TestGoSliceTypeHintIsKept(t *testing.T) {
+	t.Parallel()
+	in := `<?php
+
+use Runtime\Go;
+
+class Totals {
+	public []int64 $counts;
+
+	public function fill([]int64 $counts, ?[]Row $rows): []float64 {
+		return $counts;
+	}
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"public []int64 $counts;", "fill([]int64 $counts, ?[]Row $rows): []float64"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
 // parseClassDecl returns the single class declaration in src.
 func parseClassDecl(t *testing.T, src string) *model.ClassDecl {
 	t.Helper()

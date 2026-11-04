@@ -81,9 +81,9 @@ func TestHelpers(t *testing.T) {
 					called = "Concat"
 					return fmt.Sprint(a) + fmt.Sprint(b)
 				},
-				Arith: func(op string, a, b any) any {
+				Arith: func(op string, a, b any) (any, error) {
 					called = "Arith"
-					return a.(int64) + b.(int64)
+					return a.(int64) + b.(int64), nil
 				},
 				Compare: func(op string, a, b any) bool {
 					called = "Compare"

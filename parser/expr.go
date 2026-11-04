@@ -508,14 +508,33 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	// Function call vs. bare identifier (treated as constant lookup via a Call
 	// with no args is wrong; use a zero-arg function only when parens present).
 	if p.isOp("(") {
+		// `make([]T, 0, 10)` writes a type where php writes an expression,
+		// and no other call does. See goruntime.go.
+		if !absolute && p.goBound(name) && p.atGoMake(name) {
+			args, err := p.parseGoMakeArgs()
+			if err != nil {
+				return nil, err
+			}
+			return p.newCall(model.GoNamespace+`\`+name, name, args), nil
+		}
 		args, firstClass, err := p.parseCallArgs()
 		if err != nil {
 			return nil, err
 		}
 		var call *model.Call
-		if !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\') {
+		switch {
+		case !absolute && p.goBound(name):
+			// A go builtin the file imported. A conversion of a literal is
+			// the literal it converts to, folded here once and not on every
+			// call; anything else resolves to the binding and keeps the
+			// spelling the source used. See goruntime.go.
+			if folded, ok := p.goFold(name, args); ok {
+				return folded, nil
+			}
+			call = p.newCall(model.GoNamespace+`\`+name, name, args)
+		case !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\'):
 			call = p.newCall(p.qualify(name, false), name, args)
-		} else {
+		default:
 			call = p.newCall(p.qualify(name, absolute), "", args)
 		}
 		call.FirstClass = firstClass
