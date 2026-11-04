@@ -152,6 +152,11 @@ tasks:
   # `phpscript list --classes` answers out of the index. The generator writes
   # the file itself rather than taking a redirection, which would truncate what
   # the compiler is about to embed.
+  # The generation formats what it wrote: each generator emits an unpadded
+  # table and the formatter repads it, which left `docs/reference/README.md`
+  # and the API inventory dirty after every run of this job, over a diff the
+  # next run would throw away. The whole tree, because splint's pattern is a
+  # package pattern and names no single file.
   test:introspection:
     passthru: true
     cmds:
@@ -159,6 +164,7 @@ tasks:
       - go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
       - phpscript info
       - cd docs/reference && php README.php > README.md
+      - task: mdox:fmt
 
   # Every fixture runs on all three runtimes, so a divergence between the two
   # Go runtimes, or between phpscript and php itself, fails the pipeline.
