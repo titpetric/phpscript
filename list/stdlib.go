@@ -78,13 +78,14 @@ func Stdlib() []Symbol {
 	return symbols
 }
 
-// StdlibDefinitions renders the named registered classes as PHP class
-// definitions, and with no name every class a script can construct.
-func StdlibDefinitions(names ...string) (string, error) {
-	// The structure comes from reflection over the live runtime, which is
-	// what this build binds. The prose and the PHP spelling of a parameter
-	// name come from the index the binary embeds, because a shipped binary
-	// carries no Go source to scan.
+// StdlibClasses answers the named registered classes, and with no name every
+// class a script can construct, each entry under the name asked about.
+//
+// The structure comes from reflection over the live runtime, which is what
+// this build binds. The prose and the PHP spelling of a parameter name come
+// from the index the binary embeds, because a shipped binary carries no Go
+// source to scan.
+func StdlibClasses(names ...string) ([]apidoc.Class, error) {
 	rt := stdlibRuntime()
 	_, classes := apidoc.Reflect(rt)
 	apidoc.Embedded().Apply(classes)
@@ -99,16 +100,31 @@ func StdlibDefinitions(names ...string) (string, error) {
 		names = constructedClasses(rt, byName)
 	}
 
-	defs := make([]string, 0, len(names))
+	out := make([]apidoc.Class, 0, len(names))
 	for _, name := range names {
 		c, ok := byName[name]
 		if !ok {
 			// stdClass is the declared class with no Go constructor: a
 			// script writes new stdClass() and there is no bound type to
 			// report properties, methods or a citation for.
-			return "", fmt.Errorf("%s: not a class with a Go constructor to describe", name)
+			return nil, fmt.Errorf("%s: not a class with a Go constructor to describe", name)
 		}
-		defs = append(defs, c.Rename(name).PHP())
+		out = append(out, c.Rename(name))
+	}
+	return out, nil
+}
+
+// StdlibDefinitions renders the named registered classes as PHP class
+// definitions, and with no name every class a script can construct.
+func StdlibDefinitions(names ...string) (string, error) {
+	classes, err := StdlibClasses(names...)
+	if err != nil {
+		return "", err
+	}
+
+	defs := make([]string, 0, len(classes))
+	for _, c := range classes {
+		defs = append(defs, c.PHP())
 	}
 	return strings.Join(defs, "\n"), nil
 }

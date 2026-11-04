@@ -31,6 +31,13 @@ phpscript list --classes Database Mail    # Several
 
 Past the godoc, the description cites the Go type behind the binding and adds no further reference: `Binds <import path> package, uses <symbol>.`, with a pkg.go.dev link for a standard library symbol. A class whose bound Go type satisfies an interface the runtime or the standard library declares carries an `implements` clause naming it, and a class satisfying none carries no clause.
 
+`--classes --json` writes the same classes as data, for a generator that links each member in place of printing a block of PHP. Each entry carries both spellings of every symbol: the class name a script types and the Go type it binds, each property under its PHP name and its Go field name, each method under its PHP name and its Go method name, and each citation as the Go symbol plus the PHP name where the runtime honours one. The parameters come with their names and types, and the interface list with the pkg.go.dev link.
+
+```bash
+phpscript list --classes --json                   # Every class a script can construct, as data
+phpscript list --classes --json 'HTTP\Mux' | jq .implements
+```
+
 The structure comes from reflection over this build. The prose and the parameter names come from an index generated from the Go source and embedded in the binary, which `--bindings` reads none of and this mode does; `atkins test:introspection` regenerates it. The listing names the properties a script can reach and no others: an unexported Go field resolves as absent, leaving the exported ones, each under the snake_case spelling property access resolves back to the Go field.
 
 The other half of the question, what a tree calls that this build does not have, is `phpscript lint`, which reports every `call to undefined function` and `new: undefined class` against the same registered set.

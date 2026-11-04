@@ -20,11 +20,15 @@ import (
 const modulePrefix = "github.com/titpetric/phpscript/"
 
 // Param is one PHP-visible parameter of a binding.
+//
+// The json spelling is what `phpscript list --classes --json` writes, and a
+// generator reading it holds both names of every symbol: the PHP one a script
+// types and the Go one the binding implements.
 type Param struct {
-	Name     string // without the dollar sign
-	Type     string // PHP type name, empty for a by-reference out parameter
-	Variadic bool
-	ByRef    bool // the runner's by-reference setter wrapper
+	Name     string `json:"name"`           // without the dollar sign
+	Type     string `json:"type,omitempty"` // PHP type name, empty for a by-reference out parameter
+	Variadic bool   `json:"variadic,omitempty"`
+	ByRef    bool   `json:"byref,omitempty"` // the runner's by-reference setter wrapper
 }
 
 // Func is one registered function with everything the renderer needs.
@@ -39,11 +43,11 @@ type Func struct {
 
 // Method is one PHP-callable method on a registered class.
 type Method struct {
-	Name    string // PHP spelling, snake_case
-	GoName  string
-	Comment []string
-	Params  []Param
-	Returns string
+	Name    string   `json:"name"` // PHP spelling, snake_case
+	GoName  string   `json:"go_name,omitempty"`
+	Comment []string `json:"comment,omitempty"`
+	Params  []Param  `json:"params,omitempty"`
+	Returns string   `json:"returns,omitempty"`
 }
 
 // Class is one registered class. Classes sharing a constructor (the SPL
@@ -55,27 +59,27 @@ type Method struct {
 // and the methods. A declaration ends at the semicolon and carries no body,
 // because the implementation is Go and no PHP a reader could open.
 type Class struct {
-	Name    string
-	Aliases []string
-	Package string
-	Comment []string
-	Params  []Param // constructor parameters
-	Fields  []Field
-	Methods []Method
+	Name    string   `json:"name"`
+	Aliases []string `json:"aliases,omitempty"`
+	Package string   `json:"package,omitempty"`
+	Comment []string `json:"comment,omitempty"`
+	Params  []Param  `json:"params,omitempty"` // constructor parameters
+	Fields  []Field  `json:"fields,omitempty"`
+	Methods []Method `json:"methods,omitempty"`
 
 	// GoType is the import path and name of the Go type the constructor
 	// returns, the key the doc index holds this class's godoc under.
-	GoType string
+	GoType string `json:"go_type,omitempty"`
 
 	// Binds is the import path of the package the bound Go type lives in.
-	Binds string
+	Binds string `json:"binds,omitempty"`
 
 	// Uses cites the Go symbol behind the class: the standard library type a
 	// wrapper holds, or the bound type itself.
-	Uses Citation
+	Uses Citation `json:"uses,omitzero"`
 
 	// Implements cites the interfaces the bound Go type satisfies.
-	Implements []Citation
+	Implements []Citation `json:"implements,omitempty"`
 }
 
 type constructorGroup struct {
