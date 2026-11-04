@@ -71,6 +71,9 @@ func (s *Startup) run(ctx context.Context, file string, src []byte) error {
 func (s *Startup) execute(ctx context.Context, file string, src []byte) error {
 	rt := s.config.newRuntime(ctx, s.root, s.config.output, "cli", func(rt *runner.Runtime) {
 		runner.NewContext().Register(rt)
+		if s.config.router != nil {
+			s.config.router.Install(rt)
+		}
 	})
 	defer s.config.cover(rt)()
 

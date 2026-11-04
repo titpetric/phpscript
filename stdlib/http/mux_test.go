@@ -6,6 +6,7 @@ import (
 	"io"
 	nethttp "net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	phphttp "github.com/titpetric/phpscript/stdlib/http"
 )
 
 // serveScript runs src, which must build a router and leave it in $mux, and
@@ -1076,5 +1078,81 @@ func TestReentryIsNotARace(t *testing.T) {
 			}
 			wg.Wait()
 		})
+	}
+}
+
+// groupHandler serves testdata/group.php, a mux with middleware and a group.
+func groupHandler(t *testing.T) nethttp.Handler {
+	t.Helper()
+	src, err := os.ReadFile("testdata/group.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, handler := serveScript(t, string(src))
+	return handler
+}
+
+// TestMux_Use pins that a middleware wraps what is registered after it.
+func TestMux_Use(t *testing.T) {
+	t.Parallel()
+	response := httptest.NewRecorder()
+	groupHandler(t).ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/after", nil))
+	if got := response.Body.String(); got != "outer>after" {
+		t.Errorf("/after = %q, want outer>after", got)
+	}
+}
+
+// TestMux_Group pins that a group keeps its middleware to itself.
+func TestMux_Group(t *testing.T) {
+	t.Parallel()
+	handler := groupHandler(t)
+	for path, want := range map[string]string{
+		"/open":    "open",
+		"/grouped": "outer>inner>grouped",
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, path, nil))
+		if got := response.Body.String(); got != want {
+			t.Errorf("%s = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// TestMux_Mounted pins the mux a host mounts: its routes, plain and grouped,
+// go to the host's mount with the middleware applied, and the mux keeps none.
+func TestMux_Mounted(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	routes := map[string]nethttp.Handler{}
+	mux := phphttp.NewMountedMux(rt, func(pattern string, handler nethttp.Handler) error {
+		routes[pattern] = handler
+		return nil
+	})
+	rt.RegisterFunc("mounted", func() *phphttp.Mux { return mux })
+
+	src, err := os.ReadFile("testdata/mounted.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := rt.Load(string(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	for _, pattern := range []string{"GET /open", "GET /grouped"} {
+		if routes[pattern] == nil {
+			t.Errorf("%s was not mounted, got %v", pattern, routes)
+		}
+	}
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/open", nil))
+	if response.Code != nethttp.StatusNotFound {
+		t.Errorf("the mounted mux served /open itself: %d", response.Code)
 	}
 }

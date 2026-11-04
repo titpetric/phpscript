@@ -23,6 +23,7 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib/files"
 	"github.com/titpetric/phpscript/stdlib/mail"
+	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -580,6 +581,7 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 		annotations.WithFlatstack(appConfig.Flatstack.Enabled),
 		annotations.WithObservers(observers...),
 		annotations.WithModuleSuffix(suffix),
+		annotations.WithRouter(stdruntime.NewRouter()),
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
+	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
 )
 
 // Option configures how the scanner finds annotated PHP files and runs them. The
@@ -28,6 +29,7 @@ type config struct {
 	moduleSuffix  string
 	errorPages    ErrorPageFunc
 	coverage      *coverage.Aggregator
+	router        *stdruntime.Router
 }
 
 // ErrorPageFunc renders a host's own page for an error response and reports
@@ -153,5 +155,12 @@ func WithExcludedDirectory(name string) Option {
 		if name != "" {
 			c.excludedDirs[name] = struct{}{}
 		}
+	}
+}
+
+// WithRouter shares router between the Route and Startup modules.
+func WithRouter(router *stdruntime.Router) Option {
+	return func(c *config) {
+		c.router = router
 	}
 }

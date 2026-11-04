@@ -1,10 +1,10 @@
 # phpscript language reference
 
-| Reference area                                                      | Status                | Notes                                                                    |
-|---------------------------------------------------------------------|-----------------------|--------------------------------------------------------------------------|
-| PHP language reference                                              | Partial compatibility | phpscript implements only the documented chapters and features.          |
-| phpscript extensions                                                | Compatibility         | Documented separately because these APIs and syntax do not exist in PHP. |
-| Fibers, generators, attributes, enums, stream contexts and wrappers | Not implemented       | Omitted from the sitemap because phpscript has no corresponding feature. |
+| Reference area | Status | Notes |
+| --- | --- | --- |
+| PHP language reference | Partial compatibility | phpscript implements only the documented chapters and features. |
+| phpscript extensions | Compatibility | Documented separately because these APIs and syntax do not exist in PHP. |
+| Fibers, generators, attributes, enums, stream contexts and wrappers | Not implemented | Omitted from the sitemap because phpscript has no corresponding feature. |
 
 A PHP language-reference-shaped guide to the syntax and runtime behavior implemented by phpscript.
 
@@ -313,6 +313,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [escape](extensions/implemented-apis.md#escape)
       - [exec](extensions/implemented-apis.md#exec)
       - [process](extensions/implemented-apis.md#process)
+    - [stdlib/runtime](extensions/implemented-apis.md#stdlibruntime)
     - [stdlib/span](extensions/implemented-apis.md#stdlibspan)
     - [stdlib/time](extensions/implemented-apis.md#stdlibtime)
   - [Classes](extensions/implemented-apis.md#classes)

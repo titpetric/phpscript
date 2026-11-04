@@ -3,6 +3,8 @@ package annotations_test
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
+	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -176,5 +179,28 @@ func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
 	t.Parallel()
 	if err := annotations.NewStartup(nil).Start(context.Background()); err == nil {
 		t.Fatal("nil root filesystem was accepted")
+	}
+}
+
+// TestStartupBindsRoutes pins the wiring: Route attaches the router it mounts,
+// and a @startup job in testdata/bind routes the service through
+// Runtime\Router::Bind, before the first request.
+func TestStartupBindsRoutes(t *testing.T) {
+	t.Parallel()
+	root := os.DirFS("testdata/bind")
+	router := stdruntime.NewRouter()
+	service := http.NewServeMux()
+	if err := annotations.NewRoute(root, annotations.WithRouter(router)).RegisterMux(service); err != nil {
+		t.Fatal(err)
+	}
+	if err := annotations.NewStartup(root, annotations.WithRouter(router)).Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{"/ping": "pong", "/api/users/7": "user 7"} {
+		response := httptest.NewRecorder()
+		service.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusOK || response.Body.String() != want {
+			t.Errorf("%s = %d %q, want 200 %q", path, response.Code, response.Body.String(), want)
+		}
 	}
 }
