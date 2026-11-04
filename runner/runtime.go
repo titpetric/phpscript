@@ -57,6 +57,11 @@ type Runtime struct {
 	hoisted map[*model.Program]string
 	classes map[string]*model.Class
 
+	// imported records the namespaces a program on this runtime has already
+	// opted into with `use Namespace`, so a second import installs nothing
+	// again. Nil until the first one; see UseNamespace.
+	imported map[string]struct{}
+
 	// interfaces holds the interface declarations hoist saw, keyed by name.
 	// An interface is still no value and no constructor: the table exists so
 	// Interface::CONST resolves through the name declaring the constant.

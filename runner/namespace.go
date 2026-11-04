@@ -1,0 +1,93 @@
+package runner
+
+import (
+	"strings"
+	"sync"
+
+	"github.com/titpetric/phpscript/model"
+)
+
+// A namespace binding is a binding area a script asks for by name. The
+// installers in bindings.go are the surface every runtime carries; these are
+// the ones a program opts into with `use Namespace`, and a runtime nobody
+// opted in on answers for none of their names. That is what keeps an opt-in
+// area out of function_exists, get_defined_functions and the generated
+// reference, where stdlib.Mount's areas all appear.
+//
+// A namespace registers and resolves under a case-insensitive key, as every
+// other name PHP resolves does, and the import drops a leading separator:
+// `use \Runtime\Go` and `use Runtime\Go` name the same namespace.
+//
+// The install outlives the program that asked for it. Nothing un-registers a
+// binding, so a runtime reused for a second program carries what the first one
+// imported; the names a script may call are decided by the parser, per file,
+// and the import is what binds them there.
+
+// namespaces holds the installers contributed per namespace.
+var namespaces struct {
+	sync.Mutex
+	installers map[string]func(*Runtime)
+}
+
+// RegisterNamespace contributes the installer a `use name` import runs. A nil
+// installer and an empty name are dropped.
+func RegisterNamespace(name string, installer func(*Runtime)) {
+	if name == "" || installer == nil {
+		return
+	}
+	namespaces.Lock()
+	defer namespaces.Unlock()
+	if namespaces.installers == nil {
+		namespaces.installers = map[string]func(*Runtime){}
+	}
+	namespaces.installers[foldName(name)] = installer
+}
+
+// NamespaceInstaller returns the installer contributed for name.
+func NamespaceInstaller(name string) (func(*Runtime), bool) {
+	namespaces.Lock()
+	defer namespaces.Unlock()
+	installer, ok := namespaces.installers[foldName(name)]
+	return installer, ok
+}
+
+// UseNamespace installs the bindings contributed for an imported namespace,
+// once per runtime, and reports whether it installed any.
+func (rt *Runtime) UseNamespace(name string) bool {
+	installer, ok := NamespaceInstaller(name)
+	if !ok {
+		return false
+	}
+	key := foldName(name)
+	if _, done := rt.imported[key]; done {
+		return false
+	}
+	if rt.imported == nil {
+		rt.imported = map[string]struct{}{}
+	}
+	rt.imported[key] = struct{}{}
+	installer(rt)
+	return true
+}
+
+// useImports installs the namespace bindings the statements import.
+//
+// Both engines pass through here: the bytecode compiler resolves a call
+// through the runtime's function table at run time, so an install before
+// execution serves it as it serves the interpreter.
+func (rt *Runtime) useImports(stmts []model.Stmt) {
+	for _, s := range stmts {
+		use, ok := s.(*model.Use)
+		if !ok {
+			continue
+		}
+		for _, imported := range use.Imports {
+			rt.UseNamespace(imported.Path)
+		}
+	}
+}
+
+// foldName is the key a namespace registers and resolves under.
+func foldName(name string) string {
+	return strings.ToLower(strings.Trim(name, "\\"))
+}
