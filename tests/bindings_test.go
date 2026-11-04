@@ -373,6 +373,62 @@ func TestBindingStdlibInteropAcrossShapes(t *testing.T) {
 			php:  `<?php $e = array_slice(bind_list_strings(), 99); echo empty($e) ? "empty" : "full";`,
 			want: "empty",
 		},
+
+		// An options or replacement bag reads by key, and the map a binding
+		// returned is the same bag as the array a literal writes.
+		{
+			name: "strtr replaces from a map",
+			php:  `<?php echo strtr("id/name", bind_map());`,
+			want: "1/alpha",
+		},
+		{
+			name: "strtr replaces from a model.Array",
+			php:  `<?php echo strtr("id/name", array("id" => 1, "name" => "alpha"));`,
+			want: "1/alpha",
+		},
+
+		// A struct is an object: its exported fields are the properties, and
+		// the two reflection functions read them as property access does.
+		{
+			name: "get_object_vars over a struct",
+			php:  `<?php foreach (get_object_vars(bind_record()) as $k => $v) { echo $k . "=" . $v . " "; }`,
+			want: "ID=1 Name=alpha ",
+		},
+		{
+			name: "get_object_vars over a struct value",
+			php:  `<?php echo implode(",", array_keys(get_object_vars(bind_record_value())));`,
+			want: "ID,Name",
+		},
+		{
+			name: "get_object_vars over an interpreted object",
+			php:  `<?php foreach (get_object_vars(bind_object()) as $k => $v) { echo $k . "=" . $v . " "; }`,
+			want: "id=1 name=alpha ",
+		},
+		{
+			name: "get_object_vars over an array is empty",
+			php:  `<?php echo count(get_object_vars(bind_map()));`,
+			want: "0",
+		},
+		{
+			name: "property_exists over a struct",
+			php:  `<?php echo property_exists(bind_record(), "name") ? "y" : "n";`,
+			want: "y",
+		},
+		{
+			name: "property_exists over a struct, exact spelling",
+			php:  `<?php echo property_exists(bind_record(), "Name") ? "y" : "n";`,
+			want: "y",
+		},
+		{
+			name: "property_exists miss over a struct",
+			php:  `<?php echo property_exists(bind_record(), "absent") ? "y" : "n";`,
+			want: "n",
+		},
+		{
+			name: "property_exists over an interpreted object",
+			php:  `<?php echo property_exists(bind_object(), "name") ? "y" : "n";`,
+			want: "y",
+		},
 		{
 			name: "non-empty slice is truthy",
 			php:  `<?php $l = bind_list_strings(); if ($l) { echo "truthy"; }`,

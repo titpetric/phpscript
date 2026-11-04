@@ -61,6 +61,18 @@ func TestParamsFrom(t *testing.T) {
 			[]any{algoArgon2id, options("cost", int64(4))},
 			defaultParams(algoArgon2id),
 		},
+		// The options bag is whatever collection a script passed: the array a
+		// literal writes, and the map another binding returned.
+		{
+			"options a binding returned",
+			[]any{map[string]any{"cost": int64(4)}},
+			params{algo: algoBcrypt, cost: 4},
+		},
+		{
+			"an algorithm beside options a binding returned",
+			[]any{algoArgon2id, map[string]any{"time_cost": int64(2)}},
+			params{algo: algoArgon2id, memory: argon2DefaultMemory, time: 2, lanes: argon2DefaultLanes},
+		},
 	}
 
 	for _, tc := range cases {
@@ -88,6 +100,7 @@ func TestParamsFrom(t *testing.T) {
 		{"more lanes than memory", []any{algoArgon2id, options("memory_cost", int64(16), "threads", int64(3))}},
 		{"more lanes than the encoding carries", []any{algoArgon2id, options("threads", int64(256))}},
 		{"an argument that is neither", []any{true}},
+		{"an unusable cost in a map a binding returned", []any{map[string]any{"cost": "cheap"}}},
 	}
 
 	for _, tc := range refused {

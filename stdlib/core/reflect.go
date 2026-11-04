@@ -33,18 +33,23 @@ func registerReflection(rt *runner.Runtime) {
 	rt.RegisterFunc("is_subclass_of", func(_ ...any) bool { return false })
 	// get_object_vars returns the properties of $object as an array, in the
 	// order the object reads them back. A non-object returns an empty array.
+	//
+	// A value a binding returned answers with its exported Go fields, the
+	// field set print_r and var_dump report for it. A throwable answers with
+	// none: every php throwable declares its properties protected, a script
+	// outside the class reads nothing off one, and the fields this runtime
+	// keeps on its own Go type are no property a script may name.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
-		obj, ok := object.(*model.Object)
-		if !ok {
+		if _, throwable := object.(runner.Throwable); throwable {
 			return model.NewArray()
 		}
-		out := model.NewArraySize(obj.Len())
+		fields := objectFields(object)
+		out := model.NewArraySize(len(fields))
 		// A property named for its digits becomes an integer key as an array
 		// entry and `(object) array("a", "b")` reads back as a list.
-		obj.Range(func(name string, v any) bool {
-			out.Set(phpval.Key(name), v)
-			return true
-		})
+		for _, field := range fields {
+			out.Set(phpval.Key(field.name), field.value)
+		}
 		return out
 	})
 	// method_exists reports whether $object_or_class, an object or a class name, has method $method.
@@ -69,23 +74,15 @@ func registerReflection(rt *runner.Runtime) {
 	// property_exists reports whether object $object_or_class has property
 	// $property, set or declared; a class name is not accepted and returns
 	// false.
+	//
+	// A declaration outlives an unset, and a value a binding returned answers
+	// for its exported Go fields, resolved the way a property read resolves
+	// them. A throwable answers for none, as get_object_vars does.
 	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
-		object, ok := objectOrClass.(*model.Object)
-		if !ok {
+		if _, throwable := objectOrClass.(runner.Throwable); throwable {
 			return false
 		}
-		if _, ok := object.Props[property]; ok {
-			return true
-		}
-		if object.Class == nil {
-			return false
-		}
-		for _, field := range object.Class.Fields {
-			if field.Name == property {
-				return true
-			}
-		}
-		return false
+		return rt.PropertyExists(objectOrClass, property)
 	})
 	// PHP exposes an opaque, per-object identity. A pointer is exactly that,
 	// and stays stable for as long as the object is alive, which is the only

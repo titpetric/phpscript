@@ -330,15 +330,17 @@ func phpStrtr(subject string, args ...any) string {
 		}
 		return string(out)
 	}
-	pairs, ok := args[0].(*model.Array)
+	// The pairs are whatever collection a script passed: the array a literal
+	// builds, and the map or slice another binding returned.
+	count, ok := model.LenValues(args[0])
 	if !ok {
 		return subject
 	}
 	// PHP tries the longest key that matches at each position and the
 	// replacement is order-independent and never rewrites its own output.
-	keys := make([]string, 0, pairs.Len())
-	replacements := make(map[string]string, pairs.Len())
-	pairs.Range(func(key, val any) bool {
+	keys := make([]string, 0, count)
+	replacements := make(map[string]string, count)
+	model.RangeValues(args[0], func(key, val any) bool {
 		text := phpval.String(key)
 		if text == "" {
 			return true

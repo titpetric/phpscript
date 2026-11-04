@@ -23,14 +23,14 @@ The order these go in is the order a mistake in them costs the most.
 
 A connection and a mail server are both named, never described. The server builds both providers per site from that site's own configuration, and they hold no more than that (`cmd/phpscript/server/vhost.go:155`, `:160`) and a name another site configured does not resolve at all, with no check to refuse it.
 
-| Surface                                | What a script gets                                   | What it cannot get                                                                          |
-|----------------------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| `new Database($name)`                  | A client, or a failure naming `$name`                | The DSN. `get_object_vars()` is empty and `json_encode()` carries no credential             |
-| `Database::connections()`              | The names this site can open, sorted                 | Any DSN behind a name                                                                       |
-| `Database::register($name, $dsn)`      | A connection added to this site's own provider       | Reach into another site's provider                                                          |
-| `new Mail($name)`, `mail()`            | A delivery, or a failure naming `$name`              | A host, a username or a password. There is no listing call and the object has no properties |
-| `new Auth\Storage\PasswordFile($file)` | A verdict on one credential, and the record it names | Any stored hash, and the file's contents. The store has no properties                       |
-| `getenv()`                             | The variables the site's `env` declared              | Anything named `PLATFORM_*`, and anything the operator's process carries                    |
+| Surface                                | What a script gets                                   | What it cannot get                                                                                                                                      |
+|----------------------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `new Database($name)`                  | A client, or a failure naming `$name`                | The DSN, and the client under the read-only flag. `get_object_vars()` reports the name and the flag, `json_encode()` carries no credential |
+| `Database::connections()`              | The names this site can open, sorted                 | Any DSN behind a name                                                                                                                                   |
+| `Database::register($name, $dsn)`      | A connection added to this site's own provider       | Reach into another site's provider                                                                                                                      |
+| `new Mail($name)`, `mail()`            | A delivery, or a failure naming `$name`              | A host, a username or a password. There is no listing call and the object has no properties                                                             |
+| `new Auth\Storage\PasswordFile($file)` | A verdict on one credential, and the record it names | Any stored hash, and the file's contents. The store has no properties                                                                                   |
+| `getenv()`                             | The variables the site's `env` declared              | Anything named `PLATFORM_*`, and anything the operator's process carries                                                                                |
 
 `Database::register` is the one place a connection string enters from PHP, and there a script supplies one it already holds, with nothing read back; the credential goes into the provider that site already resolves through (`stdlib/database/register.go:59`). `Mail` has no counterpart: naming what exists is itself a disclosure, and the constructor refuses settings, with no coercion. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
 

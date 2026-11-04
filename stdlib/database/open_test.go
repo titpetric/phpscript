@@ -56,5 +56,5 @@ func newLiveDatabase(t *testing.T) *Database {
 			t.Fatalf("%s: %v", statement, err)
 		}
 	}
-	return &Database{Bridge: newBridge(db)}
+	return &Database{bridge: newBridge(db)}
 }

@@ -121,18 +121,25 @@ class HTTP\Client
 }
 
 // TestStdlibDefinitionsProperties covers a class that does carry properties.
-// Database holds three, in the order the Go struct declares them, and
+// Database holds two, in the order the Go struct declares them, and
 // $is_readonly is the folded spelling: Runtime.structField resolves
 // is_readonly back to IsReadonly through the underscores, and a listing
 // printing isReadonly would name a property no script can read.
+//
+// The client it queries through is not among them: an exported field is a
+// property a script reads, and that one answers with no read-only check. See
+// docs/security.md.
 func TestStdlibDefinitionsProperties(t *testing.T) {
 	t.Parallel()
 	got, err := list.StdlibDefinitions("Database")
 	if err != nil {
 		t.Fatalf("StdlibDefinitions: %v", err)
 	}
+	if strings.Contains(got, "$bridge") {
+		t.Errorf("the definition publishes the bridge as a property:\n%s", got)
+	}
 
-	order := []string{"public object $bridge;", "public string $id;", "public bool $is_readonly;"}
+	order := []string{"public string $id;", "public bool $is_readonly;"}
 	at := -1
 	for _, want := range order {
 		next := strings.Index(got, want)
