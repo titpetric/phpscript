@@ -35,7 +35,7 @@ func TestGoRuntimeBinding(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ src, name, fallback string }{
 		{"<?php\nuse Runtime\\Go;\nmake(1);", `Runtime\Go\make`, "make"},
-		{"<?php\nuse Runtime\\Go;\nint64(1);", `Runtime\Go\int64`, "int64"},
+		{"<?php\nuse Runtime\\Go;\nint64($n);", `Runtime\Go\int64`, "int64"},
 		// A bare name no import binds stays php's, with or without a namespace.
 		{"<?php\nmake(1);", "make", ""},
 		{"<?php\nuse Runtime\\Go;\nstrlen(1);", "strlen", ""},
@@ -56,6 +56,58 @@ func TestGoRuntimeBinding(t *testing.T) {
 		call := goCall(t, test.src)
 		if call.Name != test.name || call.Fallback != test.fallback {
 			t.Errorf("%q = %s / %s, want %s / %s", test.src, call.Name, call.Fallback, test.name, test.fallback)
+		}
+	}
+}
+
+// TestGoRuntimeFold covers the conversion of a literal, which the parser
+// applies and no engine sees: the call is gone and a literal is in its place,
+// under every width go has. A conversion php has to read the value for is not
+// the parser's and stays a call, and so does anything but one literal.
+func TestGoRuntimeFold(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		src  string
+		want any
+	}{
+		{"int64(0)", int64(0)},
+		{"int8(300)", int64(44)},
+		{"uint8(-1)", int64(255)},
+		{"float64(-1.5)", float64(-1.5)},
+		{"int64((7))", int64(7)},
+		{"int32(2147483648)", int64(-2147483648)},
+		{"float64(3)", float64(3)},
+		{"float32(0.5)", float64(0.5)},
+		{"string('x')", "x"},
+		{"any('x')", "x"},
+		{"rune(65)", int64(65)},
+	} {
+		src := "<?php\nuse Runtime\\Go;\n$x = " + test.src + ";"
+		value := mustParse(t, src).Stmts[1].(*model.Assign).Value
+		lit, ok := value.(*model.Lit)
+		if !ok {
+			t.Errorf("%s compiled to a %T, want a literal", test.src, value)
+			continue
+		}
+		if lit.Value != test.want {
+			t.Errorf("%s = %#v, want %#v", test.src, lit.Value, test.want)
+		}
+	}
+
+	// A string literal that folds to itself keeps the node, and with it the
+	// quoting the source used.
+	lit := mustParse(t, "<?php\nuse Runtime\\Go;\n$x = string('x');").Stmts[1].(*model.Assign).Value.(*model.Lit)
+	if lit.Raw != "'x'" {
+		t.Errorf("the folded literal reads %q, want the source spelling", lit.Raw)
+	}
+
+	for _, src := range []string{
+		`int64("12")`, `int64(1.5)`, `int64($n)`, `int64()`, `int64(1, 2)`, `int64(...)`,
+		`len("abc")`, `make("[]int", 1)`,
+	} {
+		call := goCall(t, "<?php\nuse Runtime\\Go;\n"+src+";")
+		if call.Fallback == "" {
+			t.Errorf("%s compiled to a call to %s, want the go binding", src, call.Name)
 		}
 	}
 }

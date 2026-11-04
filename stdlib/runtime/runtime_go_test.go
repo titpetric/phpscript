@@ -88,6 +88,14 @@ use function Runtime\Go\make;
 
 echo Runtime\Go\len(make("[]int", 2)), "\n";
 `, "2\n")
+	// The parser folds a conversion of a literal and the binding converts the
+	// same value at run time. Both read one table, so both answer the same.
+	goOutput(t, `<?php
+use Runtime\Go;
+
+$n = 300;
+echo int8(300) === int8($n) ? "agree" : "differ", "\n";
+`, "agree\n")
 	// min is php's, which reads an array, and go's reads values: a file that
 	// imported the namespace still calls php's by its bare name.
 	goOutput(t, `<?php

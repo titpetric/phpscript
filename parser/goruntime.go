@@ -33,3 +33,58 @@ func (p *parser) useGo(name string) {
 func (p *parser) goBound(name string) bool {
 	return p.goRuntime && model.GoBuiltin(name)
 }
+
+// goFold is the conversion a builtin type applies to a literal, applied where
+// the file parses: `int64(0)` is the literal 0, it reaches no function table at
+// run time and both engines read what is left.
+//
+// Only a pair the conversion decides on its own folds. A value php has to read
+// first, a string under a numeric type, reaches the binding, which reads it
+// through phpval and applies the same conversion to the result.
+//
+// A folded value prints as the literal it became, which is the spelling the
+// printer already picks for a number: it prints `0x10` as 16.
+func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
+	if len(args) != 1 || !model.GoType(name) {
+		return nil, false
+	}
+	value, ok := goLitValue(args[0])
+	if !ok {
+		return nil, false
+	}
+	folded, ok := model.GoFold(name, value)
+	if !ok {
+		return nil, false
+	}
+	// A conversion that changed nothing keeps the node, and with it the source
+	// spelling a string literal carries.
+	if lit, isLit := args[0].(*model.Lit); isLit && folded == lit.Value {
+		return lit, true
+	}
+	return p.newLit(folded), true
+}
+
+// goLitValue reads the value of a literal argument. php has no negative
+// literal: `-1` is a unary minus over 1, go folds the sign into the constant,
+// and a conversion of a literal reads both the same way.
+func goLitValue(arg model.Expr) (any, bool) {
+	switch n := model.UnwrapParenthesized(arg).(type) {
+	case *model.Lit:
+		return n.Value, true
+	case *model.Unary:
+		if n.Op != "-" || n.Postfix {
+			return nil, false
+		}
+		lit, ok := model.UnwrapParenthesized(n.X).(*model.Lit)
+		if !ok {
+			return nil, false
+		}
+		switch v := lit.Value.(type) {
+		case int64:
+			return -v, true
+		case float64:
+			return -v, true
+		}
+	}
+	return nil, false
+}
