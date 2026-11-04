@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -280,11 +281,10 @@ func paramsFrom(opts []any) (params, error) {
 
 	p := defaultParams(algo)
 	for _, opt := range opts {
-		options, ok := opt.(*model.Array)
-		if !ok {
+		if !model.IsCollection(opt) {
 			continue
 		}
-		if err := p.readOptions(options); err != nil {
+		if err := p.readOptions(opt); err != nil {
 			return params{}, err
 		}
 	}
@@ -302,9 +302,13 @@ func paramsFrom(opts []any) (params, error) {
 func algoFrom(opts []any) (string, error) {
 	algo := algoBcrypt
 	for _, opt := range opts {
-		switch value := opt.(type) {
-		case nil, *model.Array:
+		// A collection is the options bag, whatever built it: the array a
+		// script wrote and the map another binding returned both. The
+		// algorithm is the other argument.
+		if opt == nil || model.IsCollection(opt) {
 			continue
+		}
+		switch value := opt.(type) {
 		case string:
 			switch value {
 			case algoBcrypt, "bcrypt":
@@ -342,7 +346,7 @@ func legacyAlgo(value int64) string {
 
 // readOptions applies the keys the algorithm reads and ignores the rest, which
 // is what php does with an option belonging to another algorithm.
-func (p *params) readOptions(options *model.Array) error {
+func (p *params) readOptions(options any) error {
 	if p.algo == algoBcrypt {
 		cost, err := intOption(options, "cost", int64(p.cost))
 		if err != nil {
@@ -378,10 +382,27 @@ func (p *params) readOptions(options *model.Array) error {
 // also the widest x/crypto takes.
 const math32Max = 1<<32 - 1
 
+// optionValue reads one key out of an options bag, whatever collection built
+// it: the array a script wrote, or the map another binding returned. The bag
+// holds a handful of keys and a range over it costs less than the map a
+// lookup-by-key would have to build first.
+func optionValue(options any, name string) (any, bool) {
+	var found any
+	ok := false
+	model.RangeValues(options, func(key, value any) bool {
+		if phpval.String(key) != name {
+			return true
+		}
+		found, ok = value, true
+		return false
+	})
+	return found, ok
+}
+
 // intOption reads one option key, which arrives as whatever the script wrote
 // it as, and answers fallback when the key is absent.
-func intOption(options *model.Array, name string, fallback int64) (int64, error) {
-	value, ok := options.Get(name)
+func intOption(options any, name string, fallback int64) (int64, error) {
+	value, ok := optionValue(options, name)
 	if !ok {
 		return fallback, nil
 	}

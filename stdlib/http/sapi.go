@@ -3,6 +3,7 @@ package http
 import (
 	nethttp "net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -119,8 +120,11 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 	}
 
 	if len(opts) > 1 {
-		if options, isArray := opts[1].(*model.Array); isArray {
-			applyCookieOptions(cookie, options)
+		// The options form is a collection, whatever built it: the array a
+		// literal writes and the map another binding returned both. Anything
+		// else is the long argument list.
+		if model.IsCollection(opts[1]) {
+			applyCookieOptions(cookie, opts[1])
 		} else {
 			applyCookiePositional(cookie, opts[1:])
 		}
@@ -152,25 +156,30 @@ func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 
 // applyCookieOptions reads the array form. An option the array does not name
 // keeps its zero value, as PHP leaves it out of the header.
-func applyCookieOptions(cookie *nethttp.Cookie, options *model.Array) {
-	if value, ok := options.Get("expires"); ok {
-		setCookieExpires(cookie, phpval.Int(value))
-	}
-	if value, ok := options.Get("path"); ok {
-		cookie.Path = phpval.String(value)
-	}
-	if value, ok := options.Get("domain"); ok {
-		cookie.Domain = phpval.String(value)
-	}
-	if value, ok := options.Get("secure"); ok {
-		cookie.Secure = phpval.Truthy(value)
-	}
-	if value, ok := options.Get("httponly"); ok {
-		cookie.HttpOnly = phpval.Truthy(value)
-	}
-	if value, ok := options.Get("samesite"); ok {
-		cookie.SameSite = sameSite(phpval.String(value))
-	}
+//
+// The keys fold, as php's do: it takes `["Expires" => ...]` for the option
+// `["expires" => ...]` names. A key naming no option passes unread here and
+// php raises a ValueError for it. The bag reads by range and not by key: it
+// arrives as the map another binding returned as readily as the array a
+// literal wrote.
+func applyCookieOptions(cookie *nethttp.Cookie, options any) {
+	model.RangeValues(options, func(key, value any) bool {
+		switch strings.ToLower(phpval.String(key)) {
+		case "expires":
+			setCookieExpires(cookie, phpval.Int(value))
+		case "path":
+			cookie.Path = phpval.String(value)
+		case "domain":
+			cookie.Domain = phpval.String(value)
+		case "secure":
+			cookie.Secure = phpval.Truthy(value)
+		case "httponly":
+			cookie.HttpOnly = phpval.Truthy(value)
+		case "samesite":
+			cookie.SameSite = sameSite(phpval.String(value))
+		}
+		return true
+	})
 }
 
 // setCookieExpires reads PHP's $expires: a unix timestamp, where 0 means the

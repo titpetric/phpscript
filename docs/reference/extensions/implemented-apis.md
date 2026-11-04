@@ -1293,6 +1293,12 @@ function get_class(mixed ...$object): mixed
 /**
  * get_object_vars returns the properties of $object as an array, in the
  * order the object reads them back. A non-object returns an empty array.
+ * 
+ * A value a binding returned answers with its exported Go fields, the
+ * field set print_r and var_dump report for it. A throwable answers with
+ * none: every php throwable declares its properties protected, a script
+ * outside the class reads nothing off one, and the fields this runtime
+ * keeps on its own Go type are no property a script may name.
  */
 function get_object_vars(mixed $object): array
 ```
@@ -1325,6 +1331,10 @@ function method_exists(mixed $object_or_class, string $method): bool
  * property_exists reports whether object $object_or_class has property
  * $property, set or declared; a class name is not accepted and returns
  * false.
+ * 
+ * A declaration outlives an unset, and a value a binding returned answers
+ * for its exported Go fields, resolved the way a property read resolves
+ * them. A throwable answers for none, as get_object_vars does.
  */
 function property_exists(mixed $object_or_class, string $property): bool
 ```

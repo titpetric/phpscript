@@ -16,19 +16,19 @@ import (
 // The order is the one every host uses: the host registers the standard library
 // once, then seeds the request. These functions resolve the request at call
 // time and registration cannot have captured it.
-func runRequest(t *testing.T, request runner.Context, src string) string {
+func runRequest(t *testing.T, request runner.Context, src string, bindings ...func(*runner.Runtime)) string {
 	t.Helper()
-	return runRequestSAPI(t, request, "", src)
+	return runRequestSAPI(t, request, "", src, bindings...)
 }
 
 // runRequestSAPI is runRequest under a named SAPI, for the functions that
 // answer differently on a web request than they do on the command line.
-func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string) string {
+func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string, bindings ...func(*runner.Runtime)) string {
 	t.Helper()
 
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{SAPI: sapi})
-	stdlib.Register(rt)
+	stdlib.Register(rt, bindings...)
 	request.Register(rt)
 
 	program, err := rt.Load(src)
@@ -222,6 +222,35 @@ func TestSetCookie(t *testing.T) {
 	runRequest(t, request, `<?php setcookie("session", "abc", 0);`)
 	if staged := request.ResponseHeaders().Get("Set-Cookie"); strings.Contains(staged, "Expires") {
 		t.Errorf("Set-Cookie = %q, want no Expires for a session cookie", staged)
+	}
+}
+
+// TestSetCookieOptionsFromBinding covers the options bag another binding
+// built: the array form is a collection whatever shape holds it, and a map
+// reaches the header the way the array a literal writes does. The keys fold,
+// as php's do: it takes "Expires" for the option it refuses "bogus" for.
+func TestSetCookieOptionsFromBinding(t *testing.T) {
+	t.Parallel()
+	request := runner.NewContext()
+	out := runRequest(t, request,
+		`<?php var_export(setcookie("session", "abc", cookie_options()));`,
+		func(rt *runner.Runtime) {
+			rt.RegisterFunc("cookie_options", func() map[string]any {
+				return map[string]any{"Path": "/admin", "HttpOnly": true, "SameSite": "Lax"}
+			})
+		})
+	if out != "true" {
+		t.Errorf("setcookie echoed %q, want true", out)
+	}
+
+	staged := request.ResponseHeaders().Values("Set-Cookie")
+	if len(staged) != 1 {
+		t.Fatalf("Set-Cookie = %v, want one value", staged)
+	}
+	for _, want := range []string{"session=abc", "Path=/admin", "HttpOnly", "SameSite=Lax"} {
+		if !strings.Contains(staged[0], want) {
+			t.Errorf("Set-Cookie = %q, want it to carry %q", staged[0], want)
+		}
 	}
 }
 
