@@ -15,11 +15,11 @@ func TestDirectCompileBinary(t *testing.T) {
 	t.Parallel()
 	helpers := &Helpers{
 		Truthy: func(v any) bool { return v == true },
-		Arith: func(op string, a, b any) any {
+		Arith: func(op string, a, b any) (any, error) {
 			if op != "+" {
 				t.Errorf("Arith saw op %q, want +", op)
 			}
-			return a.(int64) + b.(int64)
+			return a.(int64) + b.(int64), nil
 		},
 	}
 
@@ -68,8 +68,8 @@ func TestDirectCompileUnary(t *testing.T) {
 	helpers := &Helpers{
 		Truthy: func(v any) bool { return v == true },
 		Negate: func(v any) any { return -v.(int64) },
-		Arith: func(op string, a, b any) any {
-			return a.(int64) + b.(int64)
+		Arith: func(op string, a, b any) (any, error) {
+			return a.(int64) + b.(int64), nil
 		},
 	}
 

@@ -15,17 +15,23 @@ import (
 const GoNamespace = `Runtime\Go`
 
 // goBuiltins are the names the import binds where a script writes them
-// unqualified. php's own copy, min, max and print are not among them: a file
-// that imported the go runtime still calls php's when it writes one, and
-// `Go\copy` names the other.
+// unqualified. An import is the more specific name: a file that imported the
+// go runtime wrote `min(...)` for go's, and `\min(...)` is php's, the way
+// `\strlen` is php's whatever the file imported. Three of these shadow a php
+// function - copy, min and max - and php's print is no function phpscript
+// registers at all.
 var goBuiltins = map[string]struct{}{
 	"append":  {},
 	"cap":     {},
 	"clear":   {},
+	"copy":    {},
 	"delete":  {},
 	"len":     {},
 	"make":    {},
+	"max":     {},
+	"min":     {},
 	"panic":   {},
+	"print":   {},
 	"println": {},
 }
 
@@ -40,19 +46,43 @@ var goTypes = map[string]func(any) (any, bool){
 	"bool":    goBool,
 	"string":  goString,
 	"int":     goSigned(64),
-	"int8":    goSigned(8),
-	"int16":   goSigned(16),
-	"int32":   goSigned(32),
 	"int64":   goSigned(64),
-	"rune":    goSigned(32),
-	"uint":    goUnsigned(64),
-	"uint8":   goUnsigned(8),
-	"uint16":  goUnsigned(16),
-	"uint32":  goUnsigned(32),
-	"uint64":  goUnsigned(64),
-	"byte":    goUnsigned(8),
-	"float32": goFloat(32),
 	"float64": goFloat(64),
+	"int8":    goNarrow("int8"),
+	"int16":   goNarrow("int16"),
+	"int32":   goNarrow("int32"),
+	"rune":    goNarrow("rune"),
+	"uint":    goNarrow("uint"),
+	"uint8":   goNarrow("uint8"),
+	"uint16":  goNarrow("uint16"),
+	"uint32":  goNarrow("uint32"),
+	"uint64":  goNarrow("uint64"),
+	"byte":    goNarrow("byte"),
+	"float32": goNarrow("float32"),
+}
+
+// goNarrow is the conversion of a sized type: it answers the value of that
+// width, typed, which keeps the type a script wrote on the value it holds.
+// `int`, `int64` and `float64` have no entry here: they name the widths php
+// carries, and `int64(5)` is php's 5.
+func goNarrow(name string) func(any) (any, bool) {
+	w, ok := GoWidthNamed(name)
+	if !ok {
+		return func(any) (any, bool) { return nil, false }
+	}
+	return func(v any) (any, bool) {
+		if w.Float {
+			f, ok := goFloat64(v)
+			if !ok {
+				return nil, false
+			}
+			return w.Narrow(f), true
+		}
+		if _, isInt := v.(int64); !isInt {
+			return nil, false
+		}
+		return w.Narrow(v), true
+	}
 }
 
 // GoBuiltin reports whether name is a go builtin the import binds unqualified.
@@ -104,11 +134,10 @@ func goString(v any) (any, bool) {
 	return s, ok
 }
 
-// goSigned is the conversion of a signed integer type at the given width.
-//
-// The carrier is php's int, which is 64 bits wide: a narrower type keeps the
-// low bits of the value and sign-extends them, as go's conversion does, and
-// int8(300) is 44 in both. The shift pair is that truncation.
+// goSigned is the conversion of php's own integer width, which `int` and
+// `int64` both name: php's int is 64 bits wide and the value passes through.
+// A float or a numeric string reaches the binding, which reduces it through
+// phpval before converting.
 func goSigned(bits int) func(any) (any, bool) {
 	return func(v any) (any, bool) {
 		n, ok := v.(int64)
@@ -120,25 +149,7 @@ func goSigned(bits int) func(any) (any, bool) {
 	}
 }
 
-// goUnsigned is the same conversion for an unsigned type, where the low bits
-// stay as they are and the carrier stays signed: a uint64 over PHP_INT_MAX
-// reads back negative, as every such value does in php.
-func goUnsigned(bits int) func(any) (any, bool) {
-	return func(v any) (any, bool) {
-		n, ok := v.(int64)
-		if !ok {
-			return nil, false
-		}
-		if bits == 64 {
-			return n, true
-		}
-		return n & (1<<bits - 1), true
-	}
-}
-
-// goFloat is the conversion of a float type. 32 is the width that loses
-// precision: the value reads back as the float64 nearest the float32, php
-// carrying one float type and that one wide.
+// goFloat is the conversion of php's own float width, which `float64` names.
 func goFloat(bits int) func(any) (any, bool) {
 	return func(v any) (any, bool) {
 		f, ok := goFloat64(v)

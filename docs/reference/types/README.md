@@ -11,6 +11,8 @@
 
 Values are dynamically typed. The runtime performs PHP-like truthiness and numeric/string coercion for its supported operators, but does not cover PHP's conversion rules in full.
 
+A file that imported `Runtime\Go` holds one type php has none of: a [typed value](../extensions/go-runtime.md#typed-values), a number under one of go's sized widths. `int8(300)` answers an int8 holding 44, arithmetic over it wraps at the width, and `var_dump` names the width.
+
 ## Scalar types
 
 ```php

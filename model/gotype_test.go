@@ -17,9 +17,15 @@ func TestGoBuiltin(t *testing.T) {
 			t.Errorf("%s does not read as a builtin", name)
 		}
 	}
-	// php's own, which the import leaves to php. A script that wants go's
-	// writes the namespace out.
-	for _, name := range []string{"copy", "min", "max", "print", "new", "strlen", ""} {
+	// The four that shadow a php name the import binds too: an import is the
+	// more specific name and `\min` is how a file reaches php's.
+	for _, name := range []string{"copy", "min", "max", "print"} {
+		if !model.GoBuiltin(name) {
+			t.Errorf("%s does not read as a builtin", name)
+		}
+	}
+	// A name go has no builtin for stays php's, imported or not.
+	for _, name := range []string{"new", "strlen", "array_keys", ""} {
 		if model.GoBuiltin(name) {
 			t.Errorf("%s reads as a builtin the import binds", name)
 		}
@@ -55,22 +61,24 @@ func TestGoFold(t *testing.T) {
 		{"int", int64(7), int64(7)},
 		{"int64", int64(0), int64(0)},
 		{"int64", int64(math.MinInt64), int64(math.MinInt64)},
-		{"int8", int64(300), int64(44)},
-		{"int8", int64(-1), int64(-1)},
-		{"int16", int64(70000), int64(4464)},
-		{"int32", int64(math.MaxInt32) + 1, int64(math.MinInt32)},
-		{"rune", int64(65), int64(65)},
-		{"uint8", int64(300), int64(44)},
-		{"uint8", int64(-1), int64(255)},
-		{"byte", int64(255), int64(255)},
-		{"uint16", int64(-1), int64(65535)},
-		{"uint32", int64(-1), int64(4294967295)},
-		{"uint64", int64(-1), int64(-1)},
-		{"uint", int64(-1), int64(-1)},
+		// A sized type answers a value of that type, and var_dump reads it
+		// back as int8(44) while the arithmetic wraps at the width.
+		{"int8", int64(300), int8(44)},
+		{"int8", int64(-1), int8(-1)},
+		{"int16", int64(70000), int16(4464)},
+		{"int32", int64(math.MaxInt32) + 1, int32(math.MinInt32)},
+		{"rune", int64(65), int32(65)},
+		{"uint8", int64(300), uint8(44)},
+		{"uint8", int64(-1), uint8(255)},
+		{"byte", int64(255), uint8(255)},
+		{"uint16", int64(-1), uint16(65535)},
+		{"uint32", int64(-1), uint32(4294967295)},
+		{"uint64", int64(-1), uint64(math.MaxUint64)},
+		{"uint", int64(-1), uint(math.MaxUint64)},
 		{"float64", int64(3), float64(3)},
 		{"float64", 1.5, 1.5},
-		{"float32", 0.1, float64(float32(0.1))},
-		{"float32", int64(2), float64(2)},
+		{"float32", 0.1, float32(0.1)},
+		{"float32", int64(2), float32(2)},
 	} {
 		got, ok := model.GoFold(test.name, test.in)
 		if !ok {

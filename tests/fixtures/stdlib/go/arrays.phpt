@@ -38,9 +38,9 @@ echo implode(",", array_keys($m)), "\n";
 clear($m);
 echo count($m), "\n";
 
-// php owns min and max by name, so go's are the qualified ones: php's reads an
-// array and go's read values.
-echo min([3, 1, 2]), Go\min(3, 1, 2), Go\max(3, 1, 2), "\n";
+// The import binds min and max: a bare one is go's, reading values where
+// php's reads an array, and the leading separator reaches php's.
+echo min(3, 1, 2), Go\max(3, 1, 2), \min([3, 1, 2]), "\n";
 
 // println writes to the output a script echoes to, spaced, with a newline.
 println("a", 1);
@@ -51,5 +51,5 @@ println("a", 1);
 6,3,0
 y
 0
-113
+131
 a 1

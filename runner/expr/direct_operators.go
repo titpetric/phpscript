@@ -73,7 +73,7 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 			if err != nil {
 				return nil, err
 			}
-			return fn("+", int64(0), v), nil
+			return fn("+", int64(0), v)
 		}, nil
 	case "!":
 		truthy := dc.h.Truthy
@@ -162,7 +162,7 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
 	case "+", "-", "*", "/", "%", "**":
 		fn := dc.h.Arith
 		op := n.Op
-		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b), nil }), nil
+		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b) }), nil
 	case "&", "|", "^", "<<", ">>":
 		fn := dc.h.Bitwise
 		op := n.Op

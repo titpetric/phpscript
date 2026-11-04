@@ -2,7 +2,6 @@ package runner
 
 import (
 	"errors"
-	"reflect"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -99,24 +98,13 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		})
 	default:
 		// Native Go collections (e.g. a []Record returned by a forwarded
-		// method) are iterable too: slices/arrays by integer index, maps by key.
-		rv := reflect.ValueOf(src)
-		switch rv.Kind() {
-		case reflect.Slice, reflect.Array:
-			for i := 0; i < rv.Len(); i++ {
-				if !iter(int64(i), rv.Index(i).Interface()) {
-					break
-				}
-			}
-		case reflect.Map:
-			for _, mk := range rv.MapKeys() {
-				if !iter(mk.Interface(), rv.MapIndex(mk).Interface()) {
-					break
-				}
-			}
-		}
-		// execForeach skips any other non-iterable source (PHP warns and
-		// continues).
+		// method) are iterable too: slices/arrays by integer index, maps by
+		// key. The walk is model's, where a []byte reads as the string it
+		// carries and iterates zero times, as a string does.
+		//
+		// A source no shape above matched iterates zero times too, which is
+		// what PHP's foreach over a non-array does: it warns and continues.
+		model.RangeValues(src, iter)
 	}
 
 	if err != nil {

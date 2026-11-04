@@ -54,8 +54,23 @@ func isObject(value any) bool {
 // holds in a single Go type and the test is the type assertion: an integer is
 // not a float here any more than in php, and neither is a numeric string.
 func isFloat(value any) bool {
-	_, ok := value.(float64)
-	return ok
+	if _, ok := value.(float64); ok {
+		return true
+	}
+	width, ok := model.GoWidthOf(value)
+	return ok && width.Float
+}
+
+// isInt reports whether a value is one of php's integers. A typed go value of
+// an integer width is one: gettype calls it an integer and the arithmetic
+// reads it as a number, and a script testing the type reads the same answer.
+func isInt(value any) bool {
+	switch value.(type) {
+	case int, int64:
+		return true
+	}
+	width, ok := model.GoWidthOf(value)
+	return ok && !width.Float
 }
 
 // phpGetType backs gettype. The names it returns are PHP's original ones, and
@@ -75,6 +90,15 @@ func phpGetType(value any) string {
 		return "double"
 	case string, []byte:
 		return "string"
+	}
+	// A typed go value is one of php's two numbers here: a script testing
+	// gettype() reads the value's own type and no width php has a name for.
+	// var_dump is where the width shows.
+	if width, ok := model.GoWidthOf(value); ok {
+		if width.Float {
+			return "double"
+		}
+		return "integer"
 	}
 	if model.IsCollection(value) {
 		return "array"
@@ -200,13 +224,7 @@ func registerLang(rt *runner.Runtime) {
 	// is_array() answers for the whole value model, and never one Go type.
 	rt.RegisterFunc("is_array", model.IsCollection)
 	// is_int reports whether $value is an integer.
-	rt.RegisterFunc("is_int", func(value any) bool {
-		switch value.(type) {
-		case int, int64:
-			return true
-		}
-		return false
-	})
+	rt.RegisterFunc("is_int", isInt)
 	// is_float reports whether $value is a float.
 	rt.RegisterFunc("is_float", isFloat)
 	// is_double reports whether $value is a float, php's older spelling of
@@ -242,7 +260,8 @@ func registerLang(rt *runner.Runtime) {
 		case int64, int, float64:
 			return true
 		}
-		return false
+		_, ok := model.GoWidthOf(value)
+		return ok
 	})
 	// intval returns the integer value of $value. $base applies only to a
 	// string $value, read like C strtol with the 0x and 0b prefixes; a $base

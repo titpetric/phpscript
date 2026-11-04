@@ -27,6 +27,14 @@ foreach (make([]int64, 2) as $v) {
 }
 echo "\n";
 
+// A slice of a sized width holds typed values: the zero value carries the
+// width, an element written to it narrows to it, and `[]uint8` is `[]byte`,
+// which is one type in go and php's string here.
+$w = make([]int8, 2);
+$w[1] = 300;
+var_dump($w);
+var_dump(append(make([]uint8, 0), 104, 105));
+
 // A nested type composes, and the inner slice is the zero value of a slice,
 // which is the empty one.
 foreach (make([][]int, 1) as $v) {
@@ -53,6 +61,13 @@ echo "\n";
 2,3
 0=a;1=b;
 0;0;
+array(2) {
+  [0]=>
+  int8(0)
+  [1]=>
+  int8(44)
+}
+string(2) "hi"
 0;
 2:ab
 [][]

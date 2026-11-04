@@ -62,8 +62,9 @@ func TestGoRuntimeBinding(t *testing.T) {
 
 // TestGoRuntimeFold covers the conversion of a literal, which the parser
 // applies and no engine sees: a literal stands where the call stood, under
-// every width go has. A conversion php has to read the value for stays a call
-// at run time, and so does a call over anything but one literal.
+// every width go has, and it carries the type the width names. A conversion
+// php has to read the value for stays a call at run time, and so does a call
+// over anything but one literal.
 func TestGoRuntimeFold(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -71,16 +72,16 @@ func TestGoRuntimeFold(t *testing.T) {
 		want any
 	}{
 		{"int64(0)", int64(0)},
-		{"int8(300)", int64(44)},
-		{"uint8(-1)", int64(255)},
+		{"int8(300)", int8(44)},
+		{"uint8(-1)", uint8(255)},
 		{"float64(-1.5)", float64(-1.5)},
 		{"int64((7))", int64(7)},
-		{"int32(2147483648)", int64(-2147483648)},
+		{"int32(2147483648)", int32(-2147483648)},
 		{"float64(3)", float64(3)},
-		{"float32(0.5)", float64(0.5)},
+		{"float32(0.5)", float32(0.5)},
 		{"string('x')", "x"},
 		{"any('x')", "x"},
-		{"rune(65)", int64(65)},
+		{"rune(65)", int32(65)},
 	} {
 		src := "<?php\nuse Runtime\\Go;\n$x = " + test.src + ";"
 		value := mustParse(t, src).Stmts[1].(*model.Assign).Value

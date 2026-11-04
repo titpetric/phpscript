@@ -3,9 +3,7 @@ package runtime
 import (
 	"fmt"
 	"io"
-	"maps"
 	"reflect"
-	"slices"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -142,8 +140,7 @@ func goReduce(name string, value any) (any, error) {
 func goMake(spelling string, size ...any) (any, error) {
 	elem, ok := goElem(spelling)
 	if !ok {
-		return nil, goFail(`Runtime\Go\make: cannot allocate a %s; the element types are %s and a class name`,
-			spelling, strings.Join(goElemNames(), ", "))
+		return nil, goFail(`Runtime\Go\make: cannot allocate a %s; make takes a slice type, []int64 or [][]string or []MyClass`, spelling)
 	}
 	if len(size) > 2 {
 		return nil, goFail(`Runtime\Go\make: takes a type, a length and a capacity, and no more`)
@@ -162,21 +159,27 @@ func goMake(spelling string, size ...any) (any, error) {
 	return reflect.MakeSlice(reflect.SliceOf(elem), length, capacity).Interface(), nil
 }
 
-// goElems are the element types make allocates a slice of: the types a php
-// value carries. A sized width is not among them, because php renders none of
-// them, and a class name allocates a slice of any.
+// goElems are the element types make allocates a slice of: every builtin type
+// name, including the sized widths, which a script holds as typed values. A
+// class name is not among them and allocates a slice of any.
 var goElems = map[string]reflect.Type{
 	"any":     reflect.TypeFor[any](),
 	"bool":    reflect.TypeFor[bool](),
 	"string":  reflect.TypeFor[string](),
 	"int":     reflect.TypeFor[int](),
+	"int8":    reflect.TypeFor[int8](),
+	"int16":   reflect.TypeFor[int16](),
+	"int32":   reflect.TypeFor[int32](),
+	"rune":    reflect.TypeFor[rune](),
 	"int64":   reflect.TypeFor[int64](),
+	"uint":    reflect.TypeFor[uint](),
+	"uint8":   reflect.TypeFor[uint8](),
+	"byte":    reflect.TypeFor[byte](),
+	"uint16":  reflect.TypeFor[uint16](),
+	"uint32":  reflect.TypeFor[uint32](),
+	"uint64":  reflect.TypeFor[uint64](),
+	"float32": reflect.TypeFor[float32](),
 	"float64": reflect.TypeFor[float64](),
-}
-
-// goElemNames returns the element type names make allocates, sorted.
-func goElemNames() []string {
-	return slices.Sorted(maps.Keys(goElems))
 }
 
 // goElem reads a type spelling into the element type the slice it names holds.

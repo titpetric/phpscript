@@ -49,6 +49,14 @@ func TestRegisterGo(t *testing.T) {
 	if rt.FunctionExists(`Runtime\Go\make`) {
 		t.Fatal("the go bindings are installed before anything imported them")
 	}
+
+	// What answers bare before the import: php's min, max and copy. The
+	// import may add no name to this set.
+	bare := map[string]bool{}
+	for _, name := range model.GoBuiltinNames() {
+		bare[name] = rt.FunctionExists(name)
+	}
+
 	if !rt.UseNamespace(model.GoNamespace) {
 		t.Fatal("the import installed nothing")
 	}
@@ -56,8 +64,8 @@ func TestRegisterGo(t *testing.T) {
 		if !rt.FunctionExists(`Runtime\Go\` + name) {
 			t.Errorf(`Runtime\Go\%s does not resolve after the import`, name)
 		}
-		if rt.FunctionExists(name) {
-			t.Errorf("%s resolves bare: the import registered a php name", name)
+		if rt.FunctionExists(name) != bare[name] {
+			t.Errorf("%s resolves bare after the import: binding the short name is the parser's job", name)
 		}
 	}
 	// A go type is a class as well as a conversion: `new Go\int64(5)` allocates
@@ -109,18 +117,20 @@ use Runtime\Go;
 $n = 300;
 echo int8(300) === int8($n) ? "agree" : "differ", "\n";
 `, "agree\n")
-	// min is php's, which reads an array, and go's reads values: a file that
-	// imported the namespace still calls php's by its bare name.
+	// A bare min is go's in an importing file, which reads values where php's
+	// reads an array, and `\min` is php's. Both spellings answer in one file:
+	// the import binds the name and the leading separator escapes it.
 	goOutput(t, `<?php
 use Runtime\Go;
 
-echo min([3, 1, 2]), Runtime\Go\min(3, 1, 2), "\n";
-`, "11\n")
+echo min(3, 1, 2), Runtime\Go\min(3, 1, 2), \min([3, 1, 2]), "\n";
+`, "111\n")
 }
 
 // TestGoSlices covers make, append, len and cap over a go slice: the length and
 // the capacity are the ones make allocated, append fills within the capacity,
-// and a foreach reads the slice back by index.
+// and a foreach reads the slice back by index. A slice of a sized width holds
+// typed values and an element reads back carrying the width.
 func TestGoSlices(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -136,7 +146,10 @@ foreach (Go\make("[]int64", 2) as $v) { echo $v, ";"; }
 echo "\n";
 foreach (Go\make("[][]int", 1) as $v) { echo Go\len($v), ";"; }
 echo "\n";
-`, "0,3\n2,3\n0=a 1=b \n0;0;\n0;\n")
+$w = Go\make("[]int8", 1);
+$w[0] = 300;
+var_dump($w[0]);
+`, "0,3\n2,3\n0=a 1=b \n0;0;\n0;\nint8(44)\n")
 }
 
 // TestGoArrays covers the same builtins over php's own values: append writes
@@ -221,8 +234,7 @@ try {
 func TestGoRefusals(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ name, src, want string }{
-		{"make width", `$x = Go\make("[]int8", 1);`, "element types are"},
-		{"make type", `$x = Go\make("int", 1);`, "cannot allocate"},
+		{"make type", `$x = Go\make("int", 1);`, "make takes a slice type"},
 		{"make length", `$x = Go\make("[]int", 3, 1);`, "make no []int"},
 		{"append shape", `$x = Go\append("text", 1);`, "cannot append to a string"},
 		{"len shape", `$x = Go\len(new stdClass());`, "has no length"},

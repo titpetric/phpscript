@@ -241,12 +241,12 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Context propagation](extensions/bindings.md#context-propagation)
   - [Value conversion](extensions/bindings.md#value-conversion)
   - [HTTP binding benchmark](extensions/bindings.md#http-binding-benchmark)
-- [Go runtime](extensions/go-runtime.md) - The go builtins `use Runtime\Go` binds, the `[]T` type, the width conversions, and what stays PHP's.
+- [Go runtime](extensions/go-runtime.md) - Writing Go's own values in a script - slices, maps and sized integers - for the code that calls Go bindings.
   - [Builtins](extensions/go-runtime.md#builtins)
-  - [Slices](extensions/go-runtime.md#slices)
   - [Conversions](extensions/go-runtime.md#conversions)
-  - [What stays php's](extensions/go-runtime.md#what-stays-phps)
-  - [Fixtures](extensions/go-runtime.md#fixtures)
+  - [Typed values](extensions/go-runtime.md#typed-values)
+  - [Slices](extensions/go-runtime.md#slices)
+  - [No channels](extensions/go-runtime.md#no-channels)
 - [Regular expressions](extensions/regexp.md) - How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
   - [Two engines](extensions/regexp.md#two-engines)
   - [What still differs from PCRE](extensions/regexp.md#what-still-differs-from-pcre)

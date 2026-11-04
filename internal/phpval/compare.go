@@ -166,6 +166,11 @@ func phpNumeric(v any) (phpNum, bool) {
 	case string:
 		return numericString(x)
 	}
+	// A typed go value compares as the number it holds: int8(1) < 2 reads one
+	// number against another, and the width decides nothing about the order.
+	if widened, ok := model.GoWiden(v); ok {
+		return phpNumeric(widened)
+	}
 	return phpNum{}, false
 }
 

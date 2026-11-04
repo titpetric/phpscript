@@ -73,9 +73,26 @@ func String(v any) string {
 		return strconv.Itoa(x)
 	case float64:
 		return FloatString(x)
+	case uint64:
+		// An unsigned width renders its own value, where widening it to one
+		// of php's numbers would reach a float and lose the low bits:
+		// uint64(-1) is 18446744073709551615 and no 1.8446744073709552E+19.
+		return strconv.FormatUint(x, 10)
+	case uint:
+		return strconv.FormatUint(uint64(x), 10)
+	case float32:
+		// go's shortest round-trip at 32 bits: float32(0.1) renders 0.1,
+		// where php's precision over the widened float64 writes the
+		// 0.10000000149012 the wide type holds.
+		return strconv.FormatFloat(float64(x), 'g', -1, 32)
 	default:
 		if s, ok := GoString(x); ok {
 			return s
+		}
+		// A typed go value renders as the number it holds: `echo int8(44)`
+		// writes 44, and var_dump is the one reader that names the type.
+		if widened, ok := model.GoWiden(v); ok {
+			return String(widened)
 		}
 		// PHP spells every array "Array" in a string context, whatever is in
 		// it, and warns. A value with no string form at all - an object, there
@@ -184,6 +201,10 @@ func Int(v any) int64 {
 		}
 		return ToInt64(parseFloat(prefix))
 	default:
+		// A typed go value reads as the number it holds.
+		if widened, ok := model.GoWiden(v); ok {
+			return Int(widened)
+		}
 		// A collection answers zero here, as the numeric context reads it:
 		// php refuses arithmetic on an array with a TypeError and never
 		// coercing it and this value never reaches an operator as a number. The
@@ -213,6 +234,9 @@ func Float(v any) float64 {
 		prefix, _ := leadingFloat(x)
 		return parseFloat(prefix)
 	default:
+		if widened, ok := model.GoWiden(v); ok {
+			return Float(widened)
+		}
 		return 0
 	}
 }
@@ -326,6 +350,12 @@ func Number(v any) any {
 		}
 		return parseFloat(prefix)
 	default:
+		// A typed go value answers the number it holds, which carries its
+		// width: an unsigned value past PHP_INT_MAX is a float, the only php
+		// number holding one.
+		if widened, ok := model.GoWiden(v); ok {
+			return widened
+		}
 		// int, int64, bool, null and everything else PHP counts as an
 		// integer, which Int already spells out.
 		return Int(v)
@@ -362,6 +392,12 @@ func Key(v any) any {
 		// v, not x, for the same reason as int64 above.
 		return v
 	default:
+		// A typed go value keys as the number it holds: an array keyed by
+		// int8(44) and one keyed by 44 are one entry, as php has two key
+		// types and no more.
+		if widened, ok := model.GoWiden(v); ok {
+			return Key(widened)
+		}
 		return v
 	}
 }
@@ -433,6 +469,9 @@ func Truthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
+		if widened, ok := model.GoWiden(v); ok {
+			return Truthy(widened)
+		}
 		if n, ok := model.LenValues(v); ok {
 			return n > 0
 		}

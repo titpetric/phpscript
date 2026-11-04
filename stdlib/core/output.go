@@ -183,6 +183,15 @@ func (w *valueWriter) dump(value any, indent int) {
 		return
 	}
 
+	// A typed go value reads back under its own type: `int8(44)`, the way go
+	// prints one. php has no value of the kind and no output to match, and
+	// this is the one reader that names the width - see the divergences in
+	// docs/README.md.
+	if width, ok := model.GoWidthOf(value); ok {
+		w.b.WriteString(width.Name + "(" + phpval.String(value) + ")\n")
+		return
+	}
+
 	switch {
 	case model.IsCollection(value):
 		n, _ := model.LenValues(value)

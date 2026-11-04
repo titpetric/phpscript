@@ -98,7 +98,7 @@ sitemap:
       - path: extensions/bindings.md
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
       - path: extensions/go-runtime.md
-        description: The go builtins `use Runtime\Go` binds, the `[]T` type, the width conversions, and what stays PHP's.
+        description: Writing Go's own values in a script - slices, maps and sized integers - for the code that calls Go bindings.
       - path: extensions/regexp.md
         description: How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md

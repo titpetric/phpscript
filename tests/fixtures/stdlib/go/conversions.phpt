@@ -12,8 +12,9 @@ description: >
 
 use Runtime\Go;
 
-// A narrow type keeps the low bits of the value, as go's conversion does. The
-// carrier is php's int, which is the 64 bit one.
+// A narrow type keeps the low bits of the value, as go's conversion does, and
+// the value keeps the type it was given: var_dump names the width. `int64` and
+// `float64` name widths php already has and read back as php's own.
 var_dump(int8(300));
 var_dump(uint8(-1));
 var_dump(int32(2147483648));
@@ -35,19 +36,19 @@ var_dump(int64());
 $n = 300;
 var_dump(int8(300) === int8($n));
 
-// float32 is the width that loses precision: the value reads back as the
-// float64 nearest the float32, php carrying one float type.
+// float32 is the width that loses precision, and it is its own type: php's
+// float is 64 bits wide and `===` reports two types.
 var_dump(float32(0.1) === 0.1);
 
 // A go type is in the class table, and new allocates through the conversion.
 var_dump(class_exists('Runtime\Go\int64'));
 var_dump(new Go\int64("7"));
 ---
-int(44)
-int(255)
-int(-2147483648)
+int8(44)
+uint8(255)
+int32(-2147483648)
 float(3)
-float(0.5)
+float32(0.5)
 int(12)
 string(1) "5"
 bool(false)

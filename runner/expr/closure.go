@@ -38,7 +38,7 @@ type Helpers struct {
 	Array      func(items ...model.ArrayItemValue) *model.Array
 	Index      func(base, idx any) any
 	Cast       func(typ string, v any) any
-	Arith      func(op string, a, b any) any
+	Arith      func(op string, a, b any) (any, error)
 	Compare    func(op string, a, b any) bool
 	Bitwise    func(op string, a, b any) (any, error)
 	BitNot     func(v any) any

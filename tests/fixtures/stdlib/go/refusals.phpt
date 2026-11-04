@@ -17,10 +17,10 @@ try {
     echo $e->getMessage(), "\n";
 }
 
-// make allocates the element types php renders a value of. A sized width is a
-// conversion and not an element type, and the message names the ones it has.
+// make allocates a slice and nothing else: a spelling that names no slice has
+// no allocation, where `[]int8` has one.
 try {
-    make([]int8, 1);
+    make("int8", 1);
 } catch (RuntimeException $e) {
     echo $e->getMessage(), "\n";
 }
@@ -44,7 +44,7 @@ try {
 }
 ---
 panic: boom
-Runtime\Go\make: cannot allocate a []int8; the element types are any, bool, float64, int, int64, string and a class name
+Runtime\Go\make: cannot allocate a int8; make takes a slice type, []int64 or [][]string or []MyClass
 Runtime\Go\make: a length of 2 and a capacity of 1 make no []int
 Runtime\Go\append: cannot append to a string
 Runtime\Go\int64: takes one value and no more
