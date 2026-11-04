@@ -42,6 +42,12 @@ A new root package has to answer four questions:
 
 An addition that cannot answer these is an area of an existing package, and gets a file there instead.
 
+### Tools the pipeline runs
+
+A tool that checks or generates this repository and that no script and no host calls is a `main` package under `internal/cmd/<tool>`, run as `go run ./internal/cmd/<tool>`. `internal/cmd/bindlint` is the first: it reads the Go source for the binding rules [the allocation rules](allocation-performance.md) state and `atkins lint` runs it. The directory is `internal/` because nothing outside this module imports a tool of this repository, and `cmd` because a `main` package in a package of behaviour would compile into nothing a caller can use.
+
+`scripts/` holds the generators instead, `scripts/list-apis` among them, and a new one of those stays beside it. What a run leaves behind tells the two apart: a gate answers with an exit code, a generator writes a file.
+
 ### Subcommands
 
 Every entry in `cmd/phpscript/` is a package named after the subcommand, with `run.go` exporting `NewCommand() *cli.Command` and a `Run` function holding the work. `main.go` imports each one and registers the command it returns. The subcommand package holds argument handling and output formatting only; the behaviour lives in a root package it calls and `phpscript lint` is a few dozen lines over `lint`.

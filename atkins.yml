@@ -372,11 +372,17 @@ tasks:
   # nothing else: the three write-good rules at level: warning printed 4,606
   # findings and passed. scripts/vale-gate.sh carries the reasoning, and its
   # baseline holds no rule at all.
+  #
+  # bindlint is the house rule splint cannot see: a binding that points at
+  # *model.Array or *model.Object answers for the values the interpreter built
+  # and refuses the Go slice, map or struct another binding returned.
+  # docs/allocation-performance.md carries the rules it reads.
   lint:
     desc: "Lint the Go source, the markdown and the prose in both"
     passthru: true
     cmds:
       - splint ./...
+      - go run ./internal/cmd/bindlint .
       - ./scripts/vale-gate.sh
       - task: mdox:lint
 

@@ -81,6 +81,10 @@ Everything else (projections, listings, query results, regex captures) is a read
 
 **5. Take arguments as `any`, not `*model.Array`.** A parameter typed `*model.Array` makes `reflect.Call` panic the moment a script passes a binding's `[]string`. Read arguments through `model.RangeValues` / `model.LenValues` / `model.IsCollection` (`model/collection.go`), which handle `*Array`, slices and maps with typed fast paths.
 
+A narrowing inside the binding is the same mistake one line later. `value.(*model.Array)` answers for the array a literal wrote and takes the other path, silently, for the map another binding returned: `setcookie` read an options bag as the positional argument list, `password_hash` refused the call outright, `strtr` returned the subject unreplaced, and `get_object_vars` and `property_exists` answered for an interpreted object and for no Go value. A narrowing needs a reason the code states, and there are four: a type switch with a case for the native shape, a call that reads every shape anyway, a capability a Go-native value has not got (`Append`, `Set`, `Clear`, `Int64List`: a slice behind an interface cannot grow, and `arrayTarget` holds the four mutators to the one type that can), and an error that refuses the value loudly.
+
+`go run ./internal/cmd/bindlint .` reports both halves over every registered function, constructor and class method in the tree, with the reason it did not accept. `atkins lint` runs it and `TestRunTree` fails on a finding; the tree is at zero.
+
 **6. Presize everything.** `model.NewArraySize(n)`, `make([]any, 0, n)`, `make(map[string]any, n)`. A five-element `*model.Array` built by `Append` grows its key slice 1->2->4->8: four allocations before any data. Map size hints are hints, not capacity, but they still avoid the rehash-and-copy cycle.
 
 **7. Hoist per-call setup to package scope.** The binding closure must not construct anything built from constants (a `strings.Replacer`, a compiled `regexp`, a lookup table). The regex shims already cache compiled patterns (`regexpCache`); `htmlspecialchars` runs one package-level `strings.Replacer` (`stdlib/core/strings.go`), built once.
