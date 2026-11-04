@@ -6,6 +6,7 @@ import (
 	"io"
 	nethttp "net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	phphttp "github.com/titpetric/phpscript/stdlib/http"
 )
 
 // serveScript runs src, which must build a router and leave it in $mux, and
@@ -908,6 +910,35 @@ $mux->handle("GET /hello", ` + test.handler + `);
 	}
 }
 
+// TestMuxRefusesAHandlerBehindMiddleware pins where a broken handler behind
+// Use is reported: at registration, as it is without one. A middleware returns
+// a closure that is callable whatever it holds, so resolving the wrapper alone
+// would take the handler and refuse it on the first request that arrives.
+func TestMuxRefusesAHandlerBehindMiddleware(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+
+	program, err := rt.Load(`<?php
+$mux = new HTTP\Mux();
+$mux->use(function ($next) {
+	return function ($w, $r) use ($next) { $next($w, $r); };
+});
+$mux->handle("GET /hello", 42);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = rt.Run(program)
+	if err == nil {
+		t.Fatal("an int was accepted as a handler behind a middleware")
+	}
+	if want := "a callable is a closure, an object with __invoke"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not contain %q", err, want)
+	}
+}
+
 // TestMuxQueuesBeyondItsWorkers holds the shape the pool is: workers are the
 // parallelism and the queue is what waits behind them. Two workers against six
 // slow requests is three rounds, not six and not one.
@@ -1076,5 +1107,81 @@ func TestReentryIsNotARace(t *testing.T) {
 			}
 			wg.Wait()
 		})
+	}
+}
+
+// groupHandler serves testdata/group.php, a mux with middleware and a group.
+func groupHandler(t *testing.T) nethttp.Handler {
+	t.Helper()
+	src, err := os.ReadFile("testdata/group.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, handler := serveScript(t, string(src))
+	return handler
+}
+
+// TestMux_Use pins that a middleware wraps what is registered after it.
+func TestMux_Use(t *testing.T) {
+	t.Parallel()
+	response := httptest.NewRecorder()
+	groupHandler(t).ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/after", nil))
+	if got := response.Body.String(); got != "outer>after" {
+		t.Errorf("/after = %q, want outer>after", got)
+	}
+}
+
+// TestMux_Group pins that a group keeps its middleware to itself.
+func TestMux_Group(t *testing.T) {
+	t.Parallel()
+	handler := groupHandler(t)
+	for path, want := range map[string]string{
+		"/open":    "open",
+		"/grouped": "outer>inner>grouped",
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, path, nil))
+		if got := response.Body.String(); got != want {
+			t.Errorf("%s = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// TestMux_Mounted pins the mux a host mounts: its routes, plain and grouped,
+// go to the host's mount with the middleware applied, and the mux keeps none.
+func TestMux_Mounted(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	routes := map[string]nethttp.Handler{}
+	mux := phphttp.NewMountedMux(rt, func(pattern string, handler nethttp.Handler) error {
+		routes[pattern] = handler
+		return nil
+	})
+	rt.RegisterFunc("mounted", func() *phphttp.Mux { return mux })
+
+	src, err := os.ReadFile("testdata/mounted.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := rt.Load(string(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	for _, pattern := range []string{"GET /open", "GET /grouped"} {
+		if routes[pattern] == nil {
+			t.Errorf("%s was not mounted, got %v", pattern, routes)
+		}
+	}
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/open", nil))
+	if response.Code != nethttp.StatusNotFound {
+		t.Errorf("the mounted mux served /open itself: %d", response.Code)
 	}
 }

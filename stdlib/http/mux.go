@@ -24,11 +24,32 @@ type Mux struct {
 	// can both reach it, and every request reads it.
 	once sync.Once
 	pool *runner.Pool
+
+	// root is the mux a Group hangs off, or the mux itself. A group shares its
+	// root's ServeMux, pool and mount; only the middleware stack is its own.
+	root *Mux
+
+	// middleware wraps the handlers registered after Use, outermost first.
+	middleware []*runner.Callable
+
+	// mount, when set, takes every registration in place of the ServeMux. A
+	// mux built by NewMountedMux keeps no routes of its own, so nothing on it
+	// can list them.
+	mount func(pattern string, handler nethttp.Handler) error
 }
 
 // NewMux returns a router with no routes on it.
 func NewMux(rt *runner.Runtime) *Mux {
-	return &Mux{mux: nethttp.NewServeMux(), rt: rt}
+	m := &Mux{mux: nethttp.NewServeMux(), rt: rt}
+	m.root = m
+	return m
+}
+
+// NewMountedMux returns a mux whose routes go to mount and are kept nowhere else.
+func NewMountedMux(rt *runner.Runtime, mount func(pattern string, handler nethttp.Handler) error) *Mux {
+	m := NewMux(rt)
+	m.mount = mount
+	return m
 }
 
 // Handle registers $handler for $pattern, which is ServeMux.HandleFunc's
@@ -44,22 +65,79 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	}
 	// Resolved here and a handler that cannot run on another runtime is an
 	// error where the script writes the route, ahead of a 500 on the first
-	// request that reaches it.
+	// request that reaches it. The handler itself first: a middleware returns a
+	// closure that is callable whatever it holds, so resolving the wrapper
+	// alone would take a broken handler and refuse it a request too late.
 	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
 		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
 	}
+	if len(m.middleware) > 0 {
+		wrapped, err := m.wrap(handler)
+		if err != nil {
+			return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
+		}
+		if callable, err = m.rt.AsCallable(wrapped); err != nil {
+			return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
+		}
+	}
 
-	m.mux.HandleFunc(pattern, func(w nethttp.ResponseWriter, r *nethttp.Request) {
+	serve := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		// A client that has already gone gets no handler at all. No write
 		// now reaches it, and skipping the work is what the check
 		// is for.
 		if r.Context().Err() != nil {
 			return
 		}
-		m.answer(callable, w, r)
+		m.root.answer(callable, w, r)
 	})
+	if m.root.mount != nil {
+		if err := m.root.mount(pattern, serve); err != nil {
+			return fmt.Errorf("HTTP\\Mux::handle: %w", err)
+		}
+		return nil
+	}
+	m.root.mux.Handle(pattern, serve)
 	return nil
+}
+
+// Use wraps the handlers registered after it with $middleware, chi's shape.
+func (m *Mux) Use(middleware any) error {
+	callable, err := m.rt.AsCallable(middleware)
+	if err != nil {
+		return fmt.Errorf("HTTP\\Mux::use: %w", err)
+	}
+	m.middleware = append(m.middleware[:len(m.middleware):len(m.middleware)], callable)
+	return nil
+}
+
+// Group calls $fn with a mux that shares this one's routes and starts with its
+// middleware. What $fn passes to Use stays inside the group, which is how a
+// module isolates its routes from the rest of the router.
+func (m *Mux) Group(fn any) error {
+	callable, err := m.rt.AsCallable(fn)
+	if err != nil {
+		return fmt.Errorf("HTTP\\Mux::group: %w", err)
+	}
+	group := &Mux{rt: m.rt, root: m.root, middleware: m.middleware[:len(m.middleware):len(m.middleware)]}
+	if _, err := callable.Invoke(m.rt, group); err != nil {
+		return err
+	}
+	return nil
+}
+
+// wrap applies the middleware stack to handler, innermost last. The
+// middleware runs here, on the runtime registering the route, and the
+// handler it returns is what the workers answer through.
+func (m *Mux) wrap(handler any) (any, error) {
+	for i := len(m.middleware) - 1; i >= 0; i-- {
+		wrapped, err := m.middleware[i].Invoke(m.rt, handler)
+		if err != nil {
+			return nil, err
+		}
+		handler = wrapped
+	}
+	return handler, nil
 }
 
 // answer submits one request to a worker and waits for it.
@@ -101,6 +179,7 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 // that never called listen(): a Go host that mounted it serves it concurrently
 // too, and the script runs on the runtime that built it.
 func (m *Mux) workers() *runner.Pool {
+	m = m.root
 	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, 0, nil) })
 	return m.pool
 }
@@ -110,6 +189,7 @@ func (m *Mux) workers() *runner.Pool {
 // happen through HTTP\Server: the script calls listen() before anything can
 // arrive.
 func (m *Mux) usePool(pool *runner.Pool) {
+	m = m.root
 	m.once.Do(func() { m.pool = pool })
 }
 
@@ -119,6 +199,7 @@ func (m *Mux) UsePoolForTest(pool *runner.Pool) { m.usePool(pool) }
 // closeWorkers stops them once the workers have answered the queue, for a
 // server shutting down.
 func (m *Mux) closeWorkers() {
+	m = m.root
 	if m.pool != nil {
 		m.pool.Close()
 	}
@@ -126,5 +207,5 @@ func (m *Mux) closeWorkers() {
 
 // ServeHTTP answers one request, the script listening on nothing.
 func (m *Mux) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request) {
-	m.mux.ServeHTTP(w, r)
+	m.root.mux.ServeHTTP(w, r)
 }

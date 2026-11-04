@@ -92,6 +92,41 @@ echo "this reaches the response too\n";
 
 A handler that throws is one request's problem: the runtime reports it to its error sink and answers with a 500 if nothing has gone out yet, and the server goes on.
 
+## Groups and middleware
+
+`$mux->use($middleware)` wraps the handlers registered after it, and `$mux->group($fn)` calls `$fn` with a mux that shares the routes of the one it came from and starts with its middleware. A `use` inside the group stays inside it, which isolates a module's routes from the rest of the router. A middleware takes the next handler and returns the handler that wraps it, the shape `chi` has:
+
+```php
+$mux->group(function (HTTP\Mux $api) {
+    $api->use(function ($next) {
+        return function ($w, $r) use ($next) {
+            $w->header()->set("X-Api", "1");
+            $next($w, $r);
+        };
+    });
+    $api->handle("GET /api/users/{id}", $this->showUser);
+});
+```
+
+The middleware runs once, as the route is registered, and the handler it returns is what the workers answer through.
+
+## Binding the service router
+
+A `@startup` job reaches the router of the service with `Runtime\Router::Bind`. The callable receives an `HTTP\Mux` and the routes it registers join the router the service serves, ahead of the first request:
+
+```php
+<?php
+// @startup
+
+use Runtime\Router;
+
+Router::Bind(function (HTTP\Mux $router) {
+    $router->handle("GET /ping", fn ($w, $r) => $w->write("pong"));
+});
+```
+
+The mux registers straight on the router of the service and keeps no routes of its own, so nothing on it lists them. It belongs to the call: a `handle` on it after `Bind` has returned throws a `RuntimeException`, as does `Router::Bind` itself called from a request, because the router is not mutable once the service is up. Every pattern needs a method, `GET /ping` and not `/ping`, because the service router registers a method and a path.
+
 ## The worker pool
 
 `HTTP\Server`'s third argument is how many requests the server answers at once and its fourth is how deep the queue behind them is. Omitted, they are the number of cores and 1024.
