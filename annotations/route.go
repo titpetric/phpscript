@@ -51,9 +51,6 @@ func (r *Route) Register(registrar Registrar) error {
 		return fmt.Errorf("annotations: nil registrar")
 	}
 	endpoints := newHandler(r.root, r.config)
-	if r.config.router != nil {
-		r.config.router.Attach(registrar)
-	}
 	seen := map[string]string{}
 	var warnings []string
 	err := scanner{root: r.root, excluded: r.config.excludedDirs}.walk(func(file string, src []byte) error {

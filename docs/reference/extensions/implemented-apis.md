@@ -2561,7 +2561,7 @@ function posix_getpid(): int
 
 ```php
 // Runtime\Router::Bind routes the service from a @startup job and throws a RuntimeException anywhere else.
-Runtime\Router::Bind(mixed $unused): void
+Runtime\Router::Bind(callable $fn): void
 ```
 
 ### stdlib/span

@@ -131,6 +131,22 @@ func TestRegistrar(t *testing.T) {
 	}
 }
 
+// TestRouter_Whitespace pins the grammar a pattern splits on: ServeMux
+// documents a method and then at least one space or tab, the mux a script
+// writes its routes on takes either, and the mounted router cannot take less.
+func TestRouter_Whitespace(t *testing.T) {
+	t.Parallel()
+	router := stdruntime.NewRouter()
+	var got []string
+	router.Attach(recorder(func(method, path string) { got = append(got, method+" "+path) }))
+	if _, err := run(t, "whitespace.php", router); err != nil {
+		t.Fatal(err)
+	}
+	if want := "GET /tabbed,POST /spaced"; strings.Join(got, ",") != want {
+		t.Errorf("registered %v, want %s", got, want)
+	}
+}
+
 type recorder func(method, path string)
 
 func (r recorder) Handle(method, path string, _ http.Handler) { r(method, path) }

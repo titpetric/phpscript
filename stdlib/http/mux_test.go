@@ -910,6 +910,35 @@ $mux->handle("GET /hello", ` + test.handler + `);
 	}
 }
 
+// TestMuxRefusesAHandlerBehindMiddleware pins where a broken handler behind
+// Use is reported: at registration, as it is without one. A middleware returns
+// a closure that is callable whatever it holds, so resolving the wrapper alone
+// would take the handler and refuse it on the first request that arrives.
+func TestMuxRefusesAHandlerBehindMiddleware(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+
+	program, err := rt.Load(`<?php
+$mux = new HTTP\Mux();
+$mux->use(function ($next) {
+	return function ($w, $r) use ($next) { $next($w, $r); };
+});
+$mux->handle("GET /hello", 42);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = rt.Run(program)
+	if err == nil {
+		t.Fatal("an int was accepted as a handler behind a middleware")
+	}
+	if want := "a callable is a closure, an object with __invoke"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not contain %q", err, want)
+	}
+}
+
 // TestMuxQueuesBeyondItsWorkers holds the shape the pool is: workers are the
 // parallelism and the queue is what waits behind them. Two workers against six
 // slow requests is three rounds, not six and not one.

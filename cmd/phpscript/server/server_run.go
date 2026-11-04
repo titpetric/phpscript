@@ -548,6 +548,11 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
+	// What a @startup job binds goes on the router whether or not the tree
+	// carries @route annotations, so this registers beside the jobs and not
+	// beside the scanner: binding is what a service does instead of annotating.
+	svc.Register(annotations.NewBindings(annotationOptions...))
+
 	// The routed endpoints take the file handler's error pages: they live
 	// under the site's document root, the directory the file handler looks in.
 	if appConfig.Routes.Enabled {

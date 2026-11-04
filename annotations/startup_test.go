@@ -10,6 +10,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	chi "github.com/go-chi/chi/v5"
+
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
 	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
@@ -182,25 +184,50 @@ func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
 	}
 }
 
-// TestStartupBindsRoutes pins the wiring: Route attaches the router it mounts,
-// and a @startup job in testdata/bind routes the service through
-// Runtime\Router::Bind, before the first request.
+// TestStartupBindsRoutes pins the wiring in both orders a host runs it: a
+// @startup job in testdata/bind routes the service through
+// Runtime\Router::Bind, before the first request either way.
+//
+// Start before mount is what the platform does, every module starting a step
+// ahead of any mounting, and the job binds before the router exists. Mount
+// before start is what a virtual host does, holding a router of its own.
 func TestStartupBindsRoutes(t *testing.T) {
 	t.Parallel()
-	root := os.DirFS("testdata/bind")
-	router := stdruntime.NewRouter()
-	service := http.NewServeMux()
-	if err := annotations.NewRoute(root, annotations.WithRouter(router)).RegisterMux(service); err != nil {
-		t.Fatal(err)
-	}
-	if err := annotations.NewStartup(root, annotations.WithRouter(router)).Start(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	for path, want := range map[string]string{"/ping": "pong", "/api/users/7": "user 7"} {
-		response := httptest.NewRecorder()
-		service.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
-		if response.Code != http.StatusOK || response.Body.String() != want {
-			t.Errorf("%s = %d %q, want 200 %q", path, response.Code, response.Body.String(), want)
-		}
+	for _, test := range []struct {
+		name       string
+		mountFirst bool
+	}{
+		{"start then mount", false},
+		{"mount then start", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := os.DirFS("testdata/bind")
+			router := stdruntime.NewRouter()
+			bindings := annotations.NewBindings(annotations.WithRouter(router))
+			service := chi.NewRouter()
+			steps := []func() error{
+				func() error {
+					return annotations.NewStartup(root, annotations.WithRouter(router)).Start(context.Background())
+				},
+				func() error { return bindings.Mount(context.Background(), service) },
+			}
+			if test.mountFirst {
+				steps[0], steps[1] = steps[1], steps[0]
+			}
+			for _, step := range steps {
+				if err := step(); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			for path, want := range map[string]string{"/ping": "pong", "/api/users/7": "user 7"} {
+				response := httptest.NewRecorder()
+				service.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+				if response.Code != http.StatusOK || response.Body.String() != want {
+					t.Errorf("%s = %d %q, want 200 %q", path, response.Code, response.Body.String(), want)
+				}
+			}
+		})
 	}
 }

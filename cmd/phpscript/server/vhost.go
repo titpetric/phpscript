@@ -202,6 +202,14 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		}
 	}
 
+	// What this site's @startup jobs bind goes on this site's router, and the
+	// mount is here because this function is the only place holding it: a module
+	// the platform mounts is handed the router of the server, and a site's
+	// routes on that one would answer on every other domain.
+	if err := annotations.NewBindings(annotationOptions...).Mount(ctx, router); err != nil {
+		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
+	}
+
 	router.Handle("/*", files)
 
 	// Each site precompiles its own tree under its own runner block and one

@@ -65,14 +65,21 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	}
 	// Resolved here and a handler that cannot run on another runtime is an
 	// error where the script writes the route, ahead of a 500 on the first
-	// request that reaches it.
-	handler, err := m.wrap(handler)
-	if err != nil {
-		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
-	}
+	// request that reaches it. The handler itself first: a middleware returns a
+	// closure that is callable whatever it holds, so resolving the wrapper
+	// alone would take a broken handler and refuse it a request too late.
 	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
 		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
+	}
+	if len(m.middleware) > 0 {
+		wrapped, err := m.wrap(handler)
+		if err != nil {
+			return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
+		}
+		if callable, err = m.rt.AsCallable(wrapped); err != nil {
+			return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
+		}
 	}
 
 	serve := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {

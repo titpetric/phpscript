@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
@@ -41,7 +42,7 @@ func NewRouter() *Router {
 // Register installs Runtime\Router::Bind as the binding that throws.
 func Register(rt *runner.Runtime) {
 	// Runtime\Router::Bind routes the service from a @startup job and throws a RuntimeException anywhere else.
-	rt.RegisterFunc("Runtime\\Router::Bind", func(any) error {
+	rt.RegisterFunc("Runtime\\Router::Bind", func(fn any) error {
 		return runner.NewRuntimeException("Runtime\\Router::Bind is only available to a @startup job", 0)
 	})
 }
@@ -76,22 +77,26 @@ func (r *Router) bind(rt *runner.Runtime, fn any) error {
 	if err != nil {
 		return fmt.Errorf("Runtime\\Router::Bind: %w", err)
 	}
-	open := true
+	var closed atomic.Bool
 	mux := phphttp.NewMountedMux(rt, func(pattern string, handler http.Handler) error {
-		if !open {
+		if closed.Load() {
 			return runner.NewRuntimeException("Runtime\\Router::Bind: the router is not mutable once Bind has returned", 0)
 		}
-		method, path, ok := strings.Cut(pattern, " ")
-		if !ok {
+		// A method and then whitespace, the grammar ServeMux documents and the
+		// mux a script writes its routes on accepts: a tab separates one as
+		// well as a space does, and more than one space is a pattern too.
+		space := strings.IndexAny(pattern, " \t")
+		if space < 0 {
 			return runner.NewRuntimeException(fmt.Sprintf("Runtime\\Router::Bind: %q needs a method, as in GET %s", pattern, pattern), 0)
 		}
+		method, path := pattern[:space], strings.TrimLeft(pattern[space:], " \t")
 		if _, err := model.ParseRoutePath(path); err != nil {
 			return runner.NewRuntimeException(fmt.Sprintf("Runtime\\Router::Bind: %s", err), 0)
 		}
 		registrar.Handle(method, path, handler)
 		return nil
 	})
-	defer func() { open = false }()
+	defer closed.Store(true)
 	_, err = callable.Invoke(rt, mux)
 	return err
 }
