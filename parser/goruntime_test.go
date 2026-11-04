@@ -159,6 +159,41 @@ func TestGoRuntimeMakeType(t *testing.T) {
 	}
 }
 
+// TestGoRuntimeSliceHint covers the `[]T` type hint, which php has no spelling
+// for and phpscript reads in a file that imported the go runtime: on a
+// parameter, on a return type and on a property. Nothing downstream reads a
+// type, and the parser keeps the spelling so the formatter prints it back.
+func TestGoRuntimeSliceHint(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct{ src, params, returns string }{
+		{"function f([]int64 $a): []float64 {}", "[]int64", "[]float64"},
+		{"function f([][]string $a): []Row {}", "[][]string", "[]Row"},
+		{"function f(?[]int $a) {}", "?[]int", ""},
+		{"function f([]\\Other\\Row $a) {}", `[]\Other\Row`, ""},
+		// A bracket in a type position is a type and nothing else, and a hint
+		// php does spell still reads as it did.
+		{"function f(array $a): string {}", "array", "string"},
+	} {
+		fn := mustParse(t, "<?php\nuse Runtime\\Go;\n"+test.src).Stmts[1].(*model.FuncDecl)
+		if fn.Params[0].Type != test.params || fn.ReturnType != test.returns {
+			t.Errorf("%s = %q / %q, want %q / %q", test.src, fn.Params[0].Type, fn.ReturnType, test.params, test.returns)
+		}
+	}
+
+	// A property declares one too, and the class table is where a type hint
+	// ends: the runtime reads none of them.
+	class := mustParse(t, "<?php\nuse Runtime\\Go;\nclass Totals { public []int64 $counts; }").Stmts[1].(*model.ClassDecl)
+	if class.Fields[0].Type != "[]int64" {
+		t.Errorf("the property reads %q, want []int64", class.Fields[0].Type)
+	}
+
+	// The syntax comes with the import, as the bare names do: a file that asked
+	// for none of it reads php's grammar, which has no slice type.
+	if _, err := Parse("<?php\nfunction f([]int $a) {}"); err == nil {
+		t.Error("a slice hint parsed in a file that imported nothing")
+	}
+}
+
 // TestGoRuntimeImportSpellings covers the three ways a file can name the
 // namespace in a `use`, which the parser reads for the binding and the runtime
 // reads for the install.

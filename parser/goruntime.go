@@ -35,6 +35,16 @@ func (p *parser) goBound(name string) bool {
 	return p.goRuntime && model.GoBuiltin(name)
 }
 
+// atGoSlice reports whether the tokens at a type position open a `[]T` type: a
+// `[]` pair with an element type behind it, which is a slice, a nested one, or
+// a qualified class name.
+func (p *parser) atGoSlice() bool {
+	if !p.goRuntime || !p.isOp("[") || !p.isOpAt(1, "]") {
+		return false
+	}
+	return p.peek(2).kind == tIdent || p.isOpAt(2, "[") || p.isOpAt(2, "\\")
+}
+
 // atGoMake reports whether the call being read is `make([]`, the one place a
 // type is written where php writes an expression. Everywhere else `[` opens an
 // array literal, and `foreach ([] as $v)` is what reads it there.
