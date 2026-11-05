@@ -585,6 +585,43 @@ class Database {
 	}
 }
 
+// TestRuntimeObserverStaticCallOpensNoSpan pins that a static call is not
+// measured: a library calls static helpers by the hundred and each one used to
+// add a span that buried the requests and includes the trace is read for.
+func TestRuntimeObserverStaticCallOpensNoSpan(t *testing.T) {
+	t.Parallel()
+	recorder := newTelemetryRecorder(t)
+	rt := New(nil, Options{RootFS: fstest.MapFS{
+		"main.php": {Data: []byte("<?php\ninclude \"Util.php\";\n$u = new Util;\necho Util::twice(2), $u->thrice(2);\n")},
+		"Util.php": {Data: []byte(`<?php
+class Util {
+    static function twice($n) { return $n * 2; }
+    function thrice($n) { return $n * 3; }
+}
+`)},
+	}})
+	rt.Observe(recorder)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	var instance bool
+	for _, span := range recorder.spans {
+		if span.Name == "Util::twice" {
+			t.Errorf("static call opened span %q", span.Name)
+		}
+		if span.Name == "u.thrice" {
+			instance = true
+		}
+	}
+	if !instance {
+		t.Errorf("the instance method span is gone: %+v", recorder.spans)
+	}
+}
+
 // findSpan returns the first span of the trace with the given name.
 func findSpan(trace *telemetry.Trace, name string) *telemetry.Span {
 	for _, span := range trace.Clone().Spans {
