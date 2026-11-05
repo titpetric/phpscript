@@ -210,7 +210,7 @@ New bindings follow the [naming conventions](../../naming-conventions.md): PHP's
 
 Embedding hosts opt into runtime services separately:
 
-- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
+- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterArea`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
 - `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector that opens its pools. Name resolution and the rule that a script cannot read a credential sit above the seam and neither changes.
@@ -218,4 +218,4 @@ Embedding hosts opt into runtime services separately:
 - `rt.UseNamespace("Runtime\\Go")` installs a namespace binding area, the install a script triggers by writing `use Runtime\Go`. An area registered this way stays off `stdlib.Register`'s surface: `function_exists`, `get_defined_functions` and the generated reference carry none of its names until an import installs them.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
-Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host needing a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.
+Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterArea(name, Register)` under the area its folder maps to (see [Runtime areas](runtime-areas.md)), and `stdlib/imports.go` blank-imports them. A host needing a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.

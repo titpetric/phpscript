@@ -7,7 +7,7 @@ import (
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
-	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
+	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
 )
 
 // Option configures how the scanner finds annotated PHP files and runs them. The

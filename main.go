@@ -33,7 +33,7 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/model"
-	"github.com/titpetric/phpscript/stdlib/database"
+	"github.com/titpetric/phpscript/stdlib/ps/database"
 )
 
 func main() {

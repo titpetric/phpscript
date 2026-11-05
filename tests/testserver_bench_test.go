@@ -13,7 +13,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
-	phphttp "github.com/titpetric/phpscript/stdlib/http"
+	phphttp "github.com/titpetric/phpscript/stdlib/ps/http"
 )
 
 // This file prices one request on Path B, which is HTTP\Mux on runner.Pool: the

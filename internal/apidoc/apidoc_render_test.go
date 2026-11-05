@@ -160,10 +160,10 @@ func TestRenderParam(t *testing.T) {
 func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 	t.Parallel()
 	funcs := []Func{
-		{Name: "strlen", Package: "stdlib/core", Area: "strings", Returns: "int",
+		{Name: "strlen", Package: "stdlib/ps/core", Area: "strings", Returns: "int",
 			Comment: []string{"strlen returns the byte length of $string."},
 			Params:  []Param{{Name: "string", Type: "string"}}},
-		{Name: "json_encode", Package: "stdlib/core", Area: "json", Returns: "string",
+		{Name: "json_encode", Package: "stdlib/ps/core", Area: "json", Returns: "string",
 			Params: []Param{{Name: "value", Type: "mixed"}}},
 	}
 	classes := []Class{{
@@ -178,7 +178,7 @@ func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 	page := render(funcs, classes)
 
 	for _, want := range []string{
-		"### stdlib/core",
+		"### stdlib/ps/core",
 		"#### json",
 		"#### strings",
 		"// strlen returns the byte length of $string.",

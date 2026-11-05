@@ -162,7 +162,7 @@ type binding struct {
 }
 
 // check applies both rules to every binding the package registers, reporting
-// each site once: one helper serves four bindings in stdlib/core alone, and
+// each site once: one helper serves four bindings in stdlib/ps/core alone, and
 // the fix is one edit.
 func (p *pkg) check() []finding {
 	var out []finding

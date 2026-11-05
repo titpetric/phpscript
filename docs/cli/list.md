@@ -21,6 +21,14 @@ phpscript list --bindings | grep '| function' # Just the functions
 
 The listing comes from the runtime itself: it reports what this build binds, not what a checked-in file says it binds; its counts agree with `phpscript info`. Two things are missing from it, and both need the binary's own Go source: the doc comment written next to each registration, and the PHP spelling of each parameter name. Signatures here carry reflected types and no parameter names, because reflection invents the names it reports (`$string1`, `$string2`), and they would read as the real ones. The annotated listing lives in [Implemented PHP APIs](../reference/extensions/implemented-apis.md), generated from the same reflection plus a scan of the source.
 
+Each row of `--bindings` ends with the area that defines the name, a namespace such as `Runtime\PS\Core\Strings`. `--areas` lists the areas themselves: the `Runtime\PS` areas in install order, the `Runtime\PX` overlay after them, and the opt-in `Runtime\Go` areas last, with the number of functions, classes and constants each defines and the number of names it registers over. Arguments narrow it to the namespaces named, and `--json` writes the rows as data. [Runtime areas](../reference/extensions/runtime-areas.md) describes the layout.
+
+```bash
+phpscript list --areas                  # Every area
+phpscript list --areas 'Runtime\PX'     # The overlay
+phpscript list --areas --json           # As data
+```
+
 `--classes` answers about a class what `go doc` answers about a Go type, in PHP spelling: the class docblock, then the properties the bound Go type carries, then the constructor and the method declarations. Every declaration ends at the `;` and carries no body, because the implementation is Go and no PHP a reader could open. With no arguments it prints every class a script can construct; with arguments it prints those, under the spelling on the command line.
 
 ```bash

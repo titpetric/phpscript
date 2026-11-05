@@ -122,9 +122,9 @@ Separate from the "Not implemented" rows in the [language reference](reference/R
 
 PHP's date family is not implemented beyond a small shim. `date()`'s format characters, `strftime()`'s `%` codes and `strtotime()`'s English are three spellings of the same job, and the runtime binds Go's instead: `DateTime::now()`, `DateTime::parse()` and `$t->format()` take [Go layouts](https://pkg.go.dev/time#pkg-constants), where the layout is the reference instant written the way the output should read. `2006-01-02` is a date; `Y-m-d` is a table lookup, and `strtotime("next thursday")` is a guess.
 
-The shim in `stdlib/compat` covers the epoch corner of that family and stops there. `strtotime` matches a fixed list of layouts from most to least specific, and returns `false` for anything else, English included. The list is RFC 3339 with and without fraction and offset, `Y-m-d H:i:s` and its prefixes, RFC 1123, `@epoch`, and `now`. `date` knows the numeric format characters (`Y y m n d j H G h g i s U`) and backslash escapes, and writes every other character through unchanged; a word or a zone in the output is `$t->format()` with a Go layout.
+The shim in `stdlib/ps/compat` covers the epoch corner of that family and stops there. `strtotime` matches a fixed list of layouts from most to least specific, and returns `false` for anything else, English included. The list is RFC 3339 with and without fraction and offset, `Y-m-d H:i:s` and its prefixes, RFC 1123, `@epoch`, and `now`. `date` knows the numeric format characters (`Y y m n d j H G h g i s U`) and backslash escapes, and writes every other character through unchanged; a word or a zone in the output is `$t->format()` with a Go layout.
 
-The value a script holds is Go's `time.Time`, the type the database driver already scans a `DATETIME` column into and the same value flows from a query to a template with no conversion on the way. Every method returns a new one and the mutable/immutable split PHP carries as two classes does not arise. See the [stdlib/time section](reference/extensions/implemented-apis.md) for the surface.
+The value a script holds is Go's `time.Time`, the type the database driver already scans a `DATETIME` column into and the same value flows from a query to a template with no conversion on the way. Every method returns a new one and the mutable/immutable split PHP carries as two classes does not arise. See the [stdlib/ps/time section](reference/extensions/implemented-apis.md) for the surface.
 
 `echo $t` prints `2026-08-26 14:48:00`, not Go's `2026-08-26 14:48:00 +0000 UTC` and not RFC 3339. PHP has no string form for a date to copy: `echo $dateTime` is a fatal `Error`, `Object of class DateTime could not be converted to string`. The rule comes from every place PHP writes a datetime of its own accord. The `date` field of a `var_dump`, a `print_r` and a `json_encode` all read `Y-m-d H:i:s`, and PDO returns a `DATETIME` column to a script as the stored text. Go spells that layout `time.DateTime`. phpscript drops the zone for the reason PHP drops it there: the zone is a separate field, outside the reading; `$t->format("2006-01-02 15:04:05 MST")` prints it when it matters.
 
@@ -144,7 +144,7 @@ Both spellings answer the same document for the same value: the two encoders sha
 
 `phpscript lint` warns on a `JSON_*` name and the finding arrives before a port runs, ahead of the first request that reaches the line. The name inside a string is not a use and `defined("JSON_PRETTY_PRINT")` reads as written.
 
-`stdlib/core.TestNoJSONFlagConstants` fails the build if anything registers a `JSON_*` constant.
+`stdlib/ps/core.TestNoJSONFlagConstants` fails the build if anything registers a `JSON_*` constant.
 
 ### Regular expressions
 

@@ -1,5 +1,10 @@
 runner:
   work_dir: "."
+  # The binding areas the default runtime installs, by namespace: Runtime\PS
+  # is phpscript's surface, Runtime\PX the phpx overlay installed over it, and
+  # a deeper name such as Runtime\PS\Core\Strings narrows to one area. Empty
+  # installs all of them. `phpscript list --areas` lists the names.
+  areas: []
   # Parse and compile every .php file below the application root when the
   # server starts, instead of when a request first reaches one. The cost moves
   # from the request to startup and the memory it holds is resident from there

@@ -97,7 +97,7 @@ func TestStdlibDefinitions(t *testing.T) {
  * parallel(). It takes its settings as an associative array, and with no
  * argument builds a client with a 30 second timeout that follows redirects.
  *
- * Binds github.com/titpetric/phpscript/stdlib/http package, uses [net/http.Client](https://pkg.go.dev/net/http#Client).
+ * Binds github.com/titpetric/phpscript/stdlib/ps/http package, uses [net/http.Client](https://pkg.go.dev/net/http#Client).
  */
 class HTTP\Client
 {

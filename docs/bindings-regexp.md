@@ -19,7 +19,7 @@ Each returns a `*regexp.Regexp` and every exported method of that type is callab
 
 ## Step 1: the package
 
-An area a script calls is a package under `stdlib/`, one per area. `stdlib/regexp/regexp.go` is the whole implementation:
+An area a script calls is a package under `stdlib/`, one per area. `stdlib/ps/regexp/regexp.go` is the whole implementation:
 
 ```go
 // Package regexp implements Regexp\Compile and Regexp\CompilePOSIX, Go's
@@ -44,7 +44,7 @@ import (
 
 // init contributes the regexp bindings to stdlib.Register.
 func init() {
-	runner.RegisterBinding(Register)
+	runner.RegisterArea(`Runtime\PS\Regexp`, Register)
 }
 
 // Register installs the regexp compilation classes.
@@ -61,7 +61,7 @@ Four things in that file are the convention:
 - A namespace is a backslash in a Go string. `"Regexp\\Compile"` is the name a script types, and lookup is case-insensitive with a leading `\` stripped and `new \Regexp\compile($e)` resolves the same registration.
 - The registration takes `regexp.Compile` as-is. Its signature is `func(string) (*Regexp, error)`, which is the shape the bridge wants: the bridge omits a return slot declared exactly `error` from what PHP sees, and throws a non-nil value in it.
 - The doc comment above each registration is what the generated reference publishes. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site and never the Go function.
-- The import carries an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/http` writes `nethttp "net/http"`.
+- The import carries an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/ps/http` writes `nethttp "net/http"`.
 
 The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
 
@@ -70,9 +70,9 @@ The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a scrip
 A binding package contributes itself through `init` and the import is the whole of the wiring. `stdlib/imports.go` blank-imports the standard set:
 
 ```go
-	_ "github.com/titpetric/phpscript/stdlib/pexec"
-	_ "github.com/titpetric/phpscript/stdlib/regexp"
-	_ "github.com/titpetric/phpscript/stdlib/session"
+	_ "github.com/titpetric/phpscript/stdlib/ps/pexec"
+	_ "github.com/titpetric/phpscript/stdlib/ps/regexp"
+	_ "github.com/titpetric/phpscript/stdlib/ps/session"
 ```
 
 `stdlib.Register` runs every contributed installer on every runtime it sets up, the interpreter's and the bytecode engine's alike. Flatstack needs no work: `new` compiles to `opConstruct` and `->method()` to `opCallMethod`, and both delegate to the same `helperNew` and `callGoMethod` the interpreter calls and a registration works on both engines or on neither.
@@ -307,7 +307,7 @@ phpscript test --matrix -v ./tests/fixtures/bindings/...
 
 ## Step 6: the Go test
 
-The fixtures state the behaviour; the package test states that both engines produce it. `stdlib/regexp/regexp_test.go` runs each case on `runner.New` and `flatstack.New` and fails when the two disagree:
+The fixtures state the behaviour; the package test states that both engines produce it. `stdlib/ps/regexp/regexp_test.go` runs each case on `runner.New` and `flatstack.New` and fails when the two disagree:
 
 ```go
 func run(t *testing.T, src string) string {
@@ -356,6 +356,6 @@ The generated class entry lists the method set `*regexp.Regexp` published, which
 
 ## What publishing a raw Go type costs
 
-`stdlib/http` does the opposite of this binding. Each of its types holds its `net/http` value in an unexported field, because registration is not a method allowlist and embedding `*http.Request` would publish the whole of `net/http` as methods on `HTTP\Request`.
+`stdlib/ps/http` does the opposite of this binding. Each of its types holds its `net/http` value in an unexported field, because registration is not a method allowlist and embedding `*http.Request` would publish the whole of `net/http` as methods on `HTTP\Request`.
 
 This binding publishes `regexp.Regexp` raw because its 40 exported methods are regexp operations and nothing a script should not reach. Five of them do something other than match, and are reachable: `Longest()` reconfigures the compiled expression in place, `Copy()` duplicates it, and `MarshalText`/`UnmarshalText`/`AppendText` are the encoding interfaces. A type with exports beyond its subject gets a facade instead; this one has none.

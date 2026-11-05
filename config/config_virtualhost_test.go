@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/config"
-	"github.com/titpetric/phpscript/stdlib/mail"
+	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
 // writeSite creates an application root holding a phpscript.yml and a document

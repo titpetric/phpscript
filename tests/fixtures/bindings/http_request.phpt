@@ -5,7 +5,7 @@ description: >
   a net/http request, so this covers the Go spellings a script uses to read and
   write one. Only construction and introspection are covered: building a
   request sends nothing, so this stays offline. Sending, including parallel(),
-  is tested against httptest in stdlib/http/client_test.go, because a fixture
+  is tested against httptest in stdlib/ps/http/client_test.go, because a fixture
   that reached the network would fail whenever the network did.
 runner:
   php: false
@@ -35,7 +35,7 @@ echo $post->contentlength . "\n";
 // A client with no options is valid: it has a default timeout and follows
 // redirects. Constructing without a throw is what this asserts, because the
 // settings it applies are only observable once a request is sent, which
-// stdlib/http/client_test.go covers.
+// stdlib/ps/http/client_test.go covers.
 try {
     new HTTP\Client();
     echo "client\n";

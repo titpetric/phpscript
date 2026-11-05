@@ -14,7 +14,7 @@ import (
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
-	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
+	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
 	"github.com/titpetric/phpscript/telemetry"
 )
 

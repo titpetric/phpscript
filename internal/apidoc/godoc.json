@@ -381,7 +381,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/auth.PasswordFile": {
+    "github.com/titpetric/phpscript/stdlib/ps/auth.PasswordFile": {
       "methods": {
         "Authenticate": {
           "comment": [
@@ -418,7 +418,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/core.JSONDecoder": {
+    "github.com/titpetric/phpscript/stdlib/ps/core.JSONDecoder": {
       "methods": {
         "Decode": {
           "comment": [
@@ -432,7 +432,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/core.JSONEncoder": {
+    "github.com/titpetric/phpscript/stdlib/ps/core.JSONEncoder": {
       "methods": {
         "Encode": {
           "comment": [
@@ -459,7 +459,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/core.SharedMemory": {
+    "github.com/titpetric/phpscript/stdlib/ps/core.SharedMemory": {
       "methods": {
         "Clear": {
           "comment": [
@@ -526,7 +526,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/database.Database": {
+    "github.com/titpetric/phpscript/stdlib/ps/database.Database": {
       "fields": {
         "IsReadonly": [
           "IsReadonly restricts the client to statements that only read. The flag",
@@ -648,7 +648,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/database.DatabaseMigrate": {
+    "github.com/titpetric/phpscript/stdlib/ps/database.DatabaseMigrate": {
       "methods": {
         "Load": {
           "comment": [
@@ -674,7 +674,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/http.Client": {
+    "github.com/titpetric/phpscript/stdlib/ps/http.Client": {
       "methods": {
         "Get": {
           "comment": [
@@ -720,7 +720,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/http.Mux": {
+    "github.com/titpetric/phpscript/stdlib/ps/http.Mux": {
       "methods": {
         "Group": {
           "comment": [
@@ -774,7 +774,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/http.Server": {
+    "github.com/titpetric/phpscript/stdlib/ps/http.Server": {
       "methods": {
         "Addr": {
           "comment": [
@@ -812,7 +812,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/mail.Mail": {
+    "github.com/titpetric/phpscript/stdlib/ps/mail.Mail": {
       "methods": {
         "Send": {
           "comment": [
@@ -833,7 +833,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/session.Manager": {
+    "github.com/titpetric/phpscript/stdlib/ps/session.Manager": {
       "fields": {
         "SessionCookieName": [
           "SessionCookieName is the mutable name this package reads and writes the session",
@@ -918,7 +918,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/session.StorageDisk": {
+    "github.com/titpetric/phpscript/stdlib/ps/session.StorageDisk": {
       "methods": {
         "Delete": {
           "comment": [
@@ -965,7 +965,7 @@
         }
       }
     },
-    "github.com/titpetric/phpscript/stdlib/session.StorageMemory": {
+    "github.com/titpetric/phpscript/stdlib/ps/session.StorageMemory": {
       "methods": {
         "Delete": {
           "comment": [

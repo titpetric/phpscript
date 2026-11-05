@@ -4,8 +4,11 @@ import (
 	"sync"
 )
 
-// binding pairs an installer with the profile area it belongs to.
+// binding pairs an installer with the profile area it belongs to and the
+// namespace area that names it.
 type binding struct {
+	name    string
+	layer   int
 	profile Profile
 	install func(*Runtime)
 }
@@ -16,22 +19,18 @@ var bindings struct {
 	installers []binding
 }
 
-// RegisterBinding contributes a runtime installer under ProfileSecure.
+// RegisterBinding contributes a runtime installer under ProfileSecure, in the
+// area NamespaceUnnamed. A binding package names its area with RegisterArea.
 func RegisterBinding(installer func(*Runtime)) {
-	RegisterProfileBinding(ProfileSecure, installer)
+	RegisterProfileArea(NamespaceUnnamed, ProfileSecure, installer)
 }
 
 // RegisterProfileBinding contributes a runtime installer under the given area,
-// for a binding that leaves the sandbox: stdlib/pexec registers under
+// for a binding that leaves the sandbox: stdlib/ps/pexec registers under
 // ProfileExec. stdlib.Mount installs it only for a host whose profile names
 // the area; a zero profile is never installed.
 func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
-	if installer == nil {
-		return
-	}
-	bindings.Lock()
-	defer bindings.Unlock()
-	bindings.installers = append(bindings.installers, binding{profile: profile, install: installer})
+	RegisterProfileArea(NamespaceUnnamed, profile, installer)
 }
 
 // Bindings returns every contributed installer, whatever its area.
@@ -40,15 +39,13 @@ func Bindings() []func(*Runtime) {
 }
 
 // BindingsFor returns the contributed installers whose area overlaps profile,
-// in registration order.
+// in install order: the Runtime\PS areas first and the Runtime\PX areas over
+// them, each in registration order.
 func BindingsFor(profile Profile) []func(*Runtime) {
-	bindings.Lock()
-	defer bindings.Unlock()
-	installers := make([]func(*Runtime), 0, len(bindings.installers))
-	for _, contributed := range bindings.installers {
-		if contributed.profile&profile != 0 {
-			installers = append(installers, contributed.install)
-		}
+	areas := AreasFor(profile)
+	installers := make([]func(*Runtime), len(areas))
+	for i, area := range areas {
+		installers[i] = area.Install
 	}
 	return installers
 }

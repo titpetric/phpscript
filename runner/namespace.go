@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -27,6 +28,7 @@ import (
 var namespaces struct {
 	sync.Mutex
 	installers map[string]func(*Runtime)
+	names      map[string]string
 }
 
 // RegisterNamespace contributes the installer a `use name` import runs. It
@@ -39,8 +41,23 @@ func RegisterNamespace(name string, installer func(*Runtime)) {
 	defer namespaces.Unlock()
 	if namespaces.installers == nil {
 		namespaces.installers = map[string]func(*Runtime){}
+		namespaces.names = map[string]string{}
 	}
 	namespaces.installers[foldName(name)] = installer
+	namespaces.names[foldName(name)] = strings.Trim(name, "\\")
+}
+
+// Namespaces lists the opt-in namespaces by the spelling they registered under,
+// sorted: the areas a script imports and the default runtime does not carry.
+func Namespaces() []string {
+	namespaces.Lock()
+	defer namespaces.Unlock()
+	out := make([]string, 0, len(namespaces.names))
+	for _, name := range namespaces.names {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // NamespaceInstaller returns the installer contributed for name.
@@ -73,7 +90,8 @@ func (rt *Runtime) UseNamespace(name string) bool {
 // useImport installs what one import names: the namespace, or the namespace a
 // `use function` or `use const` import names a symbol in.
 func (rt *Runtime) useImport(path string) {
-	if rt.UseNamespace(path) {
+	if _, known := NamespaceInstaller(path); known {
+		rt.UseNamespace(path)
 		return
 	}
 	if i := strings.LastIndexByte(path, '\\'); i > 0 {

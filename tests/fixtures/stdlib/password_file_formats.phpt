@@ -15,7 +15,7 @@ description: >
   php cannot derive `$apr1$` at all - `crypt($pw, '$apr1$Zx1kLm9q$')` answers
   the failure string `*0` - so there is no php spelling of that format to
   compare against, and no assertion here for one. Its vectors come from
-  `openssl passwd -apr1` instead, in stdlib/crypto/apr1_test.go. `crypt()`
+  `openssl passwd -apr1` instead, in stdlib/ps/crypto/apr1_test.go. `crypt()`
   itself is not registered in this runtime, which is why the comparison is not
   written here as a divergence either.
 

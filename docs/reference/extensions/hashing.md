@@ -121,7 +121,7 @@ A deployment whose login latency is a problem has three levers, in this order: i
 
 ## What a derivation costs
 
-All numbers from [stdlib/crypto/password_test.go](../../../stdlib/crypto/password_test.go) on an Intel N150, Go 1.27, `CGO_ENABLED=0`, `GOMEMLIMIT=2GiB`, one pinned core: `benchstat` medians over `-count 6` at `-benchtime=100ms`. `password_verify` runs the same derivation at the parameters the hash records and one column covers both functions.
+All numbers from [stdlib/ps/crypto/password_test.go](../../../stdlib/ps/crypto/password_test.go) on an Intel N150, Go 1.27, `CGO_ENABLED=0`, `GOMEMLIMIT=2GiB`, one pinned core: `benchstat` medians over `-count 6` at `-benchtime=100ms`. `password_verify` runs the same derivation at the parameters the hash records and one column covers both functions.
 
 | Algorithm and parameters         | sec/op   | B/op     | allocs/op |
 |----------------------------------|---------:|---------:|----------:|
@@ -199,8 +199,8 @@ Set the parameters from a measurement on the hardware that will serve, taken wit
 
 ## Implementation
 
-`md5`, `sha1` and the `hash` family are in [stdlib/crypto/hash.go](../../../stdlib/crypto/hash.go); `crc32` is in [stdlib/core/strings.go](../../../stdlib/core/strings.go) with the rest of the string functions, because it returns an integer and a script reaches for it as one. The password functions are in [stdlib/crypto/password.go](../../../stdlib/crypto/password.go) and the CSPRNG in [stdlib/crypto/random.go](../../../stdlib/crypto/random.go).
+`md5`, `sha1` and the `hash` family are in [stdlib/ps/crypto/hash.go](../../../stdlib/ps/crypto/hash.go); `crc32` is in [stdlib/ps/core/strings.go](../../../stdlib/ps/core/strings.go) with the rest of the string functions, because it returns an integer and a script reaches for it as one. The password functions are in [stdlib/ps/crypto/password.go](../../../stdlib/ps/crypto/password.go) and the CSPRNG in [stdlib/ps/crypto/random.go](../../../stdlib/ps/crypto/random.go).
 
-The argon2 encoding and its parsing are in [stdlib/crypto/argon2.go](../../../stdlib/crypto/argon2.go), separate from the registrations because the PHC string form is the whole of the interop and is the part a reader checks against php.
+The argon2 encoding and its parsing are in [stdlib/ps/crypto/argon2.go](../../../stdlib/ps/crypto/argon2.go), separate from the registrations because the PHC string form is the whole of the interop and is the part a reader checks against php.
 
 Four fixtures cover the surface: [hashing.phpt](../../../tests/fixtures/stdlib/hashing.phpt) for width and collisions, [hash.phpt](../../../tests/fixtures/stdlib/hash.phpt) for the vectors of every registered algorithm and for `hash_hmac` and `hash_equals`, [password_hash.phpt](../../../tests/fixtures/stdlib/password_hash.phpt) for bcrypt, and [password_argon2.phpt](../../../tests/fixtures/stdlib/password_argon2.phpt) for the two argon2 variants.

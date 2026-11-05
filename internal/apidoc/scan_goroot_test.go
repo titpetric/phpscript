@@ -44,7 +44,7 @@ func TestGorootDocs(t *testing.T) {
 // then carries the structure reflection sees and no prose.
 func TestGorootDocsUnknown(t *testing.T) {
 	t.Parallel()
-	if got := gorootDocs("github.com/titpetric/phpscript/stdlib/http", "Client"); got != nil {
+	if got := gorootDocs("github.com/titpetric/phpscript/stdlib/ps/http", "Client"); got != nil {
 		t.Errorf("a module package answered %+v, want nothing", got)
 	}
 	if got := gorootDocs("net/http", "NoSuchTypeHere"); got != nil {

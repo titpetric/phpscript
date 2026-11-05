@@ -1,0 +1,109 @@
+// Package compat implements the PHP language surface a script reaches for
+// directly, and no library it calls: functions whose behaviour follows from
+// what the interpreter does, not from what they compute.
+//
+// Importing it wires it in, the way a program imports a database/sql
+// driver:
+//
+//	import _ "github.com/titpetric/phpscript/stdlib/ps/compat"
+//
+// stdlib does that for you (see stdlib/imports.go). A host needing a
+// different set builds its Runtime without stdlib.
+//
+// # Output buffering
+//
+// PHP's ob_* family redirects everything echo would emit into a stack of
+// in-memory buffers, and template engines lean on it: rendering to a string is
+// "start a buffer, include the compiled template, take the contents".
+// MiniTPL\Template::get() builds on exactly that.
+//
+//	ob_start();
+//	include $compiled;
+//	$html = ob_get_clean();
+//
+// ob_start pushes a buffer onto the runtime with runner.PushOutput and the
+// capture covers everything that reaches Runtime.Output: echo, inline HTML, and
+// builtins that emit text of their own, such as die() with a message.
+//
+// A function that reports "no buffer is active" returns false, as PHP does,
+// and no empty string; the two are distinguishable with ===.
+//
+// # Regular expressions
+//
+// PHP's preg_* family is PCRE; Go's regexp is RE2, which cannot express
+// backreferences or lookaround. regex.go compiles each pattern with whichever
+// engine can express it and both `\1` and a linear-time guarantee are
+// available where they apply.
+package compat
+
+import (
+	"github.com/titpetric/phpscript/runner"
+)
+
+// init contributes the compatibility bindings (the ob_* family) to
+// stdlib.Register.
+func init() {
+	runner.RegisterArea(`Runtime\PS\Compat`, Register)
+}
+
+// Register installs symbols into the runtime. Each runtime gets its own buffer
+// stack and concurrent requests capture their own output.
+func Register(rt *runner.Runtime) {
+	registerRegex(rt)
+	registerDatetime(rt)
+	registerBuffers(rt)
+}
+
+// registerBuffers installs the ob_* output buffering functions. Each runtime
+// gets its own buffer stack and concurrent requests capture their own output.
+func registerBuffers(rt *runner.Runtime) {
+	buffers := newBuffers(rt)
+	// A reset between programs drops the levels with the redirections they
+	// mirror and a reused runtime answers ob_get_level with what this program
+	// opened and none of what the last one left.
+	rt.OnReset(buffers.reset)
+
+	// ob_start takes a callback and chunk size in PHP. Neither changes what a
+	// template engine sees and ob_start accepts and ignores both.
+	rt.RegisterFunc("ob_start", func(_ ...any) bool {
+		buffers.push()
+		return true
+	})
+	// ob_get_level returns the number of active output buffers.
+	rt.RegisterFunc("ob_get_level", buffers.level)
+	// ob_get_contents returns the active buffer's contents without closing it.
+	rt.RegisterFunc("ob_get_contents", func() any {
+		contents, ok := buffers.contents()
+		if !ok {
+			return false
+		}
+		return contents
+	})
+	// ob_get_clean closes the active buffer and returns its contents.
+	rt.RegisterFunc("ob_get_clean", func() any {
+		contents, ok := buffers.pop(false)
+		if !ok {
+			return false
+		}
+		return contents
+	})
+	// ob_end_clean closes the active buffer and discards its contents.
+	rt.RegisterFunc("ob_end_clean", func() bool {
+		_, ok := buffers.pop(false)
+		return ok
+	})
+	// ob_end_flush closes the active buffer and writes its contents to the output below it.
+	rt.RegisterFunc("ob_end_flush", func() bool {
+		_, ok := buffers.pop(true)
+		return ok
+	})
+	// ob_get_flush closes the active buffer, writes its contents to the
+	// output below it, and returns them.
+	rt.RegisterFunc("ob_get_flush", func() any {
+		contents, ok := buffers.pop(true)
+		if !ok {
+			return false
+		}
+		return contents
+	})
+}

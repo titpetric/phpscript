@@ -87,7 +87,7 @@ A narrowing inside the binding is the same mistake one line later. `value.(*mode
 
 **6. Presize everything.** `model.NewArraySize(n)`, `make([]any, 0, n)`, `make(map[string]any, n)`. A five-element `*model.Array` built by `Append` grows its key slice 1->2->4->8: four allocations before any data. Map size hints are hints, not capacity, but they still avoid the rehash-and-copy cycle.
 
-**7. Hoist per-call setup to package scope.** The binding closure must not construct anything built from constants (a `strings.Replacer`, a compiled `regexp`, a lookup table). The regex shims already cache compiled patterns (`regexpCache`); `htmlspecialchars` runs one package-level `strings.Replacer` (`stdlib/core/strings.go`), built once.
+**7. Hoist per-call setup to package scope.** The binding closure must not construct anything built from constants (a `strings.Replacer`, a compiled `regexp`, a lookup table). The regex shims already cache compiled patterns (`regexpCache`); `htmlspecialchars` runs one package-level `strings.Replacer` (`stdlib/ps/core/strings.go`), built once.
 
 ## Why the numbers look like this
 
@@ -134,7 +134,7 @@ So the env stays for as long as expr-lang compiles anything; the per-compile cos
 
 `Pool.Submit` keeps no free list of channels, and that refusal holds: `Submit` answers false when the context ends first, and that path cannot prove the entry is free, because the worker goes on running with the channel it holds. A channel the pool recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, never a slow one, and no test here catches it.
 
-What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel the pool signals its completion through, and a job living for the length of its run carries one channel over every run it serves. The pool sends one buffered slot in place of closing it and a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: it drops a job submitted and not seen to finish, and never reuses it. `stdlib/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
+What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel the pool signals its completion through, and a job living for the length of its run carries one channel over every run it serves. The pool sends one buffered slot in place of closing it and a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: it drops a job submitted and not seen to finish, and never reuses it. `stdlib/ps/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
 
 A `Submit` whose job lends no channel builds one, as before.
 
@@ -196,7 +196,7 @@ When changing a shape, keep the old implementation as a second binding (`bind_ex
 
 ## TODO: binding audit
 
-Every registered function and class, its return shape, and whether that shape is optimal. Regenerate the function list with `go run ./scripts/list-apis`; discover Go signatures with `go doc -short -u ./stdlib` (see also `go doc ./stdlib/database.Database`).
+Every registered function and class, its return shape, and whether that shape is optimal. Regenerate the function list with `go run ./scripts/list-apis`; discover Go signatures with `go doc -short -u ./stdlib` (see also `go doc ./stdlib/ps/database.Database`).
 
 Legend: **OK**: optimal, no change needed. **OK (by design)**: allocates, but the allocation buys required semantics. **TODO**: a real improvement is available.
 

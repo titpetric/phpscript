@@ -15,7 +15,7 @@ type Profile = runner.Profile
 const (
 	// Secure is every binding confined to the runtime's sandbox boundaries.
 	Secure = runner.ProfileSecure
-	// Exec is process execution, the stdlib/pexec package: exec, system,
+	// Exec is process execution, the stdlib/ps/pexec package: exec, system,
 	// passthru, shell_exec, the shell quoting pair and the pid pair.
 	Exec = runner.ProfileExec
 

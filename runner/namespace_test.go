@@ -113,3 +113,29 @@ func TestUseImportPaths(t *testing.T) {
 		t.Error("an import two segments below the namespace installed it")
 	}
 }
+
+// TestUseImportReadsAKnownNamespaceOnce covers the import of a registered
+// namespace seen twice, as `useImports` before the run and the `use` statement
+// during it do: the second pass finds the namespace already installed and does
+// not fall back to the namespace above it, which would install that one.
+func TestUseImportReadsAKnownNamespaceOnce(t *testing.T) {
+	parentInstalls := 0
+	RegisterNamespace("Test\\Twice", func(*Runtime) { parentInstalls++ })
+	RegisterNamespace("Test\\Twice\\Child", func(*Runtime) {})
+
+	rt := New(nil, Options{})
+	rt.useImport("Test\\Twice\\Child")
+	rt.useImport("Test\\Twice\\Child")
+	if parentInstalls != 0 {
+		t.Fatalf("the parent installed %d times from an import of its child", parentInstalls)
+	}
+
+	rt.useImport("Test\\Twice\\Child\\fn")
+	if parentInstalls != 0 {
+		t.Fatalf("a symbol of an installed namespace installed the parent")
+	}
+	rt.useImport("Test\\Twice\\unknown")
+	if parentInstalls != 1 {
+		t.Fatalf("a symbol of a namespace falls back to it once: %d installs", parentInstalls)
+	}
+}

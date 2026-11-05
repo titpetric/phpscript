@@ -35,8 +35,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/phpscript/stdlib/database"
-	"github.com/titpetric/phpscript/stdlib/mail"
+	"github.com/titpetric/phpscript/stdlib/ps/database"
+	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
 // ---------------------------------------------------------------------------

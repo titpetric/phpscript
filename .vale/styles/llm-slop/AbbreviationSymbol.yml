@@ -3,7 +3,7 @@
 # route, impl, perf, repo.
 #
 # A backtick, a slash, a dollar or a double quote before the word exempts it. A
-# slash makes the word a path or a route, `stdlib/info` and `/info`; a dollar
+# slash makes the word a path or a route, `stdlib/ps/info` and `/info`; a dollar
 # makes it a PHP variable, `$config`; a double quote makes it a string, which
 # is the one spelling a `//go:embed` directive can carry. Citing a symbol in
 # backticks works in markdown, in a Go doc comment and in a PHP comment alike,

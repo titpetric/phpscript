@@ -13,8 +13,8 @@ func phpClass() Class {
 		Name:    "Database",
 		Comment: []string{"Database is the database client scripts query."},
 		Params:  []Param{{Name: "name", Type: "string"}},
-		Binds:   "github.com/titpetric/phpscript/stdlib/database",
-		Uses:    Citation{Package: "github.com/titpetric/phpscript/stdlib/database", Name: "Database", Go: "database.Database"},
+		Binds:   "github.com/titpetric/phpscript/stdlib/ps/database",
+		Uses:    Citation{Package: "github.com/titpetric/phpscript/stdlib/ps/database", Name: "Database", Go: "database.Database"},
 		Implements: []Citation{
 			{Package: "fmt", Name: "Stringer", Go: "fmt.Stringer", URL: "https://pkg.go.dev/fmt#Stringer"},
 		},
@@ -46,7 +46,7 @@ func TestClass_PHP(t *testing.T) {
 	want := `/**
  * Database is the database client scripts query.
  *
- * Binds github.com/titpetric/phpscript/stdlib/database package, uses Database.
+ * Binds github.com/titpetric/phpscript/stdlib/ps/database package, uses Database.
  * Implements [fmt.Stringer](https://pkg.go.dev/fmt#Stringer).
  */
 class Database implements fmt.Stringer
@@ -120,14 +120,14 @@ func TestClassPHPWithoutMembers(t *testing.T) {
 	c := Class{
 		Name:    "HTTP\\Client",
 		Comment: []string{"HTTP\\Client sends requests."},
-		Binds:   "github.com/titpetric/phpscript/stdlib/http",
+		Binds:   "github.com/titpetric/phpscript/stdlib/ps/http",
 		Uses:    Citation{Package: "net/http", Name: "Client", Go: "http.Client", URL: "https://pkg.go.dev/net/http#Client"},
 		Params:  []Param{{Name: "options", Type: "mixed"}},
 	}
 	want := `/**
  * HTTP\Client sends requests.
  *
- * Binds github.com/titpetric/phpscript/stdlib/http package, uses [net/http.Client](https://pkg.go.dev/net/http#Client).
+ * Binds github.com/titpetric/phpscript/stdlib/ps/http package, uses [net/http.Client](https://pkg.go.dev/net/http#Client).
  */
 class HTTP\Client
 {
@@ -148,7 +148,7 @@ func TestClass_Describe(t *testing.T) {
 	want := []string{
 		"Database is the database client scripts query.",
 		"",
-		"Binds github.com/titpetric/phpscript/stdlib/database package, uses Database.",
+		"Binds github.com/titpetric/phpscript/stdlib/ps/database package, uses Database.",
 		"Implements [fmt.Stringer](https://pkg.go.dev/fmt#Stringer).",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {

@@ -85,7 +85,7 @@ gotestsum tool slowest --jsonfile bench-gotest-after.json
 
 `tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` and `connection_aborted` against the real clock. Report it as excluded, never as the slowest package, or the reading points at a sleep.
 
-`tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/internals` and `stdlib/http` carry real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
+`tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/ps/internals` and `stdlib/ps/http` carry real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
 
 Three tests fail when they regress, and none of them skips; a failure in one is a finding:
 

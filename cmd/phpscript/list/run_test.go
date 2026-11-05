@@ -97,7 +97,7 @@ func TestRunListsClassesAsJSON(t *testing.T) {
 	if mux.Name != `HTTP\Mux` || exception.Name != "Exception" {
 		t.Fatalf("names = %q and %q, want the two asked about", mux.Name, exception.Name)
 	}
-	if want := "github.com/titpetric/phpscript/stdlib/http"; mux.Binds != want {
+	if want := "github.com/titpetric/phpscript/stdlib/ps/http"; mux.Binds != want {
 		t.Errorf("Binds = %q, want %q", mux.Binds, want)
 	}
 	if want := "net/http.ServeMux"; mux.Uses.Symbol() != want {
@@ -265,5 +265,28 @@ func TestRunAPIJSON(t *testing.T) {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output does not contain %q:\n%s", want, out.String())
 		}
+	}
+}
+
+// TestRunAreas covers --areas: the table names the areas, a namespace
+// argument narrows it, JSON carries the rows, and mixing it with another
+// listing is refused.
+func TestRunAreas(t *testing.T) {
+	var out strings.Builder
+	if err := runAreas(&out, []string{`Runtime\PS\Core`}, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `Runtime\PS\Core\`) || strings.Contains(out.String(), `Runtime\PS\Files`) {
+		t.Errorf("a Runtime\\PS\\Core filter listed the wrong areas:\n%.300s", out.String())
+	}
+	out.Reset()
+	if err := runAreas(&out, nil, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"layer": "ps"`) {
+		t.Errorf("JSON misses the layer:\n%.300s", out.String())
+	}
+	if err := runAreas(&out, nil, true, false); err == nil {
+		t.Error("--areas mixed with --bindings was accepted")
 	}
 }

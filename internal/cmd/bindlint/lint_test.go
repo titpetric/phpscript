@@ -61,8 +61,8 @@ func TestLintMissingRoot(t *testing.T) {
 // TestFindingString covers the position format, which an editor jumps to.
 func TestFindingString(t *testing.T) {
 	t.Parallel()
-	f := finding{file: "stdlib/core/platform.go", line: 333, binding: "strtr", message: "narrows pairs"}
-	if got, want := f.String(), "stdlib/core/platform.go:333: strtr: narrows pairs"; got != want {
+	f := finding{file: "stdlib/ps/core/platform.go", line: 333, binding: "strtr", message: "narrows pairs"}
+	if got, want := f.String(), "stdlib/ps/core/platform.go:333: strtr: narrows pairs"; got != want {
 		t.Errorf("String() is %q, want %q", got, want)
 	}
 }

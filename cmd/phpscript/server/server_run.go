@@ -21,9 +21,9 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
-	"github.com/titpetric/phpscript/stdlib/files"
-	"github.com/titpetric/phpscript/stdlib/mail"
-	stdruntime "github.com/titpetric/phpscript/stdlib/runtime"
+	"github.com/titpetric/phpscript/stdlib/ps/files"
+	"github.com/titpetric/phpscript/stdlib/ps/mail"
+	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
 	"github.com/titpetric/phpscript/telemetry"
 )
 

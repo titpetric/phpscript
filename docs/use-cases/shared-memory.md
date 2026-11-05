@@ -77,6 +77,6 @@ The Go store synchronizes concurrent access and many request runtimes can safely
 
 ## References
 
-- [Go `SharedMemory` API](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/core#SharedMemory)
-- [Shared memory implementation](../../stdlib/core/shared_memory.go)
-- [Cross-request test](../../stdlib/core/shared_memory_test.go)
+- [Go `SharedMemory` API](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps/core#SharedMemory)
+- [Shared memory implementation](../../stdlib/ps/core/shared_memory.go)
+- [Cross-request test](../../stdlib/ps/core/shared_memory_test.go)

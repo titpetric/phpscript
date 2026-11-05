@@ -34,11 +34,14 @@ type Param struct {
 // Func is one registered function with everything the renderer needs.
 type Func struct {
 	Name    string
-	Package string   // Go package directory relative to the module root
-	Area    string   // subsection within the package, from the register* func
-	Comment []string // doc comment lines without comment markers
-	Params  []Param
-	Returns string // PHP type name, "void" when the Go func returns nothing
+	Package string // Go package directory relative to the module root
+	Area    string // subsection within the package, from the register* func
+	// Namespace is the binding area the runtime installed the function in,
+	// Runtime\PS\Core\Strings; empty when the caller named no owners.
+	Namespace string
+	Comment   []string // doc comment lines without comment markers
+	Params    []Param
+	Returns   string // PHP type name, "void" when the Go func returns nothing
 }
 
 // Method is one PHP-callable method on a registered class.
@@ -62,10 +65,13 @@ type Class struct {
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases,omitempty"`
 	Package string   `json:"package,omitempty"`
-	Comment []string `json:"comment,omitempty"`
-	Params  []Param  `json:"params,omitempty"` // constructor parameters
-	Fields  []Field  `json:"fields,omitempty"`
-	Methods []Method `json:"methods,omitempty"`
+	// Namespace is the binding area that defines the class, empty when the
+	// caller named no owners.
+	Namespace string   `json:"namespace,omitempty"`
+	Comment   []string `json:"comment,omitempty"`
+	Params    []Param  `json:"params,omitempty"` // constructor parameters
+	Fields    []Field  `json:"fields,omitempty"`
+	Methods   []Method `json:"methods,omitempty"`
 
 	// GoType is the import path and name of the Go type the constructor
 	// returns, the key the doc index holds this class's godoc under.
@@ -90,11 +96,20 @@ type constructorGroup struct {
 // Generate renders the implemented-apis markdown for the runtime rt, reading
 // doc comments and parameter names from the Go source rooted at srcRoot.
 func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
+	return GenerateAreas(rt, srcRoot, Owners{})
+}
+
+// GenerateAreas is Generate with the binding area of each name: owners takes a
+// function or a class name to the namespace that defines it, and the page then
+// groups the functions by namespace and names the area of each class. An empty Owners
+// groups by Go package, as Generate does.
+func GenerateAreas(rt *runner.Runtime, srcRoot string, owners Owners) (string, error) {
 	src, err := scan(srcRoot)
 	if err != nil {
 		return "", err
 	}
 	funcs, classes := build(rt, src)
+	annotateNamespaces(funcs, classes, owners)
 	return render(funcs, classes), nil
 }
 

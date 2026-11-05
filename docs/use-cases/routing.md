@@ -147,5 +147,5 @@ if err := routes.Mount(ctx, router); err != nil {
 
 - [Route tests](../../tests/route_test.go)
 - [`annotations.Route`](https://pkg.go.dev/github.com/titpetric/phpscript@main/annotations#Route)
-- [SharedMemory binding](../../stdlib/core/shared_memory.go)
+- [SharedMemory binding](../../stdlib/ps/core/shared_memory.go)
 - [Route fixtures](../../tests/fixtures/routing)
