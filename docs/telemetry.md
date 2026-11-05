@@ -58,6 +58,8 @@ An interpreter reports work a host never would. A frame of PHP is a span, and a 
 
 The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans, so a frame worth reading stays and a microsecond of dispatch does not, and the dropped frame gives its slot in `max_spans_per_trace` back to the work that needs it. Set that minimum to zero and every frame is kept, which is `trace_level: debug` arrived at from the other side.
 
+A static call opens no span of its own. Its time stays in the frame that made the call, and a class of static helpers does not add a span per use.
+
 The level is a runner option, so a virtual host sets its own in the `runner` block of its `phpscript.yml`, and a host embedding the runtime sets `runner.Options.TraceLevel`.
 
 Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier and a log line carrying it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.

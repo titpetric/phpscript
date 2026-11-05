@@ -237,13 +237,6 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 	}
 	scope.args = args
 	scope.Set("__class__", class.Name)
-	if len(rt.observers) > 0 {
-		traceScope := caller
-		if traceScope == nil {
-			traceScope = scope
-		}
-		defer rt.trace(traceScope, class.Name+"::"+decl.Name)()
-	}
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
