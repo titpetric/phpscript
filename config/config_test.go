@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -180,5 +181,25 @@ func TestValue(t *testing.T) {
 	got.DocumentRoot = "htdocs"
 	if held.DocumentRoot == "htdocs" {
 		t.Error("editing the returned configuration reached the pointer")
+	}
+}
+
+// TestRunnerAreas covers the runner.areas key: the compiled-in default leaves
+// the list empty, which installs every area, and a file narrows it by namespace.
+func TestRunnerAreas(t *testing.T) {
+	t.Parallel()
+	if got := config.New().Runner.Areas; len(got) != 0 {
+		t.Fatalf("the default config names areas: %v", got)
+	}
+	path := t.TempDir() + "/areas.yml"
+	if err := os.WriteFile(path, []byte("runner:\n  areas:\n    - Runtime\\PS\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Runner.Areas; len(got) != 1 || got[0] != `Runtime\PS` {
+		t.Fatalf("areas = %v", got)
 	}
 }

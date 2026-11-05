@@ -7,7 +7,7 @@ import (
 )
 
 // TestRuntime_PushOutput covers nesting a redirection. The innermost writer
-// takes the text and a captured region can itself capture. stdlib/compat
+// takes the text and a captured region can itself capture. stdlib/ps/compat
 // builds PHP's ob_* family on that nesting.
 func TestRuntime_PushOutput(t *testing.T) {
 	t.Parallel()
@@ -70,7 +70,7 @@ func TestRuntime_PopOutput(t *testing.T) {
 	}
 }
 
-// TestRuntime_OutputDepth covers the count stdlib/compat reads to answer
+// TestRuntime_OutputDepth covers the count stdlib/ps/compat reads to answer
 // ob_get_level(). releaseOutput drops every level for a runtime answering one
 // request after another and the next request opens at zero.
 func TestRuntime_OutputDepth(t *testing.T) {

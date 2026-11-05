@@ -9,7 +9,7 @@ import (
 // echo would emit lands in it until the matching pop.
 //
 // The stack is here because Output() is the runtime's own writer, and nothing
-// here reads the captured text. stdlib/compat builds PHP's ob_* family on top
+// here reads the captured text. stdlib/ps/compat builds PHP's ob_* family on top
 // of it, and pushes the buffers a script reads back.
 
 // PushOutput redirects script output to w until the matching PopOutput. Pushes

@@ -103,5 +103,7 @@ sitemap:
         description: How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md
         description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter and not a wider digest.
+      - path: extensions/runtime-areas.md
+        description: The Runtime\PS, Runtime\PX and Runtime\Go namespaces that group the bindings, and the configuration that selects them.
       - path: extensions/implemented-apis.md
         description: Generated inventory of functions and classes in the standard CLI runtime.

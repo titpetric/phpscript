@@ -257,7 +257,7 @@ $db->close();
 
 ## Dates and times
 
-A date column is the one place a Go value crosses into PHP with no conversion written for it: the driver scans it into a `time.Time`, and that is the same value [stdlib/time](../design.md#dates-and-times) returns to a script. One rule follows from it:
+A date column is the one place a Go value crosses into PHP with no conversion written for it: the driver scans it into a `time.Time`, and that is the same value [stdlib/ps/time](../design.md#dates-and-times) returns to a script. One rule follows from it:
 
 **store the offset.** Prefer the column type that carries one, and write RFC 3339 (`2026-08-26T14:48:00+02:00`) wherever the column is text. `json_encode` already emits RFC 3339 for a `Time` and one spelling covers a database column, a JSON payload and a Go binding, and the layout has a name: `$t->format(TIME_RFC3339)`.
 
@@ -358,8 +358,8 @@ foreach ($users as $row) {
 
 ## References
 
-- [Go `stdlib/database.Database`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/database#Database)
-- [Go `stdlib/database.DatabaseMigrate`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/database#DatabaseMigrate)
+- [Go `stdlib/ps/database.Database`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps/database#Database)
+- [Go `stdlib/ps/database.DatabaseMigrate`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps/database#DatabaseMigrate)
 - [tests/fixtures/database_migrate.phpt](../../tests/fixtures/database_migrate.phpt)
 - [tests/fixtures/database_readonly.phpt](../../tests/fixtures/database_readonly.phpt)
 - [tests/fixtures/platform_database.phpt](../../tests/fixtures/platform_database.phpt)

@@ -96,7 +96,7 @@ func TestPool_Close(t *testing.T) {
 }
 
 // lendingJob is a DoneJob that counts its runs and carries one channel across
-// every one of them, the shape stdlib/http's per-request tracker takes.
+// every one of them, the shape stdlib/ps/http's per-request tracker takes.
 type lendingJob struct {
 	runs int
 	done chan struct{}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/titpetric/phpscript/stdlib/mail"
+	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
 // flatMailKeys are the settings of one server. One of them directly under mail

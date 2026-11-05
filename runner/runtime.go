@@ -363,7 +363,7 @@ func (rt *Runtime) Output() io.Writer {
 // to share. A strings.Reader over "" carries a read offset, which makes it a
 // value per use; this carries no state, and a zero-size value costs no allocation
 // to put in an interface. The two readers of Runtime.Stdin - STDIN in
-// stdlib/core and php://input in stdlib/files - take it as an io.Reader and ask
+// stdlib/ps/core and php://input in stdlib/ps/files - take it as an io.Reader and ask
 // no more of it.
 type emptyStdin struct{}
 

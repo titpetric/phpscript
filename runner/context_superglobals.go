@@ -19,7 +19,7 @@ import (
 // runtime context. After this, PHP reads $_GET, $_POST and
 // $_REQUEST from this Context, and the request-aware functions find it.
 //
-// stdlib/http registers the functions themselves - getallheaders(), header(),
+// stdlib/ps/http registers the functions themselves - getallheaders(), header(),
 // http_response_code(), setcookie() - and reaches this Context through
 // RequestContext at call time. That registration runs before this does,
 // because a host installs the standard library first and seeds the request

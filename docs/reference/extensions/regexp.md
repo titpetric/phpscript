@@ -87,8 +87,8 @@ preg_match_all("/\{(block|inline) (\w+)\}(.*?)\{\/\\1\}/s", $template, $matches)
 
 ## Implementation
 
-`preg_*` lives in [stdlib/compat/regex.go](../../../stdlib/compat/regex.go), with the rest of the PHP surface whose behaviour follows from what the interpreter does and not from what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterBinding` and a host needing a different surface builds its runtime without it.
+`preg_*` lives in [stdlib/ps/compat/regex.go](../../../stdlib/ps/compat/regex.go), with the rest of the PHP surface whose behaviour follows from what the interpreter does and not from what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterArea` and a host needing a different surface builds its runtime without it.
 
 The engine choice lives in `compilePCRE`. The `pattern` type in the same file is the only thing the shims talk to and the two engines are indistinguishable from PHP.
 
-`Regexp\` is a separate package, [stdlib/regexp](../../../stdlib/regexp), because it computes and depends on nothing the interpreter does, and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.
+`Regexp\` is a separate package, [stdlib/ps/regexp](../../../stdlib/ps/regexp), because it computes and depends on nothing the interpreter does, and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.

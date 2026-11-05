@@ -78,7 +78,7 @@ Each `new Storage` gets a new map. `get()` returns an error for a missing key, `
 
 ### Shared-memory binding
 
-The production [`core.SharedMemory`](../stdlib/core/shared_memory.go) binding is also the test utility for state shared by otherwise independent runtimes, especially route requests. Create one value, place it in each runtime context, and register the standard library:
+The production [`core.SharedMemory`](../stdlib/ps/core/shared_memory.go) binding is also the test utility for state shared by otherwise independent runtimes, especially route requests. Create one value, place it in each runtime context, and register the standard library:
 
 ```go
 shm := core.NewSharedMemory()

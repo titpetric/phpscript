@@ -22,18 +22,22 @@ const Name = "List routes, files and classes"
 // The configuration and the global options are what every command constructor
 // takes and one signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
-	var bindings, classes, api, asJSON bool
+	var bindings, classes, api, areas, asJSON bool
 
 	return &cli.Command{
 		Name:  "list",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
 			fs.BoolVar(&bindings, "bindings", false, "List the functions, classes and constants the runtime registers instead of scanning paths")
+			fs.BoolVar(&areas, "areas", false, "List the binding areas, the Runtime\\PS, Runtime\\PX and Runtime\\Go namespaces, with what each defines; arguments narrow it to the namespaces named")
 			fs.BoolVar(&classes, "classes", false, "Print the registered classes as PHP class definitions, all of them or the ones named as arguments")
 			fs.BoolVar(&api, "api", false, "List the methods of every class and interface, one row per method")
 			fs.BoolVar(&asJSON, "json", false, "Write the rows as JSON instead of a markdown table")
 		},
 		Run: func(ctx context.Context, args []string) error {
+			if areas {
+				return runAreas(os.Stdout, args, bindings || classes || api, asJSON)
+			}
 			return Run(args, bindings, classes, api, asJSON)
 		},
 	}
@@ -107,4 +111,19 @@ func writeJSON(out io.Writer, v any) error {
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// runAreas prints the binding areas as a markdown table, or as JSON. The
+// namespace arguments narrow the rows; combined with another listing mode it is
+// an error, since each mode answers its own question.
+func runAreas(out io.Writer, args []string, mixed, asJSON bool) error {
+	if mixed {
+		return fmt.Errorf("list --areas takes none of --bindings, --classes or --api")
+	}
+	rows := phplist.Areas(args...)
+	if asJSON {
+		return writeJSON(out, rows)
+	}
+	fmt.Fprint(out, phplist.AreasMarkdown(rows))
+	return nil
 }

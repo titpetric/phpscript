@@ -1,0 +1,239 @@
+// Package files carries the filesystem shims phpscript exposes to PHP: path
+// helpers, reads, writes, streams, and the uploaded-file functions that go with
+// $_FILES. They sit here and not in stdlib because they are the one part of
+// the standard library bound to a directory on the host, and because a host
+// that runs untrusted scripts may leave them out.
+//
+// Go's fs.FS only reads and writes (fopen/fwrite/mkdir) use the os package
+// against the same root; the runner's include resolution still uses the fs.FS
+// abstraction passed to runner.New.
+package files
+
+import (
+	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
+	"github.com/titpetric/phpscript/runner"
+)
+
+// init contributes the filesystem bindings to stdlib.Register, rooted at the
+// process working directory, the same place a CLI run reads and writes.
+func init() {
+	runner.RegisterArea(`Runtime\PS\Files`, Register)
+}
+
+// Register installs the filesystem shims rooted at the working directory.
+func Register(rt *runner.Runtime) {
+	RegisterRoot(rt, ".")
+}
+
+// RegisterRoot installs the filesystem shims rooted at dir, replacing whatever
+// root stands before it and a host calls it after stdlib.Register
+// (stdlib.RegisterFS does exactly that).
+//
+// The boundary every path resolves against, and what writable_paths adds to it,
+// is docs/security.md, "The filesystem boundary".
+func RegisterRoot(rt *runner.Runtime, dir string) {
+	r := root{rt: rt, dir: dir}
+	r.writable = WritableRoots(dir, rt.WritablePaths())
+
+	registerPaths(rt)
+	registerWorkDir(rt)
+	registerReads(rt, r)
+	registerStat(rt, r)
+	registerDirs(rt, r)
+	registerStreamReads(rt)
+	registerWrites(rt, r)
+	registerStreams(rt, r)
+	registerCSV(rt)
+	registerUploads(rt, r)
+}
+
+// root is the directory RegisterRoot bound the shims to, and the runtime they
+// resolve reads through. Every binding that takes a path from PHP resolves
+// through it and the mapping from script path to host path lives in one place.
+type root struct {
+	rt  *runner.Runtime
+	dir string
+
+	// writable is the resolved writable_paths allowlist. An empty list means
+	// no restriction, and a configuration that names none gets that.
+	writable []string
+}
+
+// resolve maps a path a script supplied onto the host filesystem.
+//
+// Both spellings stay inside the root and neither can climb out of it. A path
+// written from "/" names the root itself, the spelling __DIR__ and getcwd()
+// answer in and the shape most concatenated paths take; anything else is
+// relative to the working directory chdir() moved. The source filesystem is
+// what a script can address and "/" is its root and never the host's: there is
+// no spelling for a host path outside it, and a runtime serving an embedded
+// tree could not honour one anyway.
+func (r root) resolve(p string) string {
+	rel, _ := r.fsPath(p)
+	return filepath.Join(r.dir, filepath.FromSlash(rel))
+}
+
+// fsPath maps a path a script supplied onto the source filesystem, which every
+// host roots at the same directory RegisterRoot bound the shims to. It names
+// the same file resolve does, in the other spelling, and the two are not
+// interchangeable: resolve answers with a host path joined onto r.dir, while an
+// fs.FS takes a slash path relative to its own root and rejects anything else,
+// r.dir included. Passing resolve's answer to an fs.FS is how a read silently
+// stops going through it for any r.dir but ".".
+//
+// The runtime states the rule, in resolveFSPath, because an include follows
+// the same one: a path written from "/" names the root, anything else is
+// relative to the working directory, and resolveFSPath cleans both against the
+// root so "a/../../etc/passwd" becomes "etc/passwd" inside it and stays
+// within the root.
+//
+// The second return is false only for an empty path, which names nothing.
+func (r root) fsPath(p string) (string, bool) {
+	if p == "" {
+		return "", false
+	}
+	return r.rt.ResolvePath(p), true
+}
+
+// uploadPath reports the host path of a file this request uploaded.
+//
+// A tmp_name is the one path a script names that is not resolved against the
+// source filesystem. The request runtime writes an uploaded part outside the
+// root by design and returns the absolute tmp_name it wrote and reading that
+// back is reading a file the runtime itself produced. The request's own
+// registry is what says which paths those are, and a path it did not issue is
+// not one of them, which is the same check is_uploaded_file answers with.
+func (r root) uploadPath(p string) (string, bool) {
+	if !filepath.IsAbs(p) {
+		return "", false
+	}
+	request, ok := runner.RequestContext(r.rt.Context())
+	if !ok || !request.IsUpload(p) {
+		return "", false
+	}
+	return path.Clean(filepath.ToSlash(p)), true
+}
+
+// unresolve undoes resolve over a list of host paths, leaving them named from
+// the source filesystem's root, which is the spelling globSpelling then works
+// in.
+func (r root) unresolve(names []string) []string {
+	if len(names) == 0 {
+		return nil
+	}
+	prefix := filepath.Clean(r.dir) + string(filepath.Separator)
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		out = append(out, filepath.ToSlash(strings.TrimPrefix(name, prefix)))
+	}
+	return out
+}
+
+// globSpelling rewrites matches into the pattern's own shape. PHP
+// echoes a pattern's own shape back: a pattern written from the root answers
+// from the root, and one written relative to the working directory answers
+// relative to it. Answering resolved paths would make every match unusable as
+// the argument to the next call.
+func (r root) globSpelling(pattern string, matches []string) []string {
+	if len(matches) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(matches))
+	if strings.HasPrefix(filepath.ToSlash(pattern), "/") {
+		for _, match := range matches {
+			out = append(out, "/"+match)
+		}
+		return out
+	}
+	prefix := r.rt.WorkDir()
+	if prefix == "" || prefix == "." {
+		return matches
+	}
+	for _, match := range matches {
+		out = append(out, strings.TrimPrefix(match, prefix+"/"))
+	}
+	return out
+}
+
+// resolveWrite is resolve for a path a script is about to write. A path
+// outside writable_paths is an error and no false return: a refused
+// write is a mistake in the script or an attempt to escape its allowance, and
+// both are worth stopping at and the script never carries on believing
+// the write happened. The runtime promotes the error to a catchable exception,
+// and a script written for the refusal can try/catch it.
+//
+// Failures the operating system reports keep returning PHP's false, as PHP
+// does.
+func (r root) resolveWrite(fn, p string) (string, error) {
+	name := r.resolve(p)
+	if r.writableAllows(name) {
+		return name, nil
+	}
+	return name, fmt.Errorf("%s(%s): writable_paths allows %s", fn, p, strings.Join(r.writable, ", "))
+}
+
+// writableAllows reports whether name is under one of the writable roots. An
+// unconfigured allowlist permits everything and a project that names no
+// writable_paths keeps writing wherever its user may.
+func (r root) writableAllows(name string) bool {
+	if len(r.writable) == 0 {
+		return true
+	}
+	for _, allowed := range r.writable {
+		if Within(name, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+// Within reports whether name is dir or something beneath it. The separator
+// keeps a sibling out: /srv/site/uploads-old is not under /srv/site/upload.
+func Within(name, dir string) bool {
+	if name == dir {
+		return true
+	}
+	return strings.HasPrefix(name, strings.TrimSuffix(dir, string(filepath.Separator))+string(filepath.Separator))
+}
+
+// HostPath maps a path a script supplied onto the host filesystem beneath dir,
+// through the runtime's own rule and one rule serves every binding. An empty
+// path names nothing and answers empty.
+func HostPath(rt *runner.Runtime, dir, p string) string {
+	if p == "" {
+		return ""
+	}
+	return filepath.Join(dir, filepath.FromSlash(rt.ResolvePath(p)))
+}
+
+// WritableRoots resolves the configured writable_paths against the shims' root
+// directory. An entry is a path inside the project and uploads is the project's
+// uploads directory and public/uploads is the one below the document root.
+//
+// An absolute entry survives verbatim and then matches no file: resolve clamps
+// the path it compares against into dir and a script's /srv/shared resolves to
+// dir + /srv/shared, which is not inside /srv/shared. There is no way to grant
+// a write outside the root, and an absolute entry is not it.
+func WritableRoots(dir string, paths []string) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+	roots := make([]string, 0, len(paths))
+	for _, p := range paths {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if filepath.IsAbs(p) {
+			roots = append(roots, filepath.Clean(p))
+			continue
+		}
+		clean := path.Clean("/" + filepath.ToSlash(p))
+		roots = append(roots, filepath.Join(dir, filepath.FromSlash(clean)))
+	}
+	return roots
+}

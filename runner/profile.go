@@ -12,7 +12,7 @@ const (
 	// boundaries: the surface for a host running untrusted scripts.
 	ProfileSecure Profile = 1 << iota
 
-	// ProfileExec is process execution, contributed by stdlib/pexec. A command
+	// ProfileExec is process execution, contributed by stdlib/ps/pexec. A command
 	// runs with the permissions of the user running the host, outside every
 	// filesystem boundary.
 	ProfileExec

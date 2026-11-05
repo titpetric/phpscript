@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
-	"github.com/titpetric/phpscript/stdlib/database"
+	"github.com/titpetric/phpscript/stdlib/ps/database"
 )
 
 // TestMain seeds the database connections the fixture areas name before any test

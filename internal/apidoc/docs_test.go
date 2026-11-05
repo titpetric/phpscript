@@ -67,9 +67,9 @@ func TestEmbedded(t *testing.T) {
 	if client == nil || len(client.Comment) == 0 {
 		t.Fatalf("the embedded index documents no HTTP\\Client; regenerate %s", IndexPath)
 	}
-	entry := docs.Types["github.com/titpetric/phpscript/stdlib/http.Client"]
+	entry := docs.Types["github.com/titpetric/phpscript/stdlib/ps/http.Client"]
 	if entry == nil {
-		t.Fatalf("the embedded index documents no member of stdlib/http.Client")
+		t.Fatalf("the embedded index documents no member of stdlib/ps/http.Client")
 	}
 	if got := entry.Methods["Get"]; got == nil || strings.Join(got.Params, ",") != "url" {
 		t.Errorf("Get parameters = %+v, want the declared name url", got)

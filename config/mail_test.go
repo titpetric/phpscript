@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/config"
-	"github.com/titpetric/phpscript/stdlib/mail"
+	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
 // TestMail_Validate covers the check every configured server passes before

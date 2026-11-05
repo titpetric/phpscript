@@ -42,7 +42,7 @@ The latter example for `ex2` will produce the `0` code (zero value for the argum
 
 ## Shared memory
 
-The PHP runtime is request driven. The `stdlib/core` package registers a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
+The PHP runtime is request driven. The `stdlib/ps/core` package registers a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
 
 - `core.NewSharedMemory() *core.SharedMemory`
 - `func (m *SharedMemory) Set(_ context.Context, key, value string)`
@@ -80,5 +80,5 @@ echo "ok";
 
 - [PHP exception class](https://www.php.net/manual/en/class.exception.php)
 - [stdlib/Exception type](../../stdlib/exception.go)
-- [stdlib/core SharedMemory type](../../stdlib/core/shared_memory.go)
+- [stdlib/ps/core SharedMemory type](../../stdlib/ps/core/shared_memory.go)
 - [Request routing](routing.md)

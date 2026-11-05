@@ -2,7 +2,7 @@
 // string, an integer or a truth value, how a collection reads back as a list
 // of values or strings, and how two values order under PHP 8's <=> operator.
 //
-// It exists so the files under stdlib/core can each register their own area
+// It exists so the files under stdlib/ps/core can each register their own area
 // without importing one another, and so the runner agrees with them. The
 // coercion needs exactly one definition: sort() and in_array() disagreeing
 // about what "10" is would be a bug no test names.

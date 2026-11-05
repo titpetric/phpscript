@@ -7,8 +7,8 @@ import (
 
 // TestDatabaseProvider covers the shape of the contract, which is the whole of
 // what the two sides share. The interface lives here so a runtime names a
-// provider in its options without importing stdlib/database, and
-// stdlib/database imports the runtime to register its bindings. Neither names
+// provider in its options without importing stdlib/ps/database, and
+// stdlib/ps/database imports the runtime to register its bindings. Neither names
 // the other and a signature drifting here breaks the host at its next build
 // with nothing to point at.
 //

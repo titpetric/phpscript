@@ -25,6 +25,7 @@ import (
 func Stdlib() []Symbol {
 	rt := stdlibRuntime()
 	funcs, classes := apidoc.Reflect(rt)
+	owners := stdlib.Owners(stdlib.Areas(stdlib.All))
 
 	symbols := make([]Symbol, 0, len(funcs)+len(classes)+len(rt.DefinedConstants()))
 	for _, f := range funcs {
@@ -32,6 +33,7 @@ func Stdlib() []Symbol {
 			Kind:      "function",
 			Name:      f.Name,
 			Signature: f.Name + "(" + paramTypes(f.Params) + "): " + f.Returns,
+			Area:      owners.Funcs[f.Name],
 		})
 	}
 	// The class rows come from DeclaredClasses and not from the reflected
@@ -50,23 +52,25 @@ func Stdlib() []Symbol {
 				Kind:      "method",
 				Name:      c.Name + "::" + m.Name,
 				Signature: c.Name + "::" + m.Name + "(" + paramTypes(m.Params) + "): " + m.Returns,
+				Area:      owners.Classes[c.Name],
 			})
 		}
 	}
 	for _, name := range rt.DeclaredClasses() {
 		c, ok := byName[name]
 		if !ok {
-			symbols = append(symbols, Symbol{Kind: "class", Name: name, Signature: "new " + name + "()"})
+			symbols = append(symbols, Symbol{Kind: "class", Name: name, Signature: "new " + name + "()", Area: owners.Classes[name]})
 			continue
 		}
 		symbols = append(symbols, Symbol{
 			Kind:      "class",
 			Name:      name,
 			Signature: "new " + name + "(" + paramTypes(c.Params) + ")",
+			Area:      owners.Classes[name],
 		})
 	}
 	for name, value := range rt.DefinedConstants() {
-		symbols = append(symbols, Symbol{Kind: "constant", Name: name, Signature: constantValue(value)})
+		symbols = append(symbols, Symbol{Kind: "constant", Name: name, Signature: constantValue(value), Area: owners.Constants[name]})
 	}
 
 	sort.Slice(symbols, func(i, j int) bool {
@@ -148,9 +152,9 @@ func constructedClasses(rt *runner.Runtime, byName map[string]apidoc.Class) []st
 func StdlibMarkdown(symbols []Symbol) string {
 	rows := make([][]string, 0, len(symbols))
 	for _, s := range symbols {
-		rows = append(rows, []string{s.Kind, s.Name, cell(s.Signature)})
+		rows = append(rows, []string{s.Kind, s.Name, cell(s.Signature), s.Area})
 	}
-	return markdownTable([]string{"Kind", "Name", "Signature"}, rows)
+	return markdownTable([]string{"Kind", "Name", "Signature", "Area"}, rows)
 }
 
 // stdlibRuntime builds the runtime the phpscript CLI runs and the listing is

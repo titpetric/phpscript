@@ -13,8 +13,8 @@ func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime
 	rt.SetProfile(profile)
 	registerExceptions(rt)
 
-	for _, register := range runner.BindingsFor(profile) {
-		register(rt)
+	for _, area := range runner.SelectAreas(runner.AreasFor(profile), rt.Areas()) {
+		area.Install(rt)
 	}
 	for _, register := range bindings {
 		register(rt)

@@ -9,7 +9,7 @@ import (
 // DatabaseProvider resolves the named connections a script opens.
 //
 // The interface lives here so a runtime can name it in its options without
-// depending on the package that implements it, which is stdlib/database and
+// depending on the package that implements it, which is stdlib/ps/database and
 // which imports the runtime to register its bindings. A runtime knows only that
 // something answers to a connection name; which connections exist is the host's
 // business, and a virtual host answers differently from the process it shares.

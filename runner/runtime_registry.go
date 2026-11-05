@@ -171,6 +171,9 @@ func (rt *Runtime) lookupEntry(name string) (*funcEntry, bool) {
 			return entry, true
 		}
 	}
+	if global, ok := areaFunc(name); ok && global != name {
+		return rt.lookupEntry(global)
+	}
 	return nil, false
 }
 
