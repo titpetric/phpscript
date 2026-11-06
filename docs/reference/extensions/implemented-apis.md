@@ -2808,7 +2808,7 @@ class Database\Migrate
 
 ### `Error`
 
-Area `Runtime\PS\Core\Exceptions`.
+Area `Runtime\PS\Errors`.
 
 ```php
 class Error
@@ -2835,13 +2835,13 @@ Also registered with this constructor: `ArgumentCountError`, `ArithmeticError`, 
 
 Registered from `stdlib`.
 
-Area `Runtime\PS\Core\Exceptions`.
+Area `Runtime\PS\Exceptions`.
 
 ```php
 /**
- * Exception is PHP's base exception class; the SPL exception and Error
- * classes are the same Go type carrying a different class name and a
- * catch clause filters on the name and not on a subclass relation.
+ * Exception is PHP's base exception class; the SPL classes are the same Go
+ * type carrying a different class name and a catch clause filters on the
+ * name and not on a subclass relation.
  */
 class Exception
 {

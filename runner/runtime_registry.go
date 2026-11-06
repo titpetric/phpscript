@@ -371,6 +371,9 @@ func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 			return ctor, true
 		}
 	}
+	if registered, ok := areaClass(name); ok && registered != name {
+		return rt.lookupConstructor(registered)
+	}
 	return nil, false
 }
 

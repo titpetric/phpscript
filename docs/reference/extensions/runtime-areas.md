@@ -30,6 +30,8 @@ The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdli
 
 The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the area of the same name under `Runtime\PS`. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
 
+`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, because a runtime with no binding still throws.
+
 The [implemented API inventory](implemented-apis.md) groups every function and class by area.
 
 ## The overlay installs last
@@ -46,6 +48,25 @@ var_dump(function_exists('Runtime\PS\Core\Strings\strlen')); // bool(true)
 ```
 
 The area has to be the one that defines the function, or the one that replaces it. `Runtime\PS\Core\Arrays\strlen` names nothing. Both runtimes resolve the name the same way. php has no `Runtime` namespace, and source that must also run on php calls the bare name.
+
+## Reaching a class through its area
+
+A class answers under its area the same way, so every binding `Runtime\PS` installs has a name in the namespace tree and the reference walks one tree instead of two. The area's name and the class's own name decide the spelling:
+
+| Area                    | Class                       | Also answers to                          |
+|-------------------------|-----------------------------|------------------------------------------|
+| `Runtime\PS\Database`   | `Database`                  | `Runtime\PS\Database`                    |
+| `Runtime\PS\Database`   | `Database\Migrate`          | `Runtime\PS\Database\Migrate`            |
+| `Runtime\PS\Auth`       | `Auth\Storage\PasswordFile` | `Runtime\PS\Auth\Storage\PasswordFile`   |
+| `Runtime\PS\Core\JSON`  | `JSON\Encoder`              | `Runtime\PS\Core\JSON\Encoder`           |
+| `Runtime\PS\Exceptions` | `RuntimeException`          | `Runtime\PS\Exceptions\RuntimeException` |
+| `Runtime\PS\Errors`     | `TypeError`                 | `Runtime\PS\Errors\TypeError`            |
+
+A class spelled exactly like the area's last segment takes the area itself, which is why `new \Runtime\PS\Database($dsn)` builds the `Database` binding. A class whose own name repeats that segment drops the repeat. Anything else hangs off the area under its own name. The two comparisons are exact where php's class lookup is not, so an area holding several classes keeps one segment per class: `DateTime` under `Runtime\PX\Datetime` is `Runtime\PX\Datetime\DateTime`, and the three classes beside it keep their own segments too. The lookup itself folds case, as every php class name does.
+
+`get_class()` reports the name the binding registered under, so a script that catches `TypeError` catches what `new \Runtime\PS\Errors\TypeError()` threw. The qualified spelling is a second way to write the name, not a second class.
+
+`Runtime\Router::Bind` is the one root definition outside this: it is a static method on a name no constructor backs, so no area name reaches it.
 
 ## Configuring the default runtime
 

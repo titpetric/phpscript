@@ -99,9 +99,9 @@
     },
     "Exception": {
       "comment": [
-        "Exception is PHP's base exception class; the SPL exception and Error",
-        "classes are the same Go type carrying a different class name and a",
-        "catch clause filters on the name and not on a subclass relation."
+        "Exception is PHP's base exception class; the SPL classes are the same Go",
+        "type carrying a different class name and a catch clause filters on the",
+        "name and not on a subclass relation."
       ],
       "params": [
         "message",
