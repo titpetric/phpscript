@@ -64,7 +64,7 @@ func (e *Exception) Error() string {
 	return e.Message
 }
 
-// splExceptions are the SPL and Error class names a PHP library throws. None of
+// splExceptions are the SPL exception class names a PHP library throws. None of
 // them adds behaviour over Exception and they all construct the same value with
 // a different Class and `throw new \InvalidArgumentException(...)` runs
 // where an undefined class would otherwise fail it.
@@ -84,6 +84,11 @@ var splExceptions = []string{
 	"BadFunctionCallException",
 	"BadMethodCallException",
 	"JsonException",
+}
+
+// splErrors are the class names PHP files under Error, which newThrowable
+// builds the way it builds splExceptions.
+var splErrors = []string{
 	"Error",
 	"TypeError",
 	"ValueError",
@@ -93,11 +98,17 @@ var splExceptions = []string{
 }
 
 func registerExceptions(rt *runner.Runtime) {
-	// Exception is PHP's base exception class; the SPL exception and Error
-	// classes are the same Go type carrying a different class name and a
-	// catch clause filters on the name and not on a subclass relation.
+	// Exception is PHP's base exception class; the SPL classes are the same Go
+	// type carrying a different class name and a catch clause filters on the
+	// name and not on a subclass relation.
 	rt.RegisterConstructor("Exception", NewException)
 	for _, class := range splExceptions {
+		rt.RegisterConstructor(class, newThrowable(class))
+	}
+}
+
+func registerErrors(rt *runner.Runtime) {
+	for _, class := range splErrors {
 		rt.RegisterConstructor(class, newThrowable(class))
 	}
 }

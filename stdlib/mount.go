@@ -11,6 +11,7 @@ import (
 // verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
+	registerErrors(rt)
 	registerExceptions(rt)
 
 	for _, area := range runner.SelectAreas(runner.AreasFor(profile), rt.Areas()) {

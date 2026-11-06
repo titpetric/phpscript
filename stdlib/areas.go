@@ -7,12 +7,16 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// ExceptionsArea names the exception classes stdlib itself installs, ahead of
-// every binding package's area.
-const ExceptionsArea = runner.NamespacePS + `\Core\Exceptions`
+// ErrorsArea names the Error classes stdlib itself installs, and ExceptionsArea
+// the Exception ones, both ahead of every binding package's area.
+const (
+	ErrorsArea     = runner.NamespacePS + `\Errors`
+	ExceptionsArea = runner.NamespacePS + `\Exceptions`
+)
 
 func init() {
 	runner.SetAreaMembers(areaMembers)
+	runner.SetAreaClasses(areaClasses)
 }
 
 // areaMembers names the functions each default area defines or replaces, which
@@ -26,6 +30,19 @@ func areaMembers() map[string][]string {
 		members[info.Name] = append(append(members[info.Name], info.Funcs...), info.Replaced...)
 	}
 	return members
+}
+
+// areaClasses names the classes each default area installs, for the alias table
+// `new \Runtime\PS\Database()` resolves through.
+func areaClasses() map[string][]string {
+	classes := map[string][]string{}
+	for _, info := range Areas(All) {
+		if info.OptIn {
+			continue
+		}
+		classes[info.Name] = append(classes[info.Name], info.Classes...)
+	}
+	return classes
 }
 
 // AreaInfo is one area of the runtime and what installing it defines.
@@ -47,6 +64,7 @@ func Areas(profile Profile, namespaces ...string) []AreaInfo {
 	rt.SetProfile(profile)
 
 	var infos []AreaInfo
+	infos = append(infos, AreaInfo{Name: ErrorsArea, Profile: Secure, Delta: rt.Track(registerErrors)})
 	infos = append(infos, AreaInfo{Name: ExceptionsArea, Profile: Secure, Delta: rt.Track(registerExceptions)})
 	for _, area := range runner.SelectAreas(runner.AreasFor(profile), namespaces) {
 		infos = append(infos, AreaInfo{Name: area.Name, Profile: area.Profile, Delta: rt.Track(area.Install)})

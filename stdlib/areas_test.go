@@ -49,7 +49,7 @@ func TestAreas(t *testing.T) {
 // gets no Runtime\PX area.
 func TestAreasSelected(t *testing.T) {
 	for _, info := range Areas(All, `Runtime\PS\Core`) {
-		if info.OptIn || info.Name == ExceptionsArea {
+		if info.OptIn || info.Name == ErrorsArea || info.Name == ExceptionsArea {
 			continue
 		}
 		if !runner.InNamespace(info.Name, `Runtime\PS\Core`) {
@@ -74,6 +74,30 @@ var_dump(function_exists('Runtime\PS\Core\Strings\strlen'), function_exists('Run
 		t.Fatal(err)
 	}
 	if want := "4|A|bool(true)\nbool(false)\n"; out.String() != want {
+		t.Errorf("got %q, want %q", out.String(), want)
+	}
+}
+
+// TestQualifiedAreaClass covers class_exists and new through a binding area,
+// over the three spellings AreaName produces and one name no area installs.
+func TestQualifiedAreaClass(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	Register(rt)
+	program, err := rt.Load(`<?php
+var_dump(class_exists('Runtime\PS\Database'), class_exists('Runtime\PS\Database\Migrate'));
+var_dump(class_exists('runtime\ps\exceptions\RuntimeException'), class_exists('Runtime\PS\Errors\TypeError'));
+var_dump(class_exists('Runtime\PS\Database\Missing'));
+$error = new \Runtime\PS\Errors\TypeError("qualified", 3);
+echo get_class($error), "|", $error->getMessage(), "|", $error->getCode(), "\n";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	want := "bool(true)\nbool(true)\nbool(true)\nbool(true)\nbool(false)\nTypeError|qualified|3\n"
+	if out.String() != want {
 		t.Errorf("got %q, want %q", out.String(), want)
 	}
 }

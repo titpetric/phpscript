@@ -5,23 +5,29 @@ import (
 	"strings"
 )
 
-// The namespaces a binding area lives under. Runtime\PS is phpscript's own
-// surface, Runtime\PX the phpx overlay that installs over it, and Runtime\Go
-// the opt-in bindings of go's standard library, which a script imports.
-const (
-	NamespacePS = `Runtime\PS`
-	NamespacePX = `Runtime\PX`
-	NamespaceGo = `Runtime\Go`
+// NamespacePS is phpscript's own binding surface, which every build mounts. A
+// script writes a name bare or under its area: strlen() is also
+// \Runtime\PS\Core\Strings\strlen(), and the Database class is also
+// \Runtime\PS\Database.
+const NamespacePS = `Runtime\PS`
 
-	// NamespaceNone selects no area at all: the runtime carries the language
-	// and the exception classes, which are not bindings, and every function
-	// of the standard library is left out. It suits a plugin host whose
-	// scripts compute over values the host hands in.
-	NamespaceNone = `Runtime\None`
+// NamespacePX is the overlay phpx installs over Runtime\PS. It holds the names
+// phpx registers over phpscript's, and the ones phpscript leaves undefined.
+const NamespacePX = `Runtime\PX`
 
-	// NamespaceUnnamed holds an installer contributed without a name.
-	NamespaceUnnamed = NamespacePS + `\Unnamed`
-)
+// NamespaceGo is the opt-in binding of go's standard library. `use
+// Runtime\Go\Strings` installs one area on the runtime that runs the file, and
+// a runtime no file imported defines none of these names.
+const NamespaceGo = `Runtime\Go`
+
+// NamespaceNone selects no area at all: the runtime carries the language and the
+// exception classes, which are not bindings, with the standard library's
+// functions left out. It suits a plugin host whose scripts compute over values
+// the host hands in.
+const NamespaceNone = `Runtime\None`
+
+// NamespaceUnnamed holds an installer contributed without a name.
+const NamespaceUnnamed = NamespacePS + `\Unnamed`
 
 // RegisterArea contributes an installer under ProfileSecure in the named area.
 func RegisterArea(name string, installer func(*Runtime)) {

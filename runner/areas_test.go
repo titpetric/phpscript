@@ -40,6 +40,30 @@ func TestAreasInstallOverlayLast(t *testing.T) {
 	}
 }
 
+// TestInNamespace covers the prefix test every selection runs: a name is in its
+// own namespace and in each one above it, the match ignores case and a leading
+// separator, and a longer first segment is outside.
+func TestInNamespace(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name      string
+		namespace string
+		want      bool
+	}{
+		{`Runtime\PS\Core\Strings`, `Runtime\PS`, true},
+		{`Runtime\PS`, `Runtime\PS`, true},
+		{`runtime\ps\core`, `\Runtime\PS`, true},
+		{`Runtime\PSX\Other`, `Runtime\PS`, false},
+		{`Runtime\PS`, `Runtime\PS\Core`, false},
+		{`Runtime\PX\Dates`, `Runtime\PS`, false},
+	}
+	for _, tc := range cases {
+		if got := InNamespace(tc.name, tc.namespace); got != tc.want {
+			t.Errorf("InNamespace(%q, %q) = %v, want %v", tc.name, tc.namespace, got, tc.want)
+		}
+	}
+}
+
 // TestSelectAreas covers the default runtime's selection: a namespace keeps the
 // areas below it, an empty list keeps all, and the match ignores case and a
 // leading separator.

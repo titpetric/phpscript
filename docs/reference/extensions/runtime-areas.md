@@ -30,6 +30,8 @@ The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdli
 
 The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the area of the same name under `Runtime\PS`. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
 
+`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, because a runtime with no binding still throws.
+
 The [implemented API inventory](implemented-apis.md) groups every function and class by area.
 
 ## The overlay installs last
@@ -46,6 +48,27 @@ var_dump(function_exists('Runtime\PS\Core\Strings\strlen')); // bool(true)
 ```
 
 The area has to be the one that defines the function, or the one that replaces it. `Runtime\PS\Core\Arrays\strlen` names nothing. Both runtimes resolve the name the same way. php has no `Runtime` namespace, and source that must also run on php calls the bare name.
+
+## Reaching a class through its area
+
+A class answers under its area the same way. The area's last segment and the class name decide the spelling:
+
+| Area                    | Class                       | Also answers to                          |
+|-------------------------|-----------------------------|------------------------------------------|
+| `Runtime\PS\Database`   | `Database`                  | `Runtime\PS\Database`                    |
+| `Runtime\PS\Database`   | `Database\Migrate`          | `Runtime\PS\Database\Migrate`            |
+| `Runtime\PS\Auth`       | `Auth\Storage\PasswordFile` | `Runtime\PS\Auth\Storage\PasswordFile`   |
+| `Runtime\PS\Core\JSON`  | `JSON\Encoder`              | `Runtime\PS\Core\JSON\Encoder`           |
+| `Runtime\PS\Exceptions` | `RuntimeException`          | `Runtime\PS\Exceptions\RuntimeException` |
+| `Runtime\PS\Errors`     | `TypeError`                 | `Runtime\PS\Errors\TypeError`            |
+
+`runner.AreaName` builds the spelling. A class named exactly like the area's last segment takes the area. A class whose name opens on that segment drops it. Everything else hangs off the area whole.
+
+Both comparisons are exact where the lookup that follows folds case. A folded comparison would resolve `Runtime\PX\Datetime` to the class `DateTime`, and the area a namespace page documents would be a class page as well. `DateTime`, `DateInterval`, `DateTimeImmutable` and `DateTimeZone` each keep a segment under the area for that reason.
+
+The class table gains no entry. `get_class()`, `get_declared_classes()` and `phpscript list --classes` report the registered name, and `class_exists('Runtime\PS\Errors\TypeError')` answers true through `runner.areaClass` on the miss.
+
+`Runtime\Router::Bind` is the one root definition no area name reaches. It names a static method, and nothing registers a constructor for `Runtime\Router`. The class table holds no entry to resolve to.
 
 ## Configuring the default runtime
 
