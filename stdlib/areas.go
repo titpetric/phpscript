@@ -32,8 +32,8 @@ func areaMembers() map[string][]string {
 	return members
 }
 
-// areaClasses names the classes each default area installs, which is how
-// `new \Runtime\PS\Database()` reaches the registered Database.
+// areaClasses names the classes each default area installs, for the alias table
+// `new \Runtime\PS\Database()` resolves through.
 func areaClasses() map[string][]string {
 	classes := map[string][]string{}
 	for _, info := range Areas(All) {

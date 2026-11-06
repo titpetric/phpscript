@@ -1,13 +1,10 @@
 name: a class is reachable through the binding area that installs it
 description: >
-  A class answers under the area that installs it, the way a function does. A
-  class spelled like the area's last segment takes the area itself, so the
-  Database binding is \Runtime\PS\Database and Database\Migrate beside it is
-  \Runtime\PS\Database\Migrate. The exception and Error classes have areas of
-  their own, Runtime\PS\Exceptions and Runtime\PS\Errors. get_class reports the
-  name the binding registered under, which is the name php uses, and the bare
-  spelling constructs the same class. php has no Runtime namespace, so only
-  phpscript defines the expected output.
+  A class answers under the area that installs it, the way a function does.
+  class_exists and new take the qualified spelling, get_class reports the
+  registered name, and a bare catch clause still catches what the qualified
+  name threw. php has no Runtime namespace, so only phpscript defines the
+  expected output.
 runner:
   php: false
 ---

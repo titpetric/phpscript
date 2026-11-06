@@ -78,10 +78,8 @@ var_dump(function_exists('Runtime\PS\Core\Strings\strlen'), function_exists('Run
 	}
 }
 
-// TestQualifiedAreaClass covers a class written through its area: the class whose
-// name is the area's leaf answers to the area, a class under the area takes a
-// segment of its own, an Error class answers under Runtime\PS\Errors, and the
-// qualified name constructs the class its bare name reports.
+// TestQualifiedAreaClass covers class_exists and new through a binding area,
+// over the three spellings AreaName produces and one name no area installs.
 func TestQualifiedAreaClass(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})

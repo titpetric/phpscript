@@ -86,8 +86,8 @@ var splExceptions = []string{
 	"JsonException",
 }
 
-// splErrors are the Error class names the engine throws, which PHP files under
-// Error rather than Exception. They construct what splExceptions constructs.
+// splErrors are the class names PHP files under Error, which newThrowable
+// builds the way it builds splExceptions.
 var splErrors = []string{
 	"Error",
 	"TypeError",

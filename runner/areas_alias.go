@@ -94,9 +94,7 @@ func SetAreaClasses(source func() map[string][]string) {
 // \Runtime\PS\Database for Database and \Runtime\PS\Database\Migrate for
 // Database\Migrate. docs/reference/extensions/runtime-areas.md has the rule.
 func AreaName(area, class string) string {
-	// The two comparisons are exact where php's class lookup is not, so that
-	// DateTime under Runtime\PX\Datetime keeps its own segment and leaves the
-	// area free for the three classes beside it. areaClass folds the result.
+	// Exact, not folded: Runtime\PX\Datetime would resolve to the class DateTime.
 	leaf := area
 	if cut := strings.LastIndexByte(area, '\\'); cut >= 0 {
 		leaf = area[cut+1:]

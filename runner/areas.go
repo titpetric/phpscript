@@ -5,19 +5,19 @@ import (
 	"strings"
 )
 
-// NamespacePS is phpscript's own binding surface: the areas every build mounts,
-// whose names a script writes bare and whose area spells the same name in full,
-// so strlen() is also \Runtime\PS\Core\Strings\strlen() and the class Database
-// is also \Runtime\PS\Database.
+// NamespacePS is phpscript's own binding surface, which every build mounts. A
+// script writes a name bare or under its area: strlen() is also
+// \Runtime\PS\Core\Strings\strlen(), and the Database class is also
+// \Runtime\PS\Database.
 const NamespacePS = `Runtime\PS`
 
-// NamespacePX is the overlay phpx installs over Runtime\PS, holding the names
-// phpscript answers differently and the ones it answers to at all.
+// NamespacePX is the overlay phpx installs over Runtime\PS. It holds the names
+// phpx registers over phpscript's, and the ones phpscript leaves undefined.
 const NamespacePX = `Runtime\PX`
 
-// NamespaceGo is the opt-in binding of go's standard library. A script takes one
-// area of it at a time with `use Runtime\Go\Strings`, and the default runtime
-// carries none of them.
+// NamespaceGo is the opt-in binding of go's standard library. `use
+// Runtime\Go\Strings` installs one area on the runtime that runs the file, and
+// a runtime no file imported defines none of these names.
 const NamespaceGo = `Runtime\Go`
 
 // NamespaceNone selects no area at all: the runtime carries the language and the

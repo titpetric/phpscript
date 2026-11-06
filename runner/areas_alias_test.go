@@ -33,10 +33,8 @@ func TestAreaFunc(t *testing.T) {
 	}
 }
 
-// TestAreaName covers the name a class answers to under its area: a class whose
-// own name is the area's leaf takes the area itself, a class that repeats the
-// leaf as a prefix drops it, a class under Runtime\ drops that too, and
-// anything else hangs off the area.
+// TestAreaName covers the spelling a class answers to under its area, including
+// the folded near-match that keeps DateTime out of Runtime\PX\Datetime.
 func TestAreaName(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

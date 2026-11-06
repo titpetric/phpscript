@@ -51,7 +51,7 @@ The area has to be the one that defines the function, or the one that replaces i
 
 ## Reaching a class through its area
 
-A class answers under its area the same way, so every binding `Runtime\PS` installs has a name in the namespace tree and the reference walks one tree instead of two. The area's name and the class's own name decide the spelling:
+A class answers under its area the same way. The area's last segment and the class name decide the spelling:
 
 | Area                    | Class                       | Also answers to                          |
 |-------------------------|-----------------------------|------------------------------------------|
@@ -62,11 +62,13 @@ A class answers under its area the same way, so every binding `Runtime\PS` insta
 | `Runtime\PS\Exceptions` | `RuntimeException`          | `Runtime\PS\Exceptions\RuntimeException` |
 | `Runtime\PS\Errors`     | `TypeError`                 | `Runtime\PS\Errors\TypeError`            |
 
-A class spelled exactly like the area's last segment takes the area itself, which is why `new \Runtime\PS\Database($dsn)` builds the `Database` binding. A class whose own name repeats that segment drops the repeat. Anything else hangs off the area under its own name. The two comparisons are exact where php's class lookup is not, so an area holding several classes keeps one segment per class: `DateTime` under `Runtime\PX\Datetime` is `Runtime\PX\Datetime\DateTime`, and the three classes beside it keep their own segments too. The lookup itself folds case, as every php class name does.
+`runner.AreaName` builds the spelling. A class named exactly like the area's last segment takes the area. A class whose name opens on that segment drops it. Everything else hangs off the area whole.
 
-`get_class()` reports the name the binding registered under, so a script that catches `TypeError` catches what `new \Runtime\PS\Errors\TypeError()` threw. The qualified spelling is a second way to write the name, not a second class.
+Both comparisons are exact where the lookup that follows folds case. A folded comparison would resolve `Runtime\PX\Datetime` to the class `DateTime`, and the area a namespace page documents would be a class page as well. `DateTime`, `DateInterval`, `DateTimeImmutable` and `DateTimeZone` each keep a segment under the area for that reason.
 
-`Runtime\Router::Bind` is the one root definition outside this: it is a static method on a name no constructor backs, so no area name reaches it.
+The class table gains no entry. `get_class()`, `get_declared_classes()` and `phpscript list --classes` report the registered name, and `class_exists('Runtime\PS\Errors\TypeError')` answers true through `runner.areaClass` on the miss.
+
+`Runtime\Router::Bind` is the one root definition no area name reaches. It names a static method, and nothing registers a constructor for `Runtime\Router`. The class table holds no entry to resolve to.
 
 ## Configuring the default runtime
 
