@@ -52,7 +52,7 @@ This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1, an
 
 An offset past the end of a string, a negative one that reaches before its start and a key that spells no integer are the three a string holds nothing at. `isset()`, `empty()` and `??` read them all as unset, and a plain read of one answers null where php answers the empty string and raises a warning.
 
-`$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise, with no store over a target that holds something: `$s[0] ??= "z"` leaves the string as it stands. The target resolves once on both engines, whether the store happens or not: `$a[k()] ??= 1` calls `k` once, `$t[$i++] ??= 1` steps `$i` once, and `f()->p ??= 1` calls `f` once. `$a[] ??= 1` is a parse error here and in php, where an append slot is write-only. As with every assignment in expression position, a `??=` used as a value takes a variable on its left.
+`$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise, with no store over a target that holds something: `$s[0] ??= "z"` leaves the string as it stands. The target resolves once on both engines, whether the store happens or not: `$a[k()] ??= 1` calls `k` once, `$t[$i++] ??= 1` steps `$i` once, and `f()->p ??= 1` calls `f` once. `$a[] ??= 1` is a parse error here and in php, where an append slot is write-only. Used as a value, `??=` answers what the target holds afterwards, whether the store ran or not.
 
 A write to a string offset is not implemented, `??=` included: `$s[1] = "Z"` and `$s[10] ??= "z"` both end the run with `assign: target is not an array`, where php writes the byte and pads the string out to the offset. `tests/fixtures/syntax/null_coalescing.phpt` pins what works.
 
@@ -76,4 +76,4 @@ $flags &= ~2;
 $items[] = $label;
 ```
 
-See [tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt).
+Every assignment is also an expression answering what it stored, and a compound one answers the updated value. The target resolves before the value: `$m[$i++] = $i` reads the key first. See [tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt) and [Assignment expressions](../expressions/README.md#assignment-expressions).
