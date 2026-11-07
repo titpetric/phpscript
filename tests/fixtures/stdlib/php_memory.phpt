@@ -2,10 +2,11 @@ name: php://memory and php://temp hold a buffer a script owns
 description: >
   The handle API over a buffer with no file behind it: writes extend it, seeks
   move it, feof turns true on the read that comes back empty, and
-  stream_get_contents honours its length and offset. php://temp takes the
-  maxmemory suffix and opens the same buffer. The whole-file helpers open a
-  fresh buffer each call, so file_get_contents reads the empty string and
-  file_put_contents counts the bytes it then drops.
+  stream_get_contents honours its length and offset. An append mode writes at
+  the end wherever the handle sits, where "r" and "c" refuse the write.
+  php://temp takes the maxmemory suffix and opens the same buffer. The
+  whole-file helpers open a fresh buffer each call: file_get_contents reads the
+  empty string and file_put_contents counts the bytes it then drops.
 ---
 <?php
 
@@ -32,9 +33,16 @@ fseek($gap, 5);
 fwrite($gap, "z");
 echo bin2hex(stream_get_contents($gap, -1, 0)), "\n";
 
+$ap = fopen("php://memory", "a");
+fwrite($ap, "abc");
+rewind($ap);
+fwrite($ap, "X");
+echo stream_get_contents($ap, -1, 0), "\n";
+
 $ro = fopen("php://memory", "r");
 var_dump(fwrite($ro, "x"));
 var_dump(stream_get_contents($ro));
+var_dump(fwrite(fopen("php://memory", "c"), "x"));
 
 $t = fopen("php://temp/maxmemory:16", "w+");
 fwrite($t, "spilled");
@@ -60,8 +68,10 @@ cdef
 6
 bool(true)
 61620000007a
+abcX
 bool(false)
 string(0) ""
+bool(false)
 spilled
 string(0) ""
 int(7)

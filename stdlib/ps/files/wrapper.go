@@ -13,8 +13,10 @@ import (
 // fopen. The handle is whatever the stream functions accept: an *os.File, or a
 // value that is an io.Reader, io.Writer or io.Seeker as the call needs. A scheme
 // is matched without regard to case, a later registration wins, and output and
-// input stay the runtime's own.
-type Wrapper func(rt *runner.Runtime, mode string) (any, error)
+// input stay the runtime's own. The scheme arrives as the script wrote it,
+// `temp/maxmemory:1024` included; a nil handle refuses the name and fopen
+// answers false, as php's does.
+type Wrapper func(rt *runner.Runtime, scheme, mode string) (any, error)
 
 var wrappers = struct {
 	sync.RWMutex
@@ -68,9 +70,10 @@ func writeStream(rt *runner.Runtime, scheme, data string) any {
 	return int64(n)
 }
 
-// openWrapper opens the handle for scheme, and reports whether one is bound.
-// A scheme php spells with an argument, `temp/maxmemory:1024`, resolves on the
-// name ahead of the first slash.
+// openWrapper opens the handle for scheme, and reports whether one is bound. A
+// scheme php spells with an argument, `temp/maxmemory:1024`, resolves on the
+// name ahead of the first slash, and the wrapper reads the argument itself: a
+// nil handle is a name it refused, reported here as no wrapper at all.
 func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, err error) {
 	name := strings.ToLower(scheme)
 	wrappers.RLock()
@@ -84,6 +87,8 @@ func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, 
 	if !found {
 		return nil, false, nil
 	}
-	handle, err = open(rt, mode)
+	if handle, err = open(rt, scheme, mode); handle == nil && err == nil {
+		return nil, false, nil
+	}
 	return handle, true, err
 }

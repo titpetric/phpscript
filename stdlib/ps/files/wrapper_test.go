@@ -19,10 +19,19 @@ func TestRegisterWrapper(t *testing.T) {
 		t.Fatal("an unregistered scheme must not open")
 	}
 
-	var open Wrapper = func(_ *runner.Runtime, mode string) (any, error) { return mode, nil }
+	var open Wrapper = func(_ *runner.Runtime, scheme, mode string) (any, error) {
+		if mode == "x" {
+			return nil, nil
+		}
+		return scheme + ":" + mode, nil
+	}
 	RegisterWrapper("Scratch", open)
 	handle, ok, err := openWrapper(rt, "SCRATCH", "w")
-	if !ok || err != nil || handle != "w" {
+	if !ok || err != nil || handle != "SCRATCH:w" {
+		t.Fatalf("got handle %v, err %v, ok %v", handle, err, ok)
+	}
+	// A wrapper refusing the name reads as no wrapper: fopen answers false.
+	if handle, ok, err := openWrapper(rt, "scratch", "x"); ok || handle != nil || err != nil {
 		t.Fatalf("got handle %v, err %v, ok %v", handle, err, ok)
 	}
 }
