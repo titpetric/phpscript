@@ -2,7 +2,7 @@ name: unset, array union and auto-vivification
 description: >
   unset() removes an entry without renumbering the ones around it, `+` on two
   arrays is a union rather than addition, and writing through a missing index
-  creates the arrays on the way down.
+  creates the arrays on the way down, each level reading its own key once.
 ---
 <?php
 
@@ -42,6 +42,35 @@ $counter += 5;
 unset($counter);
 echo isset($counter) ? "set" : "unset";
 echo "\n";
+
+// Every level the write creates runs its own key once, and a receiver that is
+// a call runs once.
+class Calls {
+	public static $n = 0;
+}
+
+function k($name) {
+	Calls::$n += 1;
+	return $name;
+}
+
+$deep = array();
+$deep[k("l1")][k("l2")] = "leaf";
+echo $deep["l1"]["l2"] . "|" . Calls::$n . "\n";
+
+class Bag {
+	public $rows = null;
+}
+
+function hold($bag) {
+	Calls::$n += 1;
+	return $bag;
+}
+
+$bag = new Bag;
+Calls::$n = 0;
+hold($bag)->rows["k"] = "held";
+echo $bag->rows["k"] . "|" . Calls::$n . "\n";
 ---
 a,c|2
 x,z|2
@@ -50,3 +79,5 @@ a=1 b=2 c=3
 deep
 leaf
 unset
+leaf|2
+held|1

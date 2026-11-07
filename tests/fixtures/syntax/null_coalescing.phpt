@@ -5,8 +5,8 @@ description: >
   against the ternary and against concatenation, a right side that runs only
   when needed, a call on the left that runs once, an assignment on the right, a
   static property and a class constant, the levels ??= builds under a missing
-  key, and a string offset no byte sits at, which isset, empty and ?? all read
-  as unset.
+  key, a string offset no byte sits at, which isset, empty and ?? all read as
+  unset, and a ??= target whose index or receiver runs once.
 ---
 <?php
 
@@ -103,6 +103,42 @@ var_dump(empty($s[10]), empty($s[1]));
 // `??=` leaves a target that holds something alone.
 $s[0] ??= "z";
 var_dump($s);
+
+// The target runs once, whether the store happens or not: a call in the index,
+// an increment, and the receiver of a property.
+class Calls { public static $n = 0; }
+function key_once() { Calls::$n += 1; return 'k'; }
+$held = ['k' => 'held'];
+$held[key_once()] ??= 'stored';
+$fresh = [];
+$fresh[key_once()] ??= 'stored';
+echo $held['k'], $fresh['k'], " calls: ", Calls::$n, "\n";
+$t = [1 => 'x'];
+$i = 1;
+$t[$i++] ??= 'first';
+$t[$i++] ??= 'second';
+echo json_encode($t), " i=", $i, "\n";
+class Side { public $p = null; public $q = 'set'; public static $one = null; }
+function side() { Calls::$n += 1; if (Side::$one === null) { Side::$one = new Side; } return Side::$one; }
+Calls::$n = 0;
+side()->p ??= 'filled';
+side()->q ??= 'ignored';
+echo side()->p, side()->q, " calls: ", Calls::$n, "\n";
+
+// The same target shapes in a loop, inside a function and under a property.
+Calls::$n = 0;
+$seen = [];
+foreach (['x', 'y', 'x'] as $letter) {
+	$seen[$letter] ??= 0;
+	$seen[$letter] += 1;
+}
+echo $seen['x'], $seen['y'], "\n";
+function fill($rows) { $rows[key_once()] ??= 'filled'; return $rows['k']; }
+echo fill([]), fill(['k' => 'held']), "\n";
+class Tree { public $kids = []; }
+$tree = new Tree;
+$tree->kids[key_once()][key_once()] ??= 'leaf';
+echo $tree->kids['k']['k'], " calls: ", Calls::$n, "\n";
 ---
 null
 undef
@@ -152,3 +188,9 @@ bnonenonec
 bool(true)
 bool(false)
 string(3) "abc"
+heldstored calls: 2
+{"1":"x","2":"second"} i=3
+filledset calls: 4
+21
+filledheld
+leaf calls: 4

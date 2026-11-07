@@ -108,14 +108,14 @@ func (p *parser) parseAssign() (model.Expr, error) {
 }
 
 // assignExpr builds the assignment of op. `$a ??= b` assigns `$a ?? b`, and b
-// is read only while $a is unset or null. The target is read twice, so one
-// that holds a call or an increment is refused: it would run twice.
+// is read only while $a is unset or null; both engines resolve the target's
+// base and key once. An append target, `$a[] ??= b`, is a parse error.
 func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line int) (model.Expr, error) {
 	if op != "??=" {
 		return p.newAssignExpr(target, op, value, line), nil
 	}
-	if !repeatableExpr(target) {
-		return nil, fmt.Errorf("line %d: the target of ??= must be a variable, an element or a property without a call in it", line)
+	if index, ok := model.UnwrapParenthesized(target).(*model.Index); ok && index.Index == nil {
+		return nil, fmt.Errorf("line %d: ??= reads its target and [] cannot be read", line)
 	}
 	co := &model.Coalesce{Left: target, Right: value, Assign: true}
 	return p.newAssignExpr(target, "=", co, line), nil

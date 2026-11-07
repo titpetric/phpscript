@@ -156,3 +156,16 @@ func TestCoalesceCompiles(t *testing.T) {
 		t.Errorf("the host saw %v, want no operator", host.binary)
 	}
 }
+
+// TestCoalesceAssignEmitsOneCall covers the `??=` target: the key and the
+// receiver are stored in a hidden slot, which the read and the store load
+// back, so `$a[k()] ??= 1` compiles one call and php counts one.
+func TestCoalesceAssignEmitsOneCall(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{`<?php $a[k()] ??= 1;`, `<?php k()->p ??= 1;`} {
+		program := compileSource(t, source)
+		if n := countOps(program, opCall); n != 1 {
+			t.Errorf("%s compiled %d calls, want 1", source, n)
+		}
+	}
+}

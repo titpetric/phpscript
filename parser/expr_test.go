@@ -117,21 +117,24 @@ func TestCoalesceAndWordOperatorPrecedence(t *testing.T) {
 }
 
 // TestCoalesceAssignLowersToAssignment covers `??=`: an assignment whose value
-// is a Coalesce marked Assign, so the runtime needs no operator of its own,
-// and a target that holds a call is refused because it would run twice.
+// is a Coalesce marked Assign, so the runtime needs no operator of its own. A
+// target carrying a call takes the same shape; both engines resolve it once.
+// An append slot is refused, as php refuses to read one.
 func TestCoalesceAssignLowersToAssignment(t *testing.T) {
 	t.Parallel()
-	program := mustParse(t, `<?php $a['k'] ??= 5;`)
-	assign, ok := program.Stmts[0].(*model.Assign)
-	if !ok || assign.Op != "=" {
-		t.Fatalf("got %#v, want an assignment with op =", program.Stmts[0])
+	if _, err := Parse("<?php $a[] ??= 5;"); err == nil {
+		t.Error("an append target of ??= parsed; php cannot read one")
 	}
-	co, ok := assign.Value.(*model.Coalesce)
-	if !ok || !co.Assign {
-		t.Fatalf("value is %#v, want a Coalesce marked Assign", assign.Value)
-	}
-	if _, err := Parse("<?php f()['k'] ??= 5;"); err == nil {
-		t.Error("a call in the target of ??= parsed; it would run twice")
+	for _, src := range []string{`<?php $a['k'] ??= 5;`, `<?php $a[k()] ??= 5;`, `<?php f()->p ??= 5;`} {
+		program := mustParse(t, src)
+		assign, ok := program.Stmts[0].(*model.Assign)
+		if !ok || assign.Op != "=" {
+			t.Fatalf("%s: got %#v, want an assignment with op =", src, program.Stmts[0])
+		}
+		co, ok := assign.Value.(*model.Coalesce)
+		if !ok || !co.Assign {
+			t.Fatalf("%s: value is %#v, want a Coalesce marked Assign", src, assign.Value)
+		}
 	}
 }
 

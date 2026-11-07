@@ -957,6 +957,16 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 // coalesceAssignment compiles `$a ??= b`: the target's value stays on the
 // stack when it holds something, and the store runs over the right side alone.
 func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
+	switch node := model.UnwrapParenthesized(target).(type) {
+	case *model.Index:
+		if node.Index != nil {
+			return c.coalesceIndex(node, co, keep, path)
+		}
+	case *model.PropAccess:
+		if node.NameExpr == nil {
+			return c.coalesceProp(node, co, keep, path)
+		}
+	}
 	if err := c.expr(co.Left, path+".target"); err != nil {
 		return err
 	}
@@ -966,6 +976,64 @@ func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *mo
 	if err := c.assignment(target, operator, co.Right, true, path+".coalesce"); err != nil {
 		return err
 	}
+	c.program.code[setJump].target = len(c.program.code)
+	if !keep {
+		c.emit(instruction{op: opPop})
+	}
+	return nil
+}
+
+// coalesceIndex compiles `$a[k] ??= b` over two hidden slots: the container and
+// the key run once, and the read and the store both load them back.
+func (c *compiler) coalesceIndex(target *model.Index, co *model.Coalesce, keep bool, path string) error {
+	at := len(c.program.code)
+	baseSlot := c.slot(fmt.Sprintf("\x00coalesce-base-%d", at))
+	keySlot := c.slot(fmt.Sprintf("\x00coalesce-key-%d", at))
+	if err := c.ensureContainer(target.Base, path+".target.base"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opStore, a: baseSlot})
+	if err := c.expr(target.Index, path+".target.index"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opStore, a: keySlot})
+	c.emit(instruction{op: opLoad, a: baseSlot})
+	c.emit(instruction{op: opLoad, a: keySlot})
+	c.emit(instruction{op: opIndex})
+	c.emit(instruction{op: opDup})
+	setJump := c.emit(instruction{op: opJumpNotNil, target: -1})
+	c.emit(instruction{op: opPop})
+	if err := c.expr(co.Right, path+".value"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opLoad, a: baseSlot})
+	c.emit(instruction{op: opLoad, a: keySlot})
+	c.emit(instruction{op: opSetIndex, c: boolInt(true), name: "="})
+	c.program.code[setJump].target = len(c.program.code)
+	if !keep {
+		c.emit(instruction{op: opPop})
+	}
+	return nil
+}
+
+// coalesceProp compiles `$o->p ??= b`: the receiver runs once into a hidden
+// slot, which the read and the store both load back.
+func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, keep bool, path string) error {
+	recvSlot := c.slot(fmt.Sprintf("\x00coalesce-recv-%d", len(c.program.code)))
+	if err := c.expr(target.Base, path+".target.base"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opStore, a: recvSlot})
+	c.emit(instruction{op: opLoad, a: recvSlot})
+	c.emit(instruction{op: opGetProperty, name: target.Name})
+	c.emit(instruction{op: opDup})
+	setJump := c.emit(instruction{op: opJumpNotNil, target: -1})
+	c.emit(instruction{op: opPop})
+	if err := c.expr(co.Right, path+".value"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opLoad, a: recvSlot})
+	c.emit(instruction{op: opSetProperty, b: boolInt(true), name: target.Name, extra: "="})
 	c.program.code[setJump].target = len(c.program.code)
 	if !keep {
 		c.emit(instruction{op: opPop})
