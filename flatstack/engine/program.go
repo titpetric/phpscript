@@ -29,6 +29,7 @@ const (
 	opJump
 	opJumpFalse
 	opJumpTrue
+	opJumpNotNil
 	opCall
 	opRef
 	opConstruct

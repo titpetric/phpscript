@@ -50,7 +50,7 @@ func fuseProgram(p *Program) {
 
 	for i := range fused {
 		switch fused[i].op {
-		case opJump, opJumpFalse, opJumpTrue, opIterNext:
+		case opJump, opJumpFalse, opJumpTrue, opJumpNotNil, opIterNext:
 			fused[i].target = newPC[fused[i].target]
 		case opTryPush:
 			fused[i].target = newPC[fused[i].target]
@@ -123,7 +123,7 @@ func protectedPCs(p *Program) map[int]bool {
 	protected := map[int]bool{}
 	for _, inst := range p.code {
 		switch inst.op {
-		case opJump, opJumpFalse, opJumpTrue, opIterNext:
+		case opJump, opJumpFalse, opJumpTrue, opJumpNotNil, opIterNext:
 			protected[inst.target] = true
 		case opTryPush:
 			protected[inst.target] = true

@@ -29,13 +29,20 @@ var binPrec = map[string]int{
 }
 
 func (p *parser) parseExpr() (model.Expr, error) {
-	return p.parseLogical(0)
+	left, err := p.parseAssign()
+	if err != nil || logicalLevel(p.cur()) < 0 {
+		return left, err
+	}
+	return p.parseLogical(left, 0)
 }
 
-// logicalLevel orders the word operators, looser than assignment: 0 is `or`,
-// 1 `xor` and 2 `and`. Anything else is -1.
-func logicalLevel(op string) int {
-	switch strings.ToLower(op) {
+// logicalLevel orders the word operators of the current token, looser than
+// assignment: 0 is `or`, 1 `xor` and 2 `and`. Any other token is -1.
+func logicalLevel(t token) int {
+	if t.kind != tIdent {
+		return -1
+	}
+	switch strings.ToLower(t.val) {
 	case "or":
 		return 0
 	case "xor":
@@ -46,26 +53,24 @@ func logicalLevel(op string) int {
 	return -1
 }
 
-// parseLogical parses `or`, `xor` and `and`, left associative. They bind
-// looser than assignment, so `$ok = f() or die()` assigns first and then
-// tests the call.
-func (p *parser) parseLogical(level int) (model.Expr, error) {
-	if level > 2 {
-		return p.parseAssign()
-	}
-	left, err := p.parseLogical(level + 1)
-	if err != nil {
-		return nil, err
-	}
+// parseLogical folds `or`, `xor` and `and` onto left, each left associative.
+// They bind looser than assignment, so `$ok = f() or die()` assigns first and
+// then tests the call. Only the levels from min up are taken.
+func (p *parser) parseLogical(left model.Expr, min int) (model.Expr, error) {
 	for {
-		t := p.cur()
-		if t.kind != tIdent || logicalLevel(t.val) != level {
+		level := logicalLevel(p.cur())
+		if level < min {
 			return left, nil
 		}
 		op := strings.ToLower(p.next().val)
-		right, err := p.parseLogical(level + 1)
+		right, err := p.parseAssign()
 		if err != nil {
 			return nil, err
+		}
+		if logicalLevel(p.cur()) > level {
+			if right, err = p.parseLogical(right, level+1); err != nil {
+				return nil, err
+			}
 		}
 		left = p.newBinary(op, left, right)
 	}
@@ -97,19 +102,23 @@ func (p *parser) parseAssign() (model.Expr, error) {
 				right = &model.Ref{X: right}
 			}
 		}
-		// `$a ??= b` assigns `$a ?? b`, and b is read only while $a is unset
-		// or null. The target is read twice, so a call or an increment inside
-		// it would run twice.
-		if op == "??=" {
-			if !repeatableExpr(left) {
-				return nil, fmt.Errorf("line %d: the target of ??= must be a variable, an element or a property without a call in it", t.line)
-			}
-			co := &model.Coalesce{Left: left, Right: right, Assign: true}
-			return p.newAssignExpr(left, "=", co, t.line), nil
-		}
-		return p.newAssignExpr(left, op, right, t.line), nil
+		return p.assignExpr(left, op, right, t.line)
 	}
 	return left, nil
+}
+
+// assignExpr builds the assignment of op. `$a ??= b` assigns `$a ?? b`, and b
+// is read only while $a is unset or null. The target is read twice, so one
+// that holds a call or an increment is refused: it would run twice.
+func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line int) (model.Expr, error) {
+	if op != "??=" {
+		return p.newAssignExpr(target, op, value, line), nil
+	}
+	if !repeatableExpr(target) {
+		return nil, fmt.Errorf("line %d: the target of ??= must be a variable, an element or a property without a call in it", line)
+	}
+	co := &model.Coalesce{Left: target, Right: value, Assign: true}
+	return p.newAssignExpr(target, "=", co, line), nil
 }
 
 // isLValue reports whether an assignment may target e.
@@ -138,13 +147,15 @@ func (p *parser) parseCoalesce() (model.Expr, error) {
 	}
 	// `$a ?? $a = f()`: the assignment binds to the variable on its left, as
 	// it does to the right operand of a binary operator.
-	if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && t.val != "??=" && isLValue(right) {
+	if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(right) {
 		p.next()
 		value, err := p.parseAssign()
 		if err != nil {
 			return nil, err
 		}
-		right = p.newAssignExpr(right, t.val, value, t.line)
+		if right, err = p.assignExpr(right, t.val, value, t.line); err != nil {
+			return nil, err
+		}
 	}
 	return &model.Coalesce{Left: left, Right: right}, nil
 }
@@ -213,7 +224,9 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 					value = &model.Ref{X: value}
 				}
 			}
-			right = p.newAssignExpr(right, t.val, value, t.line)
+			if right, err = p.assignExpr(right, t.val, value, t.line); err != nil {
+				return nil, err
+			}
 		}
 		left = p.newBinary(op, left, right)
 	}

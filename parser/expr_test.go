@@ -100,6 +100,8 @@ func TestCoalesceAndWordOperatorPrecedence(t *testing.T) {
 		{src: `$a || $b ?? $c`, want: `(($a || $b) ?? $c)`},
 		{src: `$a ?? $b ? 1 : 2`, want: `(($a ?? $b) ? 1 : 2)`},
 		{src: `$a ?? $b = 1`, want: `($a ?? ($b = 1))`},
+		{src: `$a ?? $b ??= 1`, want: `($a ?? ($b = ($b ?? 1)))`},
+		{src: `true && $x ??= 5`, want: `(true && ($x = ($x ?? 5)))`},
 		{src: `1 + 1 <=> 2`, want: `((1 + 1) <=> 2)`},
 		{src: `1 <=> 2 + 3`, want: `(1 <=> (2 + 3))`},
 		{src: `$a = 1 and 0`, want: `(($a = 1) and 0)`},

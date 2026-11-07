@@ -1028,7 +1028,17 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opUnary, name: node.Op})
 	case *model.Coalesce:
-		return unsupported(path, "null coalescing")
+		// Left stays on the stack when it is set; a null is dropped for Right.
+		if err := c.expr(node.Left, path+".left"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opDup})
+		setJump := c.emit(instruction{op: opJumpNotNil, target: -1})
+		c.emit(instruction{op: opPop})
+		if err := c.expr(node.Right, path+".right"); err != nil {
+			return err
+		}
+		c.program.code[setJump].target = len(c.program.code)
 	case *model.Ternary:
 		if err := c.expr(node.Cond, path+".cond"); err != nil {
 			return err
