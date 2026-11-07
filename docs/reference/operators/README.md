@@ -11,7 +11,7 @@
 | String                         | Compatibility         | `.` and `.=` concatenate values.                                                             |
 | Type                           | Compatibility         | `instanceof` compares the class name, and an interface name against what the class declared. |
 | Array                          | Compatibility         | `+` on two arrays is their union, keeping the left entry where both hold a key.              |
-| Null coalescing                | Partial compatibility | `??` and `??=`; a target that holds a call is refused. [Null coalescing](#null-coalescing).  |
+| Null coalescing                | Partial compatibility | `??` and `??=`; a write to a string offset is refused. [Null coalescing](#null-coalescing). |
 | Nullsafe (`?->`)               | Not implemented       | `?->` is a parse error.                                                                      |
 | Execution operator             | Not implemented       | Backticks are a parse error; there is no shell escape.                                       |
 | Error control (`@`)            | Not implemented       | The parser accepts the token, which suppresses no errors.                                    |
@@ -52,7 +52,7 @@ This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1, an
 
 An offset past the end of a string, a negative one that reaches before its start and a key that spells no integer are the three a string holds nothing at. `isset()`, `empty()` and `??` read them all as unset, and a plain read of one answers null where php answers the empty string and raises a warning.
 
-`$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise, with no store over a target that holds something: `$s[0] ??= "z"` leaves the string as it stands. The target is read twice, and one that holds a call or an increment, `f()['k'] ??= 1` or `$t[$i++] ??= 1`, is a parse error where PHP reads such a target once; compute the key into a variable first. As with every assignment in expression position, a `??=` used as a value takes a variable on its left.
+`$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise, with no store over a target that holds something: `$s[0] ??= "z"` leaves the string as it stands. The target resolves once on both engines, whether the store happens or not: `$a[k()] ??= 1` calls `k` once, `$t[$i++] ??= 1` steps `$i` once, and `f()->p ??= 1` calls `f` once. `$a[] ??= 1` is a parse error here and in php, where an append slot is write-only. As with every assignment in expression position, a `??=` used as a value takes a variable on its left.
 
 A write to a string offset is not implemented, `??=` included: `$s[1] = "Z"` and `$s[10] ??= "z"` both end the run with `assign: target is not an array`, where php writes the byte and pads the string out to the offset. `tests/fixtures/syntax/null_coalescing.phpt` pins what works.
 
