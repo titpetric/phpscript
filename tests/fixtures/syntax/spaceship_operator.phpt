@@ -3,7 +3,8 @@ description: >
   Covers the spaceship operator: ordering of integers, floats, strings and
   numeric strings, arrays by count and then by element, null and bool in the
   bool domain, NAN answering 1 from either side, operands that run once in
-  order, its precedence against arithmetic, and the usort idiom.
+  order, its precedence against arithmetic, the usort idiom, an array against a
+  scalar, the infinities, and arrays whose keys or nested elements decide it.
 ---
 <?php
 
@@ -35,6 +36,18 @@ usort($rows, function ($x, $y) { return $x[0] <=> $y[0]; });
 echo implode(",", array_column($rows, 1)), "\n";
 usort($rows, function ($x, $y) { return [$y[1]] <=> [$x[1]]; });
 echo implode(",", array_column($rows, 1)), "\n";
+
+// Across types: an array outranks a string, and null takes the other side's domain.
+var_dump([1, 2] <=> "x", "abc" <=> null, "" <=> null);
+
+// Equal floats, the infinities, and two spellings of the same number.
+var_dump(INF <=> INF, -INF <=> INF, "1e3" <=> "1000");
+
+// Equal counts compare by the left's keys, and a bool pulls the other side in.
+var_dump(['a' => 1] <=> ['b' => 1], true <=> 2);
+
+// Nested arrays, and a string against an array.
+var_dump([[1], [2]] <=> [[1], [3]], "z" <=> [1]);
 ---
 1-10
 -110
@@ -53,3 +66,13 @@ int(0)
 int(-1)
 a,b,c
 c,b,a
+int(1)
+int(1)
+int(0)
+int(0)
+int(-1)
+int(0)
+int(1)
+int(0)
+int(-1)
+int(-1)
