@@ -97,6 +97,11 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	if err != nil {
 		return nil, fmt.Errorf("line %d: %s: %w", p.cur().line, model.GoNamespace+`\make`, err)
 	}
+	// `make([]http.Request, 2)` takes the type an import enumerated, where the
+	// element is the type and not the package. See goimport.go.
+	if full, source, ok := p.goMember(name); ok {
+		return p.newStringLit(dims+full, dims+source), nil
+	}
 	qualified := name
 	if !model.GoType(name) {
 		qualified = p.qualify(name, absolute)
