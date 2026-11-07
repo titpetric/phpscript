@@ -10,6 +10,8 @@ php's own `use Runtime\Go;` imports a name and no function with it: php aliases 
 
 The names arrive with the import and no other way. A file that imported none of them resolves `make` and `len` the way php does, `function_exists("make")` reports false, and the [implemented API inventory](implemented-apis.md) covers the surface php defines. An embedding host installs the area with `rt.UseNamespace("Runtime\\Go")`.
 
+The `use` binds one statement as well: `import "net/http";` reaches go's own packages, and `http.NewRequest(...)` is a name of the area that binds them. [Go imports](go-imports.md) is that half.
+
 php rejects a file that uses the syntax: `make([]string, 0, 10)` is a parse error under php and `len($s)` resolves to no php function. Keep the import out of source that must also run on php.
 
 ## Builtins

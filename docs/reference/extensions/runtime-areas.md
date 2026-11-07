@@ -96,6 +96,9 @@ A name outside the installed areas stays undefined, and `function_exists` answer
 | `Runtime\Go\Path`          | `path`          | `Base`, `Dir`, `Ext`, `Clean`, `Join`, `Match`                                     |
 | `Runtime\Go\Slices`        | `slices`        | `Contains`, `Index`, `Sort`, `Reverse`, `Max`, `Min`, `Compact`, `Concat`, `Equal` |
 | `Runtime\Go\Maps`          | `maps`          | `Keys`, `Values`, `Clone`, `Copy`, `Equal`, in the order the array keeps           |
+| `Runtime\Go\Fmt`           | `fmt`           | `Sprintf`, `Sprint`, `Sprintln`                                                    |
+| `Runtime\Go\IO`            | `io`            | `ReadAll`, `ReadFull`, over a reader a binding answered with                       |
+| `Runtime\Go\Net\HTTP`      | `net/http`      | `Get`, `Head`, `NewRequest`, `StatusText`, the methods and the status codes        |
 | `Runtime\Go\Encoding\JSON` | `encoding/json` | `Marshal`, `Unmarshal`, `Valid`                                                    |
 | `Runtime\Go\Database\SQL`  | `database/sql`  | `Open` a connection the host registered, never a DSN from the script               |
 
@@ -112,6 +115,8 @@ The default runtime carries none of these names. The import installs the area on
 `Strings\Repeat` throws a `RuntimeException` when the result would pass 256 MiB.
 
 The mapping continues down go's import paths: `net/http` is `Runtime\Go\Net\HTTP`, `path/filepath` is `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers under its own profile area, as `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
+
+A file that bound the go runtime writes the go spelling of the same import, which resolves to the same area: `import "net/http";` then `http.Get($url)`. [Go imports](go-imports.md) is that statement, the packages it reaches and how a binding package declares one.
 
 ## Writing an area
 
