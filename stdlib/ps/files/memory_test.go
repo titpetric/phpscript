@@ -9,25 +9,46 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestMemoryWrites covers the fopen modes php takes a write on: "r" and "x"
-// refuse one, where a "+" on either accepts it.
-func TestMemoryWrites(t *testing.T) {
+// TestMemoryMode covers every fopen mode php accepts, as php's own wrapper
+// answers them: "r", "x" and "c" refuse a write, a "+" on any of the three
+// takes one, where an append mode writes at the end.
+func TestMemoryMode(t *testing.T) {
 	t.Parallel()
-	for mode, want := range map[string]bool{
-		"r": false, "rb": false, "r+": true,
-		"w": true, "w+": true, "wb": true,
-		"a": true, "a+": true,
-		"x": false, "x+": true,
-		"c": true, "c+": true,
+	for mode, want := range map[string][2]bool{
+		"r": {false, false}, "rb": {false, false}, "r+": {true, false},
+		"w": {true, false}, "w+": {true, false}, "wb": {true, false},
+		"a": {true, true}, "a+": {true, true}, "ab": {true, true},
+		"x": {false, false}, "x+": {true, false},
+		"c": {false, false}, "c+": {true, false},
 	} {
-		if got := memoryWrites(mode); got != want {
-			t.Errorf("memoryWrites(%q) = %v, want %v", mode, got, want)
+		writable, appends := memoryMode(mode)
+		if got := [2]bool{writable, appends}; got != want {
+			t.Errorf("memoryMode(%q) = %v, want %v", mode, got, want)
 		}
 	}
 }
 
+// TestMemoryStreamAppends covers the write an append mode moves: php writes at
+// the end wherever the handle sits, where every other mode writes in place.
+func TestMemoryStreamAppends(t *testing.T) {
+	t.Parallel()
+	m := &memoryStream{writable: true, appends: true}
+	if _, err := m.Write([]byte("abc")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Write([]byte("X")); err != nil {
+		t.Fatal(err)
+	}
+	if want := "abcX"; string(m.buf) != want {
+		t.Errorf("buffer = %q, want %q", string(m.buf), want)
+	}
+}
+
 // TestStreamBounds covers the optional arguments stream_get_contents takes as
-// php's own numbers arrive: an int64, a float, a nil, a string, nothing.
+// php's own numbers arrive: an int64, a float, a null, a numeric string.
 func TestStreamBounds(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -41,7 +62,7 @@ func TestStreamBounds(t *testing.T) {
 		{"nil", []any{nil, nil}, -1, -1},
 		{"float", []any{float64(4), float64(2)}, 4, 2},
 		{"int", []any{5, 2}, 5, 2},
-		{"string", []any{"three"}, -1, -1},
+		{"numeric string", []any{"3", "1"}, 3, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			length, offset := streamBounds(tc.args)
@@ -124,17 +145,23 @@ func TestMemoryStreamSeekRefusals(t *testing.T) {
 }
 
 // TestOpenMemoryTakesAnArgument covers the suffix php's temp scheme accepts:
-// `temp/maxmemory:1024` opens the same buffer the bare name opens.
+// `temp/maxmemory:1024` opens the same buffer the bare name opens, where
+// `memory/foo` is a name php refuses and fopen answers false for.
 func TestOpenMemoryTakesAnArgument(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(os.Stdout, runner.Options{})
-	for _, scheme := range []string{"memory", "temp", "temp/maxmemory:1024"} {
+	for _, scheme := range []string{"memory", "temp", "temp/maxmemory:1024", "TEMP/maxmemory:8"} {
 		handle, ok, err := openWrapper(rt, scheme, "w+")
 		if !ok || err != nil {
 			t.Fatalf("openWrapper(%q) = %v, ok %v, err %v", scheme, handle, ok, err)
 		}
 		if _, isMemory := handle.(*memoryStream); !isMemory {
 			t.Errorf("openWrapper(%q) handed back %T", scheme, handle)
+		}
+	}
+	for _, scheme := range []string{"memory/foo", "temp/nonsense", "memory/maxmemory:8"} {
+		if handle, ok, err := openWrapper(rt, scheme, "w+"); ok || handle != nil || err != nil {
+			t.Errorf("openWrapper(%q) = %v, ok %v, err %v", scheme, handle, ok, err)
 		}
 	}
 }
