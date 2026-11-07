@@ -52,6 +52,8 @@ Source-file structure, runtime values, variables, constants, and expression eval
   - [Includes](expressions/README.md#includes)
 - [Operators](operators/README.md) - Supported operators, precedence, mutation, and unavailable PHP groups.
   - [Precedence](operators/README.md#precedence)
+  - [Null coalescing](operators/README.md#null-coalescing)
+  - [Spaceship](operators/README.md#spaceship)
   - [Mutation](operators/README.md#mutation)
 
 ## Control and composition
@@ -269,6 +271,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Folders map to areas](extensions/runtime-areas.md#folders-map-to-areas)
   - [The overlay installs last](extensions/runtime-areas.md#the-overlay-installs-last)
   - [Calling a function through its area](extensions/runtime-areas.md#calling-a-function-through-its-area)
+  - [Reaching a class through its area](extensions/runtime-areas.md#reaching-a-class-through-its-area)
   - [Configuring the default runtime](extensions/runtime-areas.md#configuring-the-default-runtime)
   - [Go's standard library, opt-in](extensions/runtime-areas.md#gos-standard-library-opt-in)
   - [Writing an area](extensions/runtime-areas.md#writing-an-area)
