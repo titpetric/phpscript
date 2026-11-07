@@ -81,12 +81,15 @@ func registerStreamReads(rt *runner.Runtime) {
 		return string(line)
 	})
 
-	// feof reports whether $stream is at its end. It answers for a handle
-	// fopen() gave out, by comparing where the handle sits against how long
-	// the file is; php://input and php://output are not seekable and answer
-	// false and a script draining the request body should read it with
-	// stream_get_contents.
+	// feof reports whether $stream is at its end. A buffer keeps php's rule,
+	// turning true on the read that came back empty, where a file compares the
+	// position of the handle against its length; php://input and php://output
+	// are not seekable and answer false and a script draining the request body
+	// should read it with stream_get_contents.
 	rt.RegisterFunc("feof", func(stream any) bool {
+		if r, ok := stream.(interface{ AtEOF() bool }); ok {
+			return r.AtEOF()
+		}
 		f, ok := stream.(*os.File)
 		if !ok || f == nil {
 			return false
