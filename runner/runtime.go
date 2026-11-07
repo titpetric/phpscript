@@ -565,6 +565,10 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 		rt.constants = rt.frozenConsts
 		rt.constsShared = true
 	}
+	// The constant table is the one the host froze again, which holds nothing
+	// an opt-in area added. The next program's import runs the installer
+	// again, and the memo of the areas it ran goes with the table.
+	clear(rt.imported)
 	rt.resetLimits()
 }
 
