@@ -2,7 +2,6 @@ package files
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -92,14 +91,10 @@ func registerStreams(rt *runner.Runtime, r root) {
 	// one.
 	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, bounds ...any) (string, error) {
 		length, offset := streamBounds(bounds)
-		if offset >= 0 {
-			seeker, ok := stream.(io.Seeker)
-			if !ok {
-				return "", fmt.Errorf("stream_get_contents(): the stream does not seek")
-			}
-			if _, err := seeker.Seek(offset, io.SeekStart); err != nil {
-				return "", err
-			}
+		if seeker, ok := stream.(io.Seeker); ok && offset >= 0 {
+			// php reads from where the handle sits when the seek fails: a pipe
+			// takes no offset.
+			_, _ = seeker.Seek(offset, io.SeekStart)
 		}
 		source := stream
 		if length >= 0 {
