@@ -2,8 +2,11 @@ name: null coalescing
 description: >
   Covers ?? and ??=: null, unset, false, 0 and the empty string on the left,
   missing keys and properties at any depth, right associativity, precedence
-  against the ternary, a right side that runs only when needed, a call on the
-  left that runs once, and an assignment on the right.
+  against the ternary and against concatenation, a right side that runs only
+  when needed, a call on the left that runs once, an assignment on the right, a
+  static property and a class constant, the levels ??= builds under a missing
+  key, and a string offset no byte sits at, which isset, empty and ?? all read
+  as unset.
 ---
 <?php
 
@@ -64,6 +67,42 @@ echo $lazy, "\n";
 function name($n) { return $n ?? "anon"; }
 echo name(null), name("bob"), "\n";
 echo "v=" . ($m['zz'] ?? "d") . "\n";
+
+// A static property, a class constant, and a static the class declared null.
+class Stat { public static $v = null; public static $w = 4; const K = 9; }
+var_dump(Stat::$v ?? 'd', Stat::$w ?? 'd', Stat::K ?? 'd');
+Stat::$v ??= 'set';
+Stat::$v ??= 'again';
+echo Stat::$v, "\n";
+
+// `??=` builds the levels a missing key needs.
+$n = [];
+$n['a']['b'] ??= 1;
+$n['a']['c'] ??= 2;
+$n['x']['y']['z'] ??= 'q';
+echo json_encode($n), "\n";
+
+// Concatenation binds tighter, and the left side is the whole string.
+$u = null;
+var_dump("a" . $u ?? "b");
+
+// A call inside the index, and a call to the left of it.
+$list = [1, 2, 3];
+echo $list[count($list) - 1] ?? 'last', "\n";
+class Box { public $d = ['k' => 'v']; public function all() { return $this->d; } }
+$box = new Box;
+echo $box->all()['k'] ?? 'd', $box->all()['q'] ?? 'd', "\n";
+
+// A string offset no byte sits at is unset, the way a missing key is, and
+// `isset`, `empty` and `??` all read it that way.
+$s = "abc";
+var_dump(isset($s[1]), isset($s[10]), isset($s["x"]), isset($s[-1]), isset($s[-9]));
+echo $s[1] ?? "none", $s[10] ?? "none", $s["x"] ?? "none", $s[-1] ?? "none", "\n";
+var_dump(empty($s[10]), empty($s[1]));
+
+// `??=` leaves a target that holds something alone.
+$s[0] ??= "z";
+var_dump($s);
 ---
 null
 undef
@@ -96,3 +135,20 @@ eval init
 init
 anonbob
 v=d
+string(1) "d"
+int(4)
+int(9)
+set
+{"a":{"b":1,"c":2},"x":{"y":{"z":"q"}}}
+string(1) "a"
+3
+vd
+bool(true)
+bool(false)
+bool(false)
+bool(true)
+bool(false)
+bnonenonec
+bool(true)
+bool(false)
+string(3) "abc"
