@@ -25,7 +25,11 @@ type printer struct {
 	// from one the printer would be inventing.
 	// imports maps a fully-qualified name to the alias the file's use
 	// statements gave it and a reference prints in its own spelling.
-	imports     map[string]string
+	imports map[string]string
+	// goImports maps the area of an `import "net/http"` statement to the name
+	// it bound, for the members that print as the source wrote them. Nil for a
+	// file that writes none. See goimport.go.
+	goImports   map[string]string
 	comments    []Comment
 	nextComment int
 	lastLine    int
