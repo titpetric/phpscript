@@ -48,11 +48,11 @@ This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1, an
 
 ## Null coalescing
 
-`$a ?? $b` is `$a` unless it is null or unset, and `$b` is read only then. A missing array key, a missing property and a property of null all count as unset, at any depth, and `false`, `0` and `""` are values. The operator is right associative, so `$a ?? $b ?? $c` reads the first one that is set.
+`$a ?? $b` is `$a` unless it is null or unset, and `$b` is read only then. A missing array key, a missing property and a property of null all count as unset, at any depth, and `false`, `0` and `""` are values. A string offset is the exception, as it is for `isset()`: `$s[10]` reads as the empty string and not as unset. The operator is right associative, so `$a ?? $b ?? $c` reads the first one that is set.
 
 `$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise. The target is read twice, so one that holds a call, `f()['k'] ??= 1`, is a parse error. As with every assignment in expression position, a `??=` used as a value takes a variable on its left.
 
-The bytecode engine declines a program that uses `??`, and the interpreter runs the whole of it. `tests/fixtures/syntax/null_coalescing.phpt` pins the behavior.
+The target is read before the right side runs, and a target that holds a call is refused where PHP evaluates it once; compute the key into a variable first. `tests/fixtures/syntax/null_coalescing.phpt` pins the behavior.
 
 ## Spaceship
 

@@ -133,3 +133,26 @@ func TestHost(t *testing.T) {
 		t.Errorf("echoed = %v, want only the branch Truthy allowed", host.echoed)
 	}
 }
+
+// TestCoalesceCompiles covers `??` on the bytecode engine: a left side that
+// is set is the value and the right side never runs, and a null left side
+// drops to the right. The engine owns the null test and no value semantics,
+// so Echo sees the two values themselves and the host sees no operator.
+func TestCoalesceCompiles(t *testing.T) {
+	t.Parallel()
+	host := &semanticHost{}
+	runHost(t, host, `<?php $a = 7; echo $a ?? 1; $b = null; echo $b ?? 2; echo 3 ?? 4;`)
+
+	want := []any{int64(7), int64(2), int64(3)}
+	if len(host.echoed) != len(want) {
+		t.Fatalf("echoed = %v, want %v", host.echoed, want)
+	}
+	for i, value := range want {
+		if host.echoed[i] != value {
+			t.Errorf("echoed[%d] = %v, want %v", i, host.echoed[i], value)
+		}
+	}
+	if len(host.binary) != 0 {
+		t.Errorf("the host saw %v, want no operator", host.binary)
+	}
+}

@@ -1061,6 +1061,15 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				st.pc = inst.target
 				continue
 			}
+		case opJumpNotNil:
+			value, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			if value != nil {
+				st.pc = inst.target
+				continue
+			}
 		case opRef:
 			// The setter writes the frame holding the call; a user function
 			// called before the setter runs installs its own st.locals, and
