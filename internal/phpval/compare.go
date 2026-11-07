@@ -13,8 +13,10 @@ import (
 // 1. Its rules in order:
 //
 //	arrays          the shorter is smaller, an array beats any scalar
+//	array vs bool   the array's emptiness is its truth, and both read as bool
 //	null vs string  the null becomes "" and both compare as strings
 //	bool or null    Compare casts both sides to bool
+//	instances       the same class compares property by property
 //	numbers         a number and a numeric string compare numerically
 //	anything else   Compare casts both sides to string, compared bytewise.
 func Compare(x, y any) int {
@@ -24,9 +26,19 @@ func Compare(x, y any) int {
 	case xIsArray && yIsArray:
 		return compareArrays(xa, ya)
 	case xIsArray:
-		return 1
+		// `[] == false` and `[1] == true`: a bool or a null on the other side
+		// takes the pair into the bool domain, where an array is its own
+		// emptiness. An instance is greater than any array, and every other
+		// value is smaller.
+		if isBoolish(y) {
+			return compareBools(xa.Len() > 0, toBool(y))
+		}
+		return isObject(y, -1)
 	case yIsArray:
-		return -1
+		if isBoolish(x) {
+			return compareBools(toBool(x), ya.Len() > 0)
+		}
+		return isObject(x, 1)
 	}
 
 	// null against a string is the one pairing PHP does not decide on
@@ -43,6 +55,17 @@ func Compare(x, y any) int {
 	}
 	if isBoolish(x) || isBoolish(y) {
 		return compareBools(toBool(x), toBool(y))
+	}
+
+	xo, xIsObject := x.(*model.Object)
+	yo, yIsObject := y.(*model.Object)
+	switch {
+	case xIsObject && yIsObject:
+		return compareObjects(xo, yo)
+	case xIsObject:
+		return 1
+	case yIsObject:
+		return -1
 	}
 
 	xn, xIsNum := phpNumeric(x)
@@ -71,7 +94,7 @@ func comparableArray(v any) (*model.Array, bool) {
 	return nil, false
 }
 
-// compareArrays orders two arrays the way PHP does: the one with fewer members
+// compareArrays orders two arrays the way PHP does: fewer members
 // is smaller, and same-size arrays compare member by member over the left
 // array's keys. A key the right array does not have makes the left array
 // greater, PHP's answer for two arrays it cannot compare.
@@ -82,6 +105,46 @@ func compareArrays(x, y *model.Array) int {
 	result := 0
 	x.Range(func(key, val any) bool {
 		other, ok := y.Get(key)
+		if !ok {
+			result = 1
+			return false
+		}
+		result = Compare(val, other)
+		return result == 0
+	})
+	return result
+}
+
+// isObject answers side where v is an instance, and the opposite otherwise. It
+// reads one pairing: an array against an instance, which PHP calls for the
+// instance.
+func isObject(v any, side int) int {
+	if _, ok := v.(*model.Object); ok {
+		return side
+	}
+	return -side
+}
+
+// compareObjects orders two instances the way PHP does: one class compares
+// property by property over the left's own order, and two classes that differ
+// answer 1, PHP's answer for a pair it cannot order. Identity is `===`, which
+// phpIdentical answers and this never reads.
+func compareObjects(x, y *model.Object) int {
+	if x == y {
+		return 0
+	}
+	if x.Class == nil || y.Class == nil {
+		return 1
+	}
+	if x.Class != y.Class && !strings.EqualFold(x.Class.Name, y.Class.Name) {
+		return 1
+	}
+	if x.Len() != y.Len() {
+		return compareBools(x.Len() > y.Len(), y.Len() > x.Len())
+	}
+	result := 0
+	x.Range(func(name string, val any) bool {
+		other, ok := y.Prop(name)
 		if !ok {
 			result = 1
 			return false

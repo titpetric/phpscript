@@ -21,6 +21,15 @@ func TestCompare(t *testing.T) {
 		a.Set(key, val)
 		return a
 	}
+	instance := func(class *model.Class, x, y int64) *model.Object {
+		o := model.NewObject(class)
+		o.SetProp("x", x)
+		o.SetProp("y", y)
+		return o
+	}
+	pointClass, pairClass := &model.Class{Name: "Point"}, &model.Class{Name: "Pair"}
+	point := func(x, y int64) *model.Object { return instance(pointClass, x, y) }
+	pair := func(x, y int64) *model.Object { return instance(pairClass, x, y) }
 
 	cases := []struct {
 		x, y any
@@ -90,6 +99,29 @@ func TestCompare(t *testing.T) {
 		{list(1), 5, 1},
 		{5, list(1), -1},
 		{model.NewArray(), "", 1},
+
+		// an array against a bool or a null is its own emptiness
+		{model.NewArray(), false, 0},
+		{model.NewArray(), nil, 0},
+		{list(1), true, 0},
+		{model.NewArray(), true, -1},
+		{true, model.NewArray(), 1},
+		{nil, list(1), -1},
+
+		// two instances of one class compare property by property, and two
+		// classes that differ answer 1, php's answer for a pair it cannot
+		// order. An instance is greater than an array or a string.
+		{point(1, 2), point(1, 2), 0},
+		{point(1, 2), point(9, 2), -1},
+		{point(9, 2), point(1, 2), 1},
+		{point(1, 2), pair(1, 2), 1},
+		{pair(1, 2), point(1, 2), 1},
+		{point(1, 2), list(1, 2), 1},
+		{list(1, 2), point(1, 2), -1},
+		{point(1, 2), "s", 1},
+		{"s", point(1, 2), -1},
+		{point(1, 2), nil, 1},
+		{nil, point(1, 2), -1},
 	}
 	for _, c := range cases {
 		if got := Compare(c.x, c.y); got != c.want {
