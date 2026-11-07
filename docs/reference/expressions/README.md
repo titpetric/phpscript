@@ -1,19 +1,21 @@
 # Expressions
 
-| PHP language-reference feature | Status                | Notes                                                                                                   |
-|--------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------|
-| Literals and variables         | Compatibility         | A supported value is an expression.                                                                     |
-| Assignment expressions         | Partial compatibility | Plain `=` to a variable returns the assigned value; other expression targets/operators are unavailable. |
-| Ternary expressions            | Compatibility         | The runtime evaluates the full and the shorthand (`?:`) form.                                           |
-| Function and method calls      | Compatibility         | Calls are expressions.                                                                                  |
-| `new` expressions              | Compatibility         | Parentheses are optional when `new` takes no constructor arguments.                                     |
-| `include` expressions          | Partial compatibility | Include forms occur as statements or expressions. A file the runtime cannot load fails the request.     |
-| `match`, cloning               | Not implemented       | These PHP expression forms are unavailable.                                                             |
-| `yield`                        | Won't build           | Generators are a decision. See [Design decisions](../../design.md#wont-build).                          |
+| PHP language-reference feature | Status                | Notes                                                                                               |
+|--------------------------------|-----------------------|-----------------------------------------------------------------------------------------------------|
+| Literals and variables         | Compatibility         | A supported value is an expression.                                                                 |
+| Assignment expressions         | Compatibility         | An assignment answers what it stored, over every target and operator.                               |
+| Ternary expressions            | Compatibility         | The runtime evaluates the full and the shorthand (`?:`) form.                                       |
+| Function and method calls      | Compatibility         | Calls are expressions.                                                                              |
+| `new` expressions              | Compatibility         | Parentheses are optional when `new` takes no constructor arguments.                                 |
+| `include` expressions          | Partial compatibility | Include forms occur as statements or expressions. A file the runtime cannot load fails the request. |
+| `match`, cloning               | Not implemented       | These PHP expression forms are unavailable.                                                         |
+| `yield`                        | Won't build           | Generators are a decision. See [Design decisions](../../design.md#wont-build).                      |
 
 ## Assignment expressions
 
-Plain assignment to a variable can appear inside larger expressions, including conditions. The linter reports assignment inside `if` conditions, where `=` is easy to mistake for a comparison. Array, property, destructuring, and compound assignment expressions run only as standalone statements.
+An assignment can appear inside a larger expression, including a condition, and answers what it stored: `$x = $a['k'] = 1` leaves 1 in both, `$x = $counts['k'] += 2` answers the updated count, and a chain stores outside in. The linter reports assignment inside `if` conditions, where `=` is easy to mistake for a comparison.
+
+The target resolves before the value, php's order: `$m[$i++] = $i` reads the key first and stores the stepped `$i` under it. See [tests/fixtures/syntax/assignment_as_value.phpt](../../../tests/fixtures/syntax/assignment_as_value.phpt).
 
 ```php
 if (($row = load_row()) !== false) {
