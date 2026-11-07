@@ -80,8 +80,12 @@ func TestHelperIndex(t *testing.T) {
 		{"a missing key", array, "absent", nil},
 		{"a string offset", "hello", int64(1), "e"},
 		{"a negative string offset", "hello", int64(-1), "o"},
-		{"a string offset past the end", "hello", int64(10), ""},
-		{"a string offset before the start", "hello", int64(-10), ""},
+		// An offset no byte sits at holds nothing, as a missing array key
+		// does: `isset`, `empty` and `??` all read this value.
+		{"a string offset past the end", "hello", int64(10), nil},
+		{"a string offset before the start", "hello", int64(-10), nil},
+		{"a non-numeric string offset", "hello", "name", nil},
+		{"a numeric string offset", "hello", "1", "e"},
 		{"bytes", []byte("hello"), int64(0), "h"},
 		{"nil", nil, "name", nil},
 		{"a Go map", map[string]int{"n": 7}, "n", 7},
