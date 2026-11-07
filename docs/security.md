@@ -87,8 +87,8 @@ The startup checks run over the whole list before the server listens, and `phpsc
 
 A process started without `--stdlib` installs every binding package `stdlib/imports.go` imports (`stdlib/stdlib.go:17`) and every site gets the whole standard library, including the parts that reach outside the request:
 
-| Capability                                 | Binding          | What it reaches                                                                      |
-|--------------------------------------------|------------------|--------------------------------------------------------------------------------------|
+| Capability                                 | Binding             | What it reaches                                                                      |
+|--------------------------------------------|---------------------|--------------------------------------------------------------------------------------|
 | `exec`, `system`, `passthru`, `shell_exec` | `stdlib/ps/pexec`   | A process at the privilege of the user running the server                            |
 | `new HTTP\Client`                          | `stdlib/ps/http`    | Any address the host can route to, with headers the script sets                      |
 | `new HTTP\Server($addr, ...)`              | `stdlib/ps/http`    | A listening socket on an address the script names                                    |
@@ -127,10 +127,10 @@ Writes are additionally held to `writable_paths`, and a refused write throws whe
 
 Three places reach the host filesystem directly, and all three are decisions.
 
-| Place                                    | Where                               | Status                                                                                                                                            |
-|------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| Place                                    | Where                                  | Status                                                                                                                                            |
+|------------------------------------------|----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
 | `exec` and the three functions beside it | `stdlib/ps/pexec/exec.go:40`           | By design. A command is a process, and the root only decides where it starts                                                                      |
-| An uploaded part                         | `runner/context_upload.go:81`       | By design. Written to the system temporary directory, readable back only through the request's own registry                                       |
+| An uploaded part                         | `runner/context_upload.go:81`          | By design. Written to the system temporary directory, readable back only through the request's own registry                                       |
 | `Session\Storage\Disk` with no path      | `stdlib/ps/session/storage_disk.go:67` | By design. A directory of this application's own below the host's temporary directory, named after a digest of the root and no script can name it |
 
 Two more rows belong to this table's history and not to the list above. `Session\Storage\Disk($path)` resolves the path a script names through the runtime's rule and holds it to `writable_paths` (`stdlib/ps/session/storage_disk.go:36`), and gd does the same for an image path (`stdlib/ps/gd/gd.go:146`) and every binding resolves an absolute path to the root and `file_exists()` agrees with its neighbours. [tests/fixtures/bindings/session_disk_root.phpt](../tests/fixtures/bindings/session_disk_root.phpt) pins the session half.
