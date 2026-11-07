@@ -552,6 +552,11 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		return p.newLit(nil), nil
 	}
 	name := t.val
+	// `http.NewRequest(...)` and `http.StatusOK` name a member of a package
+	// the file imported, the one place a dot is a name. See goimport.go.
+	if full, _, ok := p.goMember(name); ok {
+		return p.parseNamedExpr(full, true)
+	}
 	for p.isOp("\\") {
 		p.next()
 		if p.cur().kind != tIdent {
@@ -811,6 +816,10 @@ func (p *parser) parseNew() (model.Expr, error) {
 	class, absolute, err := p.parseQualifiedName(true)
 	if err != nil {
 		return nil, fmt.Errorf("line %d: expected class name after new: %w", p.cur().line, err)
+	}
+	// `new http.Request` names the type the import enumerated. See goimport.go.
+	if full, _, ok := p.goMember(class); ok {
+		class, absolute = full, true
 	}
 	n := &model.New{Class: p.qualify(class, absolute)}
 	if p.isOp("(") {

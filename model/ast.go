@@ -224,9 +224,14 @@ type Use struct {
 
 // UseImport is one name of a `use` statement. The parser fills Alias only for
 // the `as` spelling; otherwise the short name of Path is the local name.
+//
+// Package holds the go import path an `import "net/http"` statement wrote,
+// where Path holds the area it resolves to. The printer writes the go spelling
+// back from it; the runtime installs Path either way.
 type UseImport struct {
-	Path  string
-	Alias string
+	Path    string
+	Alias   string
+	Package string
 }
 
 // Declare is `declare(strict_types=1);` or `declare(ticks=1) { ... }`. The
