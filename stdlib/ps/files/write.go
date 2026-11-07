@@ -3,6 +3,7 @@ package files
 import (
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/titpetric/phpscript/runner"
@@ -35,6 +36,9 @@ func registerWrites(rt *runner.Runtime, r root) {
 	// truncating, LOCK_EX does nothing, and it refuses a path outside
 	// writable_paths.
 	rt.RegisterFunc("file_put_contents", func(filename, data string, flags ...int64) (any, error) {
+		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
+			return writeStream(rt, scheme, data), nil
+		}
 		name, err := r.resolveWrite("file_put_contents", filename)
 		if err != nil {
 			return false, err

@@ -2,6 +2,7 @@ package files
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -13,9 +14,10 @@ import (
 // fopen() returns; PHP calls it a resource.
 func registerStreams(rt *runner.Runtime, r root) {
 	// fopen opens $filename in $mode and returns a handle, or false on
-	// failure; php://output is the script's own output stream, php://input is
-	// the raw request body (stdin under the cli SAPI), and fopen refuses a
-	// mode that can write outside writable_paths.
+	// failure; php://output is the script's own output stream, php://input the
+	// raw request body (stdin under the cli SAPI), php://memory and php://temp
+	// a buffer the script owns, and fopen refuses a mode that can write
+	// outside writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {
@@ -30,10 +32,10 @@ func registerStreams(rt *runner.Runtime, r root) {
 				}
 				return handle, nil
 			}
-			// The other wrappers (memory, temp) are not implemented;
-			// false is PHP's answer for a stream it cannot open, and
-			// resolving the name would invent a file called php:/memory
-			// instead.
+			// A scheme no wrapper answers for is false, PHP's answer for
+			// a stream it cannot open: resolving the name would invent a
+			// file called php:/filter instead. memory and temp are
+			// wrappers of their own; see memory.go.
 			return false, nil
 		}
 		name, isUpload := r.uploadPath(filename)
@@ -78,14 +80,32 @@ func registerStreams(rt *runner.Runtime, r root) {
 			// Closing the handle does not close the script's output or
 			// its request body; PHP answers true for both.
 			return true
+		case io.Closer:
+			// A wrapper's own handle, php://memory among them.
+			return h.Close() == nil
 		}
 		return false
 	})
-	// stream_get_contents reads any reader for the same reason fwrite writes
-	// any writer: STDIN is one, and this is how a script reads a whole handle
-	// at once.
-	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, _ ...any) (string, error) {
-		v, err := io.ReadAll(stream)
+	// stream_get_contents reads $stream whole, or $maxlength bytes from
+	// $offset; a negative or absent one of either reads the rest from where the
+	// handle sits. It takes any reader, as fwrite takes any writer: STDIN is
+	// one.
+	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, bounds ...any) (string, error) {
+		length, offset := streamBounds(bounds)
+		if offset >= 0 {
+			seeker, ok := stream.(io.Seeker)
+			if !ok {
+				return "", fmt.Errorf("stream_get_contents(): the stream does not seek")
+			}
+			if _, err := seeker.Seek(offset, io.SeekStart); err != nil {
+				return "", err
+			}
+		}
+		source := stream
+		if length >= 0 {
+			source = io.LimitReader(stream, length)
+		}
+		v, err := io.ReadAll(source)
 		if err != nil {
 			return "", err
 		}

@@ -52,7 +52,7 @@ func registerReads(rt *runner.Runtime, r root) {
 				}
 				return string(b)
 			}
-			return false
+			return readStream(rt, scheme)
 		}
 		if name, ok := r.uploadPath(filename); ok {
 			b, err := os.ReadFile(name)
