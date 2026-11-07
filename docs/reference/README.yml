@@ -99,6 +99,8 @@ sitemap:
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
       - path: extensions/go-runtime.md
         description: Writing Go's own values in a script - slices, maps and sized integers - for the code that calls Go bindings.
+      - path: extensions/go-imports.md
+        description: The import statement a file that bound the go runtime may write, and the packages of go's standard library it reaches.
       - path: extensions/regexp.md
         description: How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md
