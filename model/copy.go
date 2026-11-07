@@ -176,6 +176,8 @@ func exprAssignsTo(e Expr, root string) bool {
 		return exprAssignsTo(n.Left, root) || exprAssignsTo(n.Right, root)
 	case *Interp:
 		return exprsAssignTo(n.Parts, root)
+	case *Coalesce:
+		return exprAssignsTo(n.Left, root) || exprAssignsTo(n.Right, root)
 	case *Ternary:
 		return exprAssignsTo(n.Cond, root) || exprAssignsTo(n.Then, root) || exprAssignsTo(n.Else, root)
 	case *Cast:

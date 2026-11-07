@@ -247,10 +247,14 @@ func (h flatHost) Binary(op string, left, right any) (any, error) {
 		return phpInstanceOf(left, right), nil
 	case "==", "!=", "===", "!==", "<", "<=", ">", ">=":
 		return phpCompare(op, left, right), nil
+	case "<=>":
+		return phpSpaceship(left, right), nil
 	case "&&":
 		return phpTruthy(left) && phpTruthy(right), nil
 	case "||":
 		return phpTruthy(left) || phpTruthy(right), nil
+	case "xor":
+		return phpTruthy(left) != phpTruthy(right), nil
 	default:
 		return nil, fmt.Errorf("unsupported binary operator %q", op)
 	}

@@ -88,6 +88,8 @@ func (p *printer) expr(e model.Expr) string {
 		return "(" + p.expr(n.X) + ")"
 	case *model.Binary:
 		return p.expr(n.Left) + " " + n.Op + " " + p.expr(n.Right)
+	case *model.Coalesce:
+		return p.expr(n.Left) + " ?? " + p.expr(n.Right)
 	case *model.Ternary:
 		return p.expr(n.Cond) + " ? " + p.expr(n.Then) + " : " + p.expr(n.Else)
 	case *model.ClassConst:
@@ -131,7 +133,7 @@ func (p *printer) expr(e model.Expr) string {
 		if op == "[]=" {
 			return p.expr(n.Target) + "[] = " + p.expr(n.Value)
 		}
-		return p.expr(n.Target) + " " + op + " " + p.expr(n.Value)
+		return p.assignText(n.Target, op, n.Value)
 	case *model.ListExpr:
 		return "list(" + p.args(n.Elems) + ")"
 	case *model.Include:

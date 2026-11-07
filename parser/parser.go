@@ -1698,6 +1698,8 @@ func repeatableExpr(e model.Expr) bool {
 		return repeatableExpr(n.X)
 	case *model.Binary:
 		return repeatableExpr(n.Left) && repeatableExpr(n.Right)
+	case *model.Coalesce:
+		return repeatableExpr(n.Left) && repeatableExpr(n.Right)
 	case *model.Ternary:
 		return repeatableExpr(n.Cond) && repeatableExpr(n.Then) && repeatableExpr(n.Else)
 	}
@@ -1716,7 +1718,7 @@ func repeatableExprs(xs []model.Expr) bool {
 func isAssignOp(v string) bool {
 	switch v {
 	case "=", ".=", "+=", "-=", "*=", "/=", "%=", "**=", "[]=",
-		"&=", "|=", "^=", "<<=", ">>=":
+		"&=", "|=", "^=", "<<=", ">>=", "??=":
 		return true
 	}
 	return false

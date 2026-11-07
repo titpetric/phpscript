@@ -20,7 +20,7 @@ import (
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
 	"|": 3, "^": 4, "&": 5,
-	"==": 6, "!=": 6, "===": 6, "!==": 6,
+	"==": 6, "!=": 6, "===": 6, "!==": 6, "<=>": 6,
 	"<": 7, "<=": 7, ">": 7, ">=": 7,
 	".":  8,
 	"<<": 9, ">>": 9,
@@ -29,7 +29,46 @@ var binPrec = map[string]int{
 }
 
 func (p *parser) parseExpr() (model.Expr, error) {
-	return p.parseAssign()
+	return p.parseLogical(0)
+}
+
+// logicalLevel orders the word operators, looser than assignment: 0 is `or`,
+// 1 `xor` and 2 `and`. Anything else is -1.
+func logicalLevel(op string) int {
+	switch strings.ToLower(op) {
+	case "or":
+		return 0
+	case "xor":
+		return 1
+	case "and":
+		return 2
+	}
+	return -1
+}
+
+// parseLogical parses `or`, `xor` and `and`, left associative. They bind
+// looser than assignment, so `$ok = f() or die()` assigns first and then
+// tests the call.
+func (p *parser) parseLogical(level int) (model.Expr, error) {
+	if level > 2 {
+		return p.parseAssign()
+	}
+	left, err := p.parseLogical(level + 1)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t := p.cur()
+		if t.kind != tIdent || logicalLevel(t.val) != level {
+			return left, nil
+		}
+		op := strings.ToLower(p.next().val)
+		right, err := p.parseLogical(level + 1)
+		if err != nil {
+			return nil, err
+		}
+		left = p.newBinary(op, left, right)
+	}
 }
 
 // parseAssign supports assignment used as an expression (e.g. the PHP idiom
@@ -58,6 +97,16 @@ func (p *parser) parseAssign() (model.Expr, error) {
 				right = &model.Ref{X: right}
 			}
 		}
+		// `$a ??= b` assigns `$a ?? b`, and b is read only while $a is unset
+		// or null. The target is read twice, so a call or an increment inside
+		// it would run twice.
+		if op == "??=" {
+			if !repeatableExpr(left) {
+				return nil, fmt.Errorf("line %d: the target of ??= must be a variable, an element or a property without a call in it", t.line)
+			}
+			co := &model.Coalesce{Left: left, Right: right, Assign: true}
+			return p.newAssignExpr(left, "=", co, t.line), nil
+		}
 		return p.newAssignExpr(left, op, right, t.line), nil
 	}
 	return left, nil
@@ -72,8 +121,36 @@ func isLValue(e model.Expr) bool {
 	return false
 }
 
+// parseCoalesce parses `a ?? b`. It is right associative, so `a ?? b ?? c` is
+// `a ?? (b ?? c)`, and binds tighter than the ternary and looser than `||`.
+func (p *parser) parseCoalesce() (model.Expr, error) {
+	left, err := p.parseBinary(1)
+	if err != nil {
+		return nil, err
+	}
+	if !p.isOp("??") {
+		return left, nil
+	}
+	p.next()
+	right, err := p.parseCoalesce()
+	if err != nil {
+		return nil, err
+	}
+	// `$a ?? $a = f()`: the assignment binds to the variable on its left, as
+	// it does to the right operand of a binary operator.
+	if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && t.val != "??=" && isLValue(right) {
+		p.next()
+		value, err := p.parseAssign()
+		if err != nil {
+			return nil, err
+		}
+		right = p.newAssignExpr(right, t.val, value, t.line)
+	}
+	return &model.Coalesce{Left: left, Right: right}, nil
+}
+
 func (p *parser) parseTernary() (model.Expr, error) {
-	cond, err := p.parseBinary(1)
+	cond, err := p.parseCoalesce()
 	if err != nil {
 		return nil, err
 	}

@@ -420,6 +420,9 @@ func (w *astWalker) one(e model.Expr) {
 	case *model.Binary:
 		w.one(n.Left)
 		w.one(n.Right)
+	case *model.Coalesce:
+		w.one(n.Left)
+		w.one(n.Right)
 	case *model.Ternary:
 		w.one(n.Cond)
 		w.one(n.Then)

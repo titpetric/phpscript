@@ -56,6 +56,22 @@ func phpCompare(op string, a, b any) bool {
 	}
 }
 
+// phpSpaceship is PHP's `<=>`: -1, 0 or 1 by phpval.Compare's ordering. A NaN
+// operand answers 1 in either position, as in phpCompare, unless a bool or
+// null on the other side takes the comparison into the bool domain.
+func phpSpaceship(a, b any) int64 {
+	if (isNaNValue(a) || isNaNValue(b)) && !inBoolDomain(a) && !inBoolDomain(b) {
+		return 1
+	}
+	switch c := phpval.Compare(a, b); {
+	case c < 0:
+		return -1
+	case c > 0:
+		return 1
+	}
+	return 0
+}
+
 // isNaNValue reports a float64 NaN operand, the value fdiv(0, 0) returns.
 func isNaNValue(v any) bool {
 	f, ok := v.(float64)

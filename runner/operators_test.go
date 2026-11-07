@@ -7,6 +7,34 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// TestPHPSpaceship covers `<=>`: the sign of phpval.Compare's ordering as an
+// int, and NaN answering 1 from either side unless a bool or null takes the
+// comparison into the bool domain.
+func TestPHPSpaceship(t *testing.T) {
+	t.Parallel()
+	nan := math.NaN()
+	for _, test := range []struct {
+		a, b any
+		want int64
+	}{
+		{int64(1), int64(2), -1},
+		{int64(2), int64(1), 1},
+		{"a", "a", 0},
+		{"10", "9", 1},
+		{1.5, int64(1), 1},
+		{nil, false, 0},
+		{true, false, 1},
+		{nan, int64(1), 1},
+		{int64(1), nan, 1},
+		{nan, nil, 1},
+		{nan, false, 1},
+	} {
+		if got := phpSpaceship(test.a, test.b); got != test.want {
+			t.Errorf("%#v <=> %#v = %d, want %d", test.a, test.b, got, test.want)
+		}
+	}
+}
+
 // TestPHPCompare covers the loose operators. null equals 0, "" and false; two
 // numeric strings compare numerically and "1" == "01". A NaN operand answers
 // false to every operator except `!=`, which PHP does not derive from its
