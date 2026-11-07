@@ -99,6 +99,12 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 func chainedValue(n *model.AssignExpr) model.Expr {
 	v := model.UnwrapParenthesized(n.Value)
 	for {
+		// `$a ??= '00'` assigns a Coalesce the parser built (parser.assignExpr)
+		// and the value the names would share sits on the right of it.
+		if co, ok := v.(*model.Coalesce); ok && co.Assign {
+			v = model.UnwrapParenthesized(co.Right)
+			continue
+		}
 		next, ok := v.(*model.AssignExpr)
 		if !ok {
 			return v

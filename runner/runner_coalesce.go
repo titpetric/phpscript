@@ -4,9 +4,10 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// coalesceAssign stores value where target reads null, as `$target ??= value`.
-// It resolves the target once: `$a[k()] ??= 1` calls k once, as php does.
-func (rt *Runtime) coalesceAssign(target, value model.Expr, scope *Scope) error {
+// coalesceAssign stores value where target reads null, as `$target ??= value`,
+// and answers what the target holds afterwards. It resolves the target once:
+// `$a[k()] ??= 1` calls k once, as php does.
+func (rt *Runtime) coalesceAssign(target, value model.Expr, scope *Scope) (any, error) {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Index:
 		if tgt.Index != nil {
@@ -19,49 +20,49 @@ func (rt *Runtime) coalesceAssign(target, value model.Expr, scope *Scope) error 
 	// expression to reach it: the generic path reads the name twice.
 	cur, err := rt.Eval(target, scope)
 	if err != nil || cur != nil {
-		return err
+		return cur, err
 	}
 	rhs, err := rt.Eval(value, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return rt.assignTo(target, rhs, scope)
+	return rhs, rt.assignTo(target, rhs, scope)
 }
 
-func (rt *Runtime) coalesceIndex(tgt *model.Index, value model.Expr, scope *Scope) error {
+func (rt *Runtime) coalesceIndex(tgt *model.Index, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.container(tgt.Base, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	key, err := rt.Eval(tgt.Index, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if helperIndex(base, key) != nil {
-		return nil
+	if cur := helperIndex(base, key); cur != nil {
+		return cur, nil
 	}
 	rhs, err := rt.Eval(value, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return storeIndex(base, key, rhs)
+	return rhs, storeIndex(base, key, rhs)
 }
 
-func (rt *Runtime) coalesceProp(tgt *model.PropAccess, value model.Expr, scope *Scope) error {
+func (rt *Runtime) coalesceProp(tgt *model.PropAccess, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.Eval(tgt.Base, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	name, err := rt.propName(tgt, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if rt.helperGet(&scopeRef{scope: scope})(base, name) != nil {
-		return nil
+	if cur := rt.helperGet(&scopeRef{scope: scope})(base, name); cur != nil {
+		return cur, nil
 	}
 	rhs, err := rt.Eval(value, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return storeProp(base, name, rhs)
+	return rhs, storeProp(base, name, rhs)
 }

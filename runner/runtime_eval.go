@@ -35,6 +35,11 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	if i, ok := e.(*model.Include); ok {
 		return rt.evalInclude(i, scope)
 	}
+	if a, ok := e.(*model.AssignExpr); ok {
+		// An assignment used as a value writes storage no closure chain
+		// reaches, and it answers what it wrote. See assignValue.
+		return rt.assignValue(a.Target, a.Op, a.Value, scope)
+	}
 
 	ce, err := rt.compileExpr(e)
 	if err != nil {
