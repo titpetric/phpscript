@@ -166,9 +166,9 @@ func TestMulInt(t *testing.T) {
 // and no integer one: php 8.5 prints float(3.5) for 7/2 and int(3) for 6/2,
 // and an even division keeps the int type and an uneven one changes it.
 //
-// Division by zero returns int 0 here. php 8.5 throws DivisionByZeroError; the
-// warning and the throw are the interpreter's, and this function is the
-// arithmetic alone.
+// Division by zero returns int 0 here and no caller reads it: both engines
+// raise DivisionByZeroError, the class php 8.5 throws, before they reach the
+// arithmetic.
 func TestDivInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -195,8 +195,8 @@ func TestDivInt(t *testing.T) {
 // prints int(-1) for -7%3 and int(1) for 7%-3. Go's % has the same rule and
 // the operator passes through.
 //
-// Modulo by zero returns int 0, matching the interpreter's phpArith. php 8.5
-// throws DivisionByZeroError from the operator itself.
+// Modulo by zero returns int 0 on the terms DivInt states: the operator
+// raises DivisionByZeroError, as php 8.5 does, and never reaches this.
 func TestModInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {

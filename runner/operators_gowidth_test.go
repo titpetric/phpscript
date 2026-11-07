@@ -24,7 +24,6 @@ func TestGoArith(t *testing.T) {
 		{"unsigned subtraction wraps", "-", uint8(0), int64(1), uint8(255)},
 		{"unsigned at the widest", "-", uint64(0), int64(1), uint64(math.MaxUint64)},
 		{"division truncates", "/", int8(7), int8(2), int8(3)},
-		{"division by zero is the zero value", "/", int8(7), int8(0), int8(0)},
 		{"modulo keeps the width", "%", int8(7), int8(2), int8(1)},
 		{"a float width computes in float", "/", float32(1), float32(3), float32(1) / float32(3)},
 		{"the exponent wraps at the width", "**", int8(2), int8(10), int8(0)},
@@ -52,6 +51,34 @@ func TestGoArithOperands(t *testing.T) {
 	t.Parallel()
 	if _, typed, err := goArith("+", int64(1), 0.5); typed || err != nil {
 		t.Errorf("goArith on two php numbers reported a width (err %v)", err)
+	}
+
+	// A zero divisor raises the class php raises, at every width.
+	for _, tc := range []struct {
+		op      string
+		a, b    any
+		message string
+	}{
+		{"/", int8(7), int8(0), "Division by zero"},
+		{"%", int8(7), int8(0), "Modulo by zero"},
+		{"/", uint8(7), uint8(0), "Division by zero"},
+		{"%", uint8(7), uint8(0), "Modulo by zero"},
+		{"/", float32(7), float32(0), "Division by zero"},
+		{"%", float32(7), float32(0), "Modulo by zero"},
+	} {
+		_, typed, err := goArith(tc.op, tc.a, tc.b)
+		if !typed {
+			t.Errorf("goArith(%q, %T) read no width", tc.op, tc.a)
+			continue
+		}
+		var zero *DivisionByZeroError
+		if !errors.As(err, &zero) {
+			t.Errorf("goArith(%q, %T) by zero = %v, want a DivisionByZeroError", tc.op, tc.a, err)
+			continue
+		}
+		if zero.Message != tc.message {
+			t.Errorf("goArith(%q, %T) says %q, want %q", tc.op, tc.a, zero.Message, tc.message)
+		}
 	}
 
 	_, typed, err := goArith("+", int8(1), int16(1))

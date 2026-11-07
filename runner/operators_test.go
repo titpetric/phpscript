@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"math"
 	"testing"
 
@@ -165,6 +166,37 @@ func TestPHPArith(t *testing.T) {
 		}
 		if got != tc.want {
 			t.Errorf("%s: phpArith(%q) = %#v, want %#v", tc.name, tc.op, got, tc.want)
+		}
+	}
+}
+
+// TestPHPArithByZero covers the divisor php refuses: `/` and `%` raise
+// DivisionByZeroError whatever shape the zero arrives in. fdiv() is the float
+// answer a script asks for by name, and this operator has none.
+func TestPHPArithByZero(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		op      string
+		a, b    any
+		message string
+	}{
+		{"/", int64(1), int64(0), "Division by zero"},
+		{"%", int64(1), int64(0), "Modulo by zero"},
+		{"/", 1.0, int64(0), "Division by zero"},
+		{"/", int64(1), 0.0, "Division by zero"},
+		{"%", 1.5, int64(0), "Modulo by zero"},
+		{"/", int64(1), "0", "Division by zero"},
+		{"/", int64(1), false, "Division by zero"},
+		{"/", int64(1), nil, "Division by zero"},
+	} {
+		_, err := phpArith(tc.op, tc.a, tc.b)
+		var zero *DivisionByZeroError
+		if !errors.As(err, &zero) {
+			t.Errorf("phpArith(%q, %#v, %#v) = %v, want a DivisionByZeroError", tc.op, tc.a, tc.b, err)
+			continue
+		}
+		if zero.Message != tc.message {
+			t.Errorf("phpArith(%q, %#v, %#v) says %q, want %q", tc.op, tc.a, tc.b, zero.Message, tc.message)
 		}
 	}
 }

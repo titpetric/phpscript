@@ -198,7 +198,7 @@ func phpArith(op string, a, b any) (any, error) {
 	if op == "%" {
 		y := toInt(b)
 		if y == 0 {
-			return int64(0), nil
+			return nil, &DivisionByZeroError{Message: "Modulo by zero"}
 		}
 		return toInt(a) % y, nil
 	}
@@ -217,7 +217,7 @@ func phpArith(op string, a, b any) (any, error) {
 			return x * y, nil
 		case "/":
 			if y == 0 {
-				return float64(0), nil
+				return nil, &DivisionByZeroError{Message: "Division by zero"}
 			}
 			return x / y, nil
 		default:
@@ -236,6 +236,9 @@ func phpArith(op string, a, b any) (any, error) {
 	case "*":
 		return phpval.MulInt(x, y), nil
 	case "/":
+		if y == 0 {
+			return nil, &DivisionByZeroError{Message: "Division by zero"}
+		}
 		return phpval.DivInt(x, y), nil
 	default:
 		return int64(0), nil

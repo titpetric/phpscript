@@ -123,14 +123,14 @@ func goSignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 		return w.Narrow(x * y), true, nil
 	case "/":
 		if y == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Division by zero"}
 		}
 		// go's division truncates toward zero and keeps the type, where php's
 		// `/` answers a float for an inexact one: int8(7) / int8(2) is int8(3).
 		return w.Narrow(x / y), true, nil
 	case "%":
 		if y == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Modulo by zero"}
 		}
 		return w.Narrow(x % y), true, nil
 	case "**":
@@ -152,12 +152,12 @@ func goUnsignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 		return w.Narrow(int64(x * y)), true, nil
 	case "/":
 		if y == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Division by zero"}
 		}
 		return w.Narrow(int64(x / y)), true, nil
 	case "%":
 		if y == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Modulo by zero"}
 		}
 		return w.Narrow(int64(x % y)), true, nil
 	case "**":
@@ -179,7 +179,7 @@ func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 		return w.Narrow(x * y), true, nil
 	case "/":
 		if y == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Division by zero"}
 		}
 		return w.Narrow(x / y), true, nil
 	case "%":
@@ -187,7 +187,7 @@ func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 		// and not go's undefined conversion of an out-of-range float.
 		left, right := phpval.ToInt64(x), phpval.ToInt64(y)
 		if right == 0 {
-			return w.Zero(), true, nil
+			return nil, true, &DivisionByZeroError{Message: "Modulo by zero"}
 		}
 		return w.Narrow(float64(left % right)), true, nil
 	case "**":

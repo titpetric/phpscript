@@ -67,9 +67,9 @@ func MulInt(x, y int64) any {
 	return float64(x) * float64(y)
 }
 
-// DivInt divides the way PHP's / does on two ints: division by zero returns
-// int 0 (the interpreter reports the warning elsewhere), a division that does
-// not come out even is float, and an even one stays int.
+// DivInt divides as PHP's / does: an uneven division is float, an even one
+// stays int. A zero divisor answers int 0 and no caller reads it, both engines
+// raising DivisionByZeroError first.
 func DivInt(x, y int64) any {
 	if y == 0 {
 		return int64(0)
@@ -80,8 +80,8 @@ func DivInt(x, y int64) any {
 	return x / y
 }
 
-// ModInt is PHP's %, already int-cast by the caller; modulo by zero returns
-// int 0 to match the interpreter's phpArith.
+// ModInt is PHP's %, already int-cast by the caller. A zero divisor answers
+// int 0 on the terms DivInt states.
 func ModInt(x, y int64) any {
 	if y == 0 {
 		return int64(0)
