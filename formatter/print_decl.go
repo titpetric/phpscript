@@ -311,6 +311,11 @@ func (p *printer) typeName(name string) string {
 	if name == "" || name == "self" || name == "static" {
 		return name
 	}
+	// A member of an imported go package prints as the source wrote it,
+	// whatever namespace the file declares. See goimport.go.
+	if member, ok := p.goName(name); ok {
+		return member
+	}
 	if strings.HasPrefix(name, `\`) {
 		return name
 	}

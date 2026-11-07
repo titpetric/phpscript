@@ -29,6 +29,11 @@ func (p *printer) expr(e model.Expr) string {
 		return n.Raw
 	case *model.Var:
 		if n.Const {
+			// A constant of an imported go package prints as the source wrote
+			// it; every other name prints as it stands. See goimport.go.
+			if member, ok := p.goName(n.Name); ok {
+				return member
+			}
 			return n.Name
 		}
 		return "$" + n.Name

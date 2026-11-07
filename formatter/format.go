@@ -79,6 +79,7 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 	}
 	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, comments: opts.Comments}
 	p.imports = collectImports(stmts)
+	p.goImports = collectGoImports(stmts)
 	if startsInPHP {
 		p.line("<?php")
 		p.blank()
