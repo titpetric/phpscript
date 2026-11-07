@@ -891,6 +891,12 @@ func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 }
 
 func (c *compiler) assignment(target model.Expr, operator string, value model.Expr, keep bool, path string) error {
+	// `$a ??= b` reads the target first and stores while it answers null. A
+	// store of the value already there would write a string offset php leaves
+	// untouched. See parser.assignExpr.
+	if co, ok := value.(*model.Coalesce); ok && co.Assign {
+		return c.coalesceAssignment(target, operator, co, keep, path)
+	}
 	if err := c.expr(value, path+".value"); err != nil {
 		return err
 	}
@@ -944,6 +950,25 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 		return c.listAssignment(elems, keep, path)
 	default:
 		return unsupported(path+".target", "assignment target %T", target)
+	}
+	return nil
+}
+
+// coalesceAssignment compiles `$a ??= b`: the target's value stays on the
+// stack when it holds something, and the store runs over the right side alone.
+func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
+	if err := c.expr(co.Left, path+".target"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opDup})
+	setJump := c.emit(instruction{op: opJumpNotNil, target: -1})
+	c.emit(instruction{op: opPop})
+	if err := c.assignment(target, operator, co.Right, true, path+".coalesce"); err != nil {
+		return err
+	}
+	c.program.code[setJump].target = len(c.program.code)
+	if !keep {
+		c.emit(instruction{op: opPop})
 	}
 	return nil
 }

@@ -15,6 +15,16 @@ import (
 // execAssign mutates a variable, property or array element. expr-lang cannot do
 // this and it lives entirely here.
 func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
+	// `$a ??= b` stores while the target is null or unset, and a target that
+	// holds something keeps it: storing the value already there would write a
+	// string offset php leaves untouched. See parser.assignExpr.
+	if co, ok := n.Value.(*model.Coalesce); ok && co.Assign {
+		cur, err := rt.Eval(co.Left, scope)
+		if err != nil || cur != nil {
+			return err
+		}
+		n = &model.Assign{Target: n.Target, Op: n.Op, Value: co.Right}
+	}
 	rhs, err := rt.Eval(n.Value, scope)
 	if err != nil {
 		return err
