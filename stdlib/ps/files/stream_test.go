@@ -25,6 +25,21 @@ echo file_get_contents("php://input") === "" ? "drained" : "rewound";`)
 	}
 }
 
+// TestStreamGetContentsOffsetOnAPipe covers the $offset php drops: a pipe
+// takes no seek. The read answers from where the handle sits, the whole body
+// here.
+func TestStreamGetContentsOffsetOnAPipe(t *testing.T) {
+	t.Parallel()
+	opts := runner.Options{SAPI: "cli", Stdin: strings.NewReader("hello world")}
+
+	out := runFSOptions(t, t.TempDir(), nil, opts, `<?php
+echo stream_get_contents(fopen("php://input", "r"), -1, 2);`)
+
+	if want := "hello world"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
 // TestPHPInputCLIStream is the same split through a handle: fopen returns the
 // live stdin stream under the cli SAPI.
 func TestPHPInputCLIStream(t *testing.T) {
