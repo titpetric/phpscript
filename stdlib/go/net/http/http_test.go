@@ -1,7 +1,10 @@
 package http_test
 
 import (
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/titpetric/phpscript/internal/gotest"
@@ -29,6 +32,38 @@ func TestSet(t *testing.T) {
 		{Src: header + `try { http.NewRequest("GET", "://", null); } catch (Throwable $e) { echo "threw"; }`, Want: "threw"},
 		// The default runtime carries none of it.
 		{Src: `echo function_exists('Runtime\Go\Net\HTTP\StatusText') ? "carried" : "absent";`, Want: "absent"},
+	})
+}
+
+// TestClientDo covers the round trip a script makes through the class the walk
+// found and no bound function names: `new http.Client`, a header written into
+// the map a request carries, then the body of the response.
+func TestClientDo(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, r.Method, " ", r.URL.Path, " ", r.Header.Get("Accept"))
+	}))
+	defer server.Close()
+
+	const header = `use Runtime\Go; import "net/http"; import "io"; `
+	gotest.Run(t, gohttp.Namespace, []gotest.Case{
+		{
+			Src: header + fmt.Sprintf(`
+$client = new http.Client;
+$req = http.NewRequest("GET", %q, null);
+$req->Header->Set("Accept", "application/json");
+$resp = $client->Do($req);
+echo $resp->StatusCode, "|", io.ReadAll($resp->Body);`, server.URL+"/a"),
+			Want: "200|GET /a application/json",
+		},
+		{
+			Src:  header + fmt.Sprintf(`$resp = (new http.Client)->Head(%q); echo $resp->StatusCode;`, server.URL),
+			Want: "200",
+		},
+		// A host nothing answers on throws, as the error of a binding does.
+		{
+			Src:  header + `try { (new http.Client)->Get("http://127.0.0.1:1/"); } catch (Throwable $e) { echo "threw"; }`,
+			Want: "threw",
+		},
 	})
 }
 
