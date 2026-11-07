@@ -9,21 +9,17 @@ import (
 
 // This file mutates storage a script names: assignment and unset over every
 // lvalue shape, the read an increment makes first, and the compound operators
-// both resolve through. The writes that land on a binding's native Go value
-// go through assign_go.go.
+// both resolve through. The container a write lands in is assign_container.go,
+// and the writes that reach a binding's native Go value assign_go.go.
 
 // execAssign mutates a variable, property or array element. expr-lang cannot do
 // this and it lives entirely here.
 func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
-	// `$a ??= b` stores while the target is null or unset, and a target that
-	// holds something keeps it: storing the value already there would write a
-	// string offset php leaves untouched. See parser.assignExpr.
+	// `$a ??= b` reads the target once and stores only while it answers null:
+	// storing the value already there would write a string offset php leaves
+	// untouched. See coalesceAssign.
 	if co, ok := n.Value.(*model.Coalesce); ok && co.Assign {
-		cur, err := rt.Eval(co.Left, scope)
-		if err != nil || cur != nil {
-			return err
-		}
-		n = &model.Assign{Target: n.Target, Op: n.Op, Value: co.Right}
+		return rt.coalesceAssign(n.Target, co.Right, scope)
 	}
 	rhs, err := rt.Eval(n.Value, scope)
 	if err != nil {
@@ -149,29 +145,6 @@ func bindConstructorID(target, value model.Expr, op string, result any) {
 	if identifiable, ok := result.(interface{ SetID(string) }); ok {
 		identifiable.SetID(variable.Name)
 	}
-}
-
-// container evaluates the base of an index assignment, creating the array PHP
-// would create when nothing is there yet. `$rows[$first][$second] = $v` against
-// an unset $rows makes both levels; container writes the new array back into
-// the slot that held null, or the write would land in a value nothing holds.
-//
-// Only an assignable base is auto-vivified. A function result or a literal has
-// nowhere to write the array back to and container returns it as it stands and
-// the caller reports the assignment as unsupported.
-func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
-	value, err := rt.Eval(base, scope)
-	if err != nil {
-		return nil, err
-	}
-	if value != nil || !assignable(base) {
-		return value, nil
-	}
-	created := model.NewArray()
-	if err := rt.assignTo(base, created, scope); err != nil {
-		return nil, err
-	}
-	return created, nil
 }
 
 // propName resolves the property name of an access: the source identifier, or
@@ -320,11 +293,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		if obj, ok := base.(*model.Object); ok {
-			obj.SetProp(name, val)
-			return nil
-		}
-		return assignGoField(base, name, func(any) (any, error) { return val, nil })
+		return storeProp(base, name, val)
 	case *model.StaticProp:
 		bag, err := rt.staticStorage(tgt.Class, scope)
 		if err != nil {
@@ -337,26 +306,11 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		arr, ok := base.(*model.Array)
-		if !ok {
-			if keyed, ok := base.(model.Keyed); ok && tgt.Index != nil {
-				key, err := rt.Eval(tgt.Index, scope)
-				if err != nil {
-					return err
-				}
-				keyed.Write(keyString(key), val)
-				return nil
-			}
-			if tgt.Index == nil {
+		if tgt.Index == nil {
+			arr, ok := base.(*model.Array)
+			if !ok {
 				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 			}
-			key, err := rt.Eval(tgt.Index, scope)
-			if err != nil {
-				return err
-			}
-			return assignGoIndex(base, key, func(any) (any, error) { return val, nil })
-		}
-		if tgt.Index == nil {
 			arr.Append(val)
 			return nil
 		}
@@ -364,8 +318,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		arr.Set(normalizeKey(key), val)
-		return nil
+		return storeIndex(base, key, val)
 	default:
 		return fmt.Errorf("assign: unsupported list() element %T", target)
 	}
