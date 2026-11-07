@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -39,6 +40,31 @@ func helperArray(items ...model.ArrayItemValue) *model.Array {
 	return arr
 }
 
+// stringOffset reads idx as the offset of a string, reporting whether php
+// takes it as one: an integer, a float php truncates, a bool, or a string
+// spelling an integer. A key of any other shape names no byte.
+func stringOffset(idx any) (int64, bool) {
+	switch x := idx.(type) {
+	case int, int64, float64, bool:
+		return toInt(x), true
+	case string:
+		trimmed := strings.TrimSpace(x)
+		if trimmed == "" {
+			return 0, false
+		}
+		if _, err := strconv.ParseInt(trimmed, 10, 64); err != nil {
+			return 0, false
+		}
+		return toInt(trimmed), true
+	case nil:
+		return 0, true
+	}
+	if _, ok := model.GoWiden(idx); ok {
+		return toInt(idx), true
+	}
+	return 0, false
+}
+
 // helperIndex implements `base[idx]` for *Array, Go maps and Go slices/arrays.
 // A missing key answers nil, which is PHP's forgiving access, and raises nothing.
 func helperIndex(base, idx any) any {
@@ -57,12 +83,21 @@ func helperIndex(base, idx any) any {
 		// A []byte takes the same branch, being the string it carries rather
 		// than a list of integers. See phpval.Bytes.
 		text := phpString(base)
-		i := toInt(idx)
+		i, numeric := stringOffset(idx)
+		if !numeric {
+			// php refuses a key that spells no integer on a string, where an
+			// array takes it as a name. No byte sits at one.
+			return nil
+		}
 		if i < 0 {
 			i += int64(len(text))
 		}
 		if i < 0 || i >= int64(len(text)) {
-			return ""
+			// `isset`, `empty` and `??` read this value, and a byte the string
+			// does not hold answers for all three. php answers the empty
+			// string here and raises a warning, and the read is a defect
+			// either way.
+			return nil
 		}
 		return text[i : i+1]
 	case nil:
