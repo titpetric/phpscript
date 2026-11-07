@@ -268,19 +268,18 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		return baseCall("__invoke", append([]closure{callee}, args...)), nil
 
 	case *model.AssignExpr:
-		v, ok := model.UnwrapParenthesized(n.Target).(*model.Var)
-		if !ok {
-			return nil, fmt.Errorf("transpile: assignment expression supports only $var targets, got %T", n.Target)
+		v, isVar := model.UnwrapParenthesized(n.Target).(*model.Var)
+		if isVar && (n.Op == "=" || n.Op == "") {
+			val, err := dc.compile(n.Value)
+			if err != nil {
+				return nil, err
+			}
+			return baseCall("__set", []closure{constClosure(v.Name), val}), nil
 		}
-		// Compound ops in an expression context are rare; support plain `=`.
-		if n.Op != "=" && n.Op != "" {
-			return nil, fmt.Errorf("transpile: assignment expression op %q unsupported", n.Op)
-		}
-		val, err := dc.compile(n.Value)
-		if err != nil {
-			return nil, err
-		}
-		return baseCall("__set", []closure{constClosure(v.Name), val}), nil
+		// An element, a property and every compound operator write storage a
+		// closure environment cannot name: the runtime stores through the node
+		// and answers what it wrote. See runner.assignValue.
+		return dc.markCall(n), nil
 
 	case *model.Include:
 		return dc.markCall(n), nil

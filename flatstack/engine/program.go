@@ -20,6 +20,9 @@ const (
 	opStore
 	opArray
 	opIndex
+	// opSetIndex writes one element. a selects the operand order: 0 is the
+	// value under the container and the key, 1 is the value over them, which
+	// an assignment emits because php resolves its target first.
 	opSetIndex
 	opIncDecLocal
 	opIncDecIndex
@@ -35,6 +38,8 @@ const (
 	opConstruct
 	opCallMethod
 	opGetProperty
+	// opSetProperty writes one property. a selects the operand order, as
+	// opSetIndex does: 0 is the receiver over the value, 1 the value over it.
 	opSetProperty
 	opEcho
 	opIterInit

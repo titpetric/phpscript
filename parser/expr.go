@@ -10,8 +10,8 @@ import (
 // Expression parsing uses precedence climbing. The table below mirrors the
 // subset of PHP operators the runner/transpiler understands.
 //
-// Note: the README forbids assignment inside conditions (no `if ($a = "b")`),
-// and `=` is NOT an expression operator here; assignment is a statement only.
+// Note: the linter reports assignment inside a condition (`if ($a = "b")`),
+// which parses: an assignment is an expression and answers the value it wrote.
 //
 // The bitwise levels sit where PHP 8 puts them: `| ^ &` are looser than any
 // comparison but tighter than `&&`, and `<< >>` are tighter than `.` but looser

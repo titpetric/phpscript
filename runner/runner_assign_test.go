@@ -74,6 +74,44 @@ echo $n, "|", $rows[0], "|", $rows["a"] === null ? "gone" : "kept", "|", $obj->n
 	}
 }
 
+// TestAssignValueAnswersWhatItStored covers an assignment used as a value:
+// each lvalue shape answers what the store wrote and a compound operator the
+// updated value. The target resolves before the value, php's order.
+func TestAssignValueAnswersWhatItStored(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	rt := New(&out, Options{})
+
+	program, err := rt.Load(`<?php
+$a = [];
+$x = $a["k"] = 1;
+$o = new stdClass;
+$y = $o->p = 2;
+$counts = ["hits" => 1];
+$z = $counts["hits"] += 2;
+$deep = [];
+$w = $deep["a"]["b"] ??= "leaf";
+function t($tag, $value) { echo $tag; return $value; }
+$order = [];
+$order[t("K", "k")] = t("V", 3);
+$i = 0;
+$m = [];
+$m[$i++] = $i;
+echo "|", $x, $y, $z, $w, "|", $order["k"], "|", $m[0], $i;
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	// KV and not VK, and `$m[$i++] = $i` stores the stepped $i under the key
+	// the store read first.
+	if want := "KV|123leaf|3|11"; out.String() != want {
+		t.Errorf("output = %q, want %q", out.String(), want)
+	}
+}
+
 // TestReadLValue covers the read an increment makes before it writes: the
 // current value of a variable or element, and the refusals for a target no
 // read reaches, such as a `[]` append slot.

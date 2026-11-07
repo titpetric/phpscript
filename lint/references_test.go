@@ -64,6 +64,8 @@ $k = $l = null;
 $m = $n = true;
 $o = $p = -1.5;
 function scoped() { $q = $s = 0; }
+$t = $u ??= "00";
+$v['a'] ??= $w['b'] ??= 3;
 `
 	diags, err := lint.File("scalar.php", src)
 	if err != nil {
