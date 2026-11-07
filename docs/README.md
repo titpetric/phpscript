@@ -114,7 +114,7 @@ Arithmetic follows PHP semantics (int/float coercion, overflow to float, precisi
 
 - `/` and `%` by zero answer `0` where php throws `DivisionByZeroError`. `intdiv()` does throw on a zero divisor; `fdiv()` returns `INF`/`-INF`/`NAN` as in PHP.
 
-Comparison follows PHP 8's table: `==` and `!=` coerce across types and `"1" == 1`, `null == false` and `"1" == "01"` are true and a non-numeric string never compares numerically (`"abc" == 0` is false); `<`, `<=`, `>` and `>=` read the same table; `===` and `!==` are identity and never coerce. `switch`/`case` and `in_array()` apply the same rules. The `<=>` operator is not implemented.
+Comparison follows PHP 8's table: `==` and `!=` coerce across types and `"1" == 1`, `null == false` and `"1" == "01"` are true and a non-numeric string never compares numerically (`"abc" == 0` is false); `<`, `<=`, `>` and `>=` read the same table; `===` and `!==` are identity and never coerce. `switch`/`case` and `in_array()` apply the same rules. `<=>` answers -1, 0 or 1 by the same table.
 
 The bitwise operators `&`, `|`, `^`, `<<`, `>>` and `~` follow PHP's precedence and semantics: the runtime casts operands to int, `&`/`|`/`^` between two strings work byte by byte and return a string, shifts are int64 operations where a count of 64 or more produces `0` (or `-1` for `>>` on a negative left operand), and a negative shift count raises the same `ArithmeticError` PHP raises. Two divergences:
 

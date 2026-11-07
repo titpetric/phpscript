@@ -131,7 +131,16 @@ func (p *printer) assign(n *model.Assign) string {
 	if n.Op == "[]=" {
 		return p.expr(n.Target) + "[] = " + p.expr(n.Value)
 	}
-	return p.expr(n.Target) + " " + n.Op + " " + p.expr(n.Value)
+	return p.assignText(n.Target, n.Op, n.Value)
+}
+
+// assignText prints a compound assignment, `$a ??= b` for the lowered form of
+// the null coalescing assignment.
+func (p *printer) assignText(target model.Expr, op string, value model.Expr) string {
+	if c, ok := value.(*model.Coalesce); ok && c.Assign && op == "=" {
+		return p.expr(target) + " ??= " + p.expr(c.Right)
+	}
+	return p.expr(target) + " " + op + " " + p.expr(value)
 }
 
 func (p *printer) printIf(n *model.If, elseif bool) {

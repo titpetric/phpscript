@@ -164,6 +164,9 @@ func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
 		collectAssignExprs(n.Right, out)
 	case *model.Interp:
 		collectAssignExprList(n.Parts, out)
+	case *model.Coalesce:
+		collectAssignExprs(n.Left, out)
+		collectAssignExprs(n.Right, out)
 	case *model.Ternary:
 		collectAssignExprs(n.Cond, out)
 		collectAssignExprs(n.Then, out)

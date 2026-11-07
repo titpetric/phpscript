@@ -1027,6 +1027,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opUnary, name: node.Op})
+	case *model.Coalesce:
+		return unsupported(path, "null coalescing")
 	case *model.Ternary:
 		if err := c.expr(node.Cond, path+".cond"); err != nil {
 			return err
@@ -1361,13 +1363,20 @@ func (c *compiler) interp(node *model.Interp, path string) error {
 }
 
 func (c *compiler) binary(node *model.Binary, path string) error {
-	switch node.Op {
+	op := node.Op
+	switch op {
+	case "and":
+		op = "&&"
+	case "or":
+		op = "||"
+	}
+	switch op {
 	case "&&", "||":
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}
 		jumpOp, constant := opJumpFalse, false
-		if node.Op == "||" {
+		if op == "||" {
 			jumpOp, constant = opJumpTrue, true
 		}
 		branch := c.emit(instruction{op: jumpOp, target: -1})
@@ -1392,7 +1401,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		}
 		c.emit(instruction{op: opBinary, b: binOpClass(node.Op), name: node.Op})
 	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=",
-		"&", "|", "^", "<<", ">>":
+		"&", "|", "^", "<<", ">>", "<=>", "xor":
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}

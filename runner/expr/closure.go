@@ -40,6 +40,7 @@ type Helpers struct {
 	Cast       func(typ string, v any) any
 	Arith      func(op string, a, b any) (any, error)
 	Compare    func(op string, a, b any) bool
+	Spaceship  func(a, b any) int64
 	Bitwise    func(op string, a, b any) (any, error)
 	BitNot     func(v any) any
 	InstanceOf func(value, class any) bool

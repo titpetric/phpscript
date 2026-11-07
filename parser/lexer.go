@@ -57,9 +57,9 @@ func newLexer(src string) *lexer { return &lexer{src: src, line: 1} }
 
 // multiCharOps match greedily, ahead of the single-char operators.
 var multiCharOps = []string{
-	"===", "!==", "<<=", ">>=", "**=",
+	"===", "!==", "<<=", ">>=", "**=", "<=>", "??=",
 	"==", "!=", "<=", ">=", "&&", "||", "->", "=>", "++", "--", "**",
-	".=", "+=", "-=", "*=", "/=", "%=", "::",
+	".=", "+=", "-=", "*=", "/=", "%=", "::", "??",
 	"<<", ">>", "&=", "|=", "^=",
 }
 

@@ -64,6 +64,23 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 	case *model.Binary:
 		return dc.compileBinary(n)
 
+	case *model.Coalesce:
+		l, err := dc.compile(n.Left)
+		if err != nil {
+			return nil, err
+		}
+		r, err := dc.compile(n.Right)
+		if err != nil {
+			return nil, err
+		}
+		return func(env *Env) (any, error) {
+			v, err := l(env)
+			if err != nil || v != nil {
+				return v, err
+			}
+			return r(env)
+		}, nil
+
 	case *model.Ternary:
 		c, err := dc.compile(n.Cond)
 		if err != nil {

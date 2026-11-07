@@ -166,6 +166,7 @@ var exprHelpers = &expr.Helpers{
 	Cast:       helperCast,
 	Arith:      phpArith,
 	Compare:    phpCompare,
+	Spaceship:  phpSpaceship,
 	Bitwise:    phpBitwise,
 	BitNot:     phpBitNot,
 	InstanceOf: phpInstanceOf,

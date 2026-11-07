@@ -136,9 +136,9 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
 	}
 
 	switch n.Op {
-	case "&&", "||":
+	case "&&", "||", "and", "or":
 		truthy := dc.h.Truthy
-		and := n.Op == "&&"
+		and := n.Op == "&&" || n.Op == "and"
 		return func(env *Env) (any, error) {
 			a, err := l(env)
 			if err != nil {
@@ -153,6 +153,12 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
 			}
 			return truthy(b), nil
 		}, nil
+	case "xor":
+		truthy := dc.h.Truthy
+		return binary2(l, r, func(a, b any) (any, error) { return truthy(a) != truthy(b), nil }), nil
+	case "<=>":
+		fn := dc.h.Spaceship
+		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), nil
 	case ".":
 		fn := dc.h.Concat
 		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), nil
