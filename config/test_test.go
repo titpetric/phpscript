@@ -8,7 +8,7 @@ import (
 )
 
 // TestTest covers the block `phpscript test` reads out of `config.yml`. A fixture
-// tree carries its defaults in a file and a suite says what it needs and the
+// tree sets its defaults in a file and a suite says what it needs and the
 // command line is not repeating it on every invocation.
 func TestTest(t *testing.T) {
 	t.Parallel()
@@ -29,7 +29,7 @@ func TestTest(t *testing.T) {
 }
 
 // TestTest_Validate covers the values a run can act on. Whether a hook file
-// exists goes unchecked here: the file lives in the caller's filesystem and the
+// exists goes unchecked here: the file is in the caller's filesystem and the
 // run reports a missing hook where it executes it.
 func TestTest_Validate(t *testing.T) {
 	t.Parallel()
@@ -91,7 +91,7 @@ func TestTestSuite(t *testing.T) {
 	}
 }
 
-// TestLoadTestSuite covers the file a suite root carries. The caller does the
+// TestLoadTestSuite covers the file a suite root holds. The caller does the
 // reading because it owns the filesystem: the build compiles a fixture tree
 // into the test binary and an fs.FS reaches it, while a run of the command
 // reads the same file off disk.

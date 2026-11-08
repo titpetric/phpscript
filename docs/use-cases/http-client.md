@@ -6,7 +6,7 @@ A request is a `net/http` request handed straight over and a script reads and wr
 
 ## Create a client
 
-`new HTTP\Client` builds a client with a 30 second timeout that follows redirects:
+`new HTTP\Client` builds a client with the default timeout that follows redirects:
 
 ```php
 $client = new HTTP\Client();
@@ -25,14 +25,14 @@ $client = new HTTP\Client(array(
 ));
 ```
 
-| Option             | Meaning                                                                                      |
-|--------------------|----------------------------------------------------------------------------------------------|
-| `timeout`          | Seconds, covering the whole request. A string with a unit (`"500ms"`, `"1m30s"`) also parses |
-| `base_url`         | Prefix a relative request URL resolves against                                               |
-| `follow_redirects` | `false` returns the 3xx and its `Location` instead of the destination                        |
-| `user_agent`       | Sent as the `User-Agent` header                                                              |
-| `headers`          | Sent with every request the client makes                                                     |
-| `insecure`         | Disables certificate verification, for a test server and not for a service                   |
+| Option             | Meaning                                                                                                     |
+|--------------------|-------------------------------------------------------------------------------------------------------------|
+| `timeout`          | Seconds, covering the whole request, 30 by default. A string with a unit (`"500ms"`, `"1m30s"`) also parses |
+| `base_url`         | Prefix a relative request URL resolves against                                                              |
+| `follow_redirects` | `false` returns the 3xx and its `Location` instead of the destination                                       |
+| `user_agent`       | Sent as the `User-Agent` header                                                                             |
+| `headers`          | Sent with every request the client makes                                                                    |
+| `insecure`         | Disables certificate verification, for a test server and not for a service                                  |
 
 A client always has a timeout. No spelling turns it off, because a request with no deadline is the one failure a script cannot recover from.
 
@@ -181,4 +181,4 @@ A transport failure throws and an error status does not and the route handles bo
 
 ## Tracing
 
-`send()` records an external span per request, carrying the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans and a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).
+`send()` records an external span per request, naming the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans and a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).

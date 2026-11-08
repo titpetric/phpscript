@@ -97,7 +97,7 @@ func TestPHPClassName(t *testing.T) {
 
 // TestGoTypeName covers the declared name of the Go type behind a value, read
 // through any depth of pointer, which is the class name a script sees for a
-// host-backed object. An unnamed type reports nothing, and so does nil.
+// host-backed object. An unnamed type reports nothing, as does nil.
 func TestGoTypeName(t *testing.T) {
 	t.Parallel()
 	scope := &Scope{}

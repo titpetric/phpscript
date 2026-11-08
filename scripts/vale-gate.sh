@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 #
-# vale-gate turns vale's findings into a gate, which splint needs no help to
-# be: it exits 1 on a finding and its tree is at zero.
+# vale-gate turns vale's findings into a gate. splint needs no such wrapper: it
+# exits 1 on a finding and its tree is at zero.
 #
-# vale's own exit status reads the level of a rule and nothing else: it exits
+# vale's own exit status reads the level of a rule and no more: it exits
 # non-zero for an error and zero for a warning or a suggestion. Every llm-slop
-# rule is level: error, so vale fails the build on those by itself. Three of
-# write-good's are level: warning, so vale prints them and passes, which is a
-# job that reports success over thousands of findings.
+# rule is level: error, and vale fails the build on those by itself. A rule at
+# level: warning prints and passes, which is a job that reports success over
+# thousands of findings.
 #
-# scripts/vale-baseline.json holds the count each rule is allowed, and it only
-# ever goes down. A rule over its baseline fails the run. A rule absent from the
-# file may not appear at all, which is how every llm-slop rule and every
-# write-good rule at zero stays blocking. A rule that reaches zero comes out of
-# the file.
+# scripts/vale-baseline.json holds the count each rule may report, and the
+# numbers only ever go down. A rule over its baseline fails the run. A rule
+# absent from the file may not appear at all, which keeps every llm-slop rule
+# and every write-good rule at zero blocking. A rule that reaches zero comes
+# out of the file.
 #
-# Raising a number here hides the growth it records, so a commit that raises one
-# says in its message which finding it is accepting and why.
+# Raising a number here hides the growth it records. A commit that raises one
+# names in its message the finding it accepts and why.
 set -u -o pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,28 +28,28 @@ files="$(mktemp)"
 trap 'rm -f "${findings}" "${files}"' EXIT
 
 # git decides which files the gate reads, because .gitignore already names
-# everything that is not ours to rewrite: a composer vendor tree, an agent
-# worktree under .claude, a generated document. vale has no .gitignore support
-# of its own - its path controls are the section globs in .vale.ini, --glob,
-# and the arguments it is handed - so the list is built here and handed over.
+# every tree that is not ours to rewrite: a composer vendor tree, an agent
+# worktree under .claude, a generated document. vale reads no .gitignore - its
+# path controls are the section globs in .vale.ini, --glob, and the arguments
+# on its command line - and this builds the list and passes it in.
 #
-# --cached --others --exclude-standard is tracked plus untracked-not-ignored,
-# which is every file `git status` would show and nothing a rule excludes. A
-# new document counts before it is added, and `composer install` changes no
-# count. The extension filter is the one .vale.ini declares, so a run scans
-# what the configuration says it scans and no binary is opened to find out.
+# --cached --others --exclude-standard names the tracked files plus the
+# untracked files no rule excludes, which is every file `git status` would show.
+# A new document counts before `git add` sees it, and `composer install` changes
+# no count. The extension filter is the one .vale.ini declares: a run scans what
+# the configuration says it scans, and nothing here opens a file to find out.
 git -C "${root}" ls-files --cached --others --exclude-standard -- "${target}" \
-	| grep -E '\.(md|go|php)$' > "${files}"
+	| grep -E '\.(md|go|php|tpl|css|sh|sql)$' > "${files}"
 
 if [ ! -s "${files}" ]; then
-	echo "vale-gate: no md, go or php files under ${target}" >&2
+	echo "vale-gate: no file vale reads under ${target}" >&2
 	exit 2
 fi
 
-# The same dockerised vale the mdox:lint task runs, so the gate and the job
-# that prints the findings read the same build of the same rules. xargs splits
-# the list into as many invocations as the argument limit needs, and -r keeps
-# an empty list from scanning the whole tree.
+# The same dockerised vale the mdox:lint task runs. The gate and the job that
+# prints the findings read the same build of the same rules. xargs splits the
+# list into as many invocations as the argument limit needs, and -r keeps an
+# empty list from scanning the whole tree.
 xargs -r -a "${files}" -d '\n' \
 	docker run --rm -i -v "${root}:/src" -w /src jdkato/vale --output=line \
 	> "${findings}" 2>/dev/null
@@ -59,7 +59,7 @@ if [ ! -f "${baseline}" ]; then
 	exit 2
 fi
 
-# A line is path:line:col:style.Rule:message, and the rule is the fourth field.
+# A line is path:line:col:style.Rule:message. The rule is the fourth field.
 report="$(awk -F: '{ print $4 }' "${findings}" | sort | uniq -c \
 	| awk '{ print $2 "\t" $1 }' \
 	| jq -R -r -s --slurpfile base "${baseline}" '
@@ -81,10 +81,10 @@ printf '%s\n' "${report}" | while IFS=$'\t' read -r count base delta rule; do
 	printf '%7s %8s %+6s  %s\n' "${count}" "${base}" "${delta}" "${rule}"
 done
 
-# NF and the +0 both matter on an empty report, which is what a clean tree
-# against an empty baseline produces: awk compares an empty field as a string,
-# and "" sorts below "0", so a bare `$3 < 0` reported an improvement in a rule
-# with no name.
+# NF and the +0 both matter on the empty report a clean tree against an empty
+# baseline produces: awk compares an empty field as a string and "" sorts below
+# "0", which left a bare `$3 < 0` reporting an improvement in a rule with no
+# name.
 broke="$(printf '%s\n' "${report}" | awk -F'\t' 'NF && $3+0 > 0 { print $4 " grew by " $3 " to " $1 }')"
 if [ -n "${broke}" ]; then
 	printf '\nvale-gate: %s\n' "${broke}" >&2

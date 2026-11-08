@@ -4,7 +4,7 @@ package core
 //
 // encoding/json sorts the keys of a Go map and PHP does not: json_encode writes
 // an array in build order and a row encoded for a client reads back in the
-// order the script assembled it. A map cannot carry that order and this type
+// order the script assembled it. A map cannot hold that order and this type
 // exists in place of a map[string]any.
 //
 // jsonEncodeValue converts an array into one, for the indent path and for a Go

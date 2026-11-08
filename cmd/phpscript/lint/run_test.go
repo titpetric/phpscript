@@ -42,7 +42,7 @@ func TestRunPrintsMarkdownResultsAndSummary(t *testing.T) {
 }
 
 // TestRunGroupsResultsByFolder checks the per-folder layout: each folder gets
-// a table of its own headed by the folder, closed by its own summary line,
+// a separate table headed by the folder, closed by its own summary line,
 // with the run's total after the last one.
 func TestRunGroupsResultsByFolder(t *testing.T) {
 	dir := t.TempDir()

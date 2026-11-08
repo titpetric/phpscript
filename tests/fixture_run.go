@@ -52,10 +52,10 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 
 	if f.cleanState() {
 		// A clean state is a new runtime, not only an empty cache. A runtime
-		// keeps every declaration it hoisted out of an include, and this
-		// fixture holds the runtime for the whole run and reusing one carries
-		// the last fixture's functions and classes into the next and keeps
-		// their ASTs alive besides.
+		// keeps every declaration it hoisted out of an include. This fixture
+		// holds the runtime for the whole run and reusing one brings the last
+		// fixture's functions and classes into the next and keeps their ASTs
+		// alive besides.
 		defer func() { f.interp = nil }()
 	}
 
@@ -168,7 +168,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 }
 
 func buildFixtureRequestContext(f *Fixture) runner.Context {
-	// NewContext already carries empty maps; only a fixture that declares a
+	// NewContext already sets empty maps; only a fixture that declares a
 	// section replaces one. The unconditional overwrite-then-refill spelled
 	// five discarded map allocations per fixture run.
 	reqCtx := runner.NewContext()

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // The conversions a script's option array needs. PHP is dynamically typed and
@@ -90,11 +90,11 @@ func toHeaders(value any) (map[string]string, error) {
 	if value == nil {
 		return nil, nil
 	}
-	if !model.IsCollection(value) {
+	if !modelutil.IsCollection(value) {
 		return nil, fmt.Errorf("HTTP\\Client: headers must be an array")
 	}
 	headers := map[string]string{}
-	model.RangeValues(value, func(key, val any) bool {
+	modelutil.RangeValues(value, func(key, val any) bool {
 		headers[toString(key)] = toString(val)
 		return true
 	})

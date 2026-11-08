@@ -139,7 +139,7 @@ func TestOverlayBytes(t *testing.T) {
 
 // TestDeclares covers telling a setting a file named from one it inherited
 // through Overlay. Validation reads it for keys whose inherited value is legal
-// and whose declared value is not: a site may carry the operator's telemetry
+// and whose declared value is not: a site may inherit the operator's telemetry
 // path, and may not name it.
 func TestDeclares(t *testing.T) {
 	t.Parallel()

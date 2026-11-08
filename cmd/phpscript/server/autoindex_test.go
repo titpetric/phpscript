@@ -81,7 +81,7 @@ func TestAutoindexListsTheDirectory(t *testing.T) {
 
 // TestAutoindexEscapesNames pins both escapings a name passes through. A file
 // named with an "&" has to stay addressable as a link and must not end the
-// attribute it sits in.
+// attribute holding it.
 func TestAutoindexEscapesNames(t *testing.T) {
 	t.Parallel()
 	body := fetch(newAutoindexHandler(t, autoindexFS), http.MethodGet, "/files/", nil).Body.String()
@@ -107,8 +107,7 @@ func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 }
 
 // TestAutoindexDoesNotReplaceAnIndexPage pins the order: an index page answers
-// the directory that has one, and the listing is only for directories that
-// have none.
+// the directory that has one. The listing answers a directory without one.
 func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
 	t.Parallel()
 	h := newAutoindexHandler(t, autoindexFS)

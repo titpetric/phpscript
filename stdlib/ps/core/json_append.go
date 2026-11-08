@@ -21,7 +21,7 @@ import (
 // again per row of a list of rows.
 
 // appendJSONValue appends one value's encoding: the scalar and collection
-// shapes a handler's response carries directly, and json.Marshal for the
+// shapes a handler's response holds directly, and json.Marshal for the
 // rest, floats included, whose spelling is encoding/json's own.
 //
 // The collections append in place and a document reaches the stream without
@@ -180,8 +180,8 @@ func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 }
 
 // appendJSONString appends a string's encoding. It takes the string itself and
-// no any, because an any parameter boxes the key, and a string does not fit an
-// interface word. Each key of every object a response carries costs one
+// no any, because an any parameter boxes the key. A string does not fit an
+// interface word. Each key of every object a response holds costs one
 // allocation.
 func appendJSONString(buf []byte, s string) ([]byte, error) {
 	if jsonSafe(s) {

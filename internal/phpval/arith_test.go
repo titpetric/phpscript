@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestOverflowAddInt covers the carry detection the float fallback reads. A
+// TestOverflowAddInt covers the overflow detection the float fallback reads. A
 // sum that leaves the int64 range reports false and a zero and a caller never
 // has a wrapped negative to tell apart from a real one.
 func TestOverflowAddInt(t *testing.T) {
@@ -35,7 +35,7 @@ func TestOverflowAddInt(t *testing.T) {
 }
 
 // TestOverflowSubInt covers the borrow detection. Subtracting a negative is
-// the direction that overflows upward and the cases carry both signs of y.
+// the direction that overflows upward and the cases cover both signs of y.
 func TestOverflowSubInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -62,8 +62,8 @@ func TestOverflowSubInt(t *testing.T) {
 	}
 }
 
-// TestOverflowMulInt covers the division check and the one case it misses on
-// its own: MinInt64 * -1 divides back cleanly and still has no int64 form,
+// TestOverflowMulInt covers the division check and the one case the check
+// misses: MinInt64 * -1 divides back cleanly and still has no int64 form,
 // because the range holds no positive counterpart to MinInt64.
 func TestOverflowMulInt(t *testing.T) {
 	t.Parallel()

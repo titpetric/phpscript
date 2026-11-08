@@ -16,8 +16,8 @@ import (
 
 // The embedding API is runner's, aliased and never wrapped: a host that swaps
 // runner for flatstack changes its import alone, and a value built
-// here is the same value either package returns. Only New differs, and
-// this package decides that choice alone.
+// here is the same value either package returns. Only New differs. This
+// package decides that choice alone.
 
 // Runtime is runner.Runtime.
 type Runtime = runner.Runtime
@@ -72,8 +72,7 @@ func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 // IsExit reports whether err is the error exit() and die() raise, and answers it.
 func IsExit(err error) (*ExitError, bool) { return runner.IsExit(err) }
 
-// Supports reports whether p executes through flat bytecode, which a
-// benchmark asks so that it measures no accidental fallback.
+// Supports reports whether p executes through flat bytecode.
 func Supports(p *model.Program) error {
 	_, err := flatvm.Compile(p)
 	return err

@@ -10,7 +10,7 @@ import (
 // Callable is a php callable as a runtime value: one declaration to run, and
 // whatever it binds to. The type covers a closure literal, a method bound to
 // its receiver, and a declared function held by name. php's Closure covers the
-// same three, and a script sees any of them as one.
+// same three. A script sees any of them as one.
 //
 // docs/GLOSSARY.md records the word and docs/design.md the re-entry rule it
 // exists for: the value crosses to another runtime and the execution does not.
@@ -22,12 +22,12 @@ type Callable struct {
 
 	// obj is the receiver a bound method runs against, and stays empty for a
 	// closure literal, whose `$this` arrives in env with the rest of its
-	// captures, and for a global function, which has none.
+	// captures, and for a global function, which names no receiver.
 	obj *model.Object
 
-	// class stands in for obj in the Class::method spelling, which names no
-	// receiver. Each call builds an empty instance of its own and shares
-	// none and `self::` resolves and nothing crosses between two calls.
+	// class holds the class for the Class::method spelling, which names no
+	// receiver. Each call builds a separate empty instance, `self::` resolves
+	// and nothing crosses between two calls.
 	class *model.Class
 
 	// env is what a closure literal takes from its defining scope.
@@ -36,14 +36,14 @@ type Callable struct {
 	// name holds a declared function the program named, which the runtime
 	// running it resolves and this value does not. This is the one spelling
 	// whose meaning belongs to the runtime and not to the value: a name is a
-	// program counter that each runtime looks up in its own function table,
-	// and a host can register a binding under it.
+	// program counter that each runtime looks up in its own function table.
+	// A host can register a binding under it.
 	name string
 
 	// rt is the runtime that built the value, and call is the uniform shape on
 	// it. The pair is what `on` compares against the runtime doing the calling:
 	// a value is a value and crosses freely, but an execution belongs to one
-	// goroutine and a call from anywhere else has to be a call of its own.
+	// goroutine and a call from anywhere else lands in Invoke.
 	//
 	// This constructor fills call, and no caller takes it as a method value at
 	// the point of use. coerceArg passes it to bindings, and a method value
@@ -59,9 +59,9 @@ type Callable struct {
 //
 // The runtime that built the value gets the call built with it, which covers
 // every ordinary script-level call and costs nothing. Any other runtime gets a
-// call of its own, because a Runtime is one goroutine's execution (its frames,
-// its output stack, its statics, its request) and reaching into another one is
-// a race to reason about but a concurrent map write. See runner/fork.go.
+// wrapper over Invoke, because a Runtime is one goroutine's execution (its
+// frames, its output stack, its statics, its request) and reaching into another
+// one is a race to reason about but a concurrent map write. See runner/fork.go.
 //
 // This is what makes a handler that wraps another callable answer on the worker
 // the request arrived on: the value crossed, the execution did not.
@@ -110,13 +110,9 @@ func (rt *Runtime) newNamedCallable(name string) *Callable {
 // Call invokes the callable on the runtime that built it.
 func (c *Callable) Call(args ...any) (any, error) { return c.call(args...) }
 
-// Invoke runs the callable on rt, in a scope holding args alone -
-// and, for a bound method, its receiver.
-//
-// This is the cross-runtime call, and it stands apart from Call: a runtime of
-// its own answers a request, and the declaration crosses while the runtime
-// that built the value stays behind. A name crosses as a name and the runtime
-// running it resolves it against its own function table.
+// Invoke runs the callable on rt, in a scope holding args alone - and, for a
+// bound method, its receiver. The declaration crosses while the runtime that
+// built the value stays behind; a name resolves against rt's function table.
 func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 	switch {
 	case c.closure != nil:
@@ -134,7 +130,7 @@ func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 	case c.fn != nil:
 		// The receiver is the object the method hangs off, which every other
 		// runtime answering through this callable shares, the way a closure's
-		// captured $this does. invokeMethod builds a scope of its own holding
+		// captured $this does. invokeMethod builds a fresh scope holding
 		// the receiver and the arguments.
 		return rt.invokeMethod(c.obj, c.fn, args, nil)
 	}
@@ -142,8 +138,7 @@ func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 }
 
 // Captures reports whether the callable holds anything from its defining
-// scope: a `use (...)` clause, a `$this`, a receiver. A host asks before
-// running one elsewhere, since one capturing nothing runs anywhere.
+// scope: a `use (...)` clause, a `$this`, a receiver.
 func (c *Callable) Captures() bool {
 	if c.closure != nil {
 		return len(c.closure.Uses) > 0 || c.env.this != nil || c.env.class != nil
@@ -186,7 +181,7 @@ func (c *Callable) Name() string {
 //
 // This constructor refuses the two array spellings that everything else
 // accepts, which docs/README.md records as a decision. A Go func fails for a
-// different reason: it carries no declaration and another runtime has nothing
+// different reason: it holds no declaration and another runtime has nothing
 // to run, and a host holding one already holds the call.
 func (rt *Runtime) AsCallable(v any) (*Callable, error) {
 	switch value := v.(type) {
@@ -221,8 +216,8 @@ func (rt *Runtime) AsCallable(v any) (*Callable, error) {
 	return nil, &LookupError{Symbol: phpDebugType(v), Reason: callableReason}
 }
 
-// callableReason says what a host can run somewhere else, for the refusals that
-// have no reason of their own.
+// callableReason says what a host can run somewhere else, for a refusal that
+// names no other reason.
 const callableReason = "a callable is a closure, an object with __invoke, a bound method, Class::method, or the name of a declared function"
 
 // asStaticCallable resolves Class::method, naming which half of the spelling

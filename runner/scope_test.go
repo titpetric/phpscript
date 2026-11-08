@@ -8,8 +8,8 @@ import (
 )
 
 // TestScope covers the flat variable table of one frame. PHP has no block
-// scoping and a variable introduced inside an if or a foreach body lives in the
-// enclosing function scope, and one frame is one map.
+// scoping and the enclosing function scope holds a variable introduced inside
+// an if or a foreach body, and one frame is one map.
 func TestScope(t *testing.T) {
 	t.Parallel()
 	scope := NewScope()
@@ -79,7 +79,7 @@ func TestScope_DefinedVars(t *testing.T) {
 }
 
 // TestScope_Defer covers the callbacks a frame runs on return. PHP has no
-// defer; this runtime does, and the order is last in, first out and the
+// defer; this runtime does. The order is last in, first out and the
 // callback registered second runs first.
 func TestScope_Defer(t *testing.T) {
 	t.Parallel()

@@ -19,7 +19,7 @@ func init() {
 // registerYAML installs yaml_decode and yaml_encode.
 //
 // They answer the question json_decode and json_encode answer for the other
-// spelling, and they keep their own conversions, borrowing none of the
+// spelling. They keep their own conversions, borrowing none of the
 // JSON ones: json_encode builds an ordered object that only the JSON
 // marshaller knows how to write, and handing it to the YAML marshaller
 // produced an empty document. The fixture beside this file is what caught

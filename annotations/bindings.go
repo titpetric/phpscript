@@ -10,12 +10,12 @@ import (
 // Bindings is the service router a @startup job registers on through
 // Runtime\Router::Bind, as a separate platform module.
 //
-// The platform starts every module before it mounts any, so a job runs a step
+// The platform starts every module ahead of any mounting. A job runs a step
 // before the router it binds on exists: this takes the registrations in the
 // router's place and Mount passes them on, in the order the jobs made them.
-// A service binds instead of annotating and the module is registered either
-// way, and a host that names no router through WithRouter leaves
-// Runtime\Router::Bind the binding that throws.
+// A service binds or annotates and the module registers either way. A host
+// that names no router through WithRouter leaves Runtime\Router::Bind the
+// binding that throws.
 type Bindings struct {
 	Module
 
@@ -41,7 +41,7 @@ func NewBindings(options ...Option) *Bindings {
 	return bindings
 }
 
-// Handle takes one registration, straight to the router once it is mounted and
+// Handle takes one registration, straight to the router once Mount has run and
 // onto the pending list until then.
 func (b *Bindings) Handle(method string, path string, handler http.Handler) {
 	b.mu.Lock()

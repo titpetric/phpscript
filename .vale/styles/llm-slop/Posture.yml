@@ -1,0 +1,29 @@
+---
+extends: existence
+message: "'%s' gives a posture to a thing that has none. Say where it is, or what writes it there."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  # A comment, a bar and a file hold no posture. "The comment sits over a
+  # case" and "the bar sits on the running text" dress a position up as a
+  # pose, and the plain word is longer by nothing: it is over the case, it
+  # covers the text.
+  #
+  # Measured at 240x the rate the standard library writes it: 58 uses here
+  # against 3 in 2.29M words. The widest margin of any token in this file.
+  - '\bsits?\s+(?:in|at|on|under|over|beside|above|below|between|behind)\b'
+  - '\bsitting\s+(?:in|at|on|under|over|beside)\b'
+  # 17x, and the locative sense is the one to cut. "Stands for" as a synonym
+  # of "represents" is on the list too; a symbol denotes, a placeholder names.
+  - '\bstands?\s+(?:in|at|on|for|over|beside|above|below)\b'
+  - '\bstanding\s+(?:in|at|on|over|beside)\b'
+  # House preference, and the one token here that measurement does not
+  # support: "lives" runs at 5x over 91 uses in the standard library, which is
+  # ordinary English for where a file is. It stays banned because a path does
+  # not live anywhere, and "is stored in" or "goes in" says it.
+  - '\blives?\s+(?:in|at|on|under|beside|next\s+to)\b'
+  - '\bliving\s+(?:in|at|under|beside)\b'
+  # Absent from the standard library outright.
+  - '\brides?\s+along\b'
+  - '\breach(?:es)?\s+for\b'

@@ -101,8 +101,8 @@ func TestRunCommandEmptySelectionFails(t *testing.T) {
 	})
 }
 
-// TestRunCommandOutputFile covers -o end to end over more than one area, which
-// is what the atkins report job does.
+// TestRunCommandOutputFile covers -o end to end over more than one area, as
+// the atkins report job does.
 func TestRunCommandOutputFile(t *testing.T) {
 	reportPath := filepath.Join(t.TempDir(), "report.md")
 

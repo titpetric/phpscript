@@ -8,15 +8,11 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
-// Lookup resolves symName to a PHP function and returns it as T, a Go function
-// type: plugin.Lookup over a source tree.
-//
-// T returns at most one value and an optional trailing error, checked here and
-// not at the call. A name matching nothing, or more than one declaration, is a
-// *LookupError naming what it matched, and the returned function belongs to
-// rt, which serves one goroutine. The example is in entrypoints.md.
+// Lookup resolves symName to a PHP function and returns it as T: at most one
+// value and an optional trailing error. The result serves rt's goroutine alone.
 func Lookup[T any](rt *Runtime, symName string) (T, error) {
 	var zero T
 	fn, err := rt.lookup(symName, reflect.TypeOf((*T)(nil)).Elem())
@@ -305,7 +301,7 @@ type resultShape struct {
 }
 
 // signatureResults reads the shape off T and refuses the ones a PHP function
-// cannot fill. PHP returns one value; a second Go result is the error, and a
+// cannot fill. PHP returns one value; a second Go result is the error. A
 // third has nothing to be.
 func signatureResults(typ reflect.Type) (resultShape, error) {
 	switch typ.NumOut() {
@@ -387,7 +383,7 @@ func phpArg(v reflect.Value) any {
 //
 // A signature with no error result has nowhere to report a failure and the
 // error goes to the runtime's own sink, where the error of a script that failed
-// with no host signature to carry it goes.
+// with no host signature to report it goes.
 func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, err error) []reflect.Value {
 	out := make([]reflect.Value, typ.NumOut())
 	if shape.value != nil {
@@ -441,11 +437,11 @@ func convertResult(want reflect.Type, value any) (reflect.Value, error) {
 		case reflect.Slice:
 			// A string filling a []byte is a conversion, not a walk, and
 			// coerceArg below already performs it.
-			if model.IsCollection(value) {
+			if modelutil.IsCollection(value) {
 				return convertSlice(want, value)
 			}
 		case reflect.Map:
-			if model.IsCollection(value) {
+			if modelutil.IsCollection(value) {
 				return convertMap(want, value)
 			}
 		}
@@ -463,12 +459,12 @@ func convertSlice(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil
 	}
-	size, _ := model.LenValues(value)
+	size, _ := modelutil.LenValues(value)
 	out := reflect.MakeSlice(want, 0, size)
 	elem := want.Elem()
 
 	var err error
-	model.RangeValues(value, func(_, item any) bool {
+	modelutil.RangeValues(value, func(_, item any) bool {
 		converted, convErr := convertResult(elem, item)
 		if convErr != nil {
 			err = convErr
@@ -490,12 +486,12 @@ func convertMap(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil
 	}
-	size, _ := model.LenValues(value)
+	size, _ := modelutil.LenValues(value)
 	out := reflect.MakeMapWithSize(want, size)
 	keyType, elem := want.Key(), want.Elem()
 
 	var err error
-	model.RangeValues(value, func(key, item any) bool {
+	modelutil.RangeValues(value, func(key, item any) bool {
 		convertedKey, keyErr := convertResult(keyType, key)
 		if keyErr != nil {
 			err = keyErr

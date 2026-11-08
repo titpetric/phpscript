@@ -264,7 +264,7 @@ func TestNameCallError(t *testing.T) {
 }
 
 // TestRecoveredError covers what a recovered panic reaches a script as. A
-// callback that threw carries its own error across the Go frames between it and
+// callback that threw sends its own error across the Go frames between it and
 // the host boundary and a script catches its own exception; anything else is a
 // host panic, named after what panicked.
 func TestRecoveredError(t *testing.T) {
@@ -308,7 +308,7 @@ func TestWantsContext(t *testing.T) {
 }
 
 // TestAdapt covers wrapping a Go callable in the uniform shape the evaluation
-// environment carries, which is the one shape the engine's call closures
+// environment uses, which is the one shape the engine's call closures
 // assert. The wrapper coerces arguments through reflection and a shim can keep
 // a natural Go signature.
 func TestAdapt(t *testing.T) {
@@ -322,8 +322,8 @@ func TestAdapt(t *testing.T) {
 		t.Errorf("the adapted call = %#v, want %#v", got, want)
 	}
 
-	// The wrapper renders an int64 reaching a string parameter the way PHP does,
-	// and the binding reads "7" and never Go's own conversion of the code point.
+	// The wrapper renders an int64 reaching a string parameter the way PHP does.
+	// The binding reads "7" and never Go's own conversion of the code point.
 	coerced, err := fn(int64(9), int64(7))
 	if err != nil {
 		t.Fatalf("the coerced call failed: %v", err)

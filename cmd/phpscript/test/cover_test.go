@@ -321,7 +321,7 @@ func TestRunCommandCoverFile(t *testing.T) {
 }
 
 // TestRunCommandFolderSummary covers what a run without -v prints: one row per
-// folder resolved from the arguments, carrying the two coverage counts, and no
+// folder resolved from the arguments, with the two coverage counts, and no
 // fixture table at all.
 func TestRunCommandFolderSummary(t *testing.T) {
 	coverReportSuite(t)

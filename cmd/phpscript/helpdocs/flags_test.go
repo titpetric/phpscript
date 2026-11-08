@@ -37,8 +37,8 @@ func TestNewFlagSet(t *testing.T) {
 	}
 }
 
-// TestNewFlagSetContinuesOnError covers the error handling a set built for the
-// help carries: an unknown flag is an error returned, and not an exit.
+// TestNewFlagSetContinuesOnError covers the error handling of a set built for
+// the help: an unknown flag is an error returned, and not an exit.
 func TestNewFlagSetContinuesOnError(t *testing.T) {
 	t.Parallel()
 	fs := helpdocs.NewFlagSet("test")

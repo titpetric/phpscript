@@ -144,8 +144,8 @@ func TestUploadMaxFilesize(t *testing.T) {
 	if small.Error != runner.UploadErrOK || small.TmpName == "" {
 		t.Fatalf("small upload = %+v, want it stored", small)
 	}
-	// PHP describes a refused part by the names the client sent and nothing
-	// else: no type, no size, no temporary file.
+	// PHP describes a refused part by the names the client sent alone: no
+	// type, no size, no temporary file.
 	big := ctx.FileMap()["big"][0]
 	if big.Error != runner.UploadErrIniSize {
 		t.Fatalf("big upload error = %d, want %d", big.Error, runner.UploadErrIniSize)

@@ -25,8 +25,8 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 		t.Fatalf("expected compatible message, got %s", diag.Message)
 	}
 
-	// An anonymous class is what the bytecode engine has no representation
-	// for: it carries a class name where one carries its declaration.
+	// The bytecode engine has no representation for an anonymous class: a new
+	// expression names a class where this one holds its declaration.
 	unsupportedSrc := `<?php
 	$a = new class { public $x = 1; };
 	?>`
@@ -167,9 +167,9 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 	}
 }
 
-// The linter reports a JSON_* constant as a warning. The runtime defines no name,
-// and it arrives as null and json_encode ignores it: the call runs and encodes,
-// and what the author loses is the formatting they wrote.
+// The linter reports a JSON_* constant as a warning. The runtime defines no
+// name: the constant arrives as null and json_encode ignores it. The call runs
+// and encodes, and what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

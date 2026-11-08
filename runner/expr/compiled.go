@@ -10,7 +10,7 @@ import (
 // Compiled is a model.Expr compiled straight to a closure chain, with the
 // bindings Eval fills before running: variables by slot, closure literals by
 // slot, and the registered-function names to install into the base env. It
-// carries no bytecode; the string round-trip through the transpiler and
+// holds no bytecode; the string round-trip through the transpiler and
 // expr-lang's parser never happens for an expression compiled here.
 type Compiled struct {
 	Program  *Program
@@ -25,7 +25,7 @@ type Compiled struct {
 
 // CompileExpr compiles a model.Expr directly to a closure chain. It covers
 // the whole expression vocabulary the runtime evaluates; a shape outside
-// that vocabulary is an error, spelled the way the transpiler spells one.
+// the vocabulary is an error, spelled the way the transpiler spells one.
 func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 	dc := &directCompiler{h: h, slots: map[string]int{}}
 	body, err := dc.compile(e)
@@ -166,10 +166,10 @@ func scratchName(name string) bool {
 }
 
 // scratchCall is baseCall over the environment's arena: it pushes the
-// arguments, borrows the region for the call, and the pop returns it and a
-// covered call boxes no slice per invocation. The three-index expression caps
-// the borrowed region and an append inside the callee reallocates away from
-// the arena in place of writing over it.
+// arguments, borrows the region for the call and pops it when the call
+// returns. A covered call boxes no slice per invocation. The three-index
+// expression caps the borrowed region and an append inside the callee
+// reallocates away from the arena in place of writing over it.
 func scratchCall(name string, args []closure) closure {
 	return func(env *Env) (any, error) {
 		fn, ok := env.Base[name].(func(...any) (any, error))

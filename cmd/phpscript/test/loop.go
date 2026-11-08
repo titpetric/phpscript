@@ -11,7 +11,7 @@ import (
 )
 
 // fixtureMetrics is the cost of running a fixture, kept apart from the outcome
-// so a matrix row can carry it too.
+// so a matrix row can hold it too.
 type fixtureMetrics struct {
 	Runs        int
 	Total       time.Duration
@@ -30,7 +30,7 @@ type fixtureRun struct {
 	Result      *tests.TestResult
 	DisplayPath string
 	Label       string
-	// Fixture is the fixture the run came from, carried so a table can read
+	// Fixture is the fixture the run came from, kept so a table can read
 	// the coverage collector installed on it. It stays nil for a run a test
 	// assembles.
 	Fixture *tests.Fixture
@@ -53,8 +53,8 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 	}
 	samples := make([]int64, 0, hint)
 
-	// MemStats only when something reports it. ReadMemStats stops the world,
-	// and this runs once per fixture per runner - 1368 pauses over a 342-file
+	// MemStats only when something reports it. ReadMemStats stops the world.
+	// This runs once per fixture per runner - 1368 pauses over a 342-file
 	// matrix: for two numbers nothing prints without --profile.
 	// The GC count comes from runtime/metrics either way, which does not stop
 	// anything and the column stays.

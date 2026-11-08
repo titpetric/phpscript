@@ -48,7 +48,7 @@ func attached() (*stdruntime.Router, *http.ServeMux) {
 }
 
 // TestRouter_Bind pins that the routes a Bind callback registers, plain and
-// grouped, reach the attached router, and that a group's middleware stays in it.
+// grouped, reach the attached router. A group's middleware stays in it.
 func TestRouter_Bind(t *testing.T) {
 	t.Parallel()
 	router, serve := attached()
@@ -116,8 +116,8 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestRegistrar pins that a Bind route reaches the method and path the
-// Registrar was handed, split from the pattern.
+// TestRegistrar pins that a Bind route reaches the Registrar as a method and
+// a path, split from the pattern.
 func TestRegistrar(t *testing.T) {
 	t.Parallel()
 	router := stdruntime.NewRouter()

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -201,7 +201,7 @@ func phpLog(num, base float64) float64 {
 func phpMinMax(name string, args []any, want int) (any, error) {
 	values := args
 	if len(args) == 1 {
-		if !model.IsCollection(args[0]) {
+		if !modelutil.IsCollection(args[0]) {
 			return nil, errors.New(name + "(): Argument #1 ($value) must be of type array")
 		}
 		values = phpval.Values(args[0])
@@ -220,11 +220,11 @@ func phpMinMax(name string, args []any, want int) (any, error) {
 }
 
 // integerDigits renders an integer argument as its own decimal digits and that
-// grouping an int64 does not lose the low bits a float64 cannot carry. exact is
+// grouping an int64 does not lose the low bits a float64 cannot hold. exact is
 // false for every other value, which then rounds through a float as before.
 //
 // A negative $decimals rounds the integer, which is more than a digit copy: it
-// drops the digits past the cut and carries the kept ones, the same rule
+// drops the digits past the cut and rounds the kept ones, the same rule
 // roundDecimal applies to a decimal string.
 func integerDigits(num any, decimals int) (integer, fraction string, neg, exact bool) {
 	var n int64
@@ -248,7 +248,7 @@ func integerDigits(num any, decimals int) (integer, fraction string, neg, exact 
 		switch {
 		case cut <= 0:
 			// The cut drops every digit and the result rounds to zero unless
-			// the first dropped digit carries into a place the value lacks.
+			// the first dropped digit rounds up into a place the value lacks.
 			if cut == 0 && digits[0] >= '5' {
 				digits = "1" + strings.Repeat("0", len(digits))
 			} else {
@@ -286,7 +286,7 @@ func phpNumberFormat(num any, opts ...any) string {
 	}
 
 	// phpNumberFormat groups an integer from its own digits and never through
-	// a float. float64 carries 53 bits of mantissa and routing PHP_INT_MAX
+	// a float. float64 holds 53 bits of mantissa and routing PHP_INT_MAX
 	// through one would print 9,223,372,036,854,776,000 in place of the number
 	// given.
 	integer, fraction, neg, exact := integerDigits(num, decimals)
@@ -370,7 +370,7 @@ func phpRound(v float64, precision int) float64 {
 // roundDecimal takes the number apart as the digit string FormatFloat produced
 // plus the position of its point. Dropping everything from cut = len(integer) +
 // precision and incrementing the digit before it when the first dropped digit
-// is 5 or more is decimal half-away-from-zero rounding, and it needs no
+// is 5 or more is decimal half-away-from-zero rounding. It needs no
 // arithmetic on the float, because the float cannot represent the value a
 // script wrote.
 func roundDecimal(v float64, precision int) (integer, fraction string, neg bool) {
@@ -389,7 +389,7 @@ func roundDecimal(v float64, precision int) (integer, fraction string, neg bool)
 	var kept []byte
 	switch cut := len(whole) + precision; {
 	case cut < 0:
-		// The cut drops every digit and the value sits below half of the last
+		// The cut drops every digit and the value is below half of the last
 		// kept place and the result is zero.
 	case cut >= len(digits):
 		// The cut drops nothing; pad out to the requested precision.
@@ -422,7 +422,7 @@ func roundDecimal(v float64, precision int) (integer, fraction string, neg bool)
 }
 
 // incrementDigits adds one to a decimal digit string, growing it by a leading
-// "1" when the carry runs off the front ("99" -> "100", "" -> "1").
+// "1" when the increment runs off the front ("99" -> "100", "" -> "1").
 func incrementDigits(digits []byte) []byte {
 	for i := len(digits) - 1; i >= 0; i-- {
 		if digits[i] < '9' {

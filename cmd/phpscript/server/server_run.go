@@ -101,7 +101,7 @@ type handler struct {
 
 	// coverage counts the statements every request runs, folded in per request
 	// so nothing keyed by an AST node outlives its own program.
-	// Nil is off, as a server started without --cover carries.
+	// Nil is off, the state of a server started without --cover.
 	coverage *coverage.Aggregator
 
 	// autoindex answers a directory with no index page with a listing of
@@ -230,7 +230,7 @@ func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
 }
 
 // redirectToDirectory sends a request that named a directory without its
-// trailing slash to the same path carrying one, query string and all.
+// trailing slash to the same path with one, query string and all.
 //
 // The location is relative, as the one http.FileServer writes is: an absolute
 // path would be wrong under a mount that stripped a prefix off the request.
@@ -244,15 +244,15 @@ func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 }
 
 // serverVars adds the $_SERVER entries only the server knows: where the site
-// lives on disk and which script the request resolved to. runner.Context fills
+// is on disk and which script the request resolved to. runner.Context fills
 // everything derivable from the request itself and leaves these
 // out, because it has no document root and no resolved script.
 //
 // SERVER_NAME and SERVER_PORT come from the address the listener bound in real
 // PHP, not from the Host header, which is client supplied. This server
 // routes by Host and the name a request arrived under is the site it reached,
-// which SERVER_NAME reports; the port is the one the URL carried,
-// left unset when it carried none.
+// which SERVER_NAME reports; the port is the one the URL named,
+// left unset when it named none.
 //
 // filename is relative to the application root, as LoadFile takes it.
 func (h *handler) serverVars(request runner.Context, r *http.Request, filename string) {
@@ -366,7 +366,7 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 // serveStatus answers with the status and its standard text, and no more.
 //
 // What actually went wrong is in the log line and on the request trace, both
-// addressed by the same request id. The response body carries none of it: a
+// addressed by the same request id. The response body holds none of it: a
 // description of the site's own internals handed to whoever named it.
 func serveStatus(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
@@ -444,8 +444,8 @@ func reloadConfig(started config.Config, globals *flags.Options) (config.Config,
 // setup registers what one generation serves.
 func setup(ctx context.Context, svc *Service, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
 	// The platform records, phpscript observes: the interpreter reports onto
-	// the trace the recorder's middleware put in the request context rather
-	// than into a second recorder. Looked up per generation, each of which
+	// the trace the recorder's middleware put in the request context, never
+	// into a second recorder. Looked up per generation, each of which
 	// builds its own. Telemetry off leaves the observers empty.
 	var observers []runner.Observer
 	var recorder *TelemetryModule
@@ -508,7 +508,7 @@ func warnFrozen(log Logger, started, reloaded config.Config) {
 // registerSite wires the single tenant server: one application root, its
 // modules mounted straight onto the platform router. The route modules stay on
 // that router and not a nested one and the platform keeps seeing the pattern
-// a request matched, the label its traces carry.
+// a request matched, the label on its traces.
 func registerSite(svc *Service, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
@@ -548,13 +548,13 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
-	// What a @startup job binds goes on the router whether or not the tree
-	// carries @route annotations, so this registers beside the jobs and not
-	// beside the scanner: binding is what a service does instead of annotating.
+	// What a @startup job binds goes on the router even where the tree holds no
+	// @route annotations. This registers beside the jobs and not beside the
+	// scanner: a service binds where a script annotates.
 	svc.Register(annotations.NewBindings(annotationOptions...))
 
-	// The routed endpoints take the file handler's error pages: they live
-	// under the site's document root, the directory the file handler looks in.
+	// The routed endpoints take the file handler's error pages: the site's
+	// document root holds them, the directory the file handler looks in.
 	if appConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
@@ -566,7 +566,7 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 }
 
 // documentRoot returns the directory beneath the application root served over
-// HTTP. public is the default and `config.yml` carries it; the literal here
+// HTTP. public is the default and `config.yml` sets it; the literal here
 // only covers a Config assembled in Go without one.
 func documentRoot(appConfig config.Config) string {
 	if appConfig.DocumentRoot == "" {

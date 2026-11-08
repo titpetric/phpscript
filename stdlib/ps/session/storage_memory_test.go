@@ -11,8 +11,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/session"
 )
 
-// TestStorageMemory_Load covers the copy Load returns. The data lives in a map
-// the storage owns and handing out the stored slice would let a caller mutate
+// TestStorageMemory_Load covers the copy Load returns. A map the storage owns
+// holds the data and handing out the stored slice would let a caller mutate
 // another request's session through it.
 func TestStorageMemory_Load(t *testing.T) {
 	t.Parallel()

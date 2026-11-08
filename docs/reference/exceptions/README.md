@@ -24,7 +24,7 @@ The catch variable receives the thrown object and `getMessage()` and `getCode()`
 
 ## Which clause takes it
 
-Every throwable class is one type carrying the name a script constructed and the runtime answers a clause from that name, with no hierarchy to descend:
+Every throwable class is one type recording the name a script constructed and the runtime answers a clause from that name, with no hierarchy to descend:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|
@@ -63,14 +63,14 @@ The method set answers on whatever reached the catch, including an error a Go bi
 | Method                             | Value                                                         |
 |------------------------------------|---------------------------------------------------------------|
 | `getMessage()`                     | The message, which is the Go error text for a binding failure |
-| `getCode()`                        | The constructed code, or 0 for an error that carries none     |
+| `getCode()`                        | The constructed code, or 0 for an error without one           |
 | `getPrevious()`                    | The wrapped error, or null                                    |
-| `getFile()`, `getLine()`           | Empty and 0; a throwable does not carry a source position     |
+| `getFile()`, `getLine()`           | Empty and 0; a throwable holds no source position             |
 | `getTrace()`, `getTraceAsString()` | An empty array and `#0 {main}`; the runtime records no stack  |
 
 ## Errors from Go
 
-An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class and every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the runtime returns the error to the embedding host.
+An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither one is an instance of a PHP class and every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the runtime returns the error to the embedding host.
 
 ## References
 

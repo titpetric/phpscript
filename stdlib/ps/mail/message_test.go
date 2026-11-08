@@ -109,8 +109,8 @@ func TestBuildMessage_HTMLOnly(t *testing.T) {
 	}
 }
 
-// TestBuildMessage_Encoding covers what buildMessage owes a relay: 7-bit lines
-// of at most 76 characters ending in CRLF, whatever the script wrote. A relay
+// TestBuildMessage_Encoding covers what buildMessage writes for a relay: 7-bit
+// lines of at most 76 characters ending in CRLF, whatever the script wrote. A relay
 // rejects or breaks a single line past the 998 octets RFC 5321 allows; a raw
 // UTF-8 byte in a part is only safe when the relay speaks 8BITMIME. Both parts
 // still decode back to what the script sent.

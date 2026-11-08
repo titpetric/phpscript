@@ -18,8 +18,8 @@ func parseType(t *testing.T, src string) ast.Expr {
 }
 
 // TestVMType covers the wrappers a runtime value type hides behind: a pointer,
-// a slice, a map value, a variadic slot. An Array another package declares is
-// no runtime value type, and neither is model's every other type.
+// a slice, a map value, a variadic slot. Neither an Array another package
+// declares nor model's every other type is a runtime value type.
 func TestVMType(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -77,7 +77,7 @@ func TestNativeShape(t *testing.T) {
 	}
 }
 
-// TestCallNames covers the two names a call carries: what it calls, and the
+// TestCallNames covers the two names a call holds: what it calls, and the
 // variable it calls it on.
 func TestCallNames(t *testing.T) {
 	t.Parallel()
@@ -88,7 +88,7 @@ func TestCallNames(t *testing.T) {
 	}{
 		// A package qualifier reads as a receiver and costs no finding: a
 		// receiver answers against model.Array's own method names.
-		{"model.RangeValues(v, fn)", "RangeValues", "model"},
+		{"modelutil.RangeValues(v, fn)", "RangeValues", "modelutil"},
 		{"options.Get(\"path\")", "Get", "options"},
 		{"arrayTarget(name, array)", "arrayTarget", ""},
 		{"a.b.Set(k, v)", "Set", ""},

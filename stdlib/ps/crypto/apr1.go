@@ -14,8 +14,8 @@ import (
 // come from `openssl passwd -apr1`.
 const apr1Magic = "$apr1$"
 
-// apr1Rounds is the iteration count the algorithm fixes. No parameter carries
-// it: no field in the encoded form records it, no caller can raise it, and a
+// apr1Rounds is the iteration count the algorithm fixes. No parameter names
+// it: no field in the encoded form records it and no caller can raise it. A
 // guess costs 1000 md5 compressions for every file. That is tens of
 // microseconds, a hundred thousand times under bcrypt at the default cost, and
 // the reason docs/security.md names `htpasswd -B`.
@@ -30,8 +30,7 @@ const apr1SaltMax = 8
 const apr1Alphabet = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 // APR1Verify reports whether password produced the `$apr1$salt$hash` in stored.
-// A value that is not one returns false, as PasswordVerify does for a hash it
-// cannot read.
+// A value that is not one returns false, as PasswordVerify does.
 func APR1Verify(password, stored string) bool {
 	salt, _, ok := apr1Split(stored)
 	if !ok {
@@ -40,8 +39,7 @@ func APR1Verify(password, stored string) bool {
 	return subtle.ConstantTimeCompare([]byte(apr1Encode(password, salt)), []byte(stored)) == 1
 }
 
-// IsAPR1 reports whether a stored value claims to be this format, which a
-// password file carrying a format per line asks.
+// IsAPR1 reports whether a stored value claims the `$apr1$` format.
 func IsAPR1(stored string) bool {
 	_, _, ok := apr1Split(stored)
 	return ok
@@ -94,7 +92,7 @@ func apr1Encode(password, salt string) string {
 
 	// APR zeroes its digest buffer here and then writes one byte from it per
 	// set bit of the password length. The zero byte is the "mixed with a null"
-	// case, and a hash written by htpasswd carries it.
+	// case, and a hash written by htpasswd holds it.
 	zero := []byte{0}
 	first := []byte(password)
 	for length := len(password); length != 0; length >>= 1 {

@@ -51,7 +51,7 @@ func TestBindParams(t *testing.T) {
 	// Short of the variadic parameter and not merely at it: two names before
 	// `...$rest` and one argument leaves the parameter index past the end of
 	// args, which sliced from there panics on the bound. `f($a, $b, ...$rest)`
-	// called as `f("x")` is the shape, and it reached the caller as a host
+	// called as `f("x")` is the shape. It reached the caller as a host
 	// panic reading `slice bounds out of range [2:1]`.
 	short := &model.FuncDecl{Params: []model.Param{
 		{Name: "name"},

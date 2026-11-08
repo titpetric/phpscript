@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-// sourceEntry is what the scan records for one registration site: where it
-// is, the doc comment beside it, and the signature when the second argument
-// resolved to a function literal or declaration. A nil params or results
-// slice means the scan could not see the signature and reflection decides.
+// sourceEntry holds the package and area of one registration site, the doc
+// comment beside it, and the signature when the second argument resolved to a
+// function literal or declaration. A nil params or results slice means the
+// scan could not see the signature and reflection decides.
 type sourceEntry struct {
 	pkg     string
 	area    string
@@ -65,14 +65,14 @@ func (src *sources) typeDoc(name string) *typeInfo {
 
 // skipDirs are directories a scan does not descend into: a file in them
 // registers a binding on the CLI runtime, and demos and tests register
-// symbols of their own that would shadow the real sites.
+// separate symbols that would shadow the real sites.
 var skipDirs = map[string]bool{
 	".git": true, "bin": true, "demos": true, "docs": true,
 	"scripts": true, "testdata": true, "tests": true, "vendor": true,
 }
 
 // emptySources is what a caller with no Go source tree to read passes in. Every
-// lookup misses and the result carries only what reflection recovered.
+// lookup misses and the result holds only what reflection recovered.
 func emptySources() *sources {
 	return &sources{
 		funcs: map[string]*sourceEntry{},
@@ -148,7 +148,7 @@ func scan(root string) (*sources, error) {
 					info := typeInfo{pkg: pf.pkg, fields: fieldComments(ts.Type)}
 					// The by-name table holds a commented type and no
 					// other, the set typeDoc picks from. Widening it would
-					// let a type carrying field comments and no doc comment
+					// let a type holding field comments and no doc comment
 					// shadow a namesake in another package that has one.
 					if doc != nil {
 						info.comment = cleanComment(doc)
@@ -225,7 +225,7 @@ func (src *sources) collect(pkg, area string, body *ast.BlockStmt, cmap ast.Comm
 }
 
 // resolveSignature fills entry from the registered expression: a function
-// literal carries its signature inline, an identifier or selector resolves
+// literal holds its signature inline, an identifier or selector resolves
 // through the declaration index. The doc comment of a resolved declaration
 // backs an absent registration-site comment, with its leading Go name
 // rewritten to the PHP name so the published line reads as PHP documentation.
@@ -268,7 +268,7 @@ func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr 
 }
 
 // method returns the indexed declaration for a method on typeName, as an
-// entry carrying its comment and signature, or nil.
+// entry holding its comment and signature, or nil.
 func (src *sources) method(typeName, goName string) *sourceEntry {
 	for _, info := range src.decls[goName] {
 		if info.recvType != typeName {
@@ -306,8 +306,8 @@ func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 // method on the type the qualifier holds. A qualifier naming no package in the
 // tree, which every import of the Go standard library is, leaves the signature
 // to reflection: without that, registering regexp.Compile would publish the
-// parameters of flatstack/engine.Compile, which shares the name and nothing
-// else.
+// parameters of flatstack/engine.Compile, which shares the name and no
+// signature.
 func (src *sources) lookupDeclIn(pkg, qualifier, name string) *declInfo {
 	var method *declInfo
 	for _, info := range src.decls[name] {

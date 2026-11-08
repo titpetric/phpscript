@@ -1,7 +1,7 @@
 // Command list-apis generates docs/reference/extensions/implemented-apis.md.
 // It builds the same runtime the phpscript CLI runs, reading doc comments and
-// parameter names from the Go source tree it runs in, and the listing is what
-// a script sees. Run it from the module root:
+// parameter names from the Go source tree it runs in. The listing names what a
+// script sees. Run it from the module root:
 //
 //	go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
 //	go run ./scripts/list-apis --index
@@ -40,9 +40,9 @@ func main() {
 }
 
 // generate writes the listing for the tree at root, the whole of the command,
-// kept apart from main so a test can assert the wiring:
-// the listing is what a script sees, and a runtime built with one installer
-// missing publishes a reference that omits a whole area.
+// kept apart from main for a test to assert the wiring: the listing names the
+// script-visible surface, and a runtime built with one installer missing
+// publishes a reference that omits a whole area.
 func generate(out io.Writer, root string) error {
 	owned := stdlib.Owners(stdlib.Areas(stdlib.All))
 	doc, err := apidoc.GenerateAreas(listRuntime(root), root, apidoc.Owners{Funcs: owned.Funcs, Classes: owned.Classes})
@@ -73,7 +73,7 @@ func writeIndex(out io.Writer, root string) error {
 }
 
 // encodeIndex renders the index the way the file holds it, indented and
-// newline terminated, and a regenerated file that matches leaves no diff.
+// newline terminated. A regenerated file that matches leaves no diff.
 func encodeIndex(docs *apidoc.Docs) ([]byte, error) {
 	encoded, err := json.MarshalIndent(docs, "", "  ")
 	if err != nil {

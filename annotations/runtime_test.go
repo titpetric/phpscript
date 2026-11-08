@@ -27,7 +27,7 @@ echo $total;
 }
 
 // TestRuntimeFunc covers the hook a host customizes an endpoint's runtime
-// with. It runs once the standard library sits on the runtime and a hook sees
+// with. It runs once the runtime holds the standard library and a hook sees
 // the bindings a script already has and a later hook replaces what an earlier
 // one registered. Each request builds one runtime and the hook runs once per
 // request and nothing a script did leaks into the next one.

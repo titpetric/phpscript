@@ -51,7 +51,7 @@ func refuseFile(t *testing.T, lines ...string) error {
 
 // TestPasswordFileAuthenticate covers one line per accepted format, because
 // each line names its own and a file mixes them: a store moving from
-// htpasswd's default to bcrypt carries both until the rewrite finishes.
+// htpasswd's default to bcrypt holds both until the rewrite finishes.
 func TestPasswordFileAuthenticate(t *testing.T) {
 	t.Parallel()
 
@@ -106,7 +106,7 @@ func TestPasswordFileRefusesACredential(t *testing.T) {
 }
 
 // TestPasswordFileRefusesTheFile covers what construction will not read. Each
-// one is a file an operator has to fix and the message carries the line and
+// one is a file an operator has to fix and the message names the line and
 // the parse stops there. A file half of which authenticates hides the other
 // half until it locks a user out.
 func TestPasswordFileRefusesTheFile(t *testing.T) {
@@ -168,7 +168,7 @@ func TestPasswordFileRefusesTheFile(t *testing.T) {
 	}
 }
 
-// TestPasswordFileReadsAroundNothing covers the lines a file carries that are
+// TestPasswordFileReadsAroundNothing covers the lines a file holds that are
 // not users: apache's `#` comments, blank lines and trailing whitespace, which
 // a hand-edited file accumulates.
 func TestPasswordFileReadsAroundNothing(t *testing.T) {
@@ -251,7 +251,7 @@ func TestPasswordFileExists(t *testing.T) {
 	if _, err := absent.Authenticate(context.Background(), "admin", testPassword); err == nil {
 		t.Error("Authenticate() against a missing file = nil, want an error naming the file")
 	}
-	// The listing is empty and carries no error and a caller rebuilding a
+	// The listing is empty and reports no error and a caller rebuilding a
 	// table writes no rows and its startup job still finishes.
 	users, err := absent.Users(context.Background())
 	if err != nil || len(users) != 0 {
@@ -284,7 +284,7 @@ func TestPasswordFileExistsNeedsAnAccount(t *testing.T) {
 			t.Errorf("%s: Exists() = true, want false for a file holding no accounts", name)
 		}
 
-		// The listing stays empty and carries no error, as for a missing
+		// The listing stays empty and reports no error, as for a missing
 		// file and a caller rebuilding a table writes no rows.
 		users, err := store.Users(context.Background())
 		if err != nil || len(users) != 0 {
@@ -338,7 +338,7 @@ func TestPasswordFileEmptyPath(t *testing.T) {
 // TestNewPasswordFileRoot covers the rooted constructor as a Go caller reaches
 // it, which stdlib/ps/session does for the store `new Session\Manager` takes by
 // default: an omitted path is DefaultPasswordFile in the root, and a named one
-// resolves inside it.
+// resolves inside the root.
 //
 // auth_test.go covers the confinement itself, through the registered class,
 // where a script does the naming.
@@ -468,9 +468,9 @@ func TestPasswordFileRereadsTheFile(t *testing.T) {
 	}
 }
 
-// TestPasswordFileCancelledContext covers what a read owes the request it
-// runs under: a cancelled context ends the call and leaves the filesystem
-// alone.
+// TestPasswordFileCancelledContext covers the contract a read holds to the
+// request it runs under: a cancelled context ends the call and leaves the
+// filesystem alone.
 func TestPasswordFileCancelledContext(t *testing.T) {
 	t.Parallel()
 

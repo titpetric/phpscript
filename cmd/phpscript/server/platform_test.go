@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestZeroModule covers the embedded module the server's own modules carry: it
+// TestZeroModule covers the embedded module the server's own modules share: it
 // reports the name Options.Modules filters on and answers every hook a module
 // leaves alone; coverageModule writes Mount alone.
 func TestZeroModule(t *testing.T) {
@@ -27,7 +27,7 @@ func TestZeroModule(t *testing.T) {
 }
 
 // TestManager covers what this package asks of a Manager before it serves: the
-// configured options reach it, and the setup hook it carries takes the Service
+// configured options reach it, and the setup hook it holds takes the Service
 // those options built. The manager stays idle until Run and the hook has not
 // fired here.
 func TestManager(t *testing.T) {

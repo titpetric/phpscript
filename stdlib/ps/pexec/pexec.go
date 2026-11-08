@@ -28,9 +28,8 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, "")
 }
 
-// RegisterRoot installs the process bindings with commands rooted at dir,
-// replacing whatever root stood before it. An empty dir is the process
-// working directory.
+// RegisterRoot installs the process bindings rooted at dir, replacing whatever
+// root stood before it. An empty dir is the process working directory.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 

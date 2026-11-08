@@ -89,7 +89,7 @@ const (
 	opCompactEntry
 	// opCompactDynamic is opCompactEntry for a name the compiler could not
 	// read off the source: it pops the name and looks the slot up in the
-	// table the program carries. compact($which) and compact(name()) take
+	// table the program holds. compact($which) and compact(name()) take
 	// this path.
 	opCompactDynamic
 	// opCallStatic is `Class::method(args...)`: a args, name the class
@@ -105,7 +105,7 @@ const (
 	opSetStaticProp
 	// opStaticSeeded pushes whether the function-static bag a indexes (a
 	// *model.StaticVar in the constant pool) already holds values from an
-	// earlier call, and that decides whether the initializers run.
+	// earlier call. That answers whether the initializers run.
 	opStaticSeeded
 	// opStaticLoad and opStaticStore read and write one name in a
 	// function-static bag: a indexes the *model.StaticVar node, name is the
@@ -234,7 +234,7 @@ type closureDef struct {
 	// snapshot PHP's by-value `use` describes.
 	captures []int
 	// thisSlot is the slot holding the receiver a closure written inside a
-	// method carries away, or -1 for a `static function` and for one written
+	// method keeps, or -1 for a `static function` and for one written
 	// outside a class.
 	thisSlot int
 }
@@ -263,10 +263,10 @@ type Program struct {
 	userFuncsFold map[string]userFuncDef
 	classes       []*model.Class
 	// catchGroups holds the clause list of every compiled try, in source
-	// order; opTryPush carries the index of its own group.
+	// order; opTryPush indexes the group of the try it opens.
 	catchGroups [][]catchClause
 	// closures holds one entry per anonymous function in the program, in source
-	// order; opClosure carries the index of its own definition.
+	// order; opClosure indexes the definition it instantiates.
 	closures []closureDef
 }
 
@@ -314,9 +314,9 @@ type Host interface {
 	// slice for the caller to assign.
 	UnsetIndex(container, key any) (replacement any, err error)
 	// MatchCatch reports whether a catch clause declaring declaredType handles
-	// err. The class hierarchy, the `A|B` union form and the rule that
-	// `catch (Exception)` does not catch an engine error all live in the host,
-	// and both backends select the same clause.
+	// err. The host owns the class hierarchy, the `A|B` union form and the
+	// rule that `catch (Exception)` does not catch an engine error. Both
+	// backends select the same clause.
 	MatchCatch(declaredType string, err error) bool
 	// Throw turns a thrown value into the error it travels as. A built-in
 	// throwable is an error already; Throw wraps an instance of a declared
@@ -354,7 +354,7 @@ type invokeHost interface {
 	InvokeValue(args []any, callee any) (any, error)
 }
 
-// globalHost holds variables of its own, which a host seeded before the run. Run
+// globalHost holds the variables a host seeded before the run. Run
 // writes them into the top-level frame, where the language puts a
 // global: answering them from Lookup would expose them to every function
 // and every closure, where no frame below the first one declares them.
@@ -363,13 +363,13 @@ type globalHost interface {
 }
 
 // unsetPropHost removes a named property, PHP's unset($obj->prop). Removing
-// one that is not there, or from a value that has none, is not an error.
+// one that is not there, or from a value without properties, is not an error.
 type unsetPropHost interface {
 	UnsetProperty(receiver any, name string) error
 }
 
 // staticCallHost dispatches `Class::method(args...)`. method arrives as a
-// value because the `Class::$m(...)` spelling carries it at run time.
+// value because the `Class::$m(...)` spelling names it at run time.
 type staticCallHost interface {
 	CallStatic(class string, method any, args []any) (any, error)
 }
@@ -387,7 +387,7 @@ type staticPropHost interface {
 // CallableValue takes a function name, with the namespace fallback a call would
 // try, or a value that is callable already. CallableMember takes a receiver or a
 // class name together with the method, which arrives as a value because the
-// `$obj->$m(...)` spelling carries it at run time.
+// `$obj->$m(...)` spelling names it at run time.
 type closureHost interface {
 	CallableValue(target any, fallback string) (any, error)
 	CallableMember(target any, method any) (any, error)

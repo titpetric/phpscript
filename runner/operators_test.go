@@ -91,7 +91,7 @@ func TestPHPLooseEqual(t *testing.T) {
 
 // TestPHPIdentical covers `===`: same type, same value, no coercion. int and
 // int64 are one PHP type arriving in two Go spellings, a []byte is the string
-// it carries, arrays compare pairwise in order, and objects compare by
+// it holds, arrays compare pairwise in order, and objects compare by
 // instance. A binding's []string falls back to reflect equality, because `==`
 // on a slice would panic.
 func TestPHPIdentical(t *testing.T) {

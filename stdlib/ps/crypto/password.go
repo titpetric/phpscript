@@ -16,11 +16,12 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
 // The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8 and it
-// carries the same value as PASSWORD_BCRYPT and a script that passes either
+// holds the same value as PASSWORD_BCRYPT and a script that passes either
 // gets the same hash; argon2id is the stronger choice per millisecond spent and
 // is not the default here for the same reason php does not default to it: it
 // changes the memory footprint of a login.
@@ -41,7 +42,7 @@ const (
 // x/crypto's GenerateFromPassword writes. Both name the same derivation.
 //
 // Reading needs no rewrite: x/crypto refuses only a major version above '2'
-// and carries the minor through the comparison and a stored `$2y$`, `$2a$` or
+// and passes the minor through the comparison and a stored `$2y$`, `$2a$` or
 // `$2b$` verifies as it stands. Writing does need one, because the prefix is
 // script-visible: derive swaps goPrefix for phpPrefix on the way out, and a
 // hash written here reads byte for byte like php's.
@@ -188,14 +189,8 @@ func Register(rt *runner.Runtime) {
 	})
 }
 
-// PasswordVerify answers password_verify, and is what stdlib/ps/auth reads a
-// stored password file line with: a user database holds what password_hash
-// wrote and the dispatch has one home.
-//
-// The stored hash names the algorithm and the work factors and a login costs
-// what that hash carries. A value no derivation could match reads false in
-// the time its first byte takes, as in php, which keeps a wrong-shaped cookie
-// from costing a core.
+// PasswordVerify answers password_verify, the call stdlib/ps/auth reads a
+// stored password file line with. An unreadable value answers false unhashed.
 func PasswordVerify(password, hash string) bool {
 	switch {
 	case isArgon2(hash):
@@ -208,13 +203,8 @@ func PasswordVerify(password, hash string) bool {
 }
 
 // IsPasswordHash reports whether PasswordVerify can read a stored value: one
-// of the formats it dispatches on, with the parameters inside it readable. A
-// value this refuses matches no password and a user database asks it when it
-// reads a file and stops there, ahead of the login that would fail.
-//
-// It runs the parse and no prefix test. The shape checks the dispatch uses are
-// loose by design and that a hash php wrote and this build cannot read answers
-// false from password_verify; here a loose answer would accept a damaged line.
+// of the formats it dispatches on, with the encoded parameters readable. It
+// parses the whole value where the dispatch tests the shape alone.
 func IsPasswordHash(stored string) bool {
 	if isArgon2(stored) {
 		_, _, _, err := argon2Decode(stored)
@@ -236,7 +226,7 @@ func algoName(algo string) string {
 	return algo
 }
 
-// paramsOf reads back the parameters a stored hash carries.
+// paramsOf reads back the parameters a stored hash records.
 // password_get_info and password_needs_rehash both answer from it.
 func paramsOf(hash string) (params, bool) {
 	if isArgon2(hash) {
@@ -260,8 +250,8 @@ func paramsOf(hash string) (params, bool) {
 //
 // The revision marker is the one place this is stricter than x/crypto, which
 // parses the 1997 "$2$" spelling php refuses; bcryptRevision names the four
-// markers php reads. The cost digits and the base64 stay x/crypto's to read,
-// and it can still refuse a hash this accepts.
+// markers php reads. The cost digits and the base64 stay x/crypto's to read.
+// It can still refuse a hash this accepts.
 func isBcrypt(hash string) bool {
 	return len(hash) >= 59 && bcryptRevision(hash)
 }
@@ -281,7 +271,7 @@ func paramsFrom(opts []any) (params, error) {
 
 	p := defaultParams(algo)
 	for _, opt := range opts {
-		if !model.IsCollection(opt) {
+		if !modelutil.IsCollection(opt) {
 			continue
 		}
 		if err := p.readOptions(opt); err != nil {
@@ -305,7 +295,7 @@ func algoFrom(opts []any) (string, error) {
 		// A collection is the options bag, whatever built it: the array a
 		// script wrote and the map another binding returned both. The
 		// algorithm is the other argument.
-		if opt == nil || model.IsCollection(opt) {
+		if opt == nil || modelutil.IsCollection(opt) {
 			continue
 		}
 		switch value := opt.(type) {
@@ -331,8 +321,8 @@ func algoFrom(opts []any) (string, error) {
 	return algo, nil
 }
 
-// legacyAlgo maps PHP 7's integer identifiers. Anything else is bcrypt, which
-// is what PASSWORD_DEFAULT names in that version.
+// legacyAlgo maps PHP 7's integer identifiers. Anything else is bcrypt, the
+// algorithm PASSWORD_DEFAULT names in that version.
 func legacyAlgo(value int64) string {
 	switch value {
 	case 2:
@@ -344,8 +334,8 @@ func legacyAlgo(value int64) string {
 	}
 }
 
-// readOptions applies the keys the algorithm reads and ignores the rest, which
-// is what php does with an option belonging to another algorithm.
+// readOptions applies the keys the algorithm reads and ignores the rest, as
+// php does with an option belonging to another algorithm.
 func (p *params) readOptions(options any) error {
 	if p.algo == algoBcrypt {
 		cost, err := intOption(options, "cost", int64(p.cost))
@@ -378,7 +368,7 @@ func (p *params) readOptions(options any) error {
 	return nil
 }
 
-// math32Max is the widest value the encoded parameters can carry, which is
+// math32Max is the widest value the encoded parameters can hold, which is
 // also the widest x/crypto takes.
 const math32Max = 1<<32 - 1
 
@@ -389,7 +379,7 @@ const math32Max = 1<<32 - 1
 func optionValue(options any, name string) (any, bool) {
 	var found any
 	ok := false
-	model.RangeValues(options, func(key, value any) bool {
+	modelutil.RangeValues(options, func(key, value any) bool {
 		if phpval.String(key) != name {
 			return true
 		}

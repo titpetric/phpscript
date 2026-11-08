@@ -28,7 +28,7 @@ function load() { return 1; }
 	}
 
 	// A chained statement whose value is a handle, or a name whose type the
-	// source does not settle, draws one finding, whatever scope it sits in,
+	// source does not settle, draws one finding, whatever scope encloses it,
 	// and a chain of three names draws one too and not one per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
@@ -45,7 +45,7 @@ function load() { return 1; }
 }
 
 // The check leaves a chain that ends in a literal alone. A scalar is
-// immutable and neither name can reach the other through it, and the parser
+// immutable and neither name can reach the other through it. The parser
 // splits an array literal into one allocation per name, with no value
 // left to share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
 func TestFileAcceptsChainedLiterals(t *testing.T) {
@@ -98,7 +98,7 @@ function compute($v) { return $v; }
 // The reference markers parse and confer nothing (docs/design.md): `$a = &$b`
 // binds by value and `function &f()` returns by value, in free functions,
 // methods and closures alike. The foreach form, parameters and closure `use`
-// captures really do carry semantics elsewhere and are not reported.
+// captures keep their meaning elsewhere and are not reported.
 func TestFileReportsReferences(t *testing.T) {
 	t.Parallel()
 	src := `<?php

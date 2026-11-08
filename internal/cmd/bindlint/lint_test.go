@@ -7,9 +7,9 @@ import (
 )
 
 // TestLintOffenders pins every shape the rules refuse, in the order the
-// findings sort: a parameter of the runtime type on a function, on a slice,
-// and on a class method, and a narrowing in the binding and in a helper of its
-// package.
+// findings sort: a parameter of the runtime type on a function, on a slice and
+// on a class method, a parameter of the Go-native shape, and a narrowing in
+// the binding and in a helper of its package.
 func TestLintOffenders(t *testing.T) {
 	t.Parallel()
 	findings, err := lint("testdata/offenders")
@@ -19,9 +19,10 @@ func TestLintOffenders(t *testing.T) {
 	want := []string{
 		"offenders.go:14: count_array: parameter $array is *model.Array",
 		"offenders.go:18: count_rows: parameter $rows is []*model.Array",
-		"offenders.go:23: read_options: narrows options to *model.Array",
-		"offenders.go:45: read_options_helper via readPath: narrows options to *model.Array",
-		"offenders.go:69: Box::Fill: parameter $items is *model.Array",
+		"offenders.go:22: count_names: parameter $names is []string",
+		"offenders.go:27: read_options: narrows options to *model.Array",
+		"offenders.go:49: read_options_helper via readPath: narrows options to *model.Array",
+		"offenders.go:73: Box::Fill: parameter $items is *model.Array",
 	}
 	if len(findings) != len(want) {
 		t.Fatalf("got %d findings, want %d:\n%s", len(findings), len(want), join(findings))

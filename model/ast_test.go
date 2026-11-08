@@ -8,11 +8,11 @@ import (
 
 // TestNode covers the two marker interfaces the runner switches on. A statement
 // runs for its side effects and an expression evaluates to a value and a node
-// reaches the interpreter through one marker or the other, and a type carrying
-// neither is unreachable.
+// reaches the interpreter through one marker or the other, and a type
+// implementing neither marker is unreachable.
 //
-// Include carries both. PHP writes an include as a standalone statement and as
-// a value-producing expression and one node stands in both positions.
+// Include implements both. PHP writes an include as a standalone statement and
+// as a value-producing expression and one node fills both positions.
 func TestNode(t *testing.T) {
 	t.Parallel()
 	statements := map[string]Node{
@@ -70,7 +70,7 @@ func TestNode(t *testing.T) {
 //
 // The key is the statement node and two statements of one kind need two
 // addresses: Go assigns every zero-sized allocation the same one, and Break and
-// Continue carry their source line so neither is zero-sized.
+// Continue hold their source line so neither node is zero-sized.
 func TestSourceSpan(t *testing.T) {
 	t.Parallel()
 	first := &Break{Line: 4}
@@ -111,52 +111,11 @@ func TestSourceSpan(t *testing.T) {
 	}
 }
 
-// TestUnwrapParenthesized covers reading an expression's shape without
-// evaluating it. A consumer that switches on the node type needs grouping to be
-// transparent and `($a)` and `((($a)))` both read as the variable.
-//
-// The grouping stays on the tree. The formatter rewrites files in place and
-// prints the parentheses an author wrote and peeling them copies nothing and
-// edits nothing.
-func TestUnwrapParenthesized(t *testing.T) {
-	t.Parallel()
-	v := &Var{Name: "v"}
-	one := &Lit{Value: int64(1)}
-
-	for _, tc := range []struct {
-		name string
-		expr Expr
-		want Expr
-	}{
-		{"bare", v, v},
-		{"one layer", &Parenthesized{X: v}, v},
-		{"three layers", &Parenthesized{X: &Parenthesized{X: &Parenthesized{X: v}}}, v},
-		{"literal", one, one},
-		{"nothing", nil, nil},
-	} {
-		if got := UnwrapParenthesized(tc.expr); got != tc.want {
-			t.Errorf("%s: UnwrapParenthesized() = %#v, want %#v", tc.name, got, tc.want)
-		}
-	}
-
-	grouped := &Binary{
-		Op:    "*",
-		Left:  &Parenthesized{X: &Binary{Op: "+", Left: v, Right: one}},
-		Right: one,
-	}
-	if UnwrapParenthesized(grouped.Left) == grouped.Left {
-		t.Fatal("UnwrapParenthesized answered the grouping it was given")
-	}
-	if _, ok := grouped.Left.(*Parenthesized); !ok {
-		t.Error("the grouping came off the tree, so a printer cannot put it back")
-	}
-}
-
 // TestArrayItem covers how an array literal tells a list-style entry from a
 // keyed one. Key is nil for `[v]`, where the runner assigns the position as it
 // builds the literal.
 //
-// `[null => v]` carries a key holding the null literal, which PHP normalises to
+// `[null => v]` sets Key to the null literal, which PHP normalises to
 // the empty string. A consumer reading Key for nil alone would turn the second
 // spelling into the first.
 func TestArrayItem(t *testing.T) {
@@ -225,7 +184,7 @@ func TestUse(t *testing.T) {
 }
 
 // TestDeclare covers the spelling a consumer has to tell apart. The runtime has
-// one set of semantics and no directive varies them and the node carries the
+// one set of semantics and no directive varies them and the node holds the
 // directives for printing.
 //
 // A `declare(...) { ... }` still runs its body, and Block marks the spelling
@@ -398,12 +357,11 @@ func TestSwitchCase(t *testing.T) {
 
 // TestClosureUse covers a closure's capture list. ByRef records the `&$name`
 // spelling; the runtime has no reference values and both spellings bind the
-// same value, and the marker stays so the formatter prints the source back
+// same value. The marker stays so the formatter prints the source back
 // and the linter can report it.
 //
-// A capture binds into the closure's own frame and a write through one is
-// invisible to the enclosing scope: AssignsTo reports nothing for a body
-// assigning to a captured name.
+// A capture binds into the closure's own frame. modelutil.AssignsTo reports
+// nothing for a body assigning to a captured name; its test covers that.
 func TestClosureUse(t *testing.T) {
 	t.Parallel()
 	total := &Var{Name: "total"}
@@ -428,8 +386,5 @@ func TestClosureUse(t *testing.T) {
 		if strings.HasPrefix(use.Name, "$") {
 			t.Errorf("the captured name %q kept its sigil", use.Name)
 		}
-	}
-	if AssignsTo(total, []Stmt{&ExprStmt{X: fn}}) {
-		t.Error("a write to a captured name reads as a write to the enclosing frame")
 	}
 }

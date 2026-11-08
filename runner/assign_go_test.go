@@ -98,7 +98,7 @@ func TestAssignGoField(t *testing.T) {
 		t.Errorf("the field holds %q, want the written value", rec.Value)
 	}
 
-	// The snake_case spelling resolves the idiomatic Go name, and the value
+	// The snake_case spelling resolves the idiomatic Go name. The value
 	// takes the field's type the way a parameter does.
 	if err := assignGoField(rec, "is_readonly", func(any) (any, error) { return true, nil }); err != nil {
 		t.Fatalf("the folded spelling failed: %v", err)

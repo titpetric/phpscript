@@ -71,7 +71,7 @@ func TestWithExprCache(t *testing.T) {
 }
 
 // TestErrorPageFunc covers the two arguments a host page takes. The
-// status is what the endpoint ended on, and the notes are what went wrong,
+// status is what the endpoint ended on. The notes are what went wrong,
 // empty unless the endpoint failed: a 410 the script set is an answer the
 // script chose, and a thrown exception is a failure whose message the host may
 // render. The page reports whether it rendered and a false answer leaves the

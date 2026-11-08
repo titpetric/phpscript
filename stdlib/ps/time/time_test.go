@@ -10,7 +10,7 @@ import (
 	phptime "github.com/titpetric/phpscript/stdlib/ps/time"
 )
 
-// run executes src against a runtime carrying this package's bindings and
+// run executes src against a runtime holding this package's bindings and
 // no other binding, and what resolves is what Register installed.
 func run(t *testing.T, src string) string {
 	t.Helper()
@@ -29,7 +29,7 @@ func run(t *testing.T, src string) string {
 
 // TestRegister covers the layout constants and the names a script reaches the
 // clock through. A namespaced constant does not parse in this runtime and the
-// constants carry the classes' Time\ prefix as TIME_, and the value under each
+// constants spell the classes' Time\ prefix as TIME_, and the value under each
 // name is Go's own layout string.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -124,8 +124,8 @@ func TestRegisterDispatchesToGoMethods(t *testing.T) {
 	}
 }
 
-// TestRegisterTimezoneIsPerRuntime covers the reason the location sits on a
-// clock value: set_timezone moves what Time construction and parsing resolve
+// TestRegisterTimezoneIsPerRuntime covers the reason a clock value owns the
+// location: set_timezone moves what Time construction and parsing resolve
 // against for one runtime, and two runtimes serving two requests keep separate
 // choices. Writing time.Local would leak one request's timezone into the other.
 func TestRegisterTimezoneIsPerRuntime(t *testing.T) {

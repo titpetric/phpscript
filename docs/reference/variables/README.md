@@ -6,7 +6,7 @@
 | Predefined variables            | Partial compatibility | The runtime seeds only the request variables documented in [Predefined variables](../predefined-variables/README.md).                                           |
 | Variable scope                  | Partial compatibility | Calls have local scope; `static $x` persists per function (per closure value); `global` is a won't-build no-op.                                                 |
 | Variable variables              | Partial compatibility | `new $className` and `$obj->$method(...)` resolve the name at run time; `$$name` is unavailable.                                                                |
-| Variables from external sources | Partial compatibility | The request context carries HTTP query, form, and route values.                                                                                                 |
+| Variables from external sources | Partial compatibility | The request context holds HTTP query, form, and route values.                                                                                                   |
 | References                      | Partial compatibility | `foreach ($a as &$v)` works; `$a = &$b` and `function &f()` parse, survive the formatter and bind by value. See [Value semantics](../types/value-semantics.md). |
 
 ## Basics
@@ -44,11 +44,11 @@ echo implode(",", array_keys($e));        // 0,1   php answers 0,2
 
 ## Variable scope
 
-Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create a scope of their own.
+Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks create no scope.
 
 phpscript will not build PHP's `global` statement: it parses and binds nothing, and the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
 
-Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value carries its own static storage.
+Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value has its own static storage.
 
 ```php
 function counter() {

@@ -22,11 +22,11 @@ type Storage interface {
 	Authenticate(ctx context.Context, key, secret string) (User, error)
 
 	// Exists reports whether there is a user database to ask: the store is
-	// there, and it holds at least one account.
+	// there and holds at least one account.
 	//
 	// A manager takes a default store on this answer and the default fails no
 	// tree that has no user database: construction resolves where the store
-	// would sit, and this says whether any account sits there. A login page
+	// would sit. Exists reports whether any account sits there. A login page
 	// prints that state, and an installer asks it first.
 	Exists() (bool, error)
 }

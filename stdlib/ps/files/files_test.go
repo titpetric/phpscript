@@ -14,7 +14,7 @@ import (
 // TestWithin covers the containment test a host shares with the allowlist: a
 // server serving a writable directory has to know not to execute the PHP a
 // script may have written into it. The separator is what keeps a sibling out,
-// and a directory whose name starts with a root's name is outside it.
+// and a directory whose name starts with a root's name is outside the root.
 func TestWithin(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -203,7 +203,7 @@ echo "written";`)
 }
 
 // TestWritablePathsThrowsOutsideTheAllowlist pins the refusal and its shape: an
-// exception and no false return and a script cannot carry on believing
+// exception and no false return and a script cannot continue believing
 // the write happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 	t.Parallel()
@@ -263,8 +263,8 @@ echo "|" . (file_exists("private/keep.txt") ? "yes" : "no");`)
 	}
 }
 
-// An unconfigured allowlist is what every project that never set the key has,
-// and it must keep writing wherever the user running the process may.
+// An unconfigured allowlist is what every project that never set the key has.
+// It must keep writing wherever the user running the process may.
 func TestWritablePathsUnsetAllowsEverything(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)
@@ -277,7 +277,7 @@ echo "written";`)
 	}
 }
 
-// A prefix is not a parent: uploads-old sits beside upload, not inside it.
+// A prefix is not a parent: upload-old is a sibling of upload and no child of it.
 func TestWritablePathsRejectsASiblingSharingAPrefix(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)

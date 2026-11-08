@@ -7,7 +7,7 @@ type UploadedFile struct {
 	Name string // client-supplied file name, without any directory part
 	// FullPath is the file name as the client sent it, directory part and all,
 	// which a directory upload uses to say where in the tree a file sat. PHP
-	// 8.1 added it; like Name, it carries the client's word and no path on
+	// 8.1 added it; like Name, it holds the client's word and no path on
 	// this host.
 	FullPath string
 	Type     string // client-supplied content type

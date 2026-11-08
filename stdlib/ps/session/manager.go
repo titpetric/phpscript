@@ -29,12 +29,9 @@ type Manager struct {
 }
 
 // NewManager creates a manager backed by storage, authenticating against the
-// user database given.
-//
-// The user database is variadic because most of what a manager does needs
-// none: a session is a cookie and a storage, and login() is the one method
-// that asks who a credential belongs to. The registered constructor fills both
-// with defaults when a script names neither; see session.go.
+// user database given. The user database is variadic: login() is the one
+// method that asks who a credential belongs to. The registered constructor in
+// session.go fills both with defaults when a script names neither.
 func NewManager(storage Storage, users ...auth.Storage) (*Manager, error) {
 	if storage == nil {
 		return nil, errors.New("session storage is nil")
@@ -49,12 +46,8 @@ func NewManager(storage Storage, users ...auth.Storage) (*Manager, error) {
 	return manager, nil
 }
 
-// SetStorage replaces the storage sessions live in.
-//
-// This is the setter half of the constructor: a script that took the
-// manager's defaults and then needs memory storage says so here, and the rest
-// of the manager holds. It wraps the storage for tracing as the constructor
-// does and the trace names whichever backend answered.
+// SetStorage replaces the storage that holds sessions, wrapping it for tracing
+// as the constructor does.
 func (s *Manager) SetStorage(storage Storage) error {
 	if storage == nil {
 		return errors.New("session storage is nil")
@@ -76,9 +69,8 @@ func (s *Manager) SetAuth(users auth.Storage) error {
 // session for the user it names. It reports whether the credential held; a
 // wrong password is false and no error.
 //
-// The session carries the user's primary key and a row written during the
-// session references the user the way any other table does. The username
-// stays in the user database, and a caller that needs it reads it there.
+// The session holds the user's primary key. The username stays in the user
+// database and a caller that needs it reads it there.
 func (s *Manager) Login(ctx context.Context, key, secret string) (bool, error) {
 	if s.users == nil {
 		return false, errors.New("session manager has no user database to authenticate against")
@@ -133,8 +125,7 @@ func (s *Manager) Destroy(ctx context.Context) error {
 }
 
 // DeleteByUser signs one user out of every client, answering how many sessions
-// it took. It clears this manager's own session when the sweep took it and
-// valid() answers false in the same request the account went away in.
+// it took. It clears this manager's own session when the sweep took that one.
 func (s *Manager) DeleteByUser(ctx context.Context, userID string) (int, error) {
 	if current, err := s.Get(ctx); err == nil && current == userID {
 		s.sessionID = ""

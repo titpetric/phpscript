@@ -7,15 +7,14 @@ import (
 // This file is the runtime's memory accounting: the walk over the live roots
 // behind memory_get_usage(), the request baseline a host folds in, and the
 // limit check the statement loop and the host-call burst guard run. The size
-// estimation it walks with lives in memory.go.
+// estimation it walks with is in memory.go.
 
 // MemoryUsage returns request-scoped bytes, walking the live roots.
 func (rt *Runtime) MemoryUsage() int64 {
 	return rt.MemoryWalk()
 }
 
-// MemoryPeak returns the high-water mark, sampled at the walk points and not
-// at every allocation the way php's is.
+// MemoryPeak returns the high-water mark, sampled at the walk points.
 func (rt *Runtime) MemoryPeak() int64 {
 	rt.MemoryWalk()
 	return rt.memPeak

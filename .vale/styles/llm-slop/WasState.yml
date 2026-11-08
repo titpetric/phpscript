@@ -5,4 +5,4 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\b(?:was|were|had been)\b'
+  - '\b(?:was|were|had\s+been)\b'

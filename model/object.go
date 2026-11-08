@@ -5,10 +5,10 @@ import (
 )
 
 // Object is a class instance: a property bag plus a pointer back to its class.
-// Because methods live on the Class (resolved by the runtime), an Object passed
-// into expr-lang exposes its Props for `$obj->field` style access.
+// Because the Class holds the methods (resolved by the runtime), an Object
+// passed into expr-lang exposes its Props for `$obj->field` style access.
 //
-// Props is a Go map and has no order of its own and order records the sequence
+// Props is a Go map with no inherent order and order records the sequence
 // the properties arrive in. Every reader passes through Names or Range and
 // than ranging the map, because PHP reads properties back in a defined order
 // and a script can see it: json_encode, print_r, var_dump, get_object_vars, the

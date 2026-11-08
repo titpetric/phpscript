@@ -1,4 +1,4 @@
-// Package http carries the HTTP\Client and HTTP\Request bindings, the
+// Package http holds the HTTP\Client and HTTP\Request bindings, the
 // outbound HTTP surface a script reaches where PHP has the curl_* family.
 //
 // The types a script sees are facades over net/http and not the net/http

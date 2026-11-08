@@ -7,12 +7,12 @@
 // the text family is absent because nothing did.
 //
 // This package registers imagetypes and never omits it, because ported code
-// branches on it, but one decoder set sits behind it and it always reports the
-// same three formats.
+// branches on it. One decoder set answers every call and imagetypes always
+// reports the same three formats.
 //
-// image.Decode reads whichever formats the process registered, and the
-// registration is an init: png and jpeg arrive with the encoders this package
-// calls by name, and gif has nothing here to reach for. A program decides what
+// image.Decode reads whichever formats the process registered. The registration
+// is an init: png and jpeg arrive with the encoders this package calls by name,
+// and gif has no encoder here to call. A program decides what
 // it links and the phpscript main package names all three and a host embedding
 // this one answers imagecreatefromgif() once it does the same.
 //
@@ -37,8 +37,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/files"
 )
 
-// Image is a GD image handle. A script never looks inside it; it holds one and
-// passes it back to the drawing and writing functions.
+// Image is a GD image handle. A script never looks inside the handle; it holds
+// one and passes it back to the drawing and writing functions.
 type Image struct {
 	m Drawable
 	// truecolor records which constructor made it. imagecreate produced a
@@ -86,9 +86,8 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
 
-// RegisterRoot installs the image functions rooted at dir. Reads resolve
-// against it and cannot climb out; writes are additionally held to the
-// runtime's writable_paths, matching stdlib/ps/files.
+// RegisterRoot installs the image functions rooted at dir. Reads cannot climb
+// out and a write obeys the runtime's writable_paths too, as in stdlib/ps/files.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{dir: dir, writable: files.WritableRoots(dir, rt.WritablePaths())}
 
@@ -269,8 +268,8 @@ func registerInfo(rt *runner.Runtime, r root) {
 			return false
 		}
 		// The four positional elements only. PHP adds "bits", "channels" and
-		// "mime" alongside them; nothing reads those through this binding, and
-		// a list keeps the indices a caller destructures by.
+		// "mime" alongside them; nothing reads those through this binding. A
+		// list keeps the indices a caller destructures by.
 		return []any{
 			int64(cfg.Width),
 			int64(cfg.Height),
@@ -354,8 +353,8 @@ func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc 
 	}
 	// An empty filename streams to the output. PHP 8 raises "Path must not be
 	// empty" and takes only null for that, but the empty string is how PHP 4
-	// and 5 code spelled it, and a port carries the older spelling; there is no
-	// second reading of imagejpeg($im, "") to lose by accepting it.
+	// and 5 code spelled it. A port keeps the older spelling; accepting it
+	// loses no second reading of imagejpeg($im, "").
 
 	if !toFile {
 		if err := enc(rt.Output(), im.m, options); err != nil {
@@ -384,7 +383,7 @@ func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc 
 
 // checkDimensions raises the ValueError PHP raises for a non-positive width or
 // height. PHP 8 raises for it where PHP 7 returned false, and a binding that
-// answers false instead would let a script carry on past a mistake PHP 8
+// answers false instead would let a script run on past a mistake PHP 8
 // stops at.
 func checkDimensions(fn string, width, height int64) error {
 	if width <= 0 {

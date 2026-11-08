@@ -5,12 +5,12 @@
 include "bootstrap.php";
 $table = $_POST["table_name"];
 if (!identifier_ok($table)) {
-	die("Invalid table name.");
+	die("Invalid table name");
 }
 
 $existing = $db->get("SELECT name FROM sqlite_master WHERE name = ?", $table);
 if ($existing) {
-	die("A table with that name already exists.");
+	die("Table exists: " . $table);
 }
 
 $engine = "sqlite";
@@ -27,7 +27,7 @@ if ($engine == "pgsql") {
 } elseif ($engine == "mysql") {
 	$allowed_types = $mysql_types;
 } elseif ($engine != "sqlite") {
-	die("Invalid database type.");
+	die("Invalid database type");
 }
 
 $column_count = 0;
@@ -36,7 +36,7 @@ if (isset($_POST["column_count"])) {
 }
 
 if ($column_count < 1 || $column_count > 100) {
-	die("Create between 1 and 100 columns.");
+	die("Column count out of range: 1-100");
 }
 
 $definitions = array();
@@ -49,12 +49,12 @@ for ($i = 1; $i <= $column_count; $i++) {
 
 	if ($name != "") {
 		if (!identifier_ok($name)) {
-			die("Invalid column name.");
+			die("Invalid column name");
 		}
 
 		$type = strtoupper($_POST["type_" . $i]);
 		if (!in_array($type, $allowed_types)) {
-			die("Invalid column type for " . $engine . ".");
+			die("Invalid column type for " . $engine);
 		}
 
 		$definition = qi($name) . " " . $type;
@@ -65,7 +65,7 @@ for ($i = 1; $i <= $column_count; $i++) {
 		$default = trim($_POST["default_" . $i]);
 		if ($default != "") {
 			if (!preg_match("/^(NULL|CURRENT_TIMESTAMP|-?[0-9]+|\\x27[^\\x27]*\\x27)$/", $default)) {
-				die("Defaults may be NULL, CURRENT_TIMESTAMP, a number, or a single-quoted string.");
+				die("Invalid default: NULL, CURRENT_TIMESTAMP, a number or a single-quoted string");
 			}
 
 			$definition .= " DEFAULT " . $default;
@@ -80,7 +80,7 @@ for ($i = 1; $i <= $column_count; $i++) {
 }
 
 if (count($definitions) == 0) {
-	die("At least one column is required.");
+	die("No columns");
 }
 
 $db->query("CREATE TABLE " . qi($table) . " (" . implode(", ", $definitions) . ")");

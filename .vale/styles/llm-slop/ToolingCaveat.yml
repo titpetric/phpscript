@@ -5,11 +5,11 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bbut the job is advisory\b'
-  - '\bdoes not gate\b'
-  - '\bfails to load its config\b'
-  - '\badvisory so\b'
-  - '\bhad to run twice\b'
-  - '\bneeded a second pass\b'
-  - '\bthe formatter rewrote\b'
-  - '\bunrelated to this change, but\b'
+  - '\bbut\s+the\s+job\s+is\s+advisory\b'
+  - '\bdoes\s+not\s+gate\b'
+  - '\bfails\s+to\s+load\s+its\s+config\b'
+  - '\badvisory\s+so\b'
+  - '\bhad\s+to\s+run\s+twice\b'
+  - '\bneeded\s+a\s+second\s+pass\b'
+  - '\bthe\s+formatter\s+rewrote\b'
+  - '\bunrelated\s+to\s+this\s+change,\s+but\b'

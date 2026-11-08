@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestColorAllocateRoundTrip covers the packed identifier a script carries in a
+// TestColorAllocateRoundTrip covers the packed identifier a script holds in a
 // variable. A colour is 0xAARRGGBB and allocating one, painting with it and
-// reading the pixel back answers the same integer, and a script can compare two
+// reading the pixel back answers the same integer. A script can compare two
 // colours with ==.
 func TestColorAllocateRoundTrip(t *testing.T) {
 	t.Parallel()
@@ -92,8 +92,7 @@ var_export(imagecolorat($im, 1, 1));
 
 // TestColorAllocateRejectsAComponentOutOfRange covers the ValueError PHP 8
 // raises for a component outside 0 to 255. Clamping would answer a colour for
-// an argument the engine refuses, and the script would carry on past the
-// mistake.
+// an argument the engine refuses. The script would run on past the mistake.
 func TestColorAllocateRejectsAComponentOutOfRange(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, `<?php

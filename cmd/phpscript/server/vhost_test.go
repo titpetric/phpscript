@@ -111,7 +111,7 @@ func get(t testing.TB, handler http.Handler, host, path string) *httptest.Respon
 }
 
 // TestVirtualHostsServeTheirOwnTree pins the split: each domain serves the
-// document root of its own application root, and its default is public.
+// document root under its application root; public is the default.
 func TestVirtualHostsServeTheirOwnTree(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -143,8 +143,8 @@ func TestVirtualHostsServeTheirOwnTree(t *testing.T) {
 	}
 }
 
-// TestVirtualHostRoutesDoNotLeakAcrossDomains is why each site gets
-// a router of its own: an @route one site declares is not reachable on another.
+// TestVirtualHostRoutesDoNotLeakAcrossDomains is why each site gets its own
+// router: an @route one site declares is not reachable on another.
 func TestVirtualHostRoutesDoNotLeakAcrossDomains(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -160,7 +160,7 @@ func TestVirtualHostRoutesDoNotLeakAcrossDomains(t *testing.T) {
 }
 
 // TestVirtualHostTelemetryIsItsOwn pins that a site's debug front end answers
-// on its domain and nowhere else, and that a site with telemetry off has none.
+// on its domain alone; telemetry off leaves a site without one.
 func TestVirtualHostTelemetryIsItsOwn(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -217,7 +217,7 @@ func TestVirtualHostDatabasesAreIsolated(t *testing.T) {
 	if response.Code != http.StatusInternalServerError {
 		t.Fatalf("blog: status = %d, body = %q", response.Code, response.Body.String())
 	}
-	// The failure is what this pins, and so is the silence about it: what blog named
+	// The failure is what this pins; so is the silence about it: what blog named
 	// for and did not get is in the log and on the trace, not in a body its
 	// visitors read. See serveStatus.
 	if strings.Contains(response.Body.String(), "no configuration found for database") {
@@ -260,7 +260,7 @@ func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 
 // TestVirtualHostEnvironmentIsItsOwn pins that getenv() reads the site's own
 // env, not the process the operator started, and never the infrastructure
-// variables that carry connection strings.
+// variables that hold connection strings.
 func TestVirtualHostEnvironmentIsItsOwn(t *testing.T) {
 	t.Setenv("OPERATOR_SECRET", "hunter2")
 	handler, _, _ := newVirtualHostServer(t)
@@ -455,7 +455,7 @@ func named(name string) http.Handler {
 }
 
 // confusableSites writes two application roots chosen to be hard to
-// tell apart: every script sits at the same relative path in both trees and
+// tell apart: every script is at the same relative path in both trees and
 // only the string it prints differs.
 //
 // A cache keyed by the path a script wrote collides on that, and a

@@ -22,8 +22,8 @@ func parseInterpExpr(t *testing.T, src string) model.Expr {
 }
 
 // TestLiteralWithoutInterpolationStaysALit guards the fast path: a literal that
-// embeds nothing must still parse to a plain Lit, whichever quote it uses and
-// whether it carries an escape or a dollar the escape kept literal.
+// embeds nothing must still parse to a plain Lit, under either quote and with
+// an escape or a dollar the escape kept literal.
 func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{

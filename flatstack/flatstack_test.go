@@ -87,8 +87,8 @@ func TestIsExit(t *testing.T) {
 // TestExprCache covers the two tables the cache holds and the sharing it
 // exists for. The cache keys flat bytecode by parsed program identity and
 // EnsureFlat compiles once and a second call reads it back, and keys
-// compiled expressions by AST node identity. Len counts the expression half,
-// and it stays zero while the cache holds bytecode alone.
+// compiled expressions by AST node identity. Len counts the expression
+// half. It stays zero while the cache holds bytecode alone.
 func TestExprCache(t *testing.T) {
 	t.Parallel()
 	cache := flatstack.NewExprCache()
@@ -180,8 +180,8 @@ func TestIncludeCache(t *testing.T) {
 }
 
 // TestIncludeFunc covers the resolver a host wires in. The runner holds no
-// filesystem and no parser and the function the host set resolves an include,
-// and the runtime runs whatever it returns in place of reading a file.
+// filesystem and no parser and the function the host set resolves an
+// include. The runtime runs whatever it returns in place of reading a file.
 func TestIncludeFunc(t *testing.T) {
 	t.Parallel()
 	asked := ""
@@ -265,7 +265,7 @@ func TestContext(t *testing.T) {
 }
 
 // TestFromRequest covers the context a served request decodes to, as a script
-// reads it: the query by name, the cookies by name, and the CGI names derived
+// reads it: the query by name, the cookies by name and the CGI names derived
 // off the request, with no map behind them.
 func TestFromRequest(t *testing.T) {
 	t.Parallel()

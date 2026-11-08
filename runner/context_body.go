@@ -29,8 +29,8 @@ func isMultipart(r *http.Request) bool {
 }
 
 // isURLEncoded reports whether the body is a urlencoded form. Only the two
-// form types populate $_POST: a JSON or XML body is php://input and nothing
-// else, as in PHP.
+// form types populate $_POST: a JSON or XML body reaches php://input alone,
+// as in PHP.
 func isURLEncoded(r *http.Request) bool {
 	return mediaType(r) == "application/x-www-form-urlencoded"
 }
@@ -46,16 +46,16 @@ func mediaType(r *http.Request) string {
 // parseBody decodes the request body into $_POST and $_FILES. ParseForm only
 // decodes an urlencoded body; a multipart one leaves it with an empty PostForm,
 // and a form with a file input arrives empty without it. Only the content
-// type says which of the two a request carries. Both calls are idempotent and a
+// type says which of the two the body is. Both calls are idempotent and a
 // no-op for bodyless requests and neither needs a method check.
 func (c *Context) parseBody(r *http.Request, opts Options) {
 	capBody(r, opts.PostMaxSize)
 
 	// Buffer the raw body before any parser consumes it: these bytes are what
-	// php://input answers with, for any method and any content type, which is
-	// how a JSON API or a webhook receiver reads its payload. A multipart
+	// php://input answers with, for any method and any content type. A JSON
+	// API or a webhook receiver reads its payload there. A multipart
 	// body is not buffered: PHP documents php://input as
-	// unavailable there, and multipart is the one body shape that carries
+	// unavailable there, and multipart is the one body shape that holds
 	// whole files.
 	if !isMultipart(r) && r.Body != nil {
 		buf, readErr := io.ReadAll(r.Body)

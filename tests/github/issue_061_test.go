@@ -9,7 +9,7 @@ import (
 //
 // https://github.com/titpetric/phpscript/issues/61
 //
-// chi enforced {id:[0-9]+} and carried the value, and the exporter recognised
+// chi enforced {id:[0-9]+} and kept the value, and the exporter recognised
 // {name} and {name...} only, and the path value never reached $_REQUEST.
 //
 // ServeMux has no regex constraint. It takes the bare parameter and answers a

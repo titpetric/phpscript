@@ -210,7 +210,7 @@ func TestOptions_Report(t *testing.T) {
 }
 
 // TestOptions_BindWith pins that BindWith declares the shared set before a
-// command's own flags, and that a command binding none still carries it.
+// command's own flags. A command binding none still accepts it.
 func TestOptions_BindWith(t *testing.T) {
 	var opts flags.Options
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)

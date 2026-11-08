@@ -11,7 +11,7 @@ import (
 // response, and a script reading the array has to see both.
 //
 // Header() answers one name case-insensitively through net/http's canonical
-// form. This returns the map as the response carries it and the keys are the
+// form. This returns the map as the response holds it and the keys are the
 // canonical spellings and a script indexes them the way a browser prints them.
 func TestResponse_Headers(t *testing.T) {
 	t.Parallel()
@@ -40,8 +40,8 @@ func TestResponse_Headers(t *testing.T) {
 		t.Errorf("Header(content-type) = %q, want application/json", value)
 	}
 
-	// A response that carries no headers answers an empty array and foreach
-	// over it runs zero times and never fails.
+	// A response with no headers answers an empty array and foreach over it
+	// runs zero times and never fails.
 	empty := (&Response{header: nethttp.Header{}}).Headers()
 	if len(empty) != 0 {
 		t.Errorf("Headers() on a response with no headers = %v, want empty", empty)
@@ -80,7 +80,7 @@ func TestResponseStatusAndOK(t *testing.T) {
 
 // TestResponseBodyAndErr covers the two fields a script reads a failed request
 // through. Only parallel() produces a failed response and Err() is empty on
-// everything send() returns, and the body is a string the script can print
+// everything send() returns. The body is a string the script can print
 // whatever the status.
 func TestResponseBodyAndErr(t *testing.T) {
 	t.Parallel()

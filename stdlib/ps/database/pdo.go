@@ -13,7 +13,7 @@ type Bridge = client.Bridge
 type QueryLogEntry = client.QueryLogEntry
 
 // newBridge opens a client over a pool. The caller sets the observer, because
-// the observer a Database installs is one of its own methods.
+// the observer a Database installs is its own method.
 func newBridge(pool *DB) *Bridge {
 	return client.NewBridge(pool)
 }

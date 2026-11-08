@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// randomRuntime returns a runtime carrying the CSPRNG bindings alone.
+// randomRuntime returns a runtime with the CSPRNG bindings alone.
 func randomRuntime(t *testing.T) *runner.Runtime {
 	t.Helper()
 
@@ -19,7 +19,7 @@ func randomRuntime(t *testing.T) *runner.Runtime {
 // TestRegisterRandom covers the three names and the bounds each one holds to.
 // random_int and rand both pick from [min, max] inclusive and a range of one
 // value is that value and a range spanning zero reaches both signs. big.Int
-// carries the span because max-min+1 overflows int64 once the bounds cover
+// holds the span because max-min+1 overflows int64 once the bounds cover
 // most of the type, and rand.Int does the rejection sampling that keeps the
 // pick unbiased.
 func TestRegisterRandom(t *testing.T) {

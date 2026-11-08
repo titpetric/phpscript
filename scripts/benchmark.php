@@ -19,20 +19,20 @@
 //	scripts/benchmark.php --targets php-vanilla-apache --jit tracing \
 //		--endpoints bare=/_bare.php,hello=/hello?name=sprint
 //
-// A summary row collapses the endpoints of its own run, and a list mixing one
-// cheap path with one expensive path leaves that row describing neither. Read
-// the per-endpoint table for those.
+// A summary row collapses the endpoints of the run that produced it, and a list
+// mixing one cheap path with one expensive path leaves that row describing
+// neither. Read the per-endpoint table for those.
 //
 // A runtime takes the name of its directory, with the concurrency appended:
 // `phpscript-service-4` is testdata/phpscript-service answering four requests
-// at once. php-vanilla is one directory served two ways, and it carries the web
-// server in its name.
+// at once. php-vanilla is one directory served two ways. Its name states the
+// web server.
 //
 // What this prints is a point estimate. scripts/bench-http.sh
 // stays the harness of record: the drift column that catches a box doing
 // something else, the memory section, the per-segment appendix, the manifest of
-// toolchain and commands, and the /slow abort check are all there and none of
-// them is here.
+// toolchain and commands, and the /slow abort check are all there. This script
+// prints no part of them.
 
 $FLAGS = array(
 	"targets" => "goserver,phpscript-http-bridge,phpscript-service,php-vanilla-apache,php-vanilla-nginx",
@@ -54,9 +54,9 @@ function fail($message) {
 }
 
 // pid_file and profile_file record what is up, and teardown reaches it from any
-// exit path. `.gitignore` holds bin/, and it resolves the same for both sides of every
-// call here: a relative path reads inside the runtime's root, and the shell a
-// command runs through starts in that same directory.
+// exit path. `.gitignore` holds bin/. The path resolves the same for both sides
+// of every call here: a relative path reads inside the runtime's root, and the
+// shell a command runs through starts in that same directory.
 function pid_file() {
 	return "bin/benchmark.pid";
 }
@@ -68,7 +68,7 @@ function profile_file() {
 // teardown takes down whatever the work files name as up. A server left behind holds
 // its port and keeps its workers on the cores the next measurement needs, and a
 // shutdown function registers this and every exit path reaches it, the
-// guarantee `trap stop_server EXIT` carries in the bash harness.
+// guarantee `trap stop_server EXIT` holds in the bash harness.
 function teardown() {
 	if (is_file(pid_file())) {
 		$pid = trim(file_get_contents(pid_file()));
@@ -223,8 +223,8 @@ function micros($token) {
 	return $token + 0;
 }
 
-// segment runs wrk once and reduces its report to the six numbers a row
-// carries, latencies in microseconds.
+// segment runs wrk once and reduces its report to the six numbers a row holds,
+// latencies in microseconds.
 function segment($url, $threads, $conc, $duration, $lua) {
 	$command = "nice -n -20 wrk --latency -t " . $threads . " -c " . $conc . " --timeout 30s -d " . $duration;
 	if ($lua !== "") {
@@ -337,8 +337,8 @@ function collapse($segments) {
 }
 
 // address polls a server's log until it reports where it listens. A kernel-
-// picked port keeps two runs on one box from colliding, and the log is the only
-// place the port exists.
+// picked port keeps two runs on one box from colliding. The log is the only
+// place that port appears.
 function address($log, $pattern) {
 	for ($i = 0; $i < 200; $i++) {
 		if (is_file($log)) {
@@ -467,9 +467,9 @@ foreach (explode(",", $settings["targets"]) as $name) {
 	}
 
 	$environment = $known[$name];
-	// `.gitignore` holds bin/, and it resolves the same for both sides of every call
-	// here: a relative path reads inside the runtime's root, and the shell a
-	// command runs through starts in that same directory.
+	// `.gitignore` holds bin/. The path resolves the same for both sides of
+	// every call here: a relative path reads inside the runtime's root, and the
+	// shell a command runs through starts in that same directory.
 	$log = "bin/benchmark-" . $name . ".log";
 
 	fwrite(STDERR, "benchmark: " . $name . " up\n");

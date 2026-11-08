@@ -55,7 +55,7 @@ func TestSuiteIncludeIsAPreludeWithoutTheFlag(t *testing.T) {
 
 // TestSuiteHooksRunOncePerSession covers both hooks and the order they run in.
 // Each appends to a file and the file records how many times each ran and
-// which side of the fixtures each sits on.
+// which side of the fixtures each ran on.
 func TestSuiteHooksRunOncePerSession(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  hooks:\n    setup: setup.php\n    teardown: teardown.php\n",

@@ -9,8 +9,8 @@ import (
 // file and splint's imports/pollution holds.
 
 // Router is platform.Router, the mux a module mounts its handlers on. A
-// chi.Router satisfies it, and so does a standard library mux behind an
-// adapter and a module takes the interface.
+// chi.Router satisfies it, as does a standard library mux behind an adapter. A
+// module takes the interface.
 type Router = platform.Router
 
 // Module is platform.UnimplementedModule, the zero module every module here

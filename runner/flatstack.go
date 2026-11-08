@@ -23,10 +23,10 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		program, err = flatvm.Compile(ast)
 		if err != nil {
 			// A compile error normally means the program uses something the
-			// bytecode subset does not cover yet, and the interpreter runs it
+			// bytecode subset does not cover yet. The interpreter runs it
 			// instead. A violated interface contract differs: the verdict is
-			// on the program, and the interpreter would reach the same one,
-			// and this path throws.
+			// on the program and the interpreter would reach the same one.
+			// This path throws.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
 				return true, NewRuntimeException(err.Error(), 0)
@@ -48,7 +48,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		return false, nil
 	}
 	if rt.hostFlat == nil {
-		// One host per runtime: the only per-run state it carries is the
+		// One host per runtime: the only per-run state it holds is the
 		// frame handle, which the VM binds and restores itself.
 		rt.hostFlat = &flatHost{runtime: rt}
 	}
@@ -79,7 +79,7 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 }
 
 // SetProperty writes an object property, the same way the interpreter does:
-// a PHP object carries the value in its property map, and a Go binding assigns
+// a PHP object stores the value in its property map, and a Go binding assigns
 // the struct field the name resolves to and `$db->is_readonly = true` sets
 // IsReadonly.
 func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
@@ -121,8 +121,8 @@ func (h flatHost) Lookup(name string) any {
 
 // Constant resolves a bare name: whatever the host knows under it, then the
 // constant table, and an Error when nothing does. PHP 8 raises the same for
-// the same expression, and an unset variable of that spelling stays null,
-// and this is separate from Lookup.
+// the same expression, and an unset variable of that spelling stays null.
+// Lookup answers nil where nothing matches; this one raises.
 func (h flatHost) Constant(name string) (any, error) {
 	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value, nil
@@ -210,8 +210,8 @@ func (h flatHost) MatchCatch(declaredType string, err error) bool {
 // ClassConst reads a class constant, reusing the interpreter's resolution so
 // `Class::class`, autoloading and the per-class cache behave identically on
 // both backends. The compiler already collapsed self/static/parent, but the
-// scope still carries the class: a constant's default expression runs here,
-// and it may name the class again.
+// scope still holds the class: a constant's default expression runs here and
+// may name the class again.
 func (h flatHost) ClassConst(class, name string) (any, error) {
 	scope := h.runtime.newScope()
 	scope.Set("__class__", h.runtime.boxed(class))
@@ -322,7 +322,7 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 	for name, value := range vars {
 		scope.Set(name, value)
 	}
-	// The *_once dedupe lives in includeFile and both engines answer it on the
+	// includeFile owns the *_once dedupe and both engines answer it on the
 	// resolved path and neither keeps its own scan over spellings.
 	result, err := h.runtime.includeFile(phpString(path), once, scope)
 	if err != nil {
@@ -370,8 +370,8 @@ func (h flatHost) CheckMemory() error {
 }
 
 // UnsetProperty removes a named property, PHP's unset($obj->prop). Only a
-// PHP object carries removable storage, and this passes over anything else,
-// the leniency execUnset applies.
+// PHP object holds removable storage; this passes over anything else, the
+// leniency execUnset applies.
 func (h flatHost) UnsetProperty(receiver any, name string) error {
 	if object, ok := receiver.(*model.Object); ok {
 		object.DeleteProp(name)

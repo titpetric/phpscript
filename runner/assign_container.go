@@ -2,6 +2,7 @@ package runner
 
 import (
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // This file resolves where an index assignment lands: the container the write
@@ -17,7 +18,7 @@ import (
 // nowhere to write the array back to and container returns it as it stands and
 // the caller reports the assignment as unsupported.
 func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
-	switch node := model.UnwrapParenthesized(base).(type) {
+	switch node := modelutil.UnwrapParenthesized(base).(type) {
 	case *model.Index:
 		if node.Index != nil {
 			return rt.indexContainer(node, scope)

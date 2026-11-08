@@ -37,7 +37,7 @@ func TestWriteJSONReport(t *testing.T) {
 
 // TestWriteHTMLReport covers the human-readable report. WriteHTMLReport sums
 // the passed and failed counts over the results and the summary line reports
-// the same numbers the table rows carry.
+// the same numbers the table rows hold.
 func TestWriteHTMLReport(t *testing.T) {
 	var out strings.Builder
 	results := []*TestResult{
@@ -55,7 +55,7 @@ func TestWriteHTMLReport(t *testing.T) {
 			t.Errorf("the report does not carry %q", want)
 		}
 	}
-	// html/template escapes what a failure message carries and a fixture whose
+	// html/template escapes what a failure message holds and a fixture whose
 	// expected output is markup cannot write tags into the report.
 	if strings.Contains(html, "<script>alpha") {
 		t.Error("the report carries an unescaped tag out of a failure message")

@@ -32,7 +32,7 @@ type nonFatalModule struct {
 	observers []runner.Observer
 }
 
-// Start runs the wrapped module and records a failure on a trace of its own.
+// Start runs the wrapped module and records a failure on its own trace.
 // There is no request to record onto and the error reaches the debug front end
 // as lifecycle work, where an operator looks for it.
 func (m *nonFatalModule) Start(ctx context.Context) error {

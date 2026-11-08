@@ -45,8 +45,7 @@ type VirtualHost struct {
 	DocumentRoot string `yaml:"document_root"`
 }
 
-// Normalize rewrites Domain as the list Domains returns, the names the router
-// compares a Host header against.
+// Normalize rewrites Domain as the list Domains returns.
 func (v VirtualHost) Normalize() VirtualHost {
 	v.Domain = strings.Join(v.Domains(), " ")
 	return v
@@ -66,9 +65,7 @@ func (v VirtualHost) Domains() []string {
 	return domains
 }
 
-// Name is the first name the entry lists. Errors and the modules the site
-// registers all carry it and a site answering to four names stays one
-// identifiable site.
+// Name returns the first name the entry lists, and "" for an entry listing none.
 func (v VirtualHost) Name() string {
 	domains := v.Domains()
 	if len(domains) == 0 {
@@ -81,8 +78,7 @@ func normalizeDomain(domain string) string {
 	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
 }
 
-// Load reads Root/phpscript.yml over base and returns the configuration the
-// virtual host runs under, with the document root resolved.
+// Load reads Root/phpscript.yml over base, with the document root resolved.
 func (v VirtualHost) Load(base Config) (Config, error) {
 	result, _, err := v.load(base)
 	return result, err
@@ -107,8 +103,8 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	result.Server = base.Server
 	result.VirtualHost = nil
 
-	// The operator's entry wins, because where a site sits on disk is the
-	// operator's call. public is the default and `config.yml` carries it; the
+	// The operator's entry wins, because the location of a site on disk is the
+	// operator's call. public is the default and `config.yml` sets it; the
 	// literal here only covers a Config assembled in Go without it.
 	documentRoot := v.DocumentRoot
 	if documentRoot == "" {
@@ -175,7 +171,7 @@ func (c Config) CheckVirtualHosts() error {
 
 		// The site's own runner block, the same way: a trace level spelled
 		// wrong in a site's phpscript.yml would otherwise read as the default
-		// and the site would be instrumented as nobody asked for.
+		// and the server would instrument the site at a level nobody wrote.
 		if err := loaded.Runner.Check(); err != nil {
 			return fmt.Errorf("virtualhost %q: %w", name, err)
 		}
@@ -191,7 +187,7 @@ func (c Config) CheckVirtualHosts() error {
 		// The platform mounts its dashboard on the root router, which shadows
 		// that path prefix on every host and a site that names the same
 		// path gets a dashboard nothing can reach. A site that names no path
-		// of its own gets none, and this check passes it over.
+		// gets none. This check passes it over.
 		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
 			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}

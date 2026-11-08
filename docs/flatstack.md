@@ -147,9 +147,9 @@ It supports these expressions:
 - First-class callable syntax, `callable(...)`, in all four call forms. The host resolves the callable and the value is the same Closure the interpreter builds, and the declaration it names runs there on call
 - Property reads, writes and `unset($obj->prop)`
 - String concatenation with `.`
-- Anonymous functions, including a by-value `use (...)` capture list, a `$this` carried away from an enclosing method, and `static function () {}`
+- Anonymous functions, including a by-value `use (...)` capture list, a `$this` kept from an enclosing method, and `static function () {}`
 
-Arithmetic, coercion, comparison, array access, and truthiness live in the flat VM and its small PHP-semantics host boundary. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
+The flat VM and its small PHP-semantics host boundary run arithmetic, coercion, comparison, array access and truthiness. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
 The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compiling native**; `tests/fixtures/functions/static_var_closure.phpt` and `tests/fixtures/functions/func_get_args.phpt` remain with the interpreter. `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that phpscript implements the whole PHP language.
 
@@ -157,11 +157,11 @@ The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compil
 
 The complete program atomically selects fallback when it contains any unsupported form. The major remaining forms are:
 
-- `compact()` of a name declared `static $x`, which lives in a bag and not a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and a name computed at run time resolves through the name table the program carries
+- `compact()` of a name declared `static $x`, which the runtime keeps in a bag and not a frame slot. Every other form compiles: a literal name becomes the slot it names, and a name computed at run time resolves through the name table the program holds
 - `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
-- `func_get_args()`, refused by name at every call site. A compiled frame seeds its declared parameters into slots and keeps no argument list and an argument past the last parameter is not in the frame to report. It names the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: the function table resolves that name and carries no scope builtin and both engines report the same undefined function
-- Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
+- `func_get_args()`, refused by name at every call site. A compiled frame seeds its declared parameters into slots and keeps no argument list and an argument past the last parameter is not in the frame to report. It names the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: the function table resolves that name and holds no scope builtin and both engines report the same undefined function
+- Anonymous classes, `new class { ... }`. The bytecode stores a class name where an anonymous class stores its declaration
 - `try` without a `catch` clause
 - Casts
 - PHP constructors (`__construct`) still run in the interpreter
@@ -174,9 +174,9 @@ These are not called "unsupported programs" at the public runtime boundary: they
 
 ### Closure identity
 
-A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the one documented disagreement between the two engines, and it does not extend to the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines and `$fn(...) === $fn` holds on both.
+A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the one documented disagreement between the two engines. It does not extend to the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines and `$fn(...) === $fn` holds on both.
 
-Fixing it means the engine's closure value carries an identity, which means a value type both packages can see in place of a bare `func(...any) (any, error)`, and a case for it everywhere the host resolves a callable. Comparing the function pointer is no fix: two closures built from one literal share it, which would answer true where php answers false.
+Fixing it means the engine's closure value holds an identity, which means a value type both packages can see in place of a bare `func(...any) (any, error)`, and a case for it everywhere the host resolves a callable. Comparing the function pointer is no fix: two closures built from one literal share it, which would answer true where php answers false.
 
 ## Host calls, errors, and panics
 
@@ -194,7 +194,7 @@ The VM binds a frame handle (`engine.FrameLocals`) to the host once per run, wit
 
 A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file and a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
 
-The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name and coercion has one home. Slot type inference stops here, and a measurement is why: values live in `[]any`, where the type assertion is the unboxing and an opcode holding monomorphic int operand slots saves nothing over the dynamic guard.
+The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name and coercion has one home. A measurement stops slot type inference here: values are `[]any` entries, where the type assertion is the unboxing and an opcode holding monomorphic int operand slots saves nothing over the dynamic guard.
 
 Panics raised by registered Go constructors, functions, or methods become `HostPanicError` at the reflection boundary. Native bytecode `try`/`catch` can catch these errors exactly like a returned Go error:
 
@@ -279,6 +279,6 @@ The highest-value next steps are:
 7. Let `annotations.Route` and CLI/server entry points select a runtime factory so they can opt into flatstack, where they always construct `runner.New` today.
 8. Track native-versus-fallback execution in diagnostics so production users can measure bytecode coverage without calling `Supports` separately.
 
-The run's exec state pools operand, local, iterator, handler and call-frame storage, user-function frames reuse stashed slabs, a call borrows its arguments off the operand stack for its duration, and the frame handle above carries the host locals in place of a copy: a precompiled loop runs at zero allocations per run, and a host call in a loop adds nothing beyond the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that regresses.
+The run's exec state pools operand, local, iterator, handler and call-frame storage, user-function frames reuse stashed slabs, a call borrows its arguments off the operand stack for its duration, and the frame handle above references the host locals in place of a copy: a precompiled loop runs at zero allocations per run, and a host call in a loop adds nothing beyond the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that regresses.
 
 Flatstack is interchangeable as an embedding API and for observable fixture behavior, but not yet a standalone replacement for runner's implementation. Replacing runner with copied or inlined code would be the wrong next step: shared runtime/bridge infrastructure avoids two diverging APIs while the opcode compiler and VM replace execution semantics incrementally.

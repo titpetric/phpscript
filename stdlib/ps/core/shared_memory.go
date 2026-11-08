@@ -33,9 +33,8 @@ func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 }
 
 // NewSharedMemoryBinding returns the store the host bound into the runtime
-// context, and a store of its own when the host bound none. No command in
-// this tree binds one and `new SharedMemory` holds nothing across requests
-// until an embedding host adds SharedMemoryContext.
+// context, or a fresh one. No command in this tree calls SharedMemoryContext,
+// and `new SharedMemory` then holds no value across requests.
 func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	s, _ := ctx.Value(sharedMemoryKey{}).(*SharedMemory)
 	if s == nil {
@@ -73,11 +72,9 @@ func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {
 	}
 }
 
-// Usage reports what the store holds: how many entries, how many counters, and
-// the bytes of the keys and values behind them.
-//
-// The byte figure is the strings themselves, not the map overhead around them,
-// which is the same basis memory_get_usage() reports a PHP value on.
+// Usage reports the entry count, the counter count, and the bytes of the keys
+// and values behind them: the strings alone, not the map overhead, on the same
+// basis memory_get_usage() reports.
 func (s *SharedMemory) Usage() (entries, counters int, bytes int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

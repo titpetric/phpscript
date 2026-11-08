@@ -8,14 +8,11 @@ import (
 )
 
 // NewRequest builds a request from $method and $url, with an optional $body.
-// Building a request sends no bytes: pass it to a client with
-// $client->send($request).
+// Building it sends no bytes; $client->send($request) does.
 //
-// The value is a net/http request and a script reads and writes it the way Go
-// does: $request->method, $request->host, and $request->header->set($name,
-// $value) for headers. Methods go uppercase, "GET" and "POST"; a lowercase
-// one is upper-cased and never sent as written, because a server treats the
-// method as case-sensitive and would reject it.
+// The value is a net/http request: $request->method, $request->host, and
+// $request->header->set($name, $value) for headers. A lowercase method is
+// upper-cased and never sent as written.
 func NewRequest(ctx context.Context, method, url string, body ...string) (*nethttp.Request, error) {
 	if method == "" {
 		return nil, fmt.Errorf("HTTP\\Request: method is required")

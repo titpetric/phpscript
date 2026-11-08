@@ -25,7 +25,7 @@ type Config struct {
 	From     string `yaml:"from" json:"from"`
 
 	// Insecure accepts the STARTTLS certificate without verifying its chain or
-	// names. Hosts that present a self-signed certificate, or one carrying no
+	// names. Hosts that present a self-signed certificate, or one with no
 	// subjectAltName, are unreachable without it.
 	Insecure bool `yaml:"insecure" json:"insecure"`
 }
@@ -42,10 +42,8 @@ func (c Config) String() string {
 
 // Check reports whether the server is usable, naming it.
 //
-// Host and From are the operator's to get right and the configuration check
-// tests them at startup and fails the server there. Leaving it to the first
-// delivery means finding out from a @schedule job at three in the morning, on
-// the one code path nobody is watching.
+// Host and From are the operator's to get right, and the configuration check
+// tests them at startup, ahead of the first delivery.
 func (c Config) Check(name string) error {
 	if c.Host == "" {
 		return fmt.Errorf("mail %q: host is required", name)
@@ -76,7 +74,7 @@ func (c Config) tlsConfig() *tls.Config {
 	}
 }
 
-// envelopeAddress extracts the bare address from an address that may carry a
+// envelopeAddress extracts the bare address from an address that may hold a
 // display name, as required by the SMTP MAIL FROM command.
 func envelopeAddress(from string) (string, error) {
 	if !strings.ContainsAny(from, "<>") {

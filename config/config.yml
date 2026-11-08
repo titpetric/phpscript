@@ -1,48 +1,14 @@
+# Includes, limits and trace level for every run. docs/configuration.md#runner names each key.
 runner:
   work_dir: "."
-  # The binding areas the default runtime installs, by namespace: Runtime\PS
-  # is phpscript's surface, Runtime\PX the phpx overlay installed over it, and
-  # a deeper name such as Runtime\PS\Core\Strings narrows to one area. Empty
-  # installs all of them. `phpscript list --areas` lists the names.
   areas: []
-  # Parse and compile every .php file below the application root when the
-  # server starts, instead of when a request first reaches one. The cost moves
-  # from the request to startup and the memory it holds is resident from there
-  # on. Nothing is invalidated: an edited file needs `kill -HUP` or a restart.
-  # A virtual host sets its own in the runner block of its phpscript.yml.
   precompile: true
-  # How much of its own work the interpreter reports to the recorder: off,
-  # info or debug. info, the default, reports a span per PHP frame marked as
-  # detail, which the recorder keeps when the frame was slow and drops when it
-  # was not, and reports the includes as one span at the end of the request
-  # naming the files. debug reports everything unmarked, a span per include
-  # among it, for a request being taken apart. off reports none of the
-  # interpreter's own work, and what a binding or a script measured still
-  # records. A virtual host sets its own in the runner block of its
-  # phpscript.yml.
   trace_level: info
   writable_paths: []
-  # A file included ahead of every entrypoint, once per request, for the
-  # functions and classes an application expects to be there whatever it is
-  # running: a composer autoloader, a bootstrap file. It is the --include flag,
-  # which overrides this, and a virtual host sets its own in the runner block
-  # of its phpscript.yml. A file that is not there is skipped.
   include: ""
-  # Upload limits, spelled and defaulted as php.ini spells them. A bare number
-  # is bytes and an M suffix is megabytes; nothing else parses, and 0 is no
-  # limit.
   upload_max_filesize: 2M
   post_max_size: 8M
-  # The mode move_uploaded_file() gives a stored upload. Octal, as chmod takes
-  # it; the temporary copy an upload arrives in is private to the process.
   upload_file_mode: "0644"
-  # Execution limits. memory_limit is enforced and raises the memory-exhausted
-  # error php.ini names. time_limit and concurrency_limit parse and carry a
-  # value for a later release, and no code reads them yet. 0 is no limit.
-  # memory_limit and time_limit are php.ini's, spelled the same way as the
-  # upload limits above; concurrency_limit is how many scripts may run at once
-  # and has no php.ini equivalent, because there the SAPI owns it and here one
-  # process serves several sites.
   memory_limit: 0
   time_limit: 0
   concurrency_limit: 0
@@ -53,23 +19,7 @@ flatstack:
 routes:
   enabled: true
 
-# The defaults `phpscript test` runs under. A fixture tree carries them in a
-# phpscript.yml of its own, so a suite says what it needs rather than the
-# command line repeating it on every invocation. A flag overrides whatever the
-# file said.
-#
-# include and hooks belong to the directory holding the file, and apply to the
-# fixtures below it. parallel, cache and skip_php describe one run of the whole
-# command and are read only from the file -f names or the one found above the
-# working directory; a phpscript.yml discovered below the invocation root that
-# sets one fails the run naming the key.
-#
-# The hooks run once per session rather than once per fixture. setup lays down
-# the schema and the rows its fixtures read, and a failure fails the run before
-# a fixture executes. teardown runs after them, whether they passed or failed.
-# Both are resolved against the directory holding the file. They are
-# configuration rather than the @startup annotation, which `phpscript server`
-# scans per virtual host or per application root; a fixture run is neither.
+# The defaults `phpscript test` runs under. docs/configuration.md#test-suites names the scope of each key.
 test:
   include: ""
   hooks:
@@ -79,22 +29,14 @@ test:
   cache: worker
   skip_php: false
 
+# The listen address, the module list and the pid file a reload reads. docs/configuration.md#server.
 server:
   addr: ":8080"
   quiet: false
   modules: []
-  # The file the server records its process id in, and the one
-  # `phpscript -s reload` reads it back from. Empty writes none, and a reload
-  # then has nothing to signal. The path resolves against the working
-  # directory, so `-s reload` needs the same -w the server was started with;
-  # an absolute path is what a service unit wants. The file is removed on a
-  # clean shutdown, so one left behind means the process did not get one.
   pid_file: ""
 
-# The platform is the recorder: it wraps every module in the tracing
-# middleware and mounts the debug front end under path. phpscript adds no
-# recorder of its own, it reports interpreter work onto the trace the
-# middleware started, so it shows up on the same front end.
+# The recorder the platform builds and the debug front end it mounts. docs/configuration.md#telemetry.
 telemetry:
   enabled: true
   path: "/debug/oida"
@@ -106,42 +48,16 @@ telemetry:
   live_stream: true
   driver: memory
 
-# The mail servers mail() and `new Mail($name)` deliver through, keyed by the
-# name a script asks for; `new Mail` with no name asks for "default". The
-# credentials stay here: a script names a server, it never spells a host or a
-# password, and nothing it can call reads one back or lists what is configured.
-# With no server configured, mail() still exists and fails catchably naming the
-# one it looked for, so calling code keeps one spelling and its own fallback.
-#
-# A virtual host that declares a mail block gets only the servers it named; one
-# that declares none inherits these. `mail:` with nothing under it means no
-# servers, not the inherited ones. `port` defaults to 25. `insecure` accepts the
-# STARTTLS certificate without verifying it, for a host presenting a self-signed
-# one.
-#
-#   mail:
-#     default:
-#       host: mail.example.com
-#       port: 587
-#       username: noreply@example.com
-#       password: secret
-#       from: Example <noreply@example.com>
-#       insecure: false
+# The servers `mail()` and `new Mail($name)` deliver through, keyed by name. docs/configuration.md#mail-servers.
 mail: {}
 
-# The directory beneath an application root that is served over HTTP. Sites
-# are expected to leave this alone; it is here for a tree that already calls
-# that directory something other than public.
+# The directory beneath an application root the server publishes over HTTP. docs/configuration.md#document-root.
 document_root: public
 
-# Answer a directory that has no index.php or index.html with a listing of
-# what is in it, as nginx's `autoindex on;` does. Off by default: a directory
-# with no index page is a 404, not an invitation to browse the files below it.
+# List a directory that holds no index page, the way nginx's `autoindex on;` does. docs/configuration.md#autoindex.
 autoindex: false
 
-# The sites this server answers for, one entry per domain. Each root holds a
-# phpscript.yml with the routes, telemetry, runner limits and env that site
-# runs under; the entry only says which domain reaches it and where it lives.
+# The sites this server answers for, one entry per domain. docs/configuration.md#virtual-hosts.
 virtualhost: []
 
 env:

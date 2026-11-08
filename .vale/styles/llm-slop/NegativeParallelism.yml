@@ -7,8 +7,8 @@ nonword: true
 tokens:
   # "rather than" and "instead of" frame a fact as a correction of something
   # nobody said. Name the thing that happens.
-  - '\brather than\b'
-  - '\binstead of\b'
+  - '\brather\s+than\b'
+  - '\binstead\s+of\b'
   # "It is not X, it is Y" and its conjugations.
   - '\b(?:is|are|was|were|does|do|did|has|have)\s+not\s+[^.;:]{3,60},\s*(?:it|they|that|this)\b'
   - "\\b(?:is|are|was|were|does|do|did|has|have)n't\\s+[^.;:]{3,60},\\s*(?:it|they|that|this)\\b"
@@ -17,4 +17,4 @@ tokens:
   # Trailing "X, not Y" where Y is the real claim.
   - ',\s*not\s+(?:a|an|the|its|his|her|their|one)\b[^.;:]{0,40}\.'
   # "the wrong X" / "the right X" as a verdict on an approach.
-  - '\bis the wrong (?:arithmetic|question|function|shape|answer)\b'
+  - '\bis\s+the\s+wrong\s+(?:arithmetic|question|function|shape|answer)\b'

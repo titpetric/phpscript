@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// PropertyExists reports whether a value carries the property a script names:
+// PropertyExists reports whether a value holds the property a script names:
 // an interpreted object's own properties and the declarations that outlive an
 // unset, and the exported Go fields of a value a binding returned, resolved
 // through structField the way a property read resolves them.

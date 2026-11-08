@@ -62,7 +62,7 @@ func TestDirectCompile(t *testing.T) {
 
 // TestDirectCompileCall covers call compilation. A plain global call resolves
 // its name in the base env and records it in Calls so Eval installs it; a
-// namespaced name and a call carrying a global fallback dispatch through
+// namespaced name and a call with a global fallback dispatch through
 // __func and the runtime's resolution ladder answers both spellings.
 func TestDirectCompileCall(t *testing.T) {
 	t.Parallel()

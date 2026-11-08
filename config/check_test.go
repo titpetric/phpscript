@@ -106,7 +106,7 @@ func TestConfig_ValidateRoot(t *testing.T) {
 	})
 
 	t.Run("public without a configured document root", func(t *testing.T) {
-		// A Config assembled in Go carries no document root, and public is
+		// A Config assembled in Go names no document root, and public is
 		// the literal that covers it.
 		if err := (config.Config{}).CheckRoot(writeSite(t, "autoindex: false\n")); err != nil {
 			t.Fatal(err)
@@ -142,7 +142,7 @@ func TestConfig_ValidateRoot(t *testing.T) {
 	})
 }
 
-// TestErrRootWithVirtualHosts covers the wording the refusal carries. The
+// TestErrRootWithVirtualHosts covers the wording of the refusal. The
 // virtual host entries name their own roots and a root typed on the command
 // line has no entry to belong to, and the message quotes it back.
 func TestErrRootWithVirtualHosts(t *testing.T) {

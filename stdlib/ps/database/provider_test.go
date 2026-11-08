@@ -13,7 +13,7 @@ import (
 
 // TestProvider covers the alias a host names in its runtime options. model
 // declares the interface itself and a runtime can name a provider without
-// depending on this package, and the alias keeps one name for it on both
+// depending on this package. The alias keeps one name for it on both
 // sides. A runtime whose options name none resolves through Default, the
 // process environment as a CLI run has it and a connection resolves before a
 // host has configured anything.
@@ -182,7 +182,7 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 	}
 
 	// A registered "shop:migrate" is the credential migrations run under,
-	// a connection of its own and not the one queries use.
+	// a separate connection and not the one queries use.
 	provider.Register("shop:migrate", "sqlite://:memory:")
 	privileged, err := provider.Open(t.Context(), "shop:migrate", "shop")
 	if err != nil {

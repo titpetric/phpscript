@@ -100,7 +100,7 @@ func TestNumericPrefix(t *testing.T) {
 // TestToInt covers the coercion an array index and `%` use. A float truncates
 // toward zero, float syntax in a string truncates the same way, an out-of-range
 // integer saturates the way C's strtol saturates, and a named Go scalar reads
-// as the integer it carries and `$t->month() + 1` counts months.
+// as the integer it holds and `$t->month() + 1` counts months.
 func TestToInt(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -154,7 +154,7 @@ func TestToFloat(t *testing.T) {
 // TestHelperCast covers `(bool)`, `(int)`, `(float)`, `(string)` and `(array)`.
 // An array casts to int 1 when it holds anything and 0 when it does not, which
 // is the only context converting one: php refuses arithmetic on an array with a
-// TypeError and the rule lives in the cast.
+// TypeError and the cast holds the rule.
 func TestHelperCast(t *testing.T) {
 	t.Parallel()
 	filled := model.NewArray()
@@ -240,7 +240,7 @@ func TestHelperToObject(t *testing.T) {
 }
 
 // TestKeyString covers the name keyString reads off a model.Keyed. PHP
-// normalises an index to an int or a string and a Keyed carries a string name,
+// normalises an index to an int or a string and a Keyed holds a string name,
 // and an int index reads as its decimal spelling.
 func TestKeyString(t *testing.T) {
 	t.Parallel()

@@ -68,7 +68,7 @@ func isFixturePath(name string) bool {
 // LoadSuiteFS reads an area holding a phpscript.yml as a suite and the Go tests
 // run under the connections and the prelude the same folder passes to the
 // command. Discovery is per area and not per ancestor: the walk starts at
-// tests/fixtures and no invocation root sits above it to walk up to.
+// tests/fixtures and no invocation root is above it to walk up to.
 func embeddedFixtures() ([]fixtureArea, error) {
 	index := map[string]int{}
 	var areas []fixtureArea
@@ -124,7 +124,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 			// the area's own directory is the fixture's include root
 			// already, and naming it twice would layer the same filesystem
 			// over itself. A suite that declares one names that directory as
-			// the app root, and the prelude resolves there.
+			// the app root. The prelude resolves there.
 			fx.SetDatabase(suite.Provider())
 			fx.SetMail(suite.Mail())
 			if include := suite.Include(); include != "" {
@@ -176,7 +176,7 @@ func errorChainContains(err error, substr string) bool {
 // The body is an ordinary file and no section of a document and php runs it
 // where it lies and __FILE__ and __DIR__ read back its own path.
 // A person can also run the body by hand, which a .phpt cannot. The form
-// carries no frontmatter: a fixture needing one declares a .phpt.
+// holds no frontmatter: a fixture needing one declares a .phpt.
 const (
 	GoldenSuffix       = "_test.php"
 	GoldenOutputSuffix = "_test.txt"
@@ -208,7 +208,7 @@ func unmarshalHeader(data []byte, target any) error {
 
 // ParseFixture reads a .phpt document: the yaml header, the php body and the
 // expected output, separated by the two --- lines. The optional path is what the
-// fixture reports itself as, since the bytes carry no name.
+// fixture reports itself as, since the bytes hold no name.
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	parts := strings.SplitN(normalized, "\n---\n", 3)

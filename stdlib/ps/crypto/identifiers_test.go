@@ -34,7 +34,7 @@ func TestEncodeCrockford(t *testing.T) {
 // TestULIDFrom pins the derived ids to vectors, because they are primary keys:
 // changing the digest, or how many of its bytes the encoder takes, renames
 // every user in every table that stored one and the rows stop resolving. The
-// empty seed sits in the table for the same reason, since a store with an
+// table holds the empty seed for the same reason, since a store with an
 // unnamed record would otherwise derive a value that moved without notice.
 func TestULIDFrom(t *testing.T) {
 	t.Parallel()

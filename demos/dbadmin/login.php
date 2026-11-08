@@ -17,12 +17,13 @@ if ($session->valid()) {
 $title = "Sign in";
 $message = "";
 
-// A tree with no .htpasswd has no accounts at all. The page says that, where a
-// form would refuse every password and name no cause. A checkout whose copy of
-// the file went missing lands in the same state.
+// A tree with no .htpasswd has no accounts at all. The page names the file and
+// the command that writes it, where a form would refuse every password and name
+// no cause. A checkout whose copy of the file went missing lands in the same
+// state.
 $configured = $auth->exists();
 if (!$configured) {
-	$message = "No user database: create .htpasswd in the application root with htpasswd -B -C 10 .htpasswd admin";
+	$message = "No .htpasswd: htpasswd -B -C 10 .htpasswd admin";
 }
 
 if ($configured && $_SERVER["REQUEST_METHOD"] == "POST") {
@@ -43,10 +44,10 @@ if ($configured && $_SERVER["REQUEST_METHOD"] == "POST") {
 	// candidate in.
 	if (!csrf_check()) {
 		http_response_code(403);
-		$message = "The request did not carry the sign-in form's token. Reload the page and sign in again.";
+		$message = "CSRF token mismatch";
 	} else if (login_limited($db, login_address(), $username)) {
 		http_response_code(429);
-		$message = "Too many sign-in attempts. Wait ten seconds and try again.";
+		$message = "Too many sign-in attempts";
 	} else if ($session->login($username, $password)) {
 		// One call does the whole of it: the manager puts the credential to
 		// the password file and starts a session for the user it names. An
@@ -55,10 +56,10 @@ if ($configured && $_SERVER["REQUEST_METHOD"] == "POST") {
 		$db->query("DELETE FROM login_attempt WHERE address = ? OR username = ?", login_address(), $username);
 		redirect_to("/");
 	} else {
-		// What comes back from login() is a boolean, and this page says the
-		// same for either half of the credential.
+		// login() returns a boolean. The message is the same for either half
+		// of the credential.
 		$db->query("INSERT INTO login_attempt (address, username, attempted_at) VALUES (?, ?, ?)", login_address(), $username, time());
-		$message = "Those credentials were not accepted.";
+		$message = "Credentials rejected";
 	}
 }
 

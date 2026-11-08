@@ -12,8 +12,8 @@ import (
 // This file dispatches a method call or a property read onto a Go value by
 // reflection: the name ladder PHP's case-insensitive spellings climb, the
 // per-type caches that keep the ladder off the per-call path, and the
-// Throwable method set every Go error answers. The typed fast paths it falls
-// back from live in dispatch_direct.go.
+// Throwable method set every Go error answers. dispatch_direct.go holds the
+// typed fast paths it falls back from.
 
 // goMethodKey and goMethodInfo cache Go method resolution per receiver type
 // and spelled name; see Runtime.goMethods.
@@ -104,7 +104,7 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 		}
 		in := make([]reflect.Value, 0, len(args))
 		// A PHP position is 1-based over the arguments the script wrote and an
-		// injected context, which sits at args[0], shifts it back by one.
+		// injected context at args[0] shifts it back by one.
 		offset := 1 - injected
 		for i, a := range args {
 			var want reflect.Type
@@ -159,7 +159,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 		if value, ok := throwableMethod(base, method); ok {
 			return value, nil
 		}
-		// The class a script wrote, not the Go type carrying it: an object of a
+		// The class a script wrote, not the Go type behind it: an object of a
 		// declared class reports the declared name, which is the name the
 		// author can look for in the source.
 		return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(base), method)

@@ -12,7 +12,7 @@ var (
 )
 
 // reflectParams derives PHP parameters from a Go function type. Reflection
-// carries no parameter names and nameParams invents them from the PHP type,
+// reports no parameter names and nameParams invents them from the PHP type,
 // with a numeric suffix when a type repeats.
 func reflectParams(t reflect.Type) []Param {
 	params := []Param{}

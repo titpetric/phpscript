@@ -25,10 +25,9 @@ func RegisterBinding(installer func(*Runtime)) {
 	RegisterProfileArea(NamespaceUnnamed, ProfileSecure, installer)
 }
 
-// RegisterProfileBinding contributes a runtime installer under the given area,
-// for a binding that leaves the sandbox: stdlib/ps/pexec registers under
-// ProfileExec. stdlib.Mount installs it only for a host whose profile names
-// the area; a zero profile is never installed.
+// RegisterProfileBinding contributes a runtime installer under the given area.
+// stdlib.Mount installs it only for a host whose profile names the area; a zero
+// profile is never installed.
 func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
 	RegisterProfileArea(NamespaceUnnamed, profile, installer)
 }

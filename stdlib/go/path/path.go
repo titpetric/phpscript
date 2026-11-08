@@ -6,12 +6,12 @@ package path
 import (
 	gopath "path"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Path`
+const Namespace = modelutil.GoNamespace + `\Path`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)

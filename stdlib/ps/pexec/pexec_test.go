@@ -21,10 +21,10 @@ var bindings = []string{
 	"posix_getpid", "getmypid",
 }
 
-// run executes src against a runtime carrying the standard library and this
+// run executes src against a runtime holding the standard library and this
 // package's bindings rooted at dir, and returns what the script printed. It
-// installs the standard library because a script reading $output back reaches
-// for count() and implode() to do it.
+// installs the standard library because a script reading $output back calls
+// count() and implode() to do it.
 func run(t *testing.T, dir, src string) string {
 	t.Helper()
 	program, err := parser.Parse(src)

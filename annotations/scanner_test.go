@@ -26,12 +26,11 @@ echo "public";
 }
 
 // TestScannerReadsOnlyWhatAnApplicationPublishes covers which files discovery
-// reads. The scan reads a .php file at any depth and routes can sit in one
-// folder or in a tree of them. It passes over a composer install tree: a
-// dependency does not
-// publish routes into the application, and walking it costs a parse of every
-// vendored file. A file with no annotation and a file with another extension
-// register nothing.
+// reads. The scan reads a .php file at any depth and routes go in one folder or
+// in a tree of them. It passes over a composer install tree: a dependency does
+// not publish routes into the application, and walking it costs a parse of
+// every vendored file. A file with no annotation and a file with another
+// extension register nothing.
 func TestScannerReadsOnlyWhatAnApplicationPublishes(t *testing.T) {
 	t.Parallel()
 	registrar := &recordingRegistrar{}
@@ -65,8 +64,8 @@ func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
 }
 
 // TestScannerRefusesANilRoot covers a host that configured no source tree.
-// Discovery walks one filesystem with no files to scan and no routes to
-// serve, and the failure arrives at registration where a deployment sees it.
+// Discovery walks one filesystem with no files to scan and no routes to serve.
+// The failure arrives at registration where a deployment sees it.
 func TestScannerRefusesANilRoot(t *testing.T) {
 	t.Parallel()
 	err := annotations.NewRoute(nil).Register(&recordingRegistrar{})

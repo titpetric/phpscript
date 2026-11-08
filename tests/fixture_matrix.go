@@ -77,7 +77,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	}
 
 	// php runs in the fixture's include root, which is the directory holding
-	// it unless it named a root of its own. That is the same root both Go
+	// it unless it named a separate root. That is the same root both Go
 	// runtimes resolve against and a relative require reaches the same file on
 	// all three.
 	dir := f.RootDir()
@@ -200,7 +200,7 @@ var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 func writePHPScript(dir string, f *Fixture) (string, func(), error) {
 	// A _test.php body is already a file php can run, at the path the other
 	// runtimes read it from. Copying it would move __FILE__ and __DIR__ to a
-	// name of its own.
+	// different name.
 	if strings.HasSuffix(f.Path, GoldenSuffix) {
 		return filepath.Base(f.Path), func() {}, nil
 	}
@@ -238,8 +238,8 @@ func phpEnv(f *Fixture) []string {
 	return env
 }
 
-// phpFatal reports whether stderr carries an engine failure. An exit status is
-// not enough on its own: a script chooses its own status through exit().
+// phpFatal reports whether stderr holds an engine failure. An exit status is
+// not enough alone: a script chooses its own status through exit().
 func phpFatal(stderr string) error {
 	for _, line := range strings.Split(stderr, "\n") {
 		if strings.Contains(line, "Fatal error") || strings.Contains(line, "Parse error") {

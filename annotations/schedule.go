@@ -25,7 +25,7 @@ const (
 )
 
 // ParseSchedules returns the @schedule declarations found in src. A line may
-// carry `-- args` after the interval spec; those become $argv[1:].
+// add `-- args` after the interval spec; those become $argv[1:].
 func ParseSchedules(src []byte) []Schedule {
 	var out []Schedule
 	for line := range strings.SplitSeq(string(src), "\n") {

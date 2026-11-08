@@ -13,6 +13,7 @@ when:
     - docs/
     - README.md
 
+# docs/pipeline.md argues the missing formatting check and the vale gate.
 tasks:
   default:
     desc: "Check the markdown formatting and language"
@@ -23,28 +24,12 @@ tasks:
     desc: "Write every markdown file of the tree in one format"
     passthru: true
     cmds:
-      # --markdown keeps the fixer off the Go. The import rules belong to
-      # go:fmt, and a task named for the documents has no business rewriting
-      # an import block.
       - splint fix --markdown ./...
 
   lint:
     desc: "Run vale to lint language"
     passthru: true
     cmds:
-      # There is no formatting check. The formatter settles a heading level, a
-      # list marker and a run of spaces with no rule to configure, so a check
-      # would only report a file nobody had run the formatter over.
-      #
-      # vale reads .vale.ini and .vale/styles from the working directory, so it
-      # runs at the repository root rather than in docs/, which also holds Go
-      # doc comments to the same prose rules as a document.
-      #
-      # scripts/vale-gate.sh when the repository carries one. vale's exit
-      # status reads a rule's level and nothing else, so a style whose rules
-      # are all level: error fails on any finding and a bare run is a command
-      # that never passes. The gate reads the findings and compares each rule
-      # against its baseline, and splint runs bare because its tree is at zero.
       - if: $(test -f scripts/vale-gate.sh)
         cmd: ./scripts/vale-gate.sh
       - if: $(test -f .vale.ini && ! test -f scripts/vale-gate.sh)
@@ -54,9 +39,6 @@ tasks:
     desc: "Report the constructions this tree leans on that the standard library does not"
     passthru: true
     cmds:
-      # The first run measures the standard library and keeps the counts, which
-      # takes about twenty seconds; the rest are instant. The rule reports
-      # warnings, so the task reads the table and does not gate on it.
       - splint --linters=prose --stats ./...
 
   setup:

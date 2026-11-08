@@ -26,7 +26,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterWithoutTrace covers a CLI run, where nothing opened a trace: the
-// span start_span returns carries no recording and its methods do nothing and
+// span start_span returns holds no recording and its methods do nothing and
 // a script instrumenting itself runs unchanged with telemetry switched off.
 func TestRegisterWithoutTrace(t *testing.T) {
 	t.Parallel()

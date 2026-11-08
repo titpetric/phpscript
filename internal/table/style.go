@@ -38,8 +38,7 @@ const (
 	ColorDim       = "\033[38;5;244m"
 )
 
-// IsTerminal reports whether w is a tty, which decides between the
-// box-drawing table and markdown when the caller has not said which it wants.
+// IsTerminal reports whether w is a tty, the default choice of style.
 func IsTerminal(w io.Writer) bool {
 	file, ok := w.(*os.File)
 	return ok && term.IsTerminal(int(file.Fd()))

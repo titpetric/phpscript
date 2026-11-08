@@ -4,7 +4,7 @@ package model
 // method table keyed by method name.
 //
 // Statics are the declarations of `static $name = expr` properties; their
-// values live in the runtime (one bag per class, created on first access) so
+// values stay in the runtime (one bag per class, created on first access) so
 // that every instance and every static call observes the same storage.
 type Class struct {
 	Name string

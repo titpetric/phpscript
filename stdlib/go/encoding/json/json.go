@@ -6,13 +6,13 @@ package json
 import (
 	gojson "encoding/json"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/ps/core"
 )
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Encoding\JSON`
+const Namespace = modelutil.GoNamespace + `\Encoding\JSON`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)

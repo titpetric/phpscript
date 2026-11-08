@@ -8,22 +8,23 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
 // The Runtime\Go bindings are go's builtins, and a script opts into them with
-// `use Runtime\Go`. They are the one binding area no runtime carries by
+// `use Runtime\Go`. They are the one binding area no runtime installs by
 // default: `make` and `len` are not php's and a program that imported neither
 // keeps the surface php defines, and the import installs them where
-// stdlib.Mount would install an area every runtime carries.
+// stdlib.Mount would install an area every runtime holds.
 //
 // Each one reads php's values and answers go's semantics. A length is go's,
 // over php's arrays as well as go's slices; a conversion applies go's width to
-// a value php reduced to one of its own scalars; a panic throws a
+// a value php reduced to one of its scalars; a panic throws a
 // RuntimeException, the class a php `catch` can filter on.
 
 func init() {
-	runner.RegisterNamespace(model.GoNamespace, RegisterGo)
+	runner.RegisterNamespace(modelutil.GoNamespace, RegisterGo)
 }
 
 // RegisterGo installs the Runtime\Go bindings on a runtime that imported them.
@@ -61,7 +62,7 @@ func RegisterGo(rt *runner.Runtime) {
 	rt.RegisterFunc(goFunc("min"), func(args ...any) (any, error) { return goOrdered("min", args, -1) })
 	// Runtime\Go\max returns the largest of its arguments.
 	rt.RegisterFunc(goFunc("max"), func(args ...any) (any, error) { return goOrdered("max", args, 1) })
-	// Runtime\Go\panic throws a RuntimeException carrying $value.
+	// Runtime\Go\panic throws a RuntimeException holding $value.
 	rt.RegisterFunc(goFunc("panic"), func(value any) error {
 		return runner.NewRuntimeException("panic: "+phpval.String(value), 0)
 	})
@@ -77,7 +78,7 @@ func RegisterGo(rt *runner.Runtime) {
 // in the class table: `new Go\int64(5)` converts through it and class_exists
 // reads it.
 func registerGoTypes(rt *runner.Runtime) {
-	for _, name := range model.GoTypeNames() {
+	for _, name := range modelutil.GoTypeNames() {
 		// Runtime\Go\<type> converts a value to a go builtin type: int64(0), float64($n).
 		convert := goConvert(name)
 		rt.RegisterFunc(goFunc(name), convert)
@@ -86,7 +87,7 @@ func registerGoTypes(rt *runner.Runtime) {
 }
 
 // goFunc is the name a Runtime\Go binding registers under.
-func goFunc(name string) string { return model.GoNamespace + `\` + name }
+func goFunc(name string) string { return modelutil.GoNamespace + `\` + name }
 
 // goFail is the RuntimeException a binding throws, which a php `catch` sees.
 func goFail(format string, args ...any) error {
@@ -108,7 +109,7 @@ func goConvert(name string) func(args ...any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		folded, ok := model.GoFold(name, reduced)
+		folded, ok := modelutil.GoFold(name, reduced)
 		if !ok {
 			return nil, goFail(`%s: cannot convert a %T`, goFunc(name), value)
 		}
@@ -117,9 +118,9 @@ func goConvert(name string) func(args ...any) (any, error) {
 }
 
 // goReduce reads a value the way the named type's conversion needs it: through
-// php's own semantics, where a string becomes a number. model.GoFold applies
-// go's width to what comes out, and this value and the literal the parser
-// folds agree by construction.
+// php's own semantics, where a string becomes a number. modelutil.GoFold applies
+// go's width to what comes out. This value and the literal the parser folds
+// agree by construction.
 func goReduce(name string, value any) (any, error) {
 	switch name {
 	case "any":
@@ -184,7 +185,7 @@ var goElems = map[string]reflect.Type{
 
 // goElem reads a type spelling into the element type the slice it names holds.
 // A nested slice composes, and a name that is no builtin type is a class name,
-// which php carries as any.
+// which php holds as any.
 func goElem(spelling string) (reflect.Type, bool) {
 	rest, ok := strings.CutPrefix(spelling, "[]")
 	if !ok || rest == "" {
@@ -196,7 +197,7 @@ func goElem(spelling string) (reflect.Type, bool) {
 	if elem, known := goElems[rest]; known {
 		return elem, true
 	}
-	if model.GoType(rest) {
+	if modelutil.GoType(rest) {
 		return nil, false
 	}
 	return goElems["any"], true
@@ -274,14 +275,14 @@ func goLen(value any) (int64, error) {
 	if text, ok := phpval.Bytes(value); ok {
 		return int64(len(text)), nil
 	}
-	if length, ok := model.LenValues(value); ok {
+	if length, ok := modelutil.LenValues(value); ok {
 		return int64(length), nil
 	}
 	return 0, goFail(`Runtime\Go\len: a %T has no length`, value)
 }
 
 // goCap is go's cap. A php array answers its length: it grows on demand and
-// carries no capacity a script sets, where a slice from make does.
+// holds no capacity a script sets, where a slice from make does.
 func goCap(value any) (int64, error) {
 	if value == nil {
 		return 0, nil
@@ -291,7 +292,7 @@ func goCap(value any) (int64, error) {
 	case reflect.Slice, reflect.Array, reflect.Chan:
 		return int64(held.Cap()), nil
 	}
-	if length, ok := model.LenValues(value); ok {
+	if length, ok := modelutil.LenValues(value); ok {
 		return int64(length), nil
 	}
 	return 0, goFail(`Runtime\Go\cap: a %T has no capacity`, value)
@@ -301,7 +302,7 @@ func goCap(value any) (int64, error) {
 // does to a slice and as near as a php array comes to one.
 func goCopyArray(dst *model.Array, src any) (int64, error) {
 	limit, copied := int64(dst.Len()), int64(0)
-	model.RangeValues(src, func(_, value any) bool {
+	modelutil.RangeValues(src, func(_, value any) bool {
 		if copied >= limit {
 			return false
 		}
@@ -318,7 +319,7 @@ func goCopySlice(dst reflect.Value, src any) (int64, error) {
 	limit, copied := int64(dst.Len()), int64(0)
 	elem := dst.Type().Elem()
 	var failure error
-	model.RangeValues(src, func(_, value any) bool {
+	modelutil.RangeValues(src, func(_, value any) bool {
 		if copied >= limit {
 			return false
 		}
@@ -351,8 +352,8 @@ func goDeleteKey(collection reflect.Value, key any) error {
 	return nil
 }
 
-// goClear is go's clear: a map and a php array lose their entries, and a
-// slice keeps its length and holds the element type's zero value.
+// goClear is go's clear: a map and a php array lose their entries. A slice
+// keeps its length and holds the element type's zero value.
 func goClear(collection any) error {
 	if target, ok := collection.(*model.Array); ok {
 		target.Clear()

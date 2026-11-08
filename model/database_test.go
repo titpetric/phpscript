@@ -8,9 +8,9 @@ import (
 // TestDatabaseProvider covers the shape of the contract, which is the whole of
 // what the two sides share. The interface lives here so a runtime names a
 // provider in its options without importing stdlib/ps/database, and
-// stdlib/ps/database imports the runtime to register its bindings. Neither names
-// the other and a signature drifting here breaks the host at its next build
-// with nothing to point at.
+// stdlib/ps/database imports the runtime to register its bindings. Neither
+// package names the other and a signature drifting here breaks the host at
+// its next build with nothing to point at.
 //
 // Connect is Open plus a ping and the two read the same name list and answer
 // the same client: a caller that needs the storage reachable before it holds a
@@ -44,7 +44,7 @@ func TestDatabaseProvider(t *testing.T) {
 // TestExtendedDatabaseProvider covers the split between resolving a connection
 // and managing the set of them. A host that only resolves names implements
 // DatabaseProvider alone and the two interfaces have to stay independent: a
-// caller reaching for List type-asserts for this one and carries on without it.
+// caller reaching for List type-asserts for this one and continues without it.
 func TestExtendedDatabaseProvider(t *testing.T) {
 	t.Parallel()
 	base := reflect.TypeOf((*DatabaseProvider)(nil)).Elem()

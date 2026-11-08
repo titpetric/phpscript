@@ -24,7 +24,7 @@ import (
 // entry: a fork copies the table, and a binding's *Callable argument has to
 // bind to the runtime the call is on and not to the one that built the value.
 // Only the reflect path reads it, where coerceArg needs it and one wrapper
-// covers the specialised signatures below and none of them takes it.
+// covers the specialised signatures below, which take no runtime.
 type invoker struct {
 	call     func(rt *Runtime, args []any) (any, error)
 	wantsCtx bool
@@ -35,8 +35,7 @@ type invoker struct {
 // environment register, the pre-planned reflect call otherwise.
 func newInvoker(fn any) invoker {
 	// A callable value is not a Go func and has no signature to plan: the
-	// runtime doing the calling dispatches it, and that is the whole of what
-	// it needs.
+	// runtime doing the calling dispatches it.
 	if c, ok := fn.(*Callable); ok {
 		return invoker{call: func(rt *Runtime, args []any) (any, error) { return c.on(rt)(args...) }}
 	}
@@ -107,7 +106,7 @@ func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) 
 	return func(rt *Runtime, args []any) (any, error) {
 		in := make([]reflect.Value, 0, len(args))
 		// A binding that declares a runtime context takes it ahead of the
-		// script's arguments, and that slot does not count towards the PHP
+		// script's arguments. That slot does not count towards the PHP
 		// position.
 		offset := 1
 		if wantsCtx {
@@ -276,7 +275,7 @@ func (e *funcEntry) invoker() *invoker {
 
 // invokeEntry dispatches a table entry: context injection decided off the
 // pre-bound flag in place of a reflect.TypeOf per call, the pre-bound call,
-// and the memory burst guard a host call has always carried.
+// and the memory burst guard a host call has always had.
 func (rt *Runtime) invokeEntry(e *funcEntry, args []any, scope *Scope) (any, error) {
 	inv := e.invoker()
 	if inv.wantsCtx {

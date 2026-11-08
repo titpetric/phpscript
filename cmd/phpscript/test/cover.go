@@ -53,7 +53,7 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 		// The folder table is the fuller answer and the run printed it
 		// already and this line would only invite a comparison between two
 		// numbers measuring different things: the profile counts the .phpt
-		// entrypoints, which run by definition, and the table does not.
+		// entrypoints, which run by definition; the table does not.
 		if !opts.JSON && opts.Verbose {
 			fmt.Printf("coverage: %.1f%% of statements\n", coverage.Percent(blocks))
 		}
@@ -122,8 +122,8 @@ func coverFilePath(fx *tests.Fixture, file string) string {
 
 // fixtureCoverBlocks renders one fixture's collected coverage: include paths
 // resolve the way the fixture's include union resolved them and the profile
-// names files as they sit below the invocation directory, and the columns come
-// from the source text.
+// names files by their path below the invocation directory, and the columns
+// come from the source text.
 func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 	sources := map[string][]string{}
 	lines := func(file string) []string {
@@ -145,7 +145,7 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 	var out []profileBlock
 	for _, b := range fx.Coverage().Blocks() {
 		// The collector keys a file the way a script reads it, from the source
-		// filesystem's root. A profile names files as they sit below the
+		// filesystem's root. A profile names files by their path below the
 		// invocation directory and the root comes back off here.
 		name := strings.TrimPrefix(b.File, "/")
 		block := profileBlock{
@@ -186,8 +186,8 @@ func writeCoverProfile(path string, blocks []profileBlock) error {
 }
 
 // coverFixtures installs one collector per fixture. Per-fixture collectors are
-// what --split reports from, and they keep parallel fixtures from sharing
-// mutable state; the merge above reassembles the whole run.
+// what --split reports from. They keep parallel fixtures from sharing mutable
+// state; the merge above reassembles the whole run.
 func coverFixtures(fixtures []*tests.Fixture) {
 	for _, fx := range fixtures {
 		fx.SetCoverage(coverage.New())
@@ -238,7 +238,7 @@ func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 
 // coverFiles merges every fixture's registered files, resolved to the paths
 // the profile names, fixture entrypoints excluded. This is the report's file
-// universe: a file of pure declarations carries no profile block, and only the
+// universe: a file of pure declarations has no profile block, and only the
 // register record reports the load at all.
 func coverFiles(fixtures []*tests.Fixture) []string {
 	seen := map[string]bool{}

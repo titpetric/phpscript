@@ -95,7 +95,7 @@ func TestPool_Close(t *testing.T) {
 	pool.Close()
 }
 
-// lendingJob is a DoneJob that counts its runs and carries one channel across
+// lendingJob is a DoneJob that counts its runs and lends one channel across
 // every one of them, the shape stdlib/ps/http's per-request tracker takes.
 type lendingJob struct {
 	runs int
@@ -114,8 +114,8 @@ func (j *lendingJob) Done() chan struct{} {
 // TestPool_SubmitLendsTheDoneChannel covers the DoneJob path: the pool signals
 // through the channel the job lends, and the buffered slot empties on receipt,
 // and one channel serves every submit of the job. The send and the receive pair
-// per run and no run reads the signal of the one before it and answers ahead
-// of its own work.
+// per run and no run reads the signal of the one before it and answers before
+// finishing its work.
 func TestPool_SubmitLendsTheDoneChannel(t *testing.T) {
 	t.Parallel()
 	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)

@@ -28,12 +28,10 @@ type Options struct {
 	Output    string
 }
 
-// NewCommand creates a new lint command. The file --include names is what puts
-// the application's own classes and functions in the name registry and the same
-// flag that makes a request find them makes the checks know them.
-// The configuration is what every command constructor takes and one
-// signature covers them all. This command reads it through globals, which
-// main fills from the configuration before it builds any command.
+// NewCommand creates a new lint command. The file --include names puts the
+// application's classes and functions in the name registry: the flag that
+// makes a request find them makes the checks know them. One signature covers
+// every command, and main fills the globals this one reads.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	var opts Options
 
@@ -71,7 +69,7 @@ const (
 
 func run(opts Options, args []string, out io.Writer) error {
 	// Before collect reads the first file: phplint builds the name registry
-	// once per process, and this call puts the application's own names in it.
+	// once per process. This call puts the application's own names in it.
 	phplint.SetInclude(opts.Include)
 
 	results, err := collect(args, opts.Flatstack)
@@ -157,14 +155,14 @@ func run(opts Options, args []string, out io.Writer) error {
 }
 
 // sink is one output the findings go to: the terminal or a report file, each
-// holding a table per folder and not one table for the run.
+// holding one table per folder scanned.
 type sink struct {
 	w        io.Writer
 	markdown bool
 }
 
-// summary writes the run's closing line the way a table's summary prints and
-// the total reads like the per-folder lines above it.
+// summary writes the run's closing line in a table's summary shape, matching
+// the per-folder lines above it.
 func (s sink) summary(format string, args ...any) {
 	text := fmt.Sprintf(format, args...)
 	if !s.markdown {
@@ -174,8 +172,8 @@ func (s sink) summary(format string, args ...any) {
 }
 
 // collect lints every file and returns one result per finding, plus a passing
-// result for a file with no findings and the table reports every file it checks
-// and not only what went wrong.
+// result for a file with no findings: the table reports every file it checks,
+// including the clean ones.
 func collect(args []string, checkFlatstack bool) ([]result, error) {
 	files, err := list.ExpandFiles(args)
 	if err != nil {
@@ -265,8 +263,8 @@ func line(n int) string {
 	return strconv.Itoa(n)
 }
 
-// writeReportHeader opens a generated markdown report with its title and the
-// command that produced it and a checked-in report says how to regenerate it.
+// writeReportHeader opens a generated markdown report with its title plus the
+// command that produced it; a checked-in report names how to regenerate itself.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
 

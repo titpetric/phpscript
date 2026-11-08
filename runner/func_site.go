@@ -6,7 +6,7 @@ import (
 
 // FuncSite is where a script declares a user function. The site turns the
 // second declaration of a name into a message worth reading: PHP's fatal error
-// names the first site, and a script carrying two declarations of the same
+// names the first site, and a script with two declarations of the same
 // function normally got there by including a file twice, in which case the
 // first site is the only thing that says which file.
 type FuncSite struct {

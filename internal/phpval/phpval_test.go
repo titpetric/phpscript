@@ -110,7 +110,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 	if class := thrown.ThrowableClass(); class != "Error" {
 		t.Errorf("ThrowableClass() = %q, want %q", class, "Error")
 	}
-	// A class the object carries no declaration for still names something.
+	// An object that declares no class still names one: stdClass.
 	bare := &ConversionError{}
 	if got, want := bare.Error(), "Object of class stdClass could not be converted to string"; got != want {
 		t.Errorf("ConversionError.Error() = %q, want %q", got, want)
@@ -128,8 +128,8 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 }
 
 // TestBytes pins the rule the value helpers ask about a []byte: it reads as
-// the string it carries and a binding returning one returns text and not a
-// list of integers.
+// the string those bytes form and a binding returning one returns text and
+// not a list of integers.
 func TestBytes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -59,7 +59,7 @@ func TestTrace(t *testing.T) {
 // TestDo covers a call wrapped in a span. Do records what fn returned on the
 // span and ends it, and returns the error unchanged and the error handling of
 // an instrumented caller reads the same as an uninstrumented one. The
-// context fn runs under carries the span and work below it nests.
+// context fn runs under holds the span and work below it nests.
 func TestDo(t *testing.T) {
 	t.Parallel()
 	tracer := newRecordingTracer(t)
@@ -104,7 +104,7 @@ func TestDo(t *testing.T) {
 // TestTraceFromContext covers reading a trace back out of a context. A context
 // with no trace in it answers nil, and every method on a nil trace does
 // no work and instrumented code runs unchanged where telemetry is off. A
-// context the tracer did not derive carries one once WithTrace put it there,
+// context the tracer did not derive holds one once WithTrace put it there,
 // the spelling a host uses to pass an existing trace to the interpreter.
 func TestTraceFromContext(t *testing.T) {
 	t.Parallel()
@@ -128,7 +128,7 @@ func TestTraceFromContext(t *testing.T) {
 }
 
 // TestSpanFromContext covers which span a nested call records under: the
-// innermost one in the context. Start derives a context carrying the span it
+// innermost one in the context. Start derives a context holding the span it
 // opened and work below it nests; StartSpan derives none and a leaf span
 // leaves the context naming its parent, and nothing nests under a span whose
 // End has run.
@@ -162,7 +162,7 @@ func TestSpanFromContext(t *testing.T) {
 	leaf.End()
 }
 
-// TestTraceID covers the correlation key a log line carries: the value of the
+// TestTraceID covers the correlation key a log line names: the value of the
 // Request-Id header on an HTTP trace and one string matches a log line with its
 // own trace, and the empty string where no trace exists.
 func TestTraceID(t *testing.T) {

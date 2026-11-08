@@ -26,7 +26,7 @@ func CoverDir(argv0 string) string {
 	return filepath.Join("cover", Binary(argv0))
 }
 
-// BuiltWithCover reports whether this binary was built with go build -cover.
+// BuiltWithCover reports whether go build -cover produced this binary.
 func BuiltWithCover() bool {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {

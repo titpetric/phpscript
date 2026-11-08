@@ -19,7 +19,7 @@ tokens:
   - fairly
   - huge
   - interestingly
-  - is a number
+  - is\s+a\s+number
   - largely
   - mostly
   - obviously

@@ -18,8 +18,8 @@ import (
 
 // RegisterHash installs PHP's message digests: md5() and sha1(), and the
 // algorithm-agnostic hash() family over the table below. Like the CSPRNG, a
-// digest is something a script cannot write for itself at any usable speed,
-// and that qualifies it for this package.
+// digest is something a script cannot write for itself at any usable speed.
+// That qualifies it for this package.
 //
 // Both return string, not []byte: a PHP string is a Go string in this
 // runtime, and a []byte would reach scripts as a foreign Go value that
@@ -103,7 +103,7 @@ func RegisterHash(rt *runner.Runtime) {
 
 // digests is the algorithm table, spelled the way PHP spells the names, and
 // shorter than PHP's hash_algos(): every entry here is one a Go binary already
-// carries, and hash_algos() below answers this table and not PHP's and a
+// holds, and hash_algos() below answers this table and not PHP's and a
 // script reads the set it has.
 //
 // This build registers the family because storing a token as a digest an index
@@ -118,7 +118,7 @@ var digests = map[string]func() hash.Hash{
 	"sha512": sha512.New,
 	// crc32b is PHP's name for the ordinary IEEE CRC-32, the name a script
 	// reaching for a cheap non-cryptographic checksum types. crc32() the
-	// function spells the same thing and lives in stdlib/ps/core.
+	// function spells the same thing and stdlib/ps/core registers it.
 	"crc32b": func() hash.Hash { return crc32.NewIEEE() },
 }
 
@@ -133,7 +133,7 @@ func newDigest(fn, algo string) (hash.Hash, error) {
 
 // unknownAlgo phrases the refusal the way PHP 8 phrases its ValueError and a
 // script that catches it reads a familiar message. No name has a nearest answer
-// here: a digest under a name this build does not carry is unavailable.
+// here: a digest under a name this build does not list is unavailable.
 func unknownAlgo(fn, algo string) error {
 	return fmt.Errorf("%s(): Argument #1 ($algo) must be a valid hashing algorithm, %q given", fn, algo)
 }

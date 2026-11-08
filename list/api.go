@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/parser"
 )
 
 // MethodRow is one class or interface member of the API listing. Member is the
-// method name, Signature carries the declarations the reader needs to call it,
+// method name, Signature holds the declarations the reader needs to call it,
 // and Doc is the docblock above the declaration with its comment markers
 // stripped, on one line.
 type MethodRow struct {
@@ -163,9 +164,9 @@ func paramSignature(p model.Param) string {
 
 // defaultSignature renders a parameter default. The shapes a default takes in
 // practice are literals, constants, arrays and small arithmetic expressions;
-// a shape outside them contributes nothing, never an invented spelling.
+// any other shape contributes nothing, never an invented spelling.
 func defaultSignature(e model.Expr) string {
-	switch n := model.UnwrapParenthesized(e).(type) {
+	switch n := modelutil.UnwrapParenthesized(e).(type) {
 	case *model.Lit:
 		switch v := n.Value.(type) {
 		case nil:

@@ -33,7 +33,7 @@ walk(".");`
 
 // TestOpendirWalksTheSourceFilesystem is the branch an embedded application
 // takes. No file exists on disk to open a descriptor on and a walk that
-// answers at all proves the handle carries the listing and no file.
+// answers at all proves the handle holds the listing and no file.
 func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}

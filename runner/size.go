@@ -54,8 +54,8 @@ func (s Size) Bytes() int64 { return int64(s) }
 // Exceeds reports whether n is over the limit, which a zero Size is not.
 func (s Size) Exceeds(n int64) bool { return s > 0 && n > int64(s) }
 
-// String writes the size back in the spelling it reads in: megabytes when it
-// is a whole number of them, bytes otherwise.
+// String writes the size back in the spelling it reads in: megabytes for a
+// whole number of them, bytes otherwise.
 func (s Size) String() string {
 	if s != 0 && s%megabyte == 0 {
 		return strconv.FormatInt(int64(s)/megabyte, 10) + "M"

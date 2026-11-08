@@ -57,8 +57,8 @@ func TestRegisterConnections(t *testing.T) {
 	}
 
 	// register() lowercases the name on the way in and a script writing "Shop"
-	// and one writing "shop" reach one connection. The list comes back sorted,
-	// and a script can compare it.
+	// and one writing "shop" reach one connection. The list comes back sorted.
+	// A script can compare it.
 	if list := connectionsOf(t, rt); len(list) != 2 || list[0] != "default" || list[1] != "shop" {
 		t.Errorf("Database::connections() = %v, want default and shop", list)
 	}

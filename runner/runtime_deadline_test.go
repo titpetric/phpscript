@@ -93,8 +93,8 @@ func TestRuntime_ClientContext(t *testing.T) {
 		t.Error("the host ending did not reach the client context")
 	}
 
-	// With no connection recorded at all the script's own context is the
-	// answer and a binding always has something to wait on.
+	// With no connection recorded at all ClientContext returns the script's
+	// own context. A binding always has something to wait on.
 	rt.client = nil
 	if got := rt.ClientContext(); got != rt.Context() {
 		t.Error("with no connection the client context is not the script's")

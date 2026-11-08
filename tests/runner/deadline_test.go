@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// runLimited runs src on a runtime carrying ctx and returns what it printed and
+// runLimited runs src on a runtime holding ctx and returns what it printed and
 // how it ended.
 func runLimited(t testing.TB, ctx context.Context, src string) (string, error) {
 	t.Helper()
@@ -30,7 +30,7 @@ func runLimited(t testing.TB, ctx context.Context, src string) (string, error) {
 }
 
 // TestTimeLimitEndsALoop is the whole of set_time_limit: the runtime stops a
-// script that would not stop on its own, and tells it why.
+// script that would never stop, and tells it why.
 func TestTimeLimitEndsALoop(t *testing.T) {
 	t.Parallel()
 	started := time.Now()
@@ -55,7 +55,7 @@ while (true) { $n = 1; }
 }
 
 // TestTimeLimitSleepsAreCut holds the limit over a wait as well as over a
-// loop: a sleep is on the runtime context, and it ends when the script does.
+// loop: a sleep is on the runtime context and ends when the script does.
 func TestTimeLimitSleepsAreCut(t *testing.T) {
 	t.Parallel()
 	started := time.Now()
@@ -92,8 +92,8 @@ echo "finished";
 	}
 }
 
-// TestClientAbortEndsTheScript is the default: the connection went away, and the
-// script does too.
+// TestClientAbortEndsTheScript is the default: the connection goes away and
+// the script ends with it.
 func TestClientAbortEndsTheScript(t *testing.T) {
 	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
@@ -169,8 +169,8 @@ var_dump(connection_aborted());
 }
 
 // TestTimeLimitIsNotCatchable holds the limit past a try, the way php holds its
-// own: there is no more time to carry on with, and the clause does not run
-// while the error reaches the host.
+// own: no time remains. The clause does not run while the error reaches the
+// host.
 func TestTimeLimitIsNotCatchable(t *testing.T) {
 	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
@@ -304,8 +304,7 @@ while (true) { $n = 1; }
 }
 
 // TestTimeLimitDoesNotOutliveItsProgram covers a runtime a host reuses: the
-// timer one program armed would end the next one, which armed no timer of its
-// own.
+// timer one program armed would end the next one, which armed no timer.
 func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

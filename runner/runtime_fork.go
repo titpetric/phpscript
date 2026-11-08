@@ -13,25 +13,25 @@ import (
 // is one program on one goroutine. Sharing one across goroutines is no race
 // to reason about but a concurrent map write.
 //
-// A fork is a second Runtime with the same symbols and the same caches and none
-// of the execution state. Where a VM with threads would keep a stack per thread
-// and index it by thread id, this keeps a whole runtime per worker and indexes
-// it by the handle the worker holds: a Go program cannot read a goroutine id
-// without parsing a stack trace, which costs around four microseconds, and the
-// frames are only one of the six things a split must cover anyway.
+// A fork is a second Runtime with the same symbols and the same caches. Its
+// frames, output and statics start empty. Where a VM with threads would keep a
+// stack per thread and index it by thread id, this keeps a whole runtime per
+// worker and indexes it by the handle the worker holds: a Go program cannot
+// read a goroutine id without parsing a stack trace, which costs around four
+// microseconds. The frames are only one of the six things a split must cover.
 //
-// What a fork does not carry is anything a program wrote: globals, statics,
-// constants a script defined, output. It carries what a host installed and what
-// the tree declared. That is sound here because a phpscript function is a
+// A fork holds nothing a program wrote: globals, statics, constants a script
+// defined, output. It holds what a host installed and what the tree declared.
+// That is sound here because a phpscript function is a
 // function of its arguments - there is no `global` statement (docs/design.md)
 // and no request state unless a host seeds it - so two forks running the same
 // declaration answer the same thing.
 
-// Fork returns a runtime that can run the same symbols as this one, writing to
-// w, and shares its parse and bytecode caches. It carries no part of an
-// execution and it runs safely on a goroutine of its own, and it installs the
-// whole standard library and a Pool forks per worker and not per request. The
-// file comment above is the arrangement.
+// Fork returns a runtime that runs the same symbols as this one, writes to w
+// and shares its parse and bytecode caches. It holds no part of an execution
+// and runs safely on a separate goroutine. It installs the whole standard
+// library; a Pool forks per worker and not per request. The file comment above
+// is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)
 	child.flat = rt.flat
@@ -47,7 +47,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// The bindings, installed and never copied.
 	//
 	// A binding is almost always a closure over its registering runtime -
-	// header() reaches for that runtime's request, ignore_user_abort sets
+	// header() reads that runtime's request, ignore_user_abort sets
 	// that runtime's flag - so a copied entry would read and write the parent
 	// from inside the child. The host says how to install them and the child
 	// gets its own.
@@ -87,9 +87,9 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	}
 	child.FreezeStdlib()
 
-	// The autoloaders, which are the one piece of script state a fork does
-	// carry. They are how a name becomes a declaration, and a fork exists to run
-	// the same symbols: without them a class the parent had not needed yet is
+	// The autoloaders, the one piece of script state a fork does hold. They
+	// are how a name becomes a declaration. A fork exists to run the same
+	// symbols: without them a class the parent had not needed yet is
 	// unresolvable on the child and a handler that is the first to name one
 	// answers 500 where the same line at script level works. Parent and child
 	// share what they capture - composer's ClassLoader is an object - and read
@@ -122,7 +122,7 @@ func copyEntries(dst, src map[string]*funcEntry) {
 }
 
 // InvokeNamed runs the PHP function name with args, on a clean stack. A
-// closure is not callable this way: it carries its defining scope.
+// closure is not callable this way: it holds its defining scope.
 func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
 	entry, ok := rt.lookupEntry(name)
 	if !ok {
@@ -132,8 +132,7 @@ func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
 }
 
 // DeclaredPrograms answers the programs whose declarations this runtime holds,
-// by the filename each hoists under. A host building its own forks replays
-// them; Fork does it already.
+// by the filename each hoists under.
 func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 	out := make(map[*model.Program]string, len(rt.hoisted))
 	for program, filename := range rt.hoisted {
@@ -148,12 +147,10 @@ func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding
 // its arguments alone.
 //
-// InvokeClosure is the re-entry a host callback needs. The declaration is AST,
-// and it runs on whichever runtime the caller has; what it does not get is the
-// closure's defining scope and Captures has to be false for the result to mean
-// anything. A fresh statics bag per call is the other half of that: two
-// goroutines running the same declaration are two calls, and neither
-// accumulates into the other.
+// It runs on whichever runtime the caller has and never gets the closure's
+// defining scope: Captures has to be false for the result to mean anything. A
+// fresh statics bag per call is the other half: two goroutines running the same
+// declaration accumulate into nothing shared.
 func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) {
 	if decl == nil {
 		return nil, &LookupError{Symbol: "closure", Reason: "no declaration"}

@@ -22,7 +22,7 @@ The shape to expect: 53 packages, 43 of them with tests. `tests/runner` is the l
 
 `tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. Any reading of what is slow drops them, and the report says so, because the alternative is a sprint that optimises a sleep.
 
-A duration here is one sample and carries no interval. It ranks packages; it does not compare two commits.
+A duration here is one sample with no interval. It ranks packages; it does not compare two commits.
 
 ## Layer 2: per function
 
@@ -34,9 +34,9 @@ Before and after is `-diff_base`, not two `-top` listings read side by side:
 go tool pprof -top -nodecount=40 -diff_base=cpu-before.pprof cpu-after.pprof
 ```
 
-One subtlety decides whether a per-function reading means anything. A profile of `phpscript test` contains the harness: fixture discovery, table rendering, the `php` subprocess, the JSON writer. Those frames sit on top of the interpreter and crowd out the interpreter's own frames. A per-function reading uses `phpscript run` over one file instead, which [collect-phpscript-run.md](collect-phpscript-run.md) covers.
+One subtlety decides whether a per-function reading means anything. A profile of `phpscript test` contains the harness: fixture discovery, table rendering, the `php` subprocess, the JSON writer. Those frames wrap the interpreter and crowd out its own frames. A per-function reading uses `phpscript run` over one file instead, which [collect-phpscript-run.md](collect-phpscript-run.md) covers.
 
-The same applies in the other direction: `phpscript run` over one file includes process start, the parse, and the whole of `stdlib.Register`, which a benchmark loop amortises away. Neither is wrong; they answer different questions, and a profile says which question it answers.
+The same applies in the other direction: `phpscript run` over one file includes process start, the parse, and the whole of `stdlib.Register`, which a benchmark loop amortises away. Neither profile is wrong; they answer different questions, and a profile says which question it answers.
 
 ## Layer 3: per fixture
 
@@ -44,7 +44,7 @@ The same applies in the other direction: `phpscript run` over one file includes 
 
 Both Go runners, through `--matrix --skip-php`. `--skip-php` drops `php`: another process with another engine, whose latency is not this project's to optimise. `php` stays in the correctness matrix and out of the timing one.
 
-`--cache` decides what the run times. `worker` amortises the parse across the fixtures a worker runs, which is the production shape. `off` re-parses per fixture, which measures the parser. Picking the wrong one is the common error, and the report names the mode it ran under.
+`--cache` decides what the run times. `worker` amortises the parse across the fixtures a worker runs, which is the production shape. `off` re-parses per fixture, which measures the parser. Picking the wrong one is the common error. The report names the mode it ran under.
 
 It also decides what the run costs in resident memory and layer 3 runs one process per area under `GOMEMLIMIT`. The contract's memory section has the reasoning and the loop.
 
@@ -57,7 +57,7 @@ They measure different things, and the report puts them side by side.
 | `runtime.MemStats.TotalAlloc` delta        | Everything the Go process allocated while the work ran, freed or not. Includes allocator overhead and every interpreter structure |
 | `rt.MemoryPeak()` over `runner.MemoryWalk` | The high-water mark of live PHP values only. No allocator overhead, no interpreter structures                                     |
 
-Neither is ever labelled "memory" alone. A report carrying one number without naming which one leaves nothing to act on: the first says what the collector will have to do, the second says what the script thinks it holds, and a large ratio between them is itself the finding.
+Neither number is ever labelled "memory" alone. A report that prints one without naming which one leaves nothing to act on: the first says what the collector will have to do, the second says what the script thinks it holds, and a large ratio between them is itself the finding.
 
 ## Combinations the command refuses
 
@@ -77,7 +77,7 @@ The sprint commits nothing it produces. `atkins.yml` already records the reasoni
 
 ## Reporting
 
-The run produces thousands of rows. The report carries three tables:
+The run produces thousands of rows. The report holds three tables:
 
 - Per package: the five slowest, with `tests/runner`'s sleeps called out and excluded.
 - Per function: the twenty heaviest by cpu and the twenty heaviest by allocated objects, from `-diff_base` where there are two commits to compare.

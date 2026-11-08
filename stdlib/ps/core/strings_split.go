@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // STR_PAD_* selectors, as PHP numbers them.
@@ -118,8 +118,8 @@ func phpStrReplace(search, replace, subject any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if model.IsCollection(search) {
-		replIsList := model.IsCollection(replace)
+	if modelutil.IsCollection(search) {
+		replIsList := modelutil.IsCollection(replace)
 		repl, err := phpval.Strings(replace)
 		if err != nil {
 			return "", err
@@ -161,7 +161,7 @@ func phpStrReplace(search, replace, subject any) (string, error) {
 func phpImplode(separator, array any) (string, error) {
 	// implode($separator, $array) or implode($array), where the single
 	// array argument arrives in $separator.
-	if model.IsCollection(separator) {
+	if modelutil.IsCollection(separator) {
 		parts, err := phpval.Strings(separator)
 		if err != nil {
 			return "", err

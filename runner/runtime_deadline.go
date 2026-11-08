@@ -24,14 +24,13 @@ import (
 // script's deadline, as php does where the request is the script. What a
 // request does own is its connection, which EnterRequest scopes.
 
-// maxTimeLimit is the longest limit a script can set, past any real one, and
-// it keeps the seconds-to-Duration multiply from wrapping a large argument
-// into a short limit.
+// maxTimeLimit is the longest limit a script can set, past any real one. It
+// keeps the seconds-to-Duration multiply from wrapping a large argument into a
+// short limit.
 const maxTimeLimit = 100 * 365 * 24 * time.Hour
 
-// SetTimeLimit bounds how long the script may run, restarting the clock the
-// way a second set_time_limit call does. Zero removes the limit, maxTimeLimit
-// caps a longer one, and the timer cancels the context bindings hold.
+// SetTimeLimit bounds how long the script may run, restarting the clock as a
+// second set_time_limit does. Zero removes the limit, maxTimeLimit caps it.
 func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 	if limit < 0 {
 		limit = 0
@@ -48,7 +47,7 @@ func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 	rt.ignoreAbort = enable
 }
 
-// IgnoreUserAbort reports whether the run carries on through a disconnect.
+// IgnoreUserAbort reports whether the run continues through a disconnect.
 func (rt *Runtime) IgnoreUserAbort() bool { return rt.ignoreAbort }
 
 // ConnectionAborted reports that the client closed the connection.
@@ -57,9 +56,7 @@ func (rt *Runtime) ConnectionAborted() bool {
 }
 
 // ClientContext answers the connection this run serves: the request inside a
-// handler, and the host's context outside one. A binding that should
-// end when the client leaves waits on this; one that should end when the script
-// does waits on Runtime.Context.
+// handler, the host's context outside one. Runtime.Context ends with the run.
 func (rt *Runtime) ClientContext() context.Context {
 	if rt.client != nil {
 		return rt.client
@@ -149,8 +146,8 @@ func (rt *Runtime) armTimer() {
 	rt.refreshDeadlineArmed()
 }
 
-// checkDeadline reports the script having run out of time, the handler having
-// run out of its own, or the client having gone away.
+// checkDeadline reports the script having run out of time, the handler's
+// context having ended, or the client having gone away.
 func (rt *Runtime) checkDeadline() error {
 	if rt.timedOut.Load() {
 		return &TimeLimitError{Limit: rt.timeLimit}

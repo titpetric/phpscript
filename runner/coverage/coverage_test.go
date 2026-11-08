@@ -49,7 +49,7 @@ func TestNew(t *testing.T) {
 		}
 	}
 	// The declarations are not executable: the class and the interface seed no
-	// block of their own, only the method body inside the class does.
+	// block at all, only the method body inside the class does.
 	if got := len(c.Blocks()); got != 4 {
 		t.Errorf("blocks = %+v, want the four executable statements", c.Blocks())
 	}

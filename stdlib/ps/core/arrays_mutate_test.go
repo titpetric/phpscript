@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // TestPHPArrayMergeShapes covers both key regimes. array_merge always returns
@@ -220,12 +221,12 @@ func BenchmarkArrayMerge(b *testing.B) {
 func legacyArrayMerge(arrs ...any) *model.Array {
 	size := 0
 	for _, a := range arrs {
-		n, _ := model.LenValues(a)
+		n, _ := modelutil.LenValues(a)
 		size += n
 	}
 	out := model.NewArraySize(size)
 	for _, a := range arrs {
-		model.RangeValues(a, func(k, v any) bool {
+		modelutil.RangeValues(a, func(k, v any) bool {
 			if _, isInt := k.(int64); isInt {
 				out.Append(v)
 			} else {

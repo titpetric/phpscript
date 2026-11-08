@@ -148,7 +148,7 @@ func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
 		t.Fatalf("Set-Cookie count = %d, want 1", len(issued))
 	}
 
-	// The second request carries it, and a manager of its own answers it,
+	// The second request sends it and its own manager answers it,
 	// because a served request runs on a runtime that holds nothing from the
 	// last one.
 	next, err := session.NewManager(storage)
@@ -185,7 +185,7 @@ func TestNewSessionManagerValidatesConfiguration(t *testing.T) {
 	}
 }
 
-// users is a user database of one account, standing in for the password file.
+// users is a user database of one account, a substitute for the password file.
 // The manager makes one call per login and no other and these two methods are
 // the whole interface.
 type users struct {
@@ -207,7 +207,7 @@ func (u users) Authenticate(_ context.Context, key, secret string) (auth.User, e
 func (u users) Exists() (bool, error) { return u.err == nil, u.err }
 
 // account is the record the stub answers with: an id that is not derived from
-// anything and a test can assert on the exact value the session carries.
+// anything and a test can assert on the exact value the session holds.
 type account struct {
 	name string
 }
@@ -216,7 +216,7 @@ func (a account) GetID() string  { return "01J9F3K2PQUSERKEY0000000AA" }
 func (a account) String() string { return a.name }
 
 // TestSessionManagerLogin covers what a login puts in the session: the user's
-// primary key, where the username is what the credential carried. A row
+// primary key, where the username is what the credential named. A row
 // written during the session references the user as any other table does.
 func TestSessionManagerLogin(t *testing.T) {
 	t.Parallel()
@@ -330,7 +330,7 @@ func TestSessionManagerDestroy(t *testing.T) {
 		t.Fatalf("Valid after Destroy = %v, %v; want false, nil", valid, err)
 	}
 
-	// The cookie the response carries now is the deletion: same name and
+	// The cookie the response sets now is the deletion: same name and
 	// path and a client applies it to the one it holds, with no expiry left.
 	staged := (&http.Response{Header: http.Header{
 		"Set-Cookie": request.ResponseHeaders().Values("Set-Cookie"),

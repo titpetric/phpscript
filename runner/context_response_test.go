@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// exception stands in for stdlib.Exception, which runner cannot import: stdlib
-// imports runner and StatusFor reads the code structurally.
+// exception is a test double for stdlib.Exception, which runner cannot
+// import: stdlib imports runner and StatusFor reads the code structurally.
 type exception struct {
 	message string
 	code    int
@@ -141,8 +141,8 @@ func TestStatusFor(t *testing.T) {
 }
 
 // TestAnswered pins the opt-out an API relies on. Either a body or a
-// Content-Type is the script saying what its answer is, and neither has
-// anything to do with where the script sits in the URL space.
+// Content-Type is the script saying what its answer is. The script's place
+// in the URL space does not change that.
 func TestAnswered(t *testing.T) {
 	t.Parallel()
 	c := NewContext()

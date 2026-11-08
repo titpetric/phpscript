@@ -55,8 +55,9 @@ func TestReflectBinds(t *testing.T) {
 		{reflect.TypeOf(&boundEncoder{}), "encoding/json.Encoder"},
 		{reflect.TypeOf(&boundEmbedded{}), "net/http.ServeMux"},
 		{
-			// A store of its own cites itself. A sync.Mutex guards the
-			// map beside it and names nothing a script constructs.
+			// A store that wraps no standard library type cites
+			// itself: the sync.Mutex guards the map and a script
+			// constructs neither.
 			reflect.TypeOf(&boundStore{}),
 			"github.com/titpetric/phpscript/internal/apidoc.boundStore",
 		},
@@ -68,7 +69,7 @@ func TestReflectBinds(t *testing.T) {
 	}
 }
 
-// TestReflectBindsLinksStdlibOnly pins which citation carries a link. A
+// TestReflectBindsLinksStdlibOnly pins which citation holds a link. A
 // pkg.go.dev page exists for a standard library symbol and for nothing in this
 // module, and a link to a page that does not exist is worse than no link.
 func TestReflectBindsLinksStdlibOnly(t *testing.T) {
@@ -104,7 +105,7 @@ func TestRelatedNames(t *testing.T) {
 
 // TestGoTypeKey covers the key the doc index holds a bound type's source text
 // under. A pointer and the type it points at answer the same key, and an
-// unnamed type has none.
+// unnamed type answers the empty string.
 func TestGoTypeKey(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

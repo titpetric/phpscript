@@ -15,7 +15,7 @@ import (
 // form: it reports what a rewrite would touch and writes nothing and a job can
 // fail on an unformatted tree without changing it. The constructor takes the
 // configuration and the global options because one signature covers all nine
-// commands, and this command reads neither and both arguments are nil here.
+// commands. This command reads neither; both arguments are nil here.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)

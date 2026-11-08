@@ -5,7 +5,7 @@
 // --include in test and in lint with two help texts and two implementations
 // and not in server at all, --cpuprofile only in test, -v defined twice, -f
 // hand-parsed out of argv and printed by no help output. One Options binds
-// onto every command, and a command reads what it uses.
+// onto every command. A command reads what it uses.
 //
 // Pre reads -f and -w before anything constructs the command, because the
 // configuration file and the working directory decide what the command takes.
@@ -49,7 +49,7 @@ type Options struct {
 	// arguments and the scripts means the same thing.
 	WorkDir string
 
-	// Include is --include: a file included ahead of every entrypoint, carried
+	// Include is --include: a file included ahead of every entrypoint, sent
 	// to the runtime as runner.Options.Include and to the linter as its name
 	// registry seed.
 	Include string
@@ -92,7 +92,7 @@ func (o *Options) Bind(fs *cli.FlagSet) {
 }
 
 // BindWith returns a Bind that declares the shared flags before the command's
-// own and every command carries the set whether it defines flags or not.
+// own and every command accepts the set whether it defines flags or not.
 func (o *Options) BindWith(bind func(*cli.FlagSet)) func(*cli.FlagSet) {
 	return func(fs *cli.FlagSet) {
 		o.Bind(fs)
@@ -169,7 +169,7 @@ func Pre(args []string) (*Options, []string, error) {
 			}
 			continue
 		default:
-			// A flag keeps the leading run open, and so does its value.
+			// A flag keeps the leading run open. So does its value.
 			if leading && !strings.HasPrefix(arg, "-") {
 				leading = false
 			}
@@ -274,9 +274,8 @@ func (o *Options) Chdir() error {
 	return nil
 }
 
-// FromConfig fills the options a configuration file may also carry, where the
-// command line did not name one. The flag wins: a configuration describes a
-// tree, and a flag is what an operator typed about this run of it.
+// FromConfig fills the options a configuration file may also set, where the
+// command line did not name one. The flag wins: an operator typed it.
 func (o *Options) FromConfig(appConfig config.Config) {
 	if o.Include == "" {
 		o.Include = appConfig.Runner.Include

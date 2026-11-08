@@ -3,9 +3,9 @@
 // of values or strings, and how two values order under PHP 8's <=> operator.
 //
 // It exists so the files under stdlib/ps/core can each register their own area
-// without importing one another, and so the runner agrees with them. The
-// coercion needs exactly one definition: sort() and in_array() disagreeing
-// about what "10" is would be a bug no test names.
+// without importing one another. The runner agrees with them because it
+// calls the same package. The coercion needs exactly one definition: sort()
+// and in_array() disagreeing about what "10" is would be a bug no test names.
 package phpval
 
 import (
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // GoString renders a value outside php's scalars, reporting whether it has one.
@@ -31,7 +32,7 @@ func GoString(v any) (string, bool) {
 	return "", false
 }
 
-// Bytes answers the string a []byte carries, and whether v holds one.
+// Bytes returns the string form of a []byte, and whether v holds one.
 func Bytes(v any) (string, bool) {
 	b, ok := v.([]byte)
 	if !ok {
@@ -72,11 +73,11 @@ func String(v any) string {
 			return s
 		}
 		// A typed go value renders as the number it holds.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return String(widened)
 		}
 		// php spells every array "Array" in a string context.
-		if model.IsCollection(v) {
+		if modelutil.IsCollection(v) {
 			return "Array"
 		}
 		// An object has no string form here, and StringContext refuses it.
@@ -171,11 +172,11 @@ func Int(v any) int64 {
 		return ToInt64(parseFloat(prefix))
 	default:
 		// A typed integer reads as php's int, clipping at PHP_INT_MAX.
-		if clipped, ok := model.GoClipInt(v); ok {
+		if clipped, ok := modelutil.GoClipInt(v); ok {
 			return clipped
 		}
 		// Every other typed value reads as the number it holds.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return Int(widened)
 		}
 		// A collection is zero here; runner.helperCast owns the (int) cast.
@@ -187,7 +188,7 @@ func Int(v any) int64 {
 func Digits(v any) (string, bool) {
 	// An unsigned width prints its own value, as fmt's %d does.
 	if w, typed := model.GoWidthOf(v); typed && !w.Float && !w.Signed {
-		bits, _ := model.GoUint(v)
+		bits, _ := modelutil.GoUint(v)
 		return strconv.FormatUint(bits, 10), false
 	}
 	n := Int(v)
@@ -197,7 +198,7 @@ func Digits(v any) (string, bool) {
 // Uint reads the bits %u, %b, %o and %x print.
 func Uint(v any) uint64 {
 	// A typed integer answers its own bits, whatever its sign.
-	if bits, typed := model.GoUint(v); typed {
+	if bits, typed := modelutil.GoUint(v); typed {
 		return bits
 	}
 	return uint64(Int(v))
@@ -221,7 +222,7 @@ func Float(v any) float64 {
 		prefix, _ := leadingFloat(x)
 		return parseFloat(prefix)
 	default:
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return Float(widened)
 		}
 		return 0
@@ -316,7 +317,7 @@ func Number(v any) any {
 		return parseFloat(prefix)
 	default:
 		// A typed value answers the number it holds, a float past PHP_INT_MAX.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return widened
 		}
 		// int, int64, bool, null and the rest are integers, which Int spells.
@@ -351,7 +352,7 @@ func Key(v any) any {
 		return v
 	default:
 		// A typed value keys as the number it holds: int8(44) keys 44.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return Key(widened)
 		}
 		return v
@@ -420,11 +421,11 @@ func Truthy(v any) bool {
 		return x.Len() > 0
 	default:
 		// A typed value reads as the number it holds, where int8(0) is false.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return Truthy(widened)
 		}
 		// An empty collection is false whatever its go type.
-		if n, ok := model.LenValues(v); ok {
+		if n, ok := modelutil.LenValues(v); ok {
 			return n > 0
 		}
 		return true

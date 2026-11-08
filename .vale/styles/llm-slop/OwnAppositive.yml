@@ -1,0 +1,24 @@
+---
+extends: existence
+message: "'%s' trails a possessive where the thing has a name. Say which one, or say separate."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  # "A bar of their own", "a commit of its own", "a line of its own". The
+  # phrase hangs off a noun to say the thing is not shared, and the sentence
+  # already had room to say which thing it is not shared with. 98x the rate
+  # the standard library writes it at.
+  - '\bof\s+(?:its|their|his|her)\s+own\b'
+  # "Stands on its own", "a statement on its own". 17x.
+  #
+  # The phrase has to end the clause. "On its own line of output" is the bare
+  # possessive with a noun after it, which is legal here and which this token
+  # caught until the punctuation went in. RE2 reads no lookahead, so the
+  # punctuation is matched rather than asserted.
+  - '\bon\s+(?:its|their)\s+own\s*[.,;:)]'
+  - '\bon\s+(?:its|their)\s+own$'
+# The bare possessive stays legal. "Its own goroutine" and "their own copy"
+# run at 11.9x here against 305 uses in the standard library, which makes the
+# margin a measurement of how much Go code is about ownership. A rule on it
+# would fire on Go's own prose.

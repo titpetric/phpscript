@@ -99,9 +99,9 @@
     },
     "Exception": {
       "comment": [
-        "Exception is PHP's base exception class; the SPL classes are the same Go",
-        "type carrying a different class name and a catch clause filters on the",
-        "name and not on a subclass relation."
+        "Exception is PHP's base exception class; the SPL exception and Error",
+        "classes are the same Go type under a different class name and a catch",
+        "clause filters on the name and not on a subclass relation."
       ],
       "params": [
         "message",
@@ -122,7 +122,7 @@
       "comment": [
         "HTTP\\Mux routes requests to the PHP functions that answer them. The mux is",
         "net/http's ServeMux and $mux-\u003ehandle(\"GET /users/{id}\", $fn) takes the",
-        "patterns Go takes, and it calls a handler with the response writer and the",
+        "patterns Go takes. It calls a handler with the response writer and the",
         "request themselves."
       ]
     },
@@ -164,10 +164,8 @@
       "comment": [
         "JSON\\Decoder returns a decoder reading from $stream.",
         "",
-        "UseNumber is on, as in json_decode(): without it Go reads every number as a",
-        "float, and the 7 in a document would come back as 7.0. With it a whole",
-        "number is an int and only a fractional one is a float, as php",
-        "answers and what a row written back out has to preserve."
+        "UseNumber is on, as in json_decode(): a whole number comes back an int and",
+        "only a fractional one a float, the way php answers."
       ],
       "params": [
         "stream"
@@ -181,7 +179,7 @@
         "`new JSON\\Decoder(fopen(\"php://input\", \"r\"))` reads a POST body without a",
         "string of it existing first, and an encoder over php://output writes the",
         "response as the script builds it. Both take the io.Reader or io.Writer",
-        "they wrap and any handle fopen() returns works, and so do STDIN and",
+        "they wrap and any handle fopen() returns works, as do STDIN and",
         "STDOUT."
       ],
       "params": [
@@ -250,7 +248,7 @@
     "Regexp\\Compile": {
       "comment": [
         "Regexp\\Compile compiles $expr as an RE2 expression and throws when it",
-        "does not parse; the value it builds carries every method Go's",
+        "does not parse; the value it builds holds every method Go's",
         "regexp.Regexp has."
       ],
       "params": [
@@ -308,9 +306,8 @@
     "SharedMemory": {
       "comment": [
         "SharedMemory returns the store the host bound into the runtime",
-        "context, and a store of its own when the host bound none. No command in",
-        "this tree binds one and `new SharedMemory` holds nothing across requests",
-        "until an embedding host adds SharedMemoryContext."
+        "context, or a fresh one. No command in this tree calls SharedMemoryContext,",
+        "and `new SharedMemory` then holds no value across requests."
       ]
     },
     "Time": {
@@ -387,11 +384,9 @@
           "comment": [
             "authenticate reports the user $key names when $secret is theirs.",
             "",
-            "A missing user and a wrong password are one answer and nothing a caller can",
-            "see distinguishes them. What does distinguish them is time: a key the file",
-            "does not carry costs no derivation, and one it carries costs whatever that",
-            "line's format does. Closing that gap belongs to rate limiting, which bounds",
-            "what any timing is worth; see docs/reference/extensions/hashing.md."
+            "A missing user and a wrong password are one answer, separable by time alone:",
+            "a key the file does not hold costs no derivation. Rate limiting bounds what",
+            "that is worth, see docs/reference/extensions/hashing.md."
           ],
           "params": [
             "key",
@@ -410,9 +405,9 @@
           "comment": [
             "users is every record in the file, ordered by username.",
             "",
-            "It carries no hash and a script may hold it: everything above here sees a",
+            "It holds no hash and a script may keep it: everything above here sees a",
             "table of two columns, and the third column never leaves this package. A",
-            "caller writes the rows into a table of its own and rebuilds it when the file",
+            "caller writes the rows into its own table and rebuilds it when the file",
             "changes."
           ]
         }
@@ -438,8 +433,8 @@
           "comment": [
             "encode writes $value to the stream as JSON, followed by a newline.",
             "",
-            "The newline is Go's, not php's: an Encoder writes a stream of values, and the",
-            "newline is what separates one from the next. A single value followed by a",
+            "The newline is Go's, not php's: an Encoder writes a stream of values; the",
+            "newline separates one from the next. A single value followed by a",
             "newline is still valid JSON to any reader."
           ],
           "params": [
@@ -448,9 +443,8 @@
         },
         "SetIndent": {
           "comment": [
-            "set_indent is json.Encoder.SetIndent: the encoder breaks each value across",
-            "lines, $indent per level under $prefix, and two empty strings go back to one",
-            "line per value."
+            "set_indent is json.Encoder.SetIndent: $indent per level under $prefix, and",
+            "two empty strings go back to one line per value."
           ],
           "params": [
             "prefix",
@@ -517,11 +511,9 @@
         },
         "Usage": {
           "comment": [
-            "usage reports what the store holds: how many entries, how many counters, and",
-            "the bytes of the keys and values behind them.",
-            "",
-            "The byte figure is the strings themselves, not the map overhead around them,",
-            "which is the same basis memory_get_usage() reports a PHP value on."
+            "usage reports the entry count, the counter count, and the bytes of the keys",
+            "and values behind them: the strings alone, not the map overhead, on the same",
+            "basis memory_get_usage() reports."
           ]
         }
       }
@@ -531,7 +523,7 @@
         "IsReadonly": [
           "IsReadonly restricts the client to statements that only read. The flag",
           "belongs to the client and not the connection: PHP reads and writes it as",
-          "`$db-\u003eis_readonly`, and it lives as long as the client does, which for a",
+          "`$db-\u003eis_readonly`. It lasts as long as the client does, which for a",
           "served request is the request.",
           "",
           "It refuses insert(), replace() and update() outright, and refuses any",
@@ -543,15 +535,14 @@
           "The restriction is a boundary for the code holding this client, and no",
           "sandbox around the script: the script that set it can unset it. A",
           "connection that must not write belongs to a database user without the",
-          "grant to, and this marks the code that must not write."
+          "grant to. This flag marks the code that must not write."
         ]
       },
       "methods": {
         "Begin": {
           "comment": [
             "begin starts a transaction and opens the span measuring it. The span stays",
-            "open until Commit or Rollback and a transaction is one region in the trace",
-            "and no open marker and close marker to pair up."
+            "open until Commit or Rollback ends it."
           ]
         },
         "Close": {
@@ -573,12 +564,9 @@
           "comment": [
             "get returns the first result row, or false when the query matches no rows.",
             "",
-            "A row is a native map: foreach walks it, $row[\"col\"] indexes it,",
-            "$row[\"extra\"] = 1 writes to it and unset($row[\"col\"]) takes a column out of",
-            "it. A map carries no column order and",
-            "`foreach ($row as $column =\u003e $value)` visits columns in arbitrary order;",
-            "a script that needs a stable order names its columns in the SELECT and",
-            "indexes them."
+            "A row is a native map: foreach walks it, $row[\"col\"] indexes it and",
+            "unset($row[\"col\"]) takes a column out. A map holds no column order; a script",
+            "that needs one names its columns in the SELECT and indexes them."
           ],
           "params": [
             "query",
@@ -652,14 +640,8 @@
       "methods": {
         "Load": {
           "comment": [
-            "load selects the migrations to run, as a glob against the runtime source",
-            "filesystem. Load itself opens no file: mig reads the files it applies, and a",
-            "pattern matching no file shows up as wrong only once Run looks.",
-            "",
-            "A script names its migrations relative to itself (\"./schema/*.up.sql\") and",
-            "Load joins the work directory in. What the pattern matched is what mig",
-            "records and a database migrated by the older binding - which recorded the",
-            "base name under no project - applies every file again."
+            "load names the migrations to run, as a glob against the runtime source",
+            "filesystem with the work directory joined in. It opens no file; Run does."
           ],
           "params": [
             "pattern"
@@ -687,14 +669,14 @@
         "Parallel": {
           "comment": [
             "parallel sends every request in $requests at once and returns the responses",
-            "under the same keys and the call takes as long as the slowest request rather",
-            "than the sum. $requests is an array of HTTP\\Request keyed by a name the",
-            "script chooses, each bounded by the client's timeout.",
+            "under the same keys. The call takes as long as the slowest request.",
+            "$requests is an array of HTTP\\Request keyed by a name the script chooses,",
+            "each bounded by the client's timeout.",
             "",
             "One request failing does not fail the others and does not throw: that",
-            "response reports $response-\u003eok() as false and $response-\u003eerr() as the reason,",
-            "and a script sees every outcome. A throw means the argument is no array of",
-            "requests."
+            "response reports $response-\u003eok() as false and $response-\u003eerr() as the",
+            "reason. A script sees every outcome. A throw means the argument is no",
+            "array of requests."
           ],
           "params": [
             "requests"
@@ -725,8 +707,8 @@
         "Group": {
           "comment": [
             "group calls $fn with a mux that shares this one's routes and starts with its",
-            "middleware. What $fn passes to Use stays inside the group, which is how a",
-            "module isolates its routes from the rest of the router."
+            "middleware. What $fn passes to Use stays inside the group, keeping a module's",
+            "routes clear of the rest of the router."
           ],
           "params": [
             "fn"
@@ -799,9 +781,8 @@
           "comment": [
             "shutdown is http.Server.Shutdown with a second of grace, then Close.",
             "",
-            "It returns no value and throws no error: a script writes it into a",
-            "register_shutdown_function callback, which runs when the script has already",
-            "ended and has nowhere to put a failure. Calling it twice, or without having",
+            "It returns no value and throws no error: a register_shutdown_function",
+            "callback has nowhere to put one. Calling it twice, or without having",
             "listened, is not an error either."
           ]
         },
@@ -816,12 +797,9 @@
       "methods": {
         "Send": {
           "comment": [
-            "send sends an email through the server this client names. $body is the plain",
-            "text; a non-empty $html travels beside it as the alternative a mail client",
-            "prefers, and a non-empty $reply_to, one address, is where a reply goes. It",
-            "throws, sending nothing, when $reply_to is not one address. The runtime",
-            "injects the context and a script calls",
-            "`$mail-\u003esend($to, $subject, $body, $html, $reply_to)`, the last two optional."
+            "send sends an email through the server this client names, as",
+            "`$mail-\u003esend($to, $subject, $body, $html, $reply_to)` with the last two",
+            "optional. It throws, sending nothing, when $reply_to is not one address."
           ],
           "params": [
             "recipient",
@@ -844,8 +822,7 @@
         "DeleteByUser": {
           "comment": [
             "delete_by_user signs one user out of every client, answering how many sessions",
-            "it took. It clears this manager's own session when the sweep took it and",
-            "valid() answers false in the same request the account went away in."
+            "it took. It clears this manager's own session when the sweep took that one."
           ],
           "params": [
             "user_id"
@@ -872,9 +849,8 @@
             "session for the user it names. It reports whether the credential held; a",
             "wrong password is false and no error.",
             "",
-            "The session carries the user's primary key and a row written during the",
-            "session references the user the way any other table does. The username",
-            "stays in the user database, and a caller that needs it reads it there."
+            "The session holds the user's primary key. The username stays in the user",
+            "database and a caller that needs it reads it there."
           ],
           "params": [
             "key",
@@ -891,12 +867,8 @@
         },
         "SetStorage": {
           "comment": [
-            "set_storage replaces the storage sessions live in.",
-            "",
-            "This is the setter half of the constructor: a script that took the",
-            "manager's defaults and then needs memory storage says so here, and the rest",
-            "of the manager holds. It wraps the storage for tracing as the constructor",
-            "does and the trace names whichever backend answered."
+            "set_storage replaces the storage that holds sessions, wrapping it for tracing",
+            "as the constructor does."
           ],
           "params": [
             "storage"
@@ -932,7 +904,7 @@
           "comment": [
             "delete_by_user removes every session file holding userID, counting what it",
             "took. The walk reads each session because the payload is the only place the",
-            "user appears: a file carries its session id as its name alone."
+            "user appears: a file's name is its session id alone."
           ],
           "params": [
             "user_id"

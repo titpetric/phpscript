@@ -1,0 +1,23 @@
+---
+extends: existence
+message: "'%s' puts a quantifier where the thing belongs. Name them."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  # A quantifier standing as the subject of a copula. "Neither is on the list"
+  # has already named two things and then refuses to use their names; the list
+  # holds them, or they are off it. 11x the rate the standard library writes
+  # it at.
+  - '\bneither\s+(?:is|are|was|were|does|do|did|has|have|holds|names|carries)\b'
+  # The negative existential as a closer. "A literal spread had none" and
+  # "returns unchanged, and none may panic" end a sentence on a pronoun whose
+  # referent the reader has to carry back. 124x and 12x respectively, the
+  # widest margins in the family.
+  - '\b(?:has|have|had)\s+none\b'
+  - '\band\s+none\b'
+# Three tokens, not seven. "None is", "either is" and "both are" were
+# measured against 2.29M words of standard library comments and came back at
+# 3.1x, zero and 1.4x: ordinary English that Go's own team writes, and a rule
+# flagging them would be measuring taste. A candidate joins this file after
+# the same measurement, not before.

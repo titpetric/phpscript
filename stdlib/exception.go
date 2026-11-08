@@ -8,8 +8,8 @@ import (
 //
 // Every PHP throwable class is this one Go type. Class records the name the
 // script constructed and get_class() can answer it and a catch clause can
-// filter on it; no two of them stand in a subclass relation, because phpscript
-// has no inheritance. See docs/design.md.
+// filter on it; no subclass relation joins two of them, because phpscript has
+// no inheritance. See docs/design.md.
 type Exception struct {
 	Message string `json:"message"`
 	Code    int    `json:"code"`
@@ -25,9 +25,8 @@ func (e *Exception) ThrowableClass() string {
 	return e.Class
 }
 
-// NewException returns an exception and a nil error and `new Exception` does
-// not throw. The pointer is what keeps `$e->message = "..."` writable: a
-// struct boxed into the VM's interface is not addressable.
+// NewException returns an exception and `new Exception` does not throw. The
+// pointer keeps `$e->message = "..."` writable: a boxed struct is not addressable.
 func NewException(message string, code int) (*Exception, error) {
 	return &Exception{
 		Message: message,
@@ -98,9 +97,9 @@ var splErrors = []string{
 }
 
 func registerExceptions(rt *runner.Runtime) {
-	// Exception is PHP's base exception class; the SPL classes are the same Go
-	// type carrying a different class name and a catch clause filters on the
-	// name and not on a subclass relation.
+	// Exception is PHP's base exception class; the SPL exception and Error
+	// classes are the same Go type under a different class name and a catch
+	// clause filters on the name and not on a subclass relation.
 	rt.RegisterConstructor("Exception", NewException)
 	for _, class := range splExceptions {
 		rt.RegisterConstructor(class, newThrowable(class))

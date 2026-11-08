@@ -9,7 +9,7 @@ import (
 )
 
 // TestTelemetry covers the inline decode of the block. The struct embeds the
-// oida options with `yaml:",inline"` and path and driver sit at one level in a
+// oida options with `yaml:",inline"` and path and driver are at one level in a
 // file: a reader of `config.yml` sees one telemetry block and not a nested one.
 func TestTelemetry(t *testing.T) {
 	t.Parallel()
@@ -60,7 +60,7 @@ func TestTelemetry_Validate(t *testing.T) {
 				if err == nil {
 					t.Fatalf("driver %q validated", test.driver)
 				}
-				// The message carries the driver as the file spelled it and
+				// The message names the driver as the file spelled it and
 				// the operator can find the line.
 				if !strings.Contains(err.Error(), test.driver) {
 					t.Errorf("err = %q, want it to name the driver", err.Error())
@@ -126,7 +126,7 @@ func TestTelemetry_Resolved(t *testing.T) {
 }
 
 // TestFlatstack covers the one key that selects the flat bytecode runtime.
-// `config.yml` carries it off, because the runner is the path every
+// `config.yml` keeps it off, because the runner is the path every
 // measurement compares against; a file turns it on per application root.
 func TestFlatstack(t *testing.T) {
 	t.Parallel()

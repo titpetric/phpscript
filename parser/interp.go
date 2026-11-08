@@ -9,8 +9,8 @@ import (
 
 // Double-quoted string interpolation.
 //
-// PHP spells an embedded expression two ways inside a double-quoted literal,
-// and this file scans both and the lexer, the parser and the token_get_all
+// PHP spells an embedded expression two ways inside a double-quoted literal.
+// This file scans both and the lexer, the parser and the token_get_all
 // tokenizer agree on where one ends. Simple syntax is `$name`, `$name[sub]` or
 // `$name->prop`, and reaches exactly one level: `"$o->p->q"` is the property `p`
 // followed by the literal text `->q`. Complex syntax is `{$expr}`, where the
@@ -30,7 +30,7 @@ const (
 	interpCurly
 )
 
-// interpPart is one piece of a double-quoted literal. Which fields carry a
+// interpPart is one piece of a double-quoted literal. Which fields hold a
 // value depends on Kind: Text for interpText, Name with at most one of Sub and
 // Prop for interpSimple, and Inner for interpCurly.
 //
@@ -119,7 +119,7 @@ func scanInterp(src string, start int, line int) (parts []interpPart, end int, i
 			text.WriteByte(c)
 			i++
 		}
-		// A literal may span lines, and both a text run and a {$...} may carry
+		// A literal may span lines, and both a text run and a {$...} may hold
 		// the newlines. Counting over the consumed span keeps the reported
 		// line right whichever branch consumed it.
 		line += strings.Count(src[prev:i], "\n")
@@ -198,7 +198,7 @@ func scanCurly(src string, i int, line int) (inner string, end int, err error) {
 
 // parseInterp builds the AST for a tInterp token. The lexer already decided the
 // literal embeds an expression, and kept the source spelling in raw; this runs
-// the scan again and carries nothing on the token, because interpolated
+// the scan again and stores nothing on the token, because interpolated
 // literals are a small share of the tokens in a file and every token pays for
 // the struct.
 func (p *parser) parseInterp(t token) (model.Expr, error) {
@@ -265,10 +265,10 @@ func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 }
 
 // parseSubExpr parses PHP expression source that came from inside a literal. It
-// runs on a parser of its own because the source is a substring and no
-// span of the token stream, and it takes the namespace and imports of the
+// runs on a separate parser because the source is a substring and no
+// span of the token stream. It takes the namespace and imports of the
 // enclosing file so a name inside the braces resolves the way the same name
-// resolves outside them.
+// resolves outside the braces.
 func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 	lx := newLexer(src)
 	lx.inPHP = true

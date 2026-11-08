@@ -19,8 +19,8 @@ const Name = "List routes, files and classes"
 
 // NewCommand creates a new list command.
 //
-// The configuration and the global options are what every command constructor
-// takes and one signature covers them all. This command reads neither.
+// Every command constructor takes the configuration plus the global options
+// under one signature. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	var bindings, classes, api, areas, asJSON bool
 
@@ -49,9 +49,8 @@ func Run(args []string, bindings, classes, api, asJSON bool) error {
 }
 
 func run(out io.Writer, args []string, bindings, classes, api, asJSON bool) error {
-	// --bindings reports on the binary, and a tree or path argument selects no
-	// file, and the command refuses it: a caller that passed both meant one of
-	// the two.
+	// --bindings reports on the binary. A tree or path argument selects no file
+	// and the command refuses it: a caller that passed both meant one of the two.
 	if bindings {
 		if len(args) > 0 {
 			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))
@@ -62,11 +61,11 @@ func run(out io.Writer, args []string, bindings, classes, api, asJSON bool) erro
 		fmt.Fprint(out, phplist.StdlibMarkdown(phplist.Stdlib()))
 		return nil
 	}
-	// --classes reports on the binary too, and its arguments are class names
-	// and not paths. --json writes the class the definition is rendered from,
-	// for a generator that links each member rather than printing a block of
-	// PHP: both spellings of every symbol, the parameters, the citation of the
-	// bound Go type and the interfaces it satisfies.
+	// --classes reports on the binary too. Its arguments are class names, never
+	// paths. --json writes the class it renders the definition from, for a
+	// generator that links each member in place of a block of PHP: both
+	// spellings of every symbol, the parameters, the citation of the bound Go
+	// type and the interfaces it satisfies.
 	if classes {
 		if api {
 			return fmt.Errorf("list --classes takes no --api")

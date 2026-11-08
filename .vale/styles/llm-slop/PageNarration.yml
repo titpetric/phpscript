@@ -1,0 +1,36 @@
+---
+# Prose that documents the page instead of the subject. A reader opens a
+# reference page to learn what a symbol does, and a sentence about the
+# generator, the template or the page's own existence answers a question
+# nobody asked. Where the build is the subject, it has its own place: the
+# README, beside the command that runs it.
+#
+# AgentNarration takes the author out of a report and ProcessNarration takes
+# the work out of it. This one takes the apparatus out of the published page.
+#
+# Measured against the twelve standard library packages CALIBRATION.md names:
+# every token fires zero times. Two phrases stay out. "on this page" is the
+# heading over a section list in a manual and names no machinery, and "this
+# document" is written three times in the corpus.
+extends: existence
+message: "'%s' documents the page, not the subject. State what the symbol does, or cut the sentence."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  # The page as its own subject. A sentence that opens here goes on to say
+  # which sections it has, and the reader can see them.
+  - '\bthis\s+(?:page|site)\s+(?:is|states|lists|shows|holds|explains|says|reports|exists|contains|describes|covers)\b'
+  - '\bevery\s+page\s+(?:is|has|holds|states|lists)\b'
+  - '\bhas\s+you\s+covered\b'
+  # An empty section named as empty. Either the fact is known and stated, or
+  # the section goes.
+  - '\b(?:is|are)\s+(?:a\s+)?stubs?\b'
+  - '\bnot\s+generated\b'
+  - '\bwritten\s+by\s+hand\b'
+  # The apparatus, named to a reader who runs none of it. A comment in the
+  # generator's own source says what the code does and needs none of these
+  # three: the subject there is the function, not "the generator".
+  - '\bthe\s+generator\s+(?:writes|prints|fills|emits|registers)\b'
+  - '\bthe\s+template\s+(?:prints|renders|fills|emits)\b'
+  - '\bgenerated\s+from\s+the\b'

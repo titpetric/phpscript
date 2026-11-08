@@ -19,13 +19,13 @@ type JobFunc func(*Runtime)
 func (f JobFunc) Run(rt *Runtime) { f(rt) }
 
 // DoneJob is a Job that lends the pool a channel to signal its completion
-// through and a job serving many runs carries one channel in place of the pool
+// through and a job serving many runs keeps one channel in place of the pool
 // building one per submit. One buffered slot, which the worker sends into and
 // the submitter drains and the channel serves the next run.
 //
 // A lender drops a job it submitted and did not see finish.
 // docs/allocation-performance.md argues that rule and why the pool keeps no
-// free list of its own.
+// free list.
 type DoneJob interface {
 	Job
 	Done() chan struct{}

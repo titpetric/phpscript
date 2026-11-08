@@ -2,10 +2,10 @@
 // class, both of which send through a server the host configured and named.
 //
 // A script names a server. It does not spell one: no binding accepts a host, a
-// username or a password, and none returns one back
-// out of the object a binding returns. The credentials live in a
-// model.MailProvider the host builds from its configuration, which reads them
-// at the moment of a delivery and returns the outcome alone.
+// username or a password, and no method reads one back out of the object a
+// binding returns. A model.MailProvider the host builds from its configuration
+// holds the credentials, reads them at the moment of a delivery and returns
+// the outcome alone.
 //
 // SMTP is the protocol the package speaks, not the subject it models and it
 // names the conversation in provider.go and nothing a script types.
@@ -17,6 +17,7 @@ import (
 	netmail "net/mail"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -60,7 +61,7 @@ func Register(rt *runner.Runtime) {
 // coerces nothing. A string parameter turns that array into the empty name,
 // which resolves to "default": a script written against the old binding would
 // go on sending, silently, through whatever server the host configured first.
-// It has to fail, and it has to say where the settings live now.
+// It has to fail and name where the settings live now.
 func serverName(names []any) (string, error) {
 	if len(names) > 1 {
 		return "", fmt.Errorf("Mail(): expects at most 1 argument, %d given", len(names))
@@ -71,7 +72,7 @@ func serverName(names []any) (string, error) {
 
 	name, ok := names[0].(string)
 	if !ok {
-		if model.IsCollection(names[0]) {
+		if modelutil.IsCollection(names[0]) {
 			return "", fmt.Errorf("Mail(): argument #1 ($name) must be the name of a configured server, not the settings of one: connection settings are the host's, and belong in the mail block of its configuration")
 		}
 		return "", fmt.Errorf("Mail(): argument #1 ($name) must be of type string")
@@ -86,9 +87,9 @@ func serverName(names []any) (string, error) {
 // message exactly once, whichever way the script spelled it.
 //
 // Mail leaves the process and is the slowest thing most scripts do and the span
-// marks it external work and no internal step. It carries the recipient and the
+// marks it external work and no internal step. It records the recipient and the
 // subject; the body and its HTML stay out of it and only their size goes in. A
-// body is the one part of a delivery that is certain to be private, and a size
+// body is the one part of a delivery that is certain to be private. A size
 // answers the question an operator opens a trace to answer.
 //
 // The span names the server by its configured name and never by its hostname.
@@ -119,7 +120,7 @@ func send(ctx context.Context, servers model.MailProvider, message Message) (err
 // Reply-To included. Provider and Memory are. model.MailProvider declares a
 // plain-text Send only, and stays that way so a host's own provider keeps
 // compiling; send refuses a message a provider without SendMessage cannot
-// carry.
+// send.
 type messageSender interface {
 	SendMessage(ctx context.Context, message Message) error
 }
@@ -156,12 +157,9 @@ type Mail struct {
 	provider model.MailProvider
 }
 
-// Send sends an email through the server this client names. $body is the plain
-// text; a non-empty $html travels beside it as the alternative a mail client
-// prefers, and a non-empty $reply_to, one address, is where a reply goes. It
-// throws, sending nothing, when $reply_to is not one address. The runtime
-// injects the context and a script calls
-// `$mail->send($to, $subject, $body, $html, $reply_to)`, the last two optional.
+// Send sends an email through the server this client names, as
+// `$mail->send($to, $subject, $body, $html, $reply_to)` with the last two
+// optional. It throws, sending nothing, when $reply_to is not one address.
 func (m *Mail) Send(ctx context.Context, recipient, subject, body, html, reply_to string) error {
 	replyTo, err := replyAddress(reply_to)
 	if err != nil {

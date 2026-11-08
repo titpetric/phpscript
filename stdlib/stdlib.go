@@ -1,4 +1,4 @@
-// Package stdlib carries the forwarded "bring your own standard library" shims
+// Package stdlib holds the forwarded "bring your own standard library" shims
 // (the README's register_function mechanism). PHP's stdlib is not reimplemented
 // in the VM; instead Register puts a curated set of Go functions on a Runtime
 // so transpiled PHP can call them by name. The set covers the minitpl template

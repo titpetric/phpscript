@@ -42,9 +42,7 @@ func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cach
 // SetExprCache installs a source-keyed cache any runtime may share.
 func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
-// SetGlobal seeds a variable into the global scope before execution. Useful for
-// injecting request data (the README's $_SERVER gray area) or, in tests, an
-// input value.
+// SetGlobal seeds a variable into the global scope before execution.
 func (rt *Runtime) SetGlobal(name string, val any) {
 	if rt.auto.Set(name, val) {
 		return
@@ -52,15 +50,13 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 	rt.globals[name] = val
 }
 
-// PutEnv writes one variable into the script environment, backing putenv(),
-// copying the frozen snapshot first so the write dies with its program.
+// PutEnv writes one variable into the script environment, backing putenv().
 func (rt *Runtime) PutEnv(name, value string) {
 	rt.ownEnv()
 	rt.Env[name] = value
 }
 
-// UnsetEnv removes one variable from the script environment, the bare-name
-// spelling of putenv(). It copies the frozen snapshot first, as PutEnv does.
+// UnsetEnv removes one variable from the script environment, a bare putenv().
 func (rt *Runtime) UnsetEnv(name string) {
 	rt.ownEnv()
 	delete(rt.Env, name)
@@ -74,9 +70,8 @@ func (rt *Runtime) ownEnv() {
 	}
 }
 
-// SetConst registers a PHP constant (e.g. define("FOO", 1) or a built-in like
-// T_VARIABLE). Constants are visible in every scope, including inside functions
-// and methods, unlike globals, which PHP confines to the global scope.
+// SetConst registers a PHP constant. A constant is visible in every scope,
+// unlike a global, which PHP confines to the global scope.
 func (rt *Runtime) SetConst(name string, val any) {
 	if rt.constsShared && rt.frozenConsts != nil {
 		rt.constants = maps.Clone(rt.frozenConsts)
@@ -90,8 +85,7 @@ func (rt *Runtime) RegisterShutdown(callback any) {
 	rt.shutdown = append(rt.shutdown, callback)
 }
 
-// Const returns a registered constant and whether the table holds it. The
-// magic constants are not among them, as in php.
+// Const returns a registered constant and whether the table holds it.
 func (rt *Runtime) Const(name string) (any, bool) {
 	v, ok := rt.constants[name]
 	return v, ok
@@ -101,7 +95,7 @@ func (rt *Runtime) Const(name string) (any, bool) {
 //
 // parser.ParseFile compiles both to literals and a program read from the
 // filesystem never asks. That leaves Runtime.Load, which takes source with
-// no file behind it, and there the entrypoint is the best answer there is.
+// no file behind it. There the entrypoint is the best answer there is.
 //
 // They are not in the constant table. php resolves them when it compiles and
 // defined("__FILE__") is false there and get_defined_constants() omits them;
@@ -121,18 +115,15 @@ func (rt *Runtime) entrypointConst(name string) (any, bool) {
 }
 
 // RegisterFunc forwards a Go function (or any callable) into the VM under name.
-// This is the shim mechanism: e.g. rt.RegisterFunc("strlen", func(s string) int
-// { return len(s) }) makes `strlen($x)` work in script expressions.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
 	// This invalidates no entry: evaluation environments resolve the table per
-	// call (see installFunc), the direct compiler reads no type env, and the
-	// entry builds its invoker on first dispatch and a re-registration is a
-	// fresh entry with a fresh invoker.
+	// call (see installFunc), the direct compiler reads no type env, the entry
+	// builds its invoker on first dispatch and a re-registration is a fresh
+	// entry with a fresh invoker.
 	rt.funcs[name] = &funcEntry{fn: fn}
 }
 
-// LookupFunc returns the host function registered for name. Introspection
-// tooling uses it to reflect over a binding's Go signature; a PHP user-defined
+// LookupFunc returns the host function registered for name. A PHP user-defined
 // function resolves too, as whatever callable the runtime stored for it.
 func (rt *Runtime) LookupFunc(name string) (any, bool) {
 	if entry, ok := rt.funcs[name]; ok {
@@ -146,8 +137,7 @@ func (rt *Runtime) registerUserFunc(name string, fn any) {
 	rt.userFns[name] = struct{}{}
 }
 
-// FunctionExists reports whether name resolves to a host shim or a PHP
-// function, backing `function_exists`.
+// FunctionExists reports whether name resolves, backing `function_exists`.
 func (rt *Runtime) FunctionExists(name string) bool {
 	_, ok := rt.lookupFunc(strings.TrimPrefix(name, "\\"))
 	return ok
@@ -219,8 +209,8 @@ func (rt *Runtime) DeclaredClasses() []string {
 }
 
 // PHPInfo prints a compact phpinfo-style text report for the phpscript
-// runtime. It reports runtime facts; the PHP extensions phpscript does not
-// carry are outside it.
+// runtime. It reports runtime facts and omits the PHP extensions phpscript
+// lacks.
 func (rt *Runtime) PHPInfo() error {
 	internal, user := rt.DefinedFunctions()
 	_, err := fmt.Fprintf(rt.Output(), "phpscript\n\nRuntime => phpscript\nSAPI => %s\nGo Version => %s\nOperating System => %s\nArchitecture => %s\nInclude Path => %s\nWorking Directory => %s\nInternal Functions => %d\nUser Functions => %d\nDeclared Classes => %d\nDefined Constants => %d\n",
@@ -265,8 +255,7 @@ func (rt *Runtime) RegisterAutoloader(callback any, prepend bool) {
 	rt.autoloaders = append(rt.autoloaders, callback)
 }
 
-// SetIncludePath sets the path list used by the default SPL autoloader and
-// returns its previous value.
+// SetIncludePath sets the autoloader path list and returns the previous value.
 func (rt *Runtime) SetIncludePath(value string) string {
 	old := rt.includePath
 	rt.includePath = value
@@ -292,9 +281,8 @@ func (rt *Runtime) ClassExists(name string, autoload bool) (bool, error) {
 	return rt.hasClass(name), nil
 }
 
-// MethodExists reports whether a declared PHP class has a method by that name,
-// using PHP's case-insensitive method lookup. It answers only for interpreted
-// classes; its caller reflects over a host-backed one.
+// MethodExists reports whether a declared PHP class has a method by that name.
+// It answers only for interpreted classes, never a host-backed one.
 func (rt *Runtime) MethodExists(class, method string) bool {
 	decl, ok := rt.lookupClass(strings.TrimPrefix(class, "\\"))
 	if !ok {

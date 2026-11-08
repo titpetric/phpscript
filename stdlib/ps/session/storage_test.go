@@ -62,7 +62,7 @@ func TestSessionStorageImplementations(t *testing.T) {
 }
 
 // TestSessionStorageDeleteByUser covers the sweep a removed account runs
-// through: every session holding that user goes, another user's stays, and the
+// through: every session holding that user goes, another user's stays. The
 // count is what the caller reports.
 func TestSessionStorageDeleteByUser(t *testing.T) {
 	t.Parallel()

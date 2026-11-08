@@ -1,10 +1,10 @@
 # Regexp bindings
 
-This tutorial is a step by step walk through adding a binding to phpscript. The goal here is to bind "regexp" package APIs to a custom 'Regexp\' php namespace, the way phpscript binds http.ResponseWriter to HTTP\ResponseWriter and so on. Basically we bind `regexp.Compile` as `Regexp\compile` in phpscript, implicitly handle the error return as phpscript does and use `$rx = new Regexp\Compile(string $expr);` returning a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Also add CompilePOSIX, omit MustCompile. The binding forwards all type methods to phpscript. This API is new and specific to the phpscript/go runtime and carries no compatibility with vanilla php.
+This tutorial is a step by step walk through adding a binding to phpscript. The goal here is to bind "regexp" package APIs to a custom 'Regexp\' php namespace, the way phpscript binds http.ResponseWriter to HTTP\ResponseWriter and so on. Basically we bind `regexp.Compile` as `Regexp\compile` in phpscript, implicitly handle the error return as phpscript does and use `$rx = new Regexp\Compile(string $expr);` returning a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Also add CompilePOSIX, omit MustCompile. The binding forwards all type methods to phpscript. This API is new and specific to the phpscript/go runtime; vanilla php has no counterpart.
 
 Everything below runs in phpscript today. This page quotes the fixtures from `tests/fixtures/bindings/` verbatim, expected output included, and `phpscript test --matrix ./tests/...` checks them on both engines.
 
-The reference for the mechanism is [Go bindings](reference/extensions/bindings.md); this page is the walk through one area, start to finish. For what the `preg_*` family does instead, and where PCRE and RE2 part company, see [Regular expressions](reference/extensions/regexp.md).
+The reference for the mechanism is [Go bindings](reference/extensions/bindings.md); the walk below covers one area, start to finish. For what the `preg_*` family does instead, and where PCRE and RE2 part company, see [Regular expressions](reference/extensions/regexp.md).
 
 ## What the binding is
 
@@ -61,7 +61,7 @@ Four things in that file are the convention:
 - A namespace is a backslash in a Go string. `"Regexp\\Compile"` is the name a script types, and lookup is case-insensitive with a leading `\` stripped and `new \Regexp\compile($e)` resolves the same registration.
 - The registration takes `regexp.Compile` as-is. Its signature is `func(string) (*Regexp, error)`, which is the shape the bridge wants: the bridge omits a return slot declared exactly `error` from what PHP sees, and throws a non-nil value in it.
 - The doc comment above each registration is what the generated reference publishes. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site and never the Go function.
-- The import carries an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/ps/http` writes `nethttp "net/http"`.
+- The import takes an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/ps/http` writes `nethttp "net/http"`.
 
 The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
 
@@ -88,7 +88,7 @@ Four behaviours, stated here so nobody has to find them:
 
 - **The class name is the Go type name.** `get_class($rx)` is `Regexp` and `$rx instanceof Regexp` is true; `$rx instanceof Regexp\Regexp` is false. The runtime takes a host-backed value's class from the Go type behind it, with the pointer stripped and `HTTP\Request` answers `Request` for the same reason. `Regexp\Regexp` is the name this document uses for the type; the Go type's name is `Regexp` so that the name a script can test for is the right one.
 - **Method names are the Go names as PHP spells them.** Lookup tries the exact name, then case-insensitively, then with underscores removed and `FindAllStringSubmatch` is `find_all_string_submatch` and `NumSubexp` is `num_subexp`.
-- **A bad pattern is a throw.** The throwable is the error `regexp.Compile` returned, and it belongs to no PHP class and every `catch` clause takes it and `getMessage()` is Go's text.
+- **A bad pattern is a throw.** The throwable is the error `regexp.Compile` returned. It belongs to no PHP class and every `catch` clause takes it and `getMessage()` is Go's text.
 - **Two Go results arrive as a PHP list.** `LiteralPrefix` returns `(string, bool)` and `list($prefix, $complete) = $rx->literal_prefix();` reads both. The bridge removes only a slot declared exactly `error`.
 
 `regexp.Regexp` also implements `fmt.Stringer`, which the runtime uses for any Go value in a string context and `echo $rx` prints the pattern.
@@ -99,16 +99,16 @@ Four behaviours, stated here so nobody has to find them:
 
 The rule the runtime now applies is one sentence: **a Go `[]byte` is a PHP string.** PHP's strings are byte strings, and the generated reference makes the same claim by publishing a `[]byte` return as `string`. `phpval.Bytes` is the test, and the runtime calls it at every point a byte slice would otherwise read as a list:
 
-| Reads a `[]byte` as           | Where                                                                                                                                                     |
-|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| its text, in a string context | `phpval.GoString`, which backs `echo`, `implode`, `var_dump`, `print_r` and the string-parameter coercion `strlen` uses                                   |
-| not a collection              | `model.IsCollection`, `model.LenValues`, `model.RangeValues` and `is_array` is false, `count()` applies its scalar rule and `foreach` iterates zero times |
-| the string's truth value      | `phpTruthy` and `""` and `"0"` are falsey                                                                                                                 |
-| identical to an equal string  | `phpIdentical` and `$rx->find($s) === "a@b.com"` holds                                                                                                    |
-| a character offset            | `helperIndex` and `$found[0]` is `"a"` rather than `97`                                                                                                   |
-| `string`                      | `phpDebugType`, `gettype` and `is_string`                                                                                                                 |
+| Reads a `[]byte` as           | Where                                                                                                                                                                 |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| its text, in a string context | `phpval.GoString`, which backs `echo`, `implode`, `var_dump`, `print_r` and the string-parameter coercion `strlen` uses                                               |
+| not a collection              | `modelutil.IsCollection`, `modelutil.LenValues`, `modelutil.RangeValues` and `is_array` is false, `count()` applies its scalar rule and `foreach` iterates zero times |
+| the string's truth value      | `phpTruthy` and `""` and `"0"` are falsey                                                                                                                             |
+| identical to an equal string  | `phpIdentical` and `$rx->find($s) === "a@b.com"` holds                                                                                                                |
+| a character offset            | `helperIndex` and `$found[0]` is `"a"` rather than `97`                                                                                                               |
+| `string`                      | `phpDebugType`, `gettype` and `is_string`                                                                                                                             |
 
-A nested result works through the same rule without a conversion of its own: `FindAllSubmatch` returns `[][][]byte`, `foreach` walks the two outer slices, and each innermost element is a byte slice that reads as its text.
+A nested result works through the same rule without a separate conversion: `FindAllSubmatch` returns `[][][]byte`, `foreach` walks the two outer slices, and each innermost element is a byte slice that reads as its text.
 
 ## Step 5: the fixtures
 
@@ -350,7 +350,7 @@ atkins test:introspection    # implemented-apis.md, phpscript info, reference RE
 atkins                       # the default pipeline: format, test, matrix, docs, image
 ```
 
-`atkins` rewrites the two generated documents under `docs/reference/` and a new registration shows up there and goes into the commit. It does not write `docs/test-fixtures.md` or `docs/coverage/`: `.gitignore` lists those, and they come from `atkins gen`, which is not part of the default target either and a new package leaves them and `docs/assets/*.svg` stale until someone runs `atkins gen` by hand.
+`atkins` rewrites the two generated documents under `docs/reference/` and a new registration shows up there and goes into the commit. It does not write `docs/test-fixtures.md` or `docs/coverage/`: `.gitignore` lists those and `atkins gen` writes them, outside the default target. A new package leaves them and `docs/assets/*.svg` stale until someone runs `atkins gen` by hand.
 
 The generated class entry lists the method set `*regexp.Regexp` published, which is every method minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). `apidoc` hides those from the reference; a script still calls them.
 
@@ -358,4 +358,4 @@ The generated class entry lists the method set `*regexp.Regexp` published, which
 
 `stdlib/ps/http` does the opposite of this binding. Each of its types holds its `net/http` value in an unexported field, because registration is not a method allowlist and embedding `*http.Request` would publish the whole of `net/http` as methods on `HTTP\Request`.
 
-This binding publishes `regexp.Regexp` raw because its 40 exported methods are regexp operations and nothing a script should not reach. Five of them do something other than match, and are reachable: `Longest()` reconfigures the compiled expression in place, `Copy()` duplicates it, and `MarshalText`/`UnmarshalText`/`AppendText` are the encoding interfaces. A type with exports beyond its subject gets a facade instead; this one has none.
+This binding publishes `regexp.Regexp` raw because its 40 exported methods are regexp operations and nothing a script should not reach. Five of them do something other than match, and are reachable: `Longest()` reconfigures the compiled expression in place, `Copy()` duplicates it, and `MarshalText`/`UnmarshalText`/`AppendText` are the encoding interfaces. A type with exports beyond its subject gets a facade instead; every export here is a regexp operation.

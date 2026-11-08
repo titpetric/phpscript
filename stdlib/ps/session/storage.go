@@ -8,8 +8,8 @@ import (
 // Storage persists opaque session data by ID.
 //
 // DeleteByUser drops every session a user holds and answers how many it took.
-// A session carries its user's primary key as its whole payload (Manager.Start),
-// and a store matches on that and needs no index of its own.
+// A session holds its user's primary key as its whole payload (Manager.Start),
+// and a store matches on that and needs no index.
 type Storage interface {
 	Load(ctx context.Context, id string) ([]byte, error)
 	Save(ctx context.Context, id string, data []byte) error

@@ -7,6 +7,6 @@ nonword: true
 tokens:
   # A lowercase method in front of a path, as in "get /hello".
   - '\b(?:get|post|put|delete|patch|head|options)\s+/[a-z{]'
-  - '\ba (?:get|post|put|delete|patch) request\b'
+  - '\ba\s+(?:get|post|put|delete|patch)\s+request\b'
   - '\bcontent-type\b'
   - '\bcontent-length\b'

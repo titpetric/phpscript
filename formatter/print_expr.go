@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 func (p *printer) expr(e model.Expr) string {
@@ -25,7 +26,7 @@ func (p *printer) expr(e model.Expr) string {
 		// An interpolated literal prints from its source for the same reason a
 		// plain one does, and with more at stake: rebuilding it from the parts
 		// would pick one spelling for `"$a"`, `"${a}"` and `"{$a}"`, and would
-		// turn the text runs back into escapes of its own choosing.
+		// re-escape the text runs by the printer's choice.
 		return n.Raw
 	case *model.Var:
 		if n.Const {
@@ -46,7 +47,7 @@ func (p *printer) expr(e model.Expr) string {
 		return p.expr(n.Base) + "[" + p.expr(n.Index) + "]"
 	case *model.PropAccess:
 		if n.NameExpr != nil {
-			if v, ok := model.UnwrapParenthesized(n.NameExpr).(*model.Var); ok {
+			if v, ok := modelutil.UnwrapParenthesized(n.NameExpr).(*model.Var); ok {
 				return p.expr(n.Base) + "->$" + v.Name
 			}
 			return p.expr(n.Base) + "->{" + p.expr(n.NameExpr) + "}"
@@ -69,10 +70,10 @@ func (p *printer) expr(e model.Expr) string {
 		}
 		return p.expr(n.Base) + "->" + n.Method + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.New:
-		// The name an anonymous class carries comes from the parser and
-		// is not the source spelling; printing it would rewrite a working file
-		// into one that does not parse. Refusing the file leaves it untouched,
-		// and the unsupported list is for that.
+		// The parser names an anonymous class itself; the name is not the
+		// source spelling. Printing it would rewrite a working file into one
+		// that does not parse. Refusing the file leaves it untouched, and the
+		// unsupported list is for that.
 		if n.Decl != nil {
 			return p.unsupportedNode("anonymous class", n)
 		}
@@ -187,7 +188,7 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 }
 
 // callArgs prints the argument list of a call, which for PHP 8.1's first-class
-// callable syntax is the literal ellipsis. The node carries the spelling and
+// callable syntax is the literal ellipsis. The node holds the spelling and
 // no desugared form and the printer writes `greet(...)` back as itself.
 func (p *printer) callArgs(firstClass bool, args []model.Expr) string {
 	if firstClass {
@@ -232,8 +233,8 @@ func (p *printer) arrayLit(n *model.ArrayLit) string {
 		return "array()"
 	}
 	// This renders entries one level in, the position an expanded literal
-	// prints them at. A nested literal that expands then carries the right
-	// indent already.
+	// prints them at. A nested literal that expands then prints at the
+	// right indent already.
 	p.depth++
 	parts := make([]string, len(n.Items))
 	keyed := false

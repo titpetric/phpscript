@@ -43,8 +43,8 @@ func TestPHPKrsort(t *testing.T) {
 	}
 }
 
-// TestPHPAsort covers asort ordering by value with the keys carried along and a
-// score table sorts without losing the name against each score.
+// TestPHPAsort covers asort ordering by value with the keys kept attached and
+// a score table sorts without losing the name against each score.
 func TestPHPAsort(t *testing.T) {
 	t.Parallel()
 	array := setArray("x", int64(3), "y", int64(1), "z", int64(2))
@@ -74,8 +74,8 @@ func TestPHPArsort(t *testing.T) {
 	}
 }
 
-// TestSortEntries covers the rebuild step, and the divergence from PHP these six
-// functions carry.
+// TestSortEntries covers the rebuild step and the divergence from PHP these
+// six functions share.
 //
 // The rebuild puts an integer-keyed array back with Set, never Append:
 // appending would hand out fresh keys and turn a key-preserving sort into

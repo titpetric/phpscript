@@ -73,11 +73,10 @@ func TestReturnType(t *testing.T) {
 	}
 }
 
-// TestReflect covers what a shipped binary can answer about itself. No Go
-// source sits on disk and there are no doc comments and no PHP-spelled
-// parameter names; the names, types and returns are the same ones render
-// turns into the committed reference, and the placeholder parameter names
-// come from the types.
+// TestReflect covers what a shipped binary can answer about itself. Disk
+// holds no Go source: no doc comments and no PHP-spelled parameter names. The
+// names, types and returns are the same ones render turns into the committed
+// reference, and the placeholder parameter names come from the types.
 func TestReflect(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(nil, runner.Options{})

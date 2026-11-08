@@ -44,8 +44,8 @@ func TestPhpSprintfCoercesArguments(t *testing.T) {
 	}
 }
 
-// TestPhpSprintfErrors pins the class each malformed format raises, which is
-// what decides the catch clause a script writes around it.
+// TestPhpSprintfErrors pins the class each malformed format raises. A script's
+// catch clause names that class.
 func TestPhpSprintfErrors(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -7,7 +7,7 @@ $table = $_REQUEST["table"];
 
 table_info($db, $table);
 if (!isset($_POST["confirmation"]) || $_POST["confirmation"] != $table) {
-	die("Confirmation did not match the table name.");
+	die("Confirmation mismatch");
 }
 
 $db->query("DROP TABLE " . qi($table));

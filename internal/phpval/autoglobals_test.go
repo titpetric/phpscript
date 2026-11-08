@@ -10,8 +10,8 @@ import (
 var superglobals = []string{"_COOKIE", "_ENV", "_FILES", "_GET", "_POST", "_REQUEST", "_SERVER", "_SESSION"}
 
 // TestAutoGlobals_Set covers which names claim a fixed field. The language
-// closes the set and a name outside it reports false and the caller stores
-// the variable the way it stores every other one.
+// closes the set and a name outside the set reports false and the caller
+// stores the variable the way it stores every other one.
 func TestAutoGlobals_Set(t *testing.T) {
 	t.Parallel()
 	for _, name := range superglobals {
@@ -32,7 +32,7 @@ func TestAutoGlobals_Set(t *testing.T) {
 }
 
 // TestAutoGlobals_Lookup covers the two false answers a read has. A name
-// outside the set is not a superglobal, and one inside it that nothing bound
+// outside the set is not a superglobal, and one in the set that nothing bound
 // is unset; both let the caller fall through to globals and constants.
 func TestAutoGlobals_Lookup(t *testing.T) {
 	t.Parallel()

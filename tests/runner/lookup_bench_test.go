@@ -118,8 +118,8 @@ func BenchmarkLookup(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
 			// Callable resolves against the function table and the declaration
-			// has to be there; a lookup installs it, and this is the same
-			// install without the typed wrapper on top.
+			// has to be there; a lookup installs it. This is the same install
+			// without the typed wrapper on top.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
 				b.Error(err)
 				return

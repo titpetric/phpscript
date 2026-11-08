@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// This file runs a PHP callee in a frame of its own: a named function, a
+// This file runs a PHP callee in its own frame: a named function, a
 // method with $this bound, a closure over its captured environment, with the
 // parameter binding they share and the deferred and shutdown callbacks that
 // unwind a frame and a program.
@@ -30,7 +30,7 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 
 // invokeMethod runs a method with $this bound to obj. The invocation span uses
 // the caller scope; the fresh scope below records where the method body lives,
-// and spans starting inside that body read it from there.
+// and spans starting inside the body read it from there.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.acquireScope()
 	defer rt.releaseScope(scope)
@@ -67,7 +67,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// closureEnv is everything a closure carries away from its defining scope:
+// closureEnv is everything a closure takes away from its defining scope:
 // the lexical magic constants, the `use (...)` captures, and the bound
 // `$this` (nil for a `static function`, or for one written outside a method).
 // captureClosureEnv fills it once where newClosure builds the closure value,

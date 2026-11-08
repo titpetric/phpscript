@@ -19,7 +19,7 @@ class Status
 echo Status::READY;
 ```
 
-One class declaration can hold more than one constant. Class constants carry no visibility check.
+One class declaration can hold more than one constant. Class constants have no visibility check.
 
 ## Runtime constants
 
@@ -58,7 +58,7 @@ The table is php's own list, in the order the [language reference](https://www.p
 
 | Name            | Status        | Answers                                                                                                                         |
 |-----------------|---------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `__LINE__`      | Compatibility | The line it sits on.                                                                                                            |
+| `__LINE__`      | Compatibility | The line it appears on.                                                                                                         |
 | `__FILE__`      | Divergence    | The path the file reads under, which is the source filesystem's spelling.                                                       |
 | `__DIR__`       | Divergence    | The directory of that path, by the same rule.                                                                                   |
 | `__FUNCTION__`  | Compatibility | The enclosing function, namespace-qualified; a method's bare name inside one.                                                   |
@@ -120,6 +120,6 @@ Registering the standard library installs the platform constants a PHP library b
 
 `TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()` and `DateTime::parse()`. A layout is an ordinary string and a script can spell any of them out; these are the ones worth naming.
 
-`TIME_RFC3339` is the one to reach for by default. Alone among the layouts here it carries the UTC offset and it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
+`TIME_RFC3339` is the one to take by default. Alone among the layouts here it includes the UTC offset and it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
 
 The names are flat because a namespaced constant does not parse in this runtime: the classes are `Time\Duration` and `Time\Location`, but a constant spells that prefix `TIME_`.

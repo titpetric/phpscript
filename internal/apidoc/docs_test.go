@@ -38,7 +38,7 @@ func TestSymbolDocs(t *testing.T) {
 	}
 }
 
-// TestTypeDocs covers the two member tables one bound Go type carries.
+// TestTypeDocs covers the two member tables one bound Go type holds.
 func TestTypeDocs(t *testing.T) {
 	t.Parallel()
 	d := TypeDocs{
@@ -50,8 +50,8 @@ func TestTypeDocs(t *testing.T) {
 	}
 }
 
-// TestEmbedded covers the index this binary carries. The pipeline generates it
-// from the Go source and the binary embeds it, because a shipped binary carries
+// TestEmbedded covers the index this binary embeds. The pipeline generates it
+// from the Go source and the binary embeds it, because a shipped binary holds
 // no source tree and the two things a scan of one recovers are a doc comment
 // and the PHP spelling of a parameter name.
 func TestEmbedded(t *testing.T) {
@@ -76,14 +76,14 @@ func TestEmbedded(t *testing.T) {
 	}
 }
 
-// TestScanDocs covers the generator over a tree of its own: the class comment,
-// the property comment and the method comment all reach the index, and the
+// TestScanDocs covers the generator over a scratch tree: the class comment,
+// the property comment and the method comment all reach the index. The
 // parameter names come from the declaration and not from the Go types.
 func TestScanDocs(t *testing.T) {
 	t.Parallel()
 	// The tree mirrors this package's own directory, because the scan maps a
 	// directory below the module root onto the import path a reflected type
-	// reports, and that path keys every field comment.
+	// reports. That path keys every field comment.
 	dir := t.TempDir()
 	pkgDir := filepath.Join(dir, "internal", "apidoc")
 	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
@@ -146,7 +146,7 @@ func (h *scannedHolder) Query(statement string) string { return statement }
 }
 
 // TestDocs_Apply covers what the index fills in and what it leaves alone. The
-// structure is reflection's answer about this build and the index carries the
+// structure is reflection's answer about this build and the index holds the
 // prose; a member the index does not name keeps the name reflection invented.
 func TestDocs_Apply(t *testing.T) {
 	t.Parallel()

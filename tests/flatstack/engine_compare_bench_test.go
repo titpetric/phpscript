@@ -56,8 +56,8 @@ echo $sum;
 
 // BenchmarkEngineExprHeavy is the engine-comparison companion to the
 // end-to-end BenchmarkScriptExprHeavy in tests: a loop body that is almost
-// entirely expression evaluation, and the two engines' expression paths carry
-// the whole number.
+// entirely expression evaluation, and the two engines' expression paths
+// account for the whole number.
 func BenchmarkEngineExprHeavy(b *testing.B) {
 	benchmarkEngines(b, `<?php
 $total = 0;

@@ -47,7 +47,7 @@ func TestTableRendersAnsi(t *testing.T) {
 		}
 	}
 
-	// Every row carries one width, which keeps the box square.
+	// Every row is the same width, which keeps the box square.
 	lines := strings.Split(strings.TrimSpace(Strip(got)), "\n")
 	for i, line := range lines[:5] {
 		if Width(line) != Width(lines[0]) {
@@ -131,9 +131,8 @@ func TestAlign(t *testing.T) {
 	}
 }
 
-// TestCell covers the one value a cell carries and the color a terminal prints
-// it
-// in. A caller sets the color once; the terminal table wraps the text in it
+// TestCell covers the one value a cell holds and the color a terminal prints
+// it in. A caller sets the color once; the terminal table wraps the text in it
 // and markdown drops it and the same rows render in both formats with no
 // branch at the call site.
 func TestCell(t *testing.T) {

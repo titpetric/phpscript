@@ -13,7 +13,7 @@ import (
 // whichever backend a script constructed and a single wrapper instruments
 // memory and disk alike, and the trace shows which one a request paid for.
 //
-// The span never carries the session ID. That ID is the credential in the
+// The span never records the session ID. That ID is the credential in the
 // cookie, and the debug front end is a place it must not turn up.
 type tracedStorage struct {
 	storage Storage
@@ -34,7 +34,7 @@ func traceStorage(storage Storage) Storage {
 
 // backendName is what the trace calls the storage behind the wrapper.
 //
-// Every span carries it, because the two backends promise different things of
+// Every span records it, because the two backends promise different things of
 // a session: a disk session outlives the worker and every worker reads it,
 // where a memory session does neither. A manager that fell back to memory then
 // says so on each operation, and not in the log line alone (session.go,

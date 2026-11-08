@@ -62,9 +62,9 @@ func TestGoRuntimeBinding(t *testing.T) {
 
 // TestGoRuntimeFold covers the conversion of a literal, which the parser
 // applies and no engine sees: a literal stands where the call stood, under
-// every width go has, and it carries the type the width names. A conversion
-// php has to read the value for stays a call at run time, and so does a call
-// over anything but one literal.
+// every width go has, holding the type the width names. A conversion php has
+// to read the value for stays a call at run time; so does a call over
+// anything but one literal.
 func TestGoRuntimeFold(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -124,7 +124,7 @@ func TestGoRuntimeMakeType(t *testing.T) {
 		{"<?php\nuse Runtime\\Go;\nmake([]User, 1);", "[]User", "[]User"},
 		{"<?php\nnamespace App;\nuse Runtime\\Go;\nfunction f() { make([]User, 1); }", `[]App\User`, "[]User"},
 		{"<?php\nuse Runtime\\Go;\nmake([]\\Other\\User, 1);", `[]Other\User`, `[]Other\User`},
-		// A class the file imported qualifies as every other name does, and the
+		// A class the file imported qualifies as every other name does. The
 		// source keeps the short spelling it wrote.
 		{"<?php\nuse Runtime\\Go;\nuse Other\\User;\nmake([]User, 1);", `[]Other\User`, "[]User"},
 		// The type is a string a script may write by hand, which is the same
@@ -146,7 +146,7 @@ func TestGoRuntimeMakeType(t *testing.T) {
 		}
 	}
 
-	// A length and a capacity are expressions, and the call takes them as any
+	// A length and a capacity are expressions. The call takes them as any
 	// other call takes its arguments.
 	call := goCall(t, "<?php\nuse Runtime\\Go;\nmake([]int, count($a), 2 * $n);")
 	if len(call.Args) != 3 {
@@ -163,7 +163,7 @@ func TestGoRuntimeMakeType(t *testing.T) {
 // TestGoRuntimeSliceHint covers the `[]T` type hint, which php has no spelling
 // for and phpscript reads in a file that imported the go runtime: on a
 // parameter, on a return type and on a property. No engine downstream reads a
-// type, and the parser keeps the spelling for the formatter to print back.
+// type; the parser keeps the spelling for the formatter to print back.
 func TestGoRuntimeSliceHint(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ src, params, returns string }{

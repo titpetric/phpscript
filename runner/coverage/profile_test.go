@@ -27,15 +27,15 @@ func testSource(file string) []string {
 }
 
 // TestColumns covers the half the collector cannot answer: it records line
-// ranges, and a profile carries columns spanning the statement text and not
-// the indentation around it.
+// ranges. A profile lists columns spanning the statement text and not the
+// indentation around it.
 func TestColumns(t *testing.T) {
 	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
 	if len(blocks) != 3 {
 		t.Fatalf("blocks = %d, want 3", len(blocks))
 	}
-	// Sorted by file, then position, the order a profile carries them in.
+	// Sorted by file, then position, the order a profile lists them in.
 	if blocks[0].File != "app.php" || blocks[0].StartLine != 2 {
 		t.Errorf("first block = %+v, want app.php line 2", blocks[0])
 	}

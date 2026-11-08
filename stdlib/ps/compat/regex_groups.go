@@ -10,7 +10,7 @@ import (
 // $matches[1] before it checks the count.
 //
 // Without a flag that changes the entries, the columns are []string. The VM
-// indexes and iterates both levels exactly like nested PHP arrays, and the
+// indexes and iterates both levels exactly like nested PHP arrays. The
 // columns are plain string slices and a match set of g groups over n matches
 // costs g+1 allocations where an *model.Array pair would cost 2(g+1) plus 2n
 // interface boxes. PREG_OFFSET_CAPTURE boxes every entry anyway and takes the

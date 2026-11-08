@@ -28,7 +28,7 @@ import (
 )
 
 // Named counterparts of every signature the fastInvoker type switch covers.
-// A value of one of these types carries the same underlying signature but a
+// A value of one of these types has the same underlying signature but a
 // different dynamic type, which sends it down the reflect path.
 type (
 	dispatchPinVarAnyRetAnyErr       func(...any) (any, error)
@@ -552,8 +552,8 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 }
 
 // A call passing more arguments than the callable declares fails with an
-// ArgumentCountError carrying the declared and passed counts, on both paths:
-// the check runs before dispatch. Direct invocation carries no PHP name and
+// ArgumentCountError holding the declared and passed counts, on both paths:
+// the check runs before dispatch. Direct invocation has no PHP name and
 // Name stays empty and the message says "call()".
 func TestDispatchPinArgumentCount(t *testing.T) {
 	t.Parallel()
@@ -663,7 +663,7 @@ func TestDispatchPinReflectCoercion(t *testing.T) {
 }
 
 // A binding that panics surfaces as a HostPanicError whose Callable spells the
-// original function's dynamic type, on both paths: the recover sits in
+// original function's dynamic type, on both paths: the recover is in
 // invokeAny, above the split.
 func TestDispatchPinHostPanic(t *testing.T) {
 	t.Parallel()
@@ -717,7 +717,7 @@ func TestDispatchPinWantsContext(t *testing.T) {
 	}
 }
 
-// A binding declaring a leading context receives one carrying the scope the
+// A binding declaring a leading context receives one holding the scope the
 // call ran under; a binding without one takes the script's arguments alone,
 // and a nil scope is fine because nothing builds a context for it.
 func TestDispatchPinContextInjection(t *testing.T) {
@@ -754,7 +754,7 @@ func TestDispatchPinContextInjection(t *testing.T) {
 	}
 }
 
-// Receivers for the callGoMethod resolution tests. Two distinct types carry a
+// Receivers for the callGoMethod resolution tests. Two distinct types have a
 // same-named method so a test can watch per-type caching for cross-talk, and one
 // type declares its method on the pointer only so the pointer and value method
 // sets resolve separately.
@@ -784,7 +784,7 @@ func (*dispatchPinPtrOnly) Hello() string { return "ptronly-hello" }
 // callGoMethod resolves the exact Go name, then case-insensitively, then with
 // underscores stripped so a snake_case PHP spelling finds the idiomatic Go
 // name. A miss reports PHP's undefined-method message naming the class a
-// script sees. Every lookup runs twice, and the test asserts the warm-cache
+// script sees. Every lookup runs twice. The test asserts the warm-cache
 // answer matches the cold one, per receiver type.
 func TestDispatchPinCallGoMethod(t *testing.T) {
 	t.Parallel()
@@ -864,7 +864,7 @@ func TestDispatchPinCallGoMethodPanic(t *testing.T) {
 }
 
 // adapt wraps any Go callable into the uniform func(...any) (any, error) the
-// runtime carries everywhere, and the wrapper answers exactly as a direct
+// runtime uses everywhere. The wrapper answers exactly as a direct
 // invocation does, for fast-path and reflect-only signatures alike.
 // Runtime.Callable resolves a registered name to the same uniform shape.
 func TestDispatchPinUniformABI(t *testing.T) {
@@ -908,7 +908,7 @@ func TestDispatchPinUniformABI(t *testing.T) {
 		t.Fatalf("got %#v, want %q", v, "[65]")
 	}
 
-	// A non-callable value fails, and the error names the type it holds.
+	// A non-callable value fails. The error names the type it holds.
 	if _, err := invokeAny(nil, 42, nil); err == nil || !strings.Contains(err.Error(), "not callable: int") {
 		t.Fatalf("err = %v, want the not-callable report", err)
 	}
@@ -965,7 +965,7 @@ echo probe(65), "\n";
 
 	// Inside a namespace an unqualified call falls back to the global name,
 	// which is the __func dispatch with its fallback argument. A namespaced
-	// file may only declare and the call sits in a function invoked from a
+	// file may only declare and the call is in a function invoked from a
 	// second, namespace-free program on the same runtime.
 	declare := "<?php\nnamespace App;\nfunction caller() { return probe(66); }\n"
 	if got := dispatchPinRun(t, rt, &out, declare); got != "" {

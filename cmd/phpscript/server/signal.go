@@ -14,8 +14,8 @@ import (
 )
 
 // SignalReload is the one verb -s takes. nginx also has stop, quit and
-// reopen; the first two are a kill with extra steps, and there are no log
-// files to reopen.
+// reopen; the first two are a kill with extra steps. No log file needs
+// reopening.
 const SignalReload = "reload"
 
 // Signal sends verb to the server recorded in server.pid_file.
@@ -54,7 +54,7 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 		return ErrReported
 	}
 
-	// The success path prints no line, matching nginx: a signal carries no way
+	// The success path prints no line, matching nginx: a signal leaves no way
 	// to answer back, and what the reload did is in the server's log.
 	return nil
 }

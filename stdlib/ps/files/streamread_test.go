@@ -53,7 +53,7 @@ fclose($f);`)
 }
 
 // TestFseekMovesByWhence covers the three SEEK_* values and their
-// constants. PHP numbers them 0, 1 and 2, and so does Go's io package and
+// constants. PHP numbers them 0, 1 and 2, as Go's io package does, and
 // fseek passes the argument through as it arrives; a translation table here
 // would be a second numbering to keep in step.
 func TestFseekMovesByWhence(t *testing.T) {

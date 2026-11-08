@@ -22,7 +22,7 @@ func messages(t *testing.T, src string) []string {
 	return out
 }
 
-// has reports a finding whose message carries want.
+// has reports a finding whose message contains want.
 func has(found []string, want string) bool {
 	for _, message := range found {
 		if strings.Contains(message, want) {

@@ -15,7 +15,7 @@ import (
 // phpFormatFloat picks the exponent form from where the decimal point falls,
 // not from Go's 'g' thresholds: PHP switches when the point sits before the
 // third leading zero or past the last significant digit and 1e16 stays written
-// out and 1e17 does not. Its mantissa always carries a fraction and its
+// out and 1e17 does not. Its mantissa always holds a fraction and its
 // exponent no leading zero and it writes 1.0E+100 where Go writes 1e+100.
 func phpFormatFloat(f float64, precision int) string {
 	switch {

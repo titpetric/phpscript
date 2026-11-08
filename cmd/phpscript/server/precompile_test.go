@@ -68,7 +68,7 @@ func TestPrecompile(t *testing.T) {
 }
 
 // TestPrecompileServesAfterABrokenFile covers what the site does once the walk
-// has skipped one: the page still answers, and so does a request for the file
+// has skipped one: the page still answers; so does a request for the file
 // that did not parse, with the error it fails with lazily.
 func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 	t.Parallel()
@@ -116,7 +116,7 @@ func TestSharedCaches(t *testing.T) {
 }
 
 // TestVirtualHostPrecompilesUnderItsOwnConfiguration covers the per-site half:
-// each site's phpscript.yml carries the setting, a site holding a file that
+// each site's phpscript.yml sets precompilation, a site holding a file that
 // does not parse still builds, and both answer.
 func TestVirtualHostPrecompilesUnderItsOwnConfiguration(t *testing.T) {
 	t.Parallel()
@@ -149,7 +149,7 @@ func TestVirtualHostPrecompilesUnderItsOwnConfiguration(t *testing.T) {
 	}
 }
 
-// benchPage is the entrypoint the benchmark serves. It carries enough
+// benchPage is the entrypoint the benchmark serves. It holds enough
 // expressions that the closure compiles a request repeats without the setting
 // are visible next to the parse of the file itself.
 const benchPage = `<?php

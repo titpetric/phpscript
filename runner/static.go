@@ -10,10 +10,10 @@ import (
 // This file implements PHP's static class members: `Class::method()`,
 // `Class::$property` and the `self::` / `static::` spellings of both.
 //
-// A static member belongs to the class, not to an instance; neither has a
+// A static member belongs to the class, not to an instance, and has no
 // receiver to hang off the object model in value.go. A method runs against a
-// scope carrying its class alone; properties live in one bag per class on the
-// Runtime (see Runtime.classStatics), and composer's `self::$registeredLoaders`
+// scope holding its class alone; the Runtime keeps one bag of properties per
+// class (see Runtime.classStatics), and composer's `self::$registeredLoaders`
 // is observable from every instance and from a later static call.
 
 // resolveClassName maps the contextual class names PHP allows in a static
@@ -40,7 +40,7 @@ func resolveClassName(class string, scope *Scope) (string, error) {
 
 // classDefaultScope is the scope a class's declared defaults run in. A default
 // sits inside the class body and `self::X` in one has to resolve to that
-// class. The scope holding the `new` carries no such name.
+// class. The scope holding the `new` has no such name.
 func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 	scope := rt.newScope()
 	if caller != nil {
@@ -98,15 +98,15 @@ func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, er
 	return rt.staticBag(decl, scope)
 }
 
-// staticsKey is the interpreter bookkeeping slot a closure frame uses to carry
-// its per-instance function-static table (the `__` prefix keeps it out of
+// staticsKey is the interpreter bookkeeping slot holding a closure frame's
+// per-instance function-static table (the `__` prefix keeps it out of
 // DefinedVars, like the other bookkeeping slots).
 const staticsKey = "__statics__"
 
 // staticVarBag returns the persistent storage of one `static $x` statement and
 // whether it already held values from an earlier call. Named functions and
-// methods share one bag per statement on the Runtime; a closure frame carries
-// its own table so each closure value counts on its own.
+// methods share one bag per statement on the Runtime; a closure frame keeps
+// its own table and each closure value counts separately.
 func (rt *Runtime) staticVarBag(n *model.StaticVar, scope *Scope) (map[string]any, bool) {
 	if v, ok := scope.Get(staticsKey); ok {
 		if table, ok := v.(map[*model.StaticVar]map[string]any); ok {

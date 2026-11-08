@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	phphttp "github.com/titpetric/phpscript/stdlib/ps/http"
 )
@@ -20,13 +20,13 @@ func init() {
 }
 
 // Registrar binds a handler to an HTTP method and path. The annotations
-// package's Registrar is this interface, so either one fits the other.
+// package's Registrar is this interface. Either one fits the other.
 type Registrar interface {
 	Handle(method string, path string, handler http.Handler)
 }
 
 // Router is the service router a @startup job reaches through
-// Runtime\Router::Bind. A host attaches the router once it is mounted and
+// Runtime\Router::Bind. A host attaches the router after mounting it and
 // installs the binding on the runtimes of its startup jobs, the only place the
 // router is still mutable.
 type Router struct {
@@ -63,8 +63,8 @@ func (r *Router) Install(rt *runner.Runtime) {
 
 // bind calls fn with a mux that registers straight on the attached registrar.
 //
-// The mux is only good while fn runs: it keeps no routes, so nothing lists
-// them, and a handle on it after fn has returned throws.
+// The mux is only good while fn runs: it keeps no routes and nothing lists
+// them. A handle on it after fn has returned throws.
 func (r *Router) bind(rt *runner.Runtime, fn any) error {
 	r.mu.Lock()
 	registrar := r.registrar
@@ -90,7 +90,7 @@ func (r *Router) bind(rt *runner.Runtime, fn any) error {
 			return runner.NewRuntimeException(fmt.Sprintf("Runtime\\Router::Bind: %q needs a method, as in GET %s", pattern, pattern), 0)
 		}
 		method, path := pattern[:space], strings.TrimLeft(pattern[space:], " \t")
-		if _, err := model.ParseRoutePath(path); err != nil {
+		if _, err := modelutil.ParseRoutePath(path); err != nil {
 			return runner.NewRuntimeException(fmt.Sprintf("Runtime\\Router::Bind: %s", err), 0)
 		}
 		registrar.Handle(method, path, handler)

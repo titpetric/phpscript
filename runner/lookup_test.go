@@ -434,7 +434,7 @@ func TestLookupResolvesWithoutPrecompiling(t *testing.T) {
 }
 
 // TestLookupFindsADeclarationAlreadyRun covers the other entry: a host that ran
-// its entrypoint has the declaration on the runtime already, and the lookup
+// its entrypoint has the declaration on the runtime already. The lookup
 // resolves against the function table without going near the tree.
 func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
 	t.Parallel()

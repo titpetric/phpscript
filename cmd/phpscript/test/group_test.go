@@ -110,7 +110,7 @@ func TestGroupFixtures(t *testing.T) {
 		t.Errorf("fixtures = %+v, want the two of that folder in order", first.Fixtures)
 	}
 
-	// A fixture sitting in the run directory is its own group, under the name
+	// A fixture in the run directory is its own group, under the name
 	// the table prints for it.
 	last := groups[len(groups)-1]
 	if last.Dir != "." {

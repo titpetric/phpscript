@@ -40,7 +40,7 @@ func NewMemory(names ...string) *Memory {
 	return result
 }
 
-// Configured reports why name cannot carry a delivery, and nil when it can.
+// Configured reports why name cannot accept a delivery, and nil when it can.
 func (m *Memory) Configured(name string) error {
 	if name == "" {
 		name = DefaultName

@@ -8,6 +8,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -70,7 +71,7 @@ func registerRequest(rt *runner.Runtime) {
 
 	// http_response_code stages the response status in $response_code and
 	// returns the one it replaced; called without one it returns the status
-	// the response will carry, or false when there is no request to answer for.
+	// the response will send, or false when there is no request to answer for.
 	rt.RegisterFunc("http_response_code", func(opts ...any) any {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -88,7 +89,7 @@ func registerRequest(rt *runner.Runtime) {
 	})
 
 	// setrawcookie stages a Set-Cookie header the way setcookie does, writing
-	// $value as it stands and a value carrying a semicolon or a space is the
+	// $value as it stands and a value with a semicolon or a space is the
 	// caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
@@ -98,7 +99,7 @@ func registerRequest(rt *runner.Runtime) {
 // stageCookie builds the cookie both spellings stage.
 //
 // The header text is net/http's, not PHP's: attributes read Path and HttpOnly
-// where PHP writes path and HttpOnly, and the expiry is RFC 1123 where PHP
+// where PHP writes path and HttpOnly. The expiry is RFC 1123 where PHP
 // writes its own dashed variant. RFC 6265 makes attribute names
 // case-insensitive and both date spellings parseable and a client cannot tell;
 // a test asserting the exact header text can and this comment records it.
@@ -123,7 +124,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 		// The options form is a collection, whatever built it: the array a
 		// literal writes and the map another binding returned both. Anything
 		// else is the long argument list.
-		if model.IsCollection(opts[1]) {
+		if modelutil.IsCollection(opts[1]) {
 			applyCookieOptions(cookie, opts[1])
 		} else {
 			applyCookiePositional(cookie, opts[1:])
@@ -163,7 +164,7 @@ func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 // arrives as the map another binding returned as readily as the array a
 // literal wrote.
 func applyCookieOptions(cookie *nethttp.Cookie, options any) {
-	model.RangeValues(options, func(key, value any) bool {
+	modelutil.RangeValues(options, func(key, value any) bool {
 		switch strings.ToLower(phpval.String(key)) {
 		case "expires":
 			setCookieExpires(cookie, phpval.Int(value))
@@ -183,7 +184,7 @@ func applyCookieOptions(cookie *nethttp.Cookie, options any) {
 }
 
 // setCookieExpires reads PHP's $expires: a unix timestamp, where 0 means the
-// cookie lives as long as the browser session and carries no expiry at all.
+// cookie lasts as long as the browser session and sets no expiry at all.
 func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 	if expires == 0 {
 		return

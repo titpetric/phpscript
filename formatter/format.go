@@ -57,8 +57,7 @@ func splitShebang(src string) (shebang, rest string, ok bool) {
 	return strings.TrimRight(line, "\r"), rest, true
 }
 
-// Print renders prog as formatted PHP source, a node it cannot spell as a
-// placeholder comment. Source fails on such a file instead.
+// Print returns prog as formatted PHP source, an unspellable node as a comment.
 func Print(prog *model.Program, opts Options) string {
 	out, _ := printProgram(prog, opts)
 	return out
@@ -98,10 +97,9 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		p.lastLine = prog.NamespaceLine
 		p.blank()
 	}
-	// Includes ahead of imports, as their own paragraphs. Printed here rather
-	// than reordered in place because the blank line between them is the
-	// point: two groups a reader can take in at a glance beats one block
-	// whose order happens to be right.
+	// Includes ahead of imports, as their own paragraphs. The printer groups
+	// them here and leaves the statement list alone. Two groups split by a
+	// blank line read at a glance where one ordered block does not.
 	if includes, uses, rest := splitImportPreamble(stmts); len(includes) > 0 && len(uses) > 0 {
 		p.stmts(includes)
 		p.blank()
@@ -187,8 +185,8 @@ func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt)
 			continue
 		case *model.ExprStmt:
 			// An include written where the code reads a value - `$ok =
-			// include "x";` - is an expression, and the parser wraps it. It
-			// remains the file pulling something in.
+			// include "x";` - is an expression the parser wraps in an
+			// ExprStmt. It remains the file pulling something in.
 			if _, ok := node.X.(*model.Include); ok {
 				includes = append(includes, s)
 				continue

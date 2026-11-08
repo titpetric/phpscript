@@ -68,7 +68,7 @@ func TestPHPTypeReflect(t *testing.T) {
 
 // TestIsRefSetterType covers the shape the runner passes for a by-reference
 // parameter: one empty-interface argument and no result. preg_match's
-// $matches arrives that way and the signature carries an ampersand and no
+// $matches arrives that way and the signature prints an ampersand and no
 // type.
 func TestIsRefSetterType(t *testing.T) {
 	t.Parallel()
@@ -197,7 +197,7 @@ func TestReflectReturn(t *testing.T) {
 
 // TestHasRegisteredReturn covers the test that decides whether a Go function's
 // result is a class a script can hold. A registered type is one; the error
-// beside it never counts, and neither does a plain string.
+// beside it and a plain string never count.
 func TestHasRegisteredReturn(t *testing.T) {
 	t.Parallel()
 	classTypes := map[reflect.Type]string{reflect.TypeOf(reflectedStruct{}): "Thing"}

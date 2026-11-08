@@ -27,7 +27,7 @@ The server answers a request that names a directory with that directory's index 
 | `index.php`  | The page the interpreter renders  |
 | `index.html` | The file, served as bytes on disk |
 
-`/` is `public/index.php` or `public/index.html`, `/docs/` is `public/docs/index.php` or `public/docs/index.html`, and so on down the tree. `index.php` wins when a directory has both: the dynamic page is the one the site wrote for the server to publish, and the `index.html` beside it remains a placeholder nobody has removed.
+`/` is `public/index.php` or `public/index.html`, `/docs/` is `public/docs/index.php` or `public/docs/index.html` and so on down the tree. `index.php` wins when a directory has both: the dynamic page is the one the site wrote for the server to publish, and the `index.html` beside it remains a placeholder nobody has removed.
 
 The server redirects a directory named without its trailing slash to the same path with one, before serving the index page. The links in that page resolve against its serving URL and `/docs` has to become `/docs/` or every relative link in it points a directory too high.
 
@@ -51,7 +51,7 @@ The server generates the listing, and no file needs writing or regenerating when
 - images as thumbnails above the table as well as rows in it and a folder of screenshots is browsable and still says how big each one is
 - a link to the directory above, except at the document root, whose parent is not the site's to link to
 
-The listing leaves out names beginning with a dot: a listing is what a site chose to publish, and a dotfile below the document root is at best noise and at worst an editor's backup of a script. The page carries the little styling it needs inline and fetches nothing from anywhere else and a listing tells a third party nothing about the browsing and renders the same on a machine with no route out.
+The listing leaves out names beginning with a dot: a listing is what a site chose to publish, and a dotfile below the document root is at best noise and at worst an editor's backup of a script. The page holds the little styling it needs inline and fetches nothing from anywhere else and a listing tells a third party nothing about the browsing and renders the same on a machine with no route out.
 
 An index page still wins where there is one. `autoindex` only decides what a directory without one answers.
 

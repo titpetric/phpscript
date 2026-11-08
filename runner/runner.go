@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -26,7 +27,7 @@ const (
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) (err error) {
-	// Last of the defers: a shutdown function includes files too, and the
+	// Last of the defers: a shutdown function includes files too. The
 	// inventory names what the whole run loaded.
 	defer rt.traceIncludes()
 	// The limit belonged to the program that set it. Left armed, it ends the
@@ -55,8 +56,8 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	// table by the time the first call resolves, and the bytecode engine runs
 	// a program whole and reaches no statement interpreter to install it.
 	rt.useImports(p.Stmts)
-	// Coverage forces the interpreter: flatstack carries no coverage support,
-	// and the fallback is atomic and the whole program runs where exec counts it.
+	// Coverage forces the interpreter: flatstack has no coverage support.
+	// The fallback is atomic and the whole program runs where exec counts it.
 	if rt.flat && rt.coverage == nil {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
@@ -144,7 +145,7 @@ func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
 
 // hoist registers all function and class declarations found at the given level.
 //
-// model.CheckInterfaceContracts holds a class declaring `implements` to the
+// modelutil.CheckInterfaceContracts holds a class declaring `implements` to the
 // contract first: the class itself must declare every method the listed
 // interfaces name. The check is a name comparison over the AST and it happens
 // before anything runs and copies no member onto the class either way. The
@@ -156,13 +157,13 @@ func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
 // parser gave it.
 func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 	stmts := prog.Stmts
-	if err := model.CheckInterfaceContracts(prog); err != nil {
+	if err := modelutil.CheckInterfaceContracts(prog); err != nil {
 		return NewRuntimeException(err.Error(), 0)
 	}
 	// First pass: classes and a method has a class to attach to.
 	classes := map[string]*model.Class{}
 	declare := func(cd *model.ClassDecl) {
-		c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
+		c := &model.Class{Name: cd.Name, Implements: modelutil.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
 		for _, m := range cd.Methods {
 			// Only filled in, never overwritten: the parser names the file it
 			// read the declaration from, and a program parsed without a name
@@ -388,15 +389,15 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 			return nil, flowNormal, thrown
 		}
 		// An instance of a declared class is not an error and it travels
-		// wrapped. The wrapper carries its declared class, which is
-		// what a clause filters on and what get_class() reports.
+		// wrapped. The wrapper holds its declared class, the one a clause
+		// filters on and get_class() reports.
 		if obj, ok := v.(*model.Object); ok {
 			return nil, flowNormal, newObjectError(obj)
 		}
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
 	case *model.Use:
-		// The parser resolves imports, and the node exists so the formatter
+		// The parser resolves imports. The node exists so the formatter
 		// can print the statement back out. An import that names a
 		// contributed namespace installs it here, which is the seam an
 		// included file reaches under either engine: an include runs its
@@ -433,9 +434,9 @@ func noopTrace() {}
 // template. The returned closer ends the span and callers defer it where the
 // region begins.
 //
-// Options.TraceLevel decides whether the region is reported at all, and
-// whether the span carries the debug mark: at info it does, and the recorder
-// keeps the regions that were slow and drops the microsecond ones.
+// Options.TraceLevel decides whether the runtime reports the region at all,
+// and whether the span takes the debug mark: at `info` it does. The recorder
+// keeps the slow regions and drops the microsecond ones.
 func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) func() {
 	if len(rt.observers) == 0 || rt.opts.TraceLevel.Off() {
 		return noopTrace

@@ -14,12 +14,12 @@ import (
 // root. `atkins test:introspection` writes it and the embed below reads it.
 const IndexPath = "internal/apidoc/godoc.json"
 
-// A shipped binary carries no Go source tree, and the two things a scan of one
+// A shipped binary holds no Go source tree, and the two things a scan of one
 // recovers are a doc comment and the PHP spelling of a parameter name. The
 // pipeline generates the index at build time and the binary embeds it, the way
 // it embeds `config/config.yml` and the helpdocs examples. What a class, a
 // property and a method document travels with the binary; what a class holds,
-// and what type each member carries, stays a question for reflection against
+// and what type each member holds, stays a question for reflection against
 // the live runtime.
 //
 //go:embed godoc.json
@@ -56,7 +56,7 @@ type TypeDocs struct {
 	Methods map[string]*SymbolDocs `json:"methods,omitempty"`
 }
 
-// Embedded returns the doc index this binary carries. An unreadable index
+// Embedded returns the doc index this binary embeds. An unreadable index
 // answers an empty one, and every class then reports what reflection sees and
 // no prose.
 func Embedded() *Docs {

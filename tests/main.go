@@ -9,8 +9,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/database"
 )
 
-// TestMain seeds the database connections the fixture areas name before any test
-// runs, because registration reads a connection and first use does not.
+// TestMain seeds the database connections before any test runs: registration reads one.
 func TestMain(m *testing.M) {
 	setTestEnv()
 	os.Exit(m.Run())
@@ -25,8 +24,8 @@ func setTestEnv() {
 		"PLATFORM_DB_MYSQL_TEST=mysql://root:test@tcp(localhost:13306)/mysql",
 		// scaffold is also named by tests/fixtures/scaffold/phpscript.yml,
 		// the provider a fixture there resolves through. This list repeats it
-		// for a caller that reaches the connection without the suite, and so
-		// that the list matches .env.testing, the file the command reads.
+		// for a caller that reaches the connection without the suite. The
+		// list matches .env.testing, the file the command reads.
 		"PLATFORM_DB_SCAFFOLD=sqlite://file:phpscript-scaffold?mode=memory&cache=shared",
 	)
 

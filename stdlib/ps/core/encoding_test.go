@@ -102,7 +102,7 @@ func TestURLEncode(t *testing.T) {
 	}
 }
 
-// TestURLDecode covers the decoders, which live in stdlib/shared because the
+// TestURLDecode covers the decoders, which are in stdlib/shared because the
 // runner builds $_GET and $_POST with the same rules. Two implementations would
 // let a form arrive one way through the superglobals and another through
 // parse_str. urldecode reads '+' as a space; rawurldecode leaves it alone.

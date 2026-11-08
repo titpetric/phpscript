@@ -40,7 +40,7 @@ func registerExec(rt *runner.Runtime, r root) {
 // is the one place a call steps outside the fs.FS sandbox: a command is a
 // process, it reads and writes with the permissions of the user running the
 // server, and writable_paths cannot reach it. What the runtime can say is where
-// it starts, and it says the same thing getcwd() does.
+// it starts. It says the same thing getcwd() does.
 //
 // A host that bound no directory leaves Dir empty and every command starts in
 // the process working directory.
@@ -53,7 +53,7 @@ func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 }
 
 // hostWorkDir is the working directory as a path on the host: the directory the
-// host bound the shims to, plus wherever chdir has moved inside it.
+// host bound the shims to, plus wherever chdir has moved below that directory.
 func (r root) hostWorkDir() string {
 	work := r.rt.WorkDir()
 	if work == "" || work == "." {
@@ -63,8 +63,8 @@ func (r root) hostWorkDir() string {
 }
 
 // runStatus runs cmd and reports its exit status. A command that ran and failed
-// has a status to report; one that could not start at all has none, which is
-// what the second return says.
+// has a status to report; the second return is false where the command could
+// not start.
 func runStatus(cmd *exec.Cmd) (status int64, started bool) {
 	err := cmd.Run()
 	if err == nil {
@@ -197,9 +197,9 @@ func (r root) phpShellExec(ctx context.Context, command string) any {
 	return string(stdout)
 }
 
-// lastLine keeps the final line of a stream without holding the rest of it. It
-// is what lets system() answer with its last line while the output has already
-// gone to the page.
+// lastLine keeps the final line of a stream without holding the rest of it.
+// system() answers with its last line while the output has already gone to the
+// page.
 type lastLine struct {
 	current  strings.Builder
 	previous string
@@ -217,8 +217,7 @@ func (l *lastLine) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// String is the last line the stream carried, whether it ended with a
-// newline.
+// String returns the last line of the stream, whether it ended with a newline.
 func (l *lastLine) String() string {
 	if l.current.Len() > 0 {
 		return strings.TrimRight(l.current.String(), " \t\r\v\f")

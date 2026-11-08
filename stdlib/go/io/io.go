@@ -6,12 +6,12 @@ package io
 import (
 	goio "io"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
 // Namespace is the area the import installs.
-const Namespace = model.GoNamespace + `\IO`
+const Namespace = modelutil.GoNamespace + `\IO`
 
 // Set is what the package binds. A go reader is a value a binding answered
 // with, never one a script built, and the write half of the package takes a

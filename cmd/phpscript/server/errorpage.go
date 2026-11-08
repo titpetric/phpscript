@@ -12,9 +12,9 @@ import (
 )
 
 // errorPageNames returns the files that may answer for a status, in lookup
-// order. They live in the document root and carry the name of the status they
-// answer for and a site puts one up by writing it and takes it down by
-// deleting it. The lookup needs no configuration and no switch.
+// order. The document root holds them under the name of the status they answer
+// for and a site puts one up by writing it and takes it down by deleting it.
+// The lookup needs no configuration and no switch.
 //
 // The error pages come last so one page can cover the statuses a site does not
 // care to distinguish. error.php reads the status it answers for out of
@@ -24,7 +24,7 @@ import (
 // The .php name wins at each step and a site that adds a 404.php beside
 // a hand written 404.html starts serving the new one by writing it.
 //
-// The names are not nested. A directory of its own for /api could only add a
+// The names are not nested. A separate directory for /api could only add a
 // page, never remove one and it cannot say "no page here", which is the state
 // an API actually wants. serveErrorPage decides that per request.
 func errorPageNames(status int) [4]string {
@@ -53,11 +53,11 @@ func (h *handler) errorPage(status int) (string, bool) {
 // unrouted /article/... one by its path and the path is not what decides:
 // runner.WantsErrorPage reads the request to tell a person from a program at
 // the other end. A fetch(), an XHR, curl, an <img> and a stylesheet all read the
-// plain status they got before this existed, and an API needs no configuration,
+// plain status they got before this existed. An API needs no configuration,
 // no prefix and no opt-out to keep them.
 //
-// The page runs once. Its own failure goes to the log and answers false and a
-// broken 500.php cannot dispatch a 500 page of its own.
+// The page runs once. Its own failure goes to the log and answers false; a
+// broken 500.php cannot dispatch a second 500 page.
 //
 // This drops the request body, because every call site reaches it through
 // a script that had already read the body. serveUnrouted is the entry point for
@@ -121,7 +121,7 @@ func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status in
 		return false
 	}
 
-	// The page may answer with a status of its own; one that names none answers
+	// The page may answer with its own status; one that names none answers
 	// with the status of the call.
 	if staged := reqCtx.ResponseStatus(); staged != 0 {
 		status = staged
@@ -146,8 +146,8 @@ func (h *handler) serveErrorFile(w http.ResponseWriter, name string, status int)
 
 // redirectVars names the error the page is answering for, in the $_SERVER keys
 // Apache fills in for an ErrorDocument. They are Apache's names and not
-// names of phpscript's own because a page written against one server should
-// work on the other.
+// names of phpscript's own because a page written against one server runs on
+// the other.
 //
 // r is the original request, not the one the page runs under and REDIRECT_URL
 // is the path that failed and not the path of the page.

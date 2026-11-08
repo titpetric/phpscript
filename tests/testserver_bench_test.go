@@ -30,14 +30,14 @@ import (
 // driver below is what run() does up to the point of binding a socket.
 //
 // The socket is outside the measurement: the writer discards, with no pass
-// through net/http's connection buffers. That cost is the same on the Go twin,
-// and it belongs to the sweep.
+// through net/http's connection buffers. That cost is the same on the Go twin
+// and belongs to the sweep.
 
-// benchServerDriver stands in for run(): the limit the real script sets before
-// it listens, then the router passed to Go in place of HTTP\Server. The limit
-// is the script's and the forks do not inherit it, there as here; what arms a
-// worker's per-statement deadline check is the request's own context, which is
-// why the request below carries a cancellable one.
+// benchServerDriver holds the two statements run() reaches before the socket:
+// the limit the real script sets before it listens, then the router passed to
+// Go in place of HTTP\Server. The limit is the script's and the forks do not
+// inherit it, there as here. The request's own context arms a worker's
+// per-statement deadline check and benchServerRequest below builds one.
 const benchServerDriver = `<?php
 set_time_limit(3600);
 bench_mux((new Server)->mount());
@@ -52,8 +52,8 @@ var benchServerRoutes = []struct {
 	target string
 	body   string
 	// want is a distinctive substring of the response, checked once before the
-	// timed loop. The check notices the bridge's server.php changing under it,
-	// and so the benchmark never quietly measures a 404.
+	// timed loop. The check notices the bridge's server.php changing under it.
+	// The benchmark never quietly measures a 404.
 	want string
 }{
 	{name: "hello", method: http.MethodGet, target: "/hello?name=sprint", want: "hello sprint"},
@@ -167,8 +167,8 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 //
 // A body has to be rewound and the parsed form dropped: form_value() parses on
 // first call and net/http caches the result on the request and a reused request
-// would answer the second iteration out of the first one's cache, and the
-// figure would price the cache.
+// would answer the second iteration out of the first one's cache. The figure
+// would price the cache.
 func benchServerRequest(b *testing.B, method, target, body string) (*http.Request, func()) {
 	b.Helper()
 
@@ -214,7 +214,7 @@ func (w *benchServerWriter) Write(p []byte) (int, error) {
 }
 
 // WriteString records the write the way Write does, with no clone. The writer
-// stands in for net/http's response writer, which implements io.StringWriter,
+// replaces net/http's response writer, which implements io.StringWriter,
 // and a stand-in without the method sends every echo down io.WriteString's
 // []byte fallback and prices a clone the served path does not pay.
 func (w *benchServerWriter) WriteString(s string) (int, error) {

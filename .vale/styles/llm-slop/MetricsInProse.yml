@@ -8,11 +8,28 @@ tokens:
   # A number with a unit goes stale the moment the code moves, and prose is the
   # one place nothing regenerates it. Tables, code blocks, headings and list
   # items are out of scope: a table is where a measurement belongs.
-  - '\b\d[\d,.]*\s?(?:ns|us|µs|ms|sec|secs|seconds)\b'
-  - '\b\d[\d,.]*\s?(?:B|KB|KiB|MB|MiB|GB|GiB)\b'
-  - '\b\d[\d,.]*\s?(?:ns|us|µs|ms)/op\b'
+  #
+  # The unit groups are case-insensitive by inline flag rather than by
+  # ignorecase on the rule, which would also loosen the words in the rate
+  # and multiplier tokens below.
+  #
+  # Time. Both micro signs: U+00B5 MICRO SIGN and U+03BC GREEK SMALL LETTER
+  # MU, which a keyboard and a paste produce respectively and which no
+  # reader tells apart.
+  - '\b\d[\d,.]*\s?(?i:ns|us|µs|μs|ms|sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days)\b'
+  # Size, binary and decimal, spelled or suffixed. A lone b or B is a byte
+  # count: "writes 3b" is the case a case-sensitive list missed.
+  - '\b\d[\d,.]*\s?(?i:b|kb|kib|mb|mib|gb|gib|tb|tib|pb|pib)\b'
+  - '\b\d[\d,.]*\s?(?i:bytes?|kilobytes?|megabytes?|gigabytes?|terabytes?)\b'
+  # A bare magnitude suffix on a count: 3M entries, 512k rows.
+  - '\b\d[\d,.]*(?i:k|m|g)\b'
+  # Per-operation and per-second rates.
+  - '\b\d[\d,.]*\s?(?i:ns|us|µs|μs|ms)/op\b'
+  - '\b\d[\d,.]*\s?(?i:[kmgt]?b)/s(?:ec)?\b'
+  - '\b\d[\d,.]*\s?(?i:rps|qps|iops|ops/s|ops/sec|req/s|reqs/s)\b'
   - '\b\d[\d,.]*\s+allocs?\b'
   - '\ballocs?/op\b'
-  - '\b\d[\d,.]*x\s+(?:faster|slower|cheaper|the)\b'
+  # A multiplier, with or without the word it compares.
+  - '\b\d[\d,.]*x\s+(?:faster|slower|cheaper|the|native|baseline)\b'
   - '\b-?\d[\d,.]*%\b'
-  - '\b\d[\d,.]*\s+(?:requests?|logins?|guesses)\s+(?:a|per)\s+(?:second|minute|hour|day)\b'
+  - '\b\d[\d,.]*\s+(?:requests?|logins?|guesses|queries|rows|entries|calls)\s+(?:a|per)\s+(?:second|minute|hour|day)\b'

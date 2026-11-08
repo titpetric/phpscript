@@ -9,19 +9,19 @@ import (
 )
 
 // A namespace binding is a binding area a script imports by name. The
-// installers in bindings.go are the surface every runtime carries; these are
+// installers in bindings.go are the surface every runtime has; these are
 // the ones a program opts into with `use Namespace`, and a runtime that saw no
 // such import answers for none of their names. An opt-in area stays out of
 // function_exists, get_defined_functions and the generated reference, where
 // stdlib.Mount's areas all appear.
 //
 // A namespace registers and resolves under a case-insensitive key, as every
-// other name PHP resolves does, and the import drops a leading separator:
+// other name PHP resolves does. The import drops a leading separator:
 // `use \Runtime\Go` and `use Runtime\Go` name the same namespace.
 //
 // The install outlives the program that imported it, and no call un-registers
-// a binding: a runtime serving a second program carries what the first one
-// imported. The parser decides the names a script may call, per file, and the
+// a binding: a runtime serving a second program keeps what the first one
+// imported. The parser decides the names a script may call, per file. The
 // import binds them there.
 
 // namespaces holds the installers contributed per namespace.

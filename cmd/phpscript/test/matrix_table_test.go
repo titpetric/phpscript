@@ -196,7 +196,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 }
 
 // TestMatrixDurationsSplitPerEngine covers the per-runner share the matrix
-// subtotal and summary lines carry after the wall-clock figure.
+// subtotal and summary lines print after the wall-clock figure.
 func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 	t.Parallel()
 	engines := []engineDuration{

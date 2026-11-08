@@ -5,6 +5,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -14,9 +15,9 @@ func init() {
 }
 
 // registerArraySets installs the array functions that build a new array from one
-// or two given ones. They read through model.RangeValues and a script can pass
-// either a PHP array or the native Go slice or map a binding returned, which is
-// what stdlib/ps/core/arrays.go does for the functions it carries.
+// or two given ones. They read through modelutil.RangeValues and a script can
+// pass either a PHP array or the native Go slice or map a binding returned, as
+// stdlib/ps/core/arrays.go does for the functions it installs.
 func registerArraySets(rt *runner.Runtime) {
 	// array_fill returns an array of $count copies of $value, keyed from
 	// $start_index upwards. A $count below zero clamps to the empty array, which
@@ -36,9 +37,9 @@ func registerArraySets(rt *runner.Runtime) {
 	// whose every value is $value; a key repeated in $keys lands once, as the
 	// later assignment overwrites the earlier.
 	rt.RegisterFunc("array_fill_keys", func(keys any, value any) *model.Array {
-		n, _ := model.LenValues(keys)
+		n, _ := modelutil.LenValues(keys)
 		out := model.NewArraySize(n)
-		model.RangeValues(keys, func(_, k any) bool {
+		modelutil.RangeValues(keys, func(_, k any) bool {
 			out.Set(phpval.Key(k), value)
 			return true
 		})
@@ -64,7 +65,7 @@ func registerArraySets(rt *runner.Runtime) {
 
 	// array_chunk splits $array into arrays of at most $length entries; it keys
 	// the chunks from zero either way, and $preserve_keys decides whether the
-	// entries inside them keep their own keys or get new ones from zero.
+	// entries inside a chunk keep their own keys or get new ones from zero.
 	rt.RegisterFunc("array_chunk", func(array any, length int64, preserve_keys ...bool) (*model.Array, error) {
 		if length < 1 {
 			return nil, errors.New("array_chunk(): Argument #2 ($length) must be greater than 0")
@@ -73,7 +74,7 @@ func registerArraySets(rt *runner.Runtime) {
 
 		out := model.NewArray()
 		var chunk *model.Array
-		model.RangeValues(array, func(k, v any) bool {
+		modelutil.RangeValues(array, func(k, v any) bool {
 			if chunk == nil {
 				chunk = model.NewArraySize(int(length))
 			}
@@ -132,12 +133,12 @@ func registerArraySets(rt *runner.Runtime) {
 		return edgeKey(array, false)
 	})
 
-	// array_is_list reports whether $array carries the integer keys 0 to
+	// array_is_list reports whether $array has the integer keys 0 to
 	// count-1 in that order, the shape of a list. An empty array is a list.
 	rt.RegisterFunc("array_is_list", func(array any) bool {
 		want := int64(0)
 		isList := true
-		model.RangeValues(array, func(k, _ any) bool {
+		modelutil.RangeValues(array, func(k, _ any) bool {
 			i, ok := phpval.Key(k).(int64)
 			if !ok || i != want {
 				isList = false
@@ -153,9 +154,9 @@ func registerArraySets(rt *runner.Runtime) {
 // valueList reads the values of an array in order. array_combine needs both
 // sides indexable at the same offset, which a range alone cannot do.
 func valueList(array any) []any {
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 	out := make([]any, 0, n)
-	model.RangeValues(array, func(_, v any) bool {
+	modelutil.RangeValues(array, func(_, v any) bool {
 		out = append(out, v)
 		return true
 	})
@@ -174,7 +175,7 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 		// present, is what lets intersect require every one of them from the
 		// same pass diff uses to require none.
 		inThis := make(map[string]bool)
-		model.RangeValues(other, func(_, v any) bool {
+		modelutil.RangeValues(other, func(_, v any) bool {
 			inThis[phpval.String(v)] = true
 			return true
 		})
@@ -184,7 +185,7 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 	}
 
 	out := model.NewArray()
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		if wanted(seen[phpval.String(v)], len(others), keep) {
 			out.Set(k, v)
 		}
@@ -214,7 +215,7 @@ func filterByKey(array any, others []any, keep bool) *model.Array {
 	seen := make(map[any]int, len(others))
 	for _, other := range others {
 		inThis := make(map[any]bool)
-		model.RangeValues(other, func(k, _ any) bool {
+		modelutil.RangeValues(other, func(k, _ any) bool {
 			inThis[phpval.Key(k)] = true
 			return true
 		})
@@ -224,7 +225,7 @@ func filterByKey(array any, others []any, keep bool) *model.Array {
 	}
 
 	out := model.NewArray()
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		if wanted(seen[phpval.Key(k)], len(others), keep) {
 			out.Set(k, v)
 		}
@@ -239,7 +240,7 @@ func filterByKey(array any, others []any, keep bool) *model.Array {
 func edgeKey(array any, first bool) any {
 	var found any
 	has := false
-	model.RangeValues(array, func(k, _ any) bool {
+	modelutil.RangeValues(array, func(k, _ any) bool {
 		found = k
 		has = true
 		return !first

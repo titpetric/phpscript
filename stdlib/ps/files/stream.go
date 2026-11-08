@@ -55,8 +55,8 @@ func registerStreams(rt *runner.Runtime, r root) {
 		return f, nil
 	})
 	// fwrite takes any writer, not just a handle fopen() produced: STDOUT and
-	// STDERR are the process's own streams, and a binding is free to hand PHP
-	// an io.Writer of its own.
+	// STDERR are the process's own streams. A binding may pass PHP its own
+	// io.Writer.
 	rt.RegisterFunc("fwrite", func(stream io.Writer, s string) any {
 		if stream == nil {
 			return false
@@ -130,7 +130,7 @@ type inputStream struct {
 // request answers with the buffered body, rewindable on every open as PHP
 // 5.6+ made it, while the CLI maps it onto stdin, a live stream a script
 // drains once. A staged body wins over the SAPI because the test harness
-// speaks as cli, the way the php column does, while still carrying the
+// speaks as cli, the way the php column does, while still holding the
 // request a fixture states; a cli run without one keeps its stdin.
 func inputSource(rt *runner.Runtime) io.Reader {
 	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {

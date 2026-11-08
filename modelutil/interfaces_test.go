@@ -1,4 +1,4 @@
-package model_test
+package modelutil_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 func iface(name string, extends []string, methods ...string) *model.InterfaceDecl {
@@ -90,7 +91,7 @@ func TestCheckInterfaces(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := model.CheckInterfaces(tc.stmts)
+			got := modelutil.CheckInterfaces(tc.stmts)
 			if len(got) != len(tc.want) {
 				t.Fatalf("violations = %v, want %v", got, tc.want)
 			}
@@ -102,7 +103,7 @@ func TestCheckInterfaces(t *testing.T) {
 					t.Errorf("violation[%d] carries no class declaration", i)
 				}
 			}
-			err := model.CheckInterfaceContracts(&model.Program{Stmts: tc.stmts})
+			err := modelutil.CheckInterfaceContracts(&model.Program{Stmts: tc.stmts})
 			if len(tc.want) == 0 {
 				if err != nil {
 					t.Fatalf("CheckInterfaceContracts = %v, want nil", err)
@@ -129,7 +130,7 @@ func TestInterfaceContractError(t *testing.T) {
 	t.Parallel()
 	stmts := []model.Stmt{iface("R", nil, "get", "has"), class("S", []string{"R"}, "get")}
 
-	err := model.CheckInterfaceContracts(&model.Program{Stmts: stmts})
+	err := modelutil.CheckInterfaceContracts(&model.Program{Stmts: stmts})
 	if err == nil {
 		t.Fatal("CheckInterfaceContracts answered nil for a violated contract")
 	}
@@ -235,7 +236,7 @@ func TestInterfaceNames(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := model.InterfaceNames(tc.decl, tc.stmts)
+			got := modelutil.InterfaceNames(tc.decl, tc.stmts)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("InterfaceNames() = %v, want %v", got, tc.want)
 			}

@@ -19,7 +19,7 @@ func Register(rt *runner.Runtime) {
 
 	// HTTP\Mux routes requests to the PHP functions that answer them. The mux is
 	// net/http's ServeMux and $mux->handle("GET /users/{id}", $fn) takes the
-	// patterns Go takes, and it calls a handler with the response writer and the
+	// patterns Go takes. It calls a handler with the response writer and the
 	// request themselves.
 	rt.RegisterConstructor("HTTP\\Mux", func() *Mux { return NewMux(rt) })
 

@@ -216,7 +216,7 @@ func TestJSONDecoder(t *testing.T) {
 }
 
 // TestJSONDecoder_Decode covers the shape an object decodes into: a
-// *model.Array carrying the document's own key order. json.Decoder.Decode would
+// *model.Array holding the document's own key order. json.Decoder.Decode would
 // build a Go map and lose it.
 func TestJSONDecoder_Decode(t *testing.T) {
 	t.Parallel()
@@ -247,8 +247,8 @@ func TestJSONDecoder_Decode(t *testing.T) {
 	}
 }
 
-// TestJSONDecoder_More covers what ends a decode loop. A null is a value JSON
-// carries and a loop testing what Decode answered would stop one value early;
+// TestJSONDecoder_More covers what ends a decode loop. A null is a legal JSON
+// value and a loop testing what Decode answered would stop one value early;
 // More reads the stream and not the value.
 func TestJSONDecoder_More(t *testing.T) {
 	t.Parallel()

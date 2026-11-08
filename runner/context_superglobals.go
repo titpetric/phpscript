@@ -7,6 +7,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner/mapmap"
 )
 
@@ -16,14 +17,11 @@ import (
 // context_body.go decode what they read.
 
 // Register seeds the request superglobals and puts the request itself on the
-// runtime context. After this, PHP reads $_GET, $_POST and
-// $_REQUEST from this Context, and the request-aware functions find it.
+// runtime context. After this, PHP reads $_GET, $_POST and $_REQUEST from this
+// Context, and the request-aware functions find it.
 //
-// stdlib/ps/http registers the functions themselves - getallheaders(), header(),
-// http_response_code(), setcookie() - and reaches this Context through
-// RequestContext at call time. That registration runs before this does,
-// because a host installs the standard library first and seeds the request
-// second; the indirection is what makes that order work either way.
+// stdlib/ps/http reaches this Context through RequestContext at call time.
+// Either order of registration works.
 func (c Context) Register(rt *Runtime) {
 	// The request has crossed into the runtime: fold its host-side size into
 	// the memory baseline for the rest of this request's lifetime.
@@ -165,10 +163,8 @@ func (s arraySource) Range(fn func(key string, value any) bool) bool {
 
 // ServerMap renders $_SERVER as a view over the request, with no array built.
 //
-// A read goes to the source, which is the request where there is one and a
-// script that reads a key or two copies nothing and one that reads none costs
-// no time at all. ServerMap seeds the two times because PHP answers them as
-// numbers and every other name as a string.
+// A read goes to the source. ServerMap seeds the two times because PHP answers
+// them as numbers and every other name as a string.
 func (c Context) ServerMap() *mapmap.MapMap {
 	src := c.ServerSource
 	if src == nil {
@@ -203,8 +199,8 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 // requestArrayInto renders $_REQUEST: the query, form and cookie fields merged in
 // PHP's default request order, with the route's path values written over them
 // last. The path values are the one deviation from PHP, whose $_REQUEST
-// carries no route parameters: a path parameter is request input here, and
-// it carries under PHP's name and nothing here spells a name PHP does not
+// holds no route parameters: a path parameter is request input here. It
+// lands under PHP's name and nothing here spells a name PHP does not
 // have. See the predefined-variables reference.
 //
 // Every entry is a copy. $_REQUEST is its own array in PHP and a write to it
@@ -220,7 +216,7 @@ func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 		mapToArray(c.Path),
 	} {
 		source.Range(func(key, val any) bool {
-			arr.Set(key, model.CopyValue(val))
+			arr.Set(key, modelutil.CopyValue(val))
 			return true
 		})
 	}

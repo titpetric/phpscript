@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // This file compiles the stores: assignment over every lvalue shape, the
@@ -16,7 +17,7 @@ import (
 // on the stack and takes the other.
 
 func (c *compiler) ensureContainer(expr model.Expr, path string) error {
-	switch node := model.UnwrapParenthesized(expr).(type) {
+	switch node := modelutil.UnwrapParenthesized(expr).(type) {
 	case *model.Var:
 		if nodeConst, ok := c.staticSlot(node.Name); ok {
 			c.emit(instruction{op: opStaticLoad, a: nodeConst, name: node.Name})
@@ -154,7 +155,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 		}
 		constructorID := ""
 		if operator == "" || operator == "=" {
-			if _, ok := model.UnwrapParenthesized(value).(*model.New); ok {
+			if _, ok := modelutil.UnwrapParenthesized(value).(*model.New); ok {
 				constructorID = target.Name
 			}
 		}
@@ -184,7 +185,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 // coalesceAssignment compiles `$a ??= b`: the target's value stays on the
 // stack when it holds something, and the store runs over the right side alone.
 func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
-	switch node := model.UnwrapParenthesized(target).(type) {
+	switch node := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:
 		if node.Index != nil {
 			return c.coalesceIndex(node, co, keep, path)
@@ -268,7 +269,7 @@ func (c *compiler) assignExprValue(node *model.AssignExpr, path string) error {
 	if node.Op == "" || node.Op == "=" {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)
 	}
-	switch target := model.UnwrapParenthesized(node.Target).(type) {
+	switch target := modelutil.UnwrapParenthesized(node.Target).(type) {
 	case *model.Index:
 		if target.Index == nil {
 			return unsupported(path, "append target of %q", node.Op)

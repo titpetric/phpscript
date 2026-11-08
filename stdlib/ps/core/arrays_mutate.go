@@ -5,6 +5,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // phpArrayMerge implements array_merge. PHP renumbers integer keys and lets
@@ -22,13 +23,13 @@ import (
 func phpArrayMerge(arrs ...any) any {
 	size := 0
 	for _, a := range arrs {
-		n, _ := model.LenValues(a)
+		n, _ := modelutil.LenValues(a)
 		size += n
 	}
 
 	out := model.NewArraySize(size)
 	for _, a := range arrs {
-		model.RangeValues(a, func(k, v any) bool {
+		modelutil.RangeValues(a, func(k, v any) bool {
 			if _, isInt := k.(int64); isInt {
 				out.Append(v)
 			} else {
@@ -43,8 +44,7 @@ func phpArrayMerge(arrs ...any) any {
 // phpArraySplice removes (and optionally replaces) a run of elements, returning
 // the removed ones as a []any. It resizes its argument, which a Go slice cannot
 // do through the interface holding it and this is one of the few shims that
-// genuinely requires a *model.Array. Passing anything else is an error rather
-// than a silent no-op.
+// genuinely requires a *model.Array. Passing anything else returns an error.
 func phpArraySplice(array any, offset int64, optional ...any) ([]any, error) {
 	a, ok := array.(*model.Array)
 	if !ok || a == nil {
@@ -119,7 +119,7 @@ func phpArraySpliceReplacement(rep any) []any {
 	if rep == nil {
 		return nil
 	}
-	if model.IsCollection(rep) {
+	if modelutil.IsCollection(rep) {
 		return phpval.Values(rep)
 	}
 	return []any{rep}

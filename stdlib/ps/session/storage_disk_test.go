@@ -103,8 +103,8 @@ func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 }
 
 // TestStorageDisk_DeleteByUser covers the sweep a removed account runs through
-// on disk. The walk reads each file because the payload is where the user is,
-// and it leaves a save's temporary file and a subdirectory alone, as Prune
+// on disk. The walk reads each file because the payload is where the user is.
+// It leaves a save's temporary file and a subdirectory alone, as Prune
 // does: a sweep running beside a save cannot take the file that save is about
 // to rename into place.
 func TestStorageDisk_DeleteByUser(t *testing.T) {

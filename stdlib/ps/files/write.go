@@ -33,7 +33,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 
 	// file_put_contents writes $data to $filename and returns the number of
 	// bytes written, or false on failure; FILE_APPEND appends in place of
-	// truncating, LOCK_EX does nothing, and it refuses a path outside
+	// truncating, LOCK_EX does nothing. It refuses a path outside
 	// writable_paths.
 	rt.RegisterFunc("file_put_contents", func(filename, data string, flags ...int64) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {

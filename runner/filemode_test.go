@@ -82,8 +82,8 @@ func TestFileModeYAML(t *testing.T) {
 	}
 }
 
-// TestFileMode_UnmarshalYAML covers the decoder hook on its own. The quotes a
-// document may carry are not part of the mode, and an unreadable mode leaves
+// TestFileMode_UnmarshalYAML covers the decoder hook by itself. The quotes a
+// document may use are not part of the mode, and an unreadable mode leaves
 // the field alone and a bad document cannot make a stored upload 0000.
 func TestFileMode_UnmarshalYAML(t *testing.T) {
 	t.Parallel()

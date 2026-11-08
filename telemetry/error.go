@@ -6,13 +6,8 @@ import (
 	"errors"
 )
 
-// Recordable reports whether an error is worth failing a span over. A query
-// that found no rows and a request the client hung up on are control flow, not
-// failures, and marking them would fail the trace and the recorded SLA with it.
-//
-// One answer serves a question every traced binding asks, so that a
-// cache miss and a canceled request read the same way on the front end whether
-// they came from a query or from session storage.
+// Recordable reports whether an error is worth failing a span over.
+// sql.ErrNoRows and context.Canceled are control flow and not failures.
 func Recordable(err error) bool {
 	switch {
 	case err == nil:

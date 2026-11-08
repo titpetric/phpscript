@@ -104,7 +104,7 @@ type multipartFile struct {
 	content  string
 }
 
-// multipartRequest builds a POST carrying a multipart/form-data body, the shape
+// multipartRequest builds a POST with a multipart/form-data body, the shape
 // a browser sends for a form with a file input.
 func multipartRequest(t *testing.T, values map[string]string, files ...multipartFile) *http.Request {
 	t.Helper()
@@ -393,7 +393,7 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 }
 
 // TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
-// "HTTP/1.0 404 Not Found" carries a status alone, with no name and no value,
+// "HTTP/1.0 404 Not Found" holds a status alone, with no name and no value,
 // and without this branch it falls out for want of a name:value shape.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
 	t.Parallel()
@@ -406,7 +406,7 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 		{header: `HTTP/1.1 204`, want: http.StatusNoContent},
 
 		// Not status lines. The first is a header named Status, and the rest
-		// name no status this response could carry.
+		// name no status this response could send.
 		{header: `Status: 404`, want: 0},
 		{header: `not a header at all`, want: 0},
 		{header: `HTTP/1.1 twenty`, want: 0},
@@ -427,9 +427,9 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 
 // TestHTTPResponseCode pins PHP's two answers. A web request starts out
 // answering 200 and there is always a status to report and always a previous
-// one to return. On the command line a script starts with none, which is
-// what the false and the true are: no status to report, and no previous status to
-// return for the first one set.
+// one to return. On the command line a script starts with none: false means
+// no status to report, and true means no previous status to return for the
+// first one set.
 //
 // json_encode keeps the types visible; phpscript has no var_dump.
 func TestHTTPResponseCode(t *testing.T) {
@@ -579,7 +579,7 @@ func TestFromRequestBracketNames(t *testing.T) {
 	}
 }
 
-// A cookie carries bracket syntax too, and Go leaves it percent-encoded.
+// A cookie name takes bracket syntax too, and Go leaves it percent-encoded.
 func TestFromRequestCookieBracketNames(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
@@ -653,10 +653,10 @@ func TestWithRoutePattern(t *testing.T) {
 }
 
 // TestRequestContext covers how a request-aware Go binding reaches the request:
-// Register puts the Context on the runtime's context, and the binding reads it
-// back off the context it holds. A context with no request answers false, which
-// is what a session binding gets on a CLI run and it reports the absence and
-// reads no zero Context as an empty request.
+// Register puts the Context on the runtime's context. The binding reads it
+// back off the context it holds. A context with no request answers false: a
+// session binding on a CLI run reports the absence and reads no zero Context
+// as an empty request.
 func TestRequestContext(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/?page=2", nil)
@@ -679,7 +679,7 @@ func TestRequestContext(t *testing.T) {
 
 // TestContext_AddResponseHeader covers the append, which is the half header()
 // does not do by default. Set-Cookie is the reason it exists: a response
-// setting two cookies carries the header twice, and a replace would send one.
+// setting two cookies sends the header twice. A replace would send one.
 func TestContext_AddResponseHeader(t *testing.T) {
 	t.Parallel()
 	ctx := runner.NewContext()
@@ -698,7 +698,7 @@ func TestContext_AddResponseHeader(t *testing.T) {
 }
 
 // TestContext_GetAllHeaders covers the array getallheaders() answers with. A
-// host-built context carries no request and answers an empty array, and a
+// host-built context has no request and answers an empty array, and a
 // script indexing the result on a CLI run reads a missing key and no error.
 func TestContext_GetAllHeaders(t *testing.T) {
 	t.Parallel()

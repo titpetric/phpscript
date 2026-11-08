@@ -22,6 +22,7 @@ env:
     GIT_BRANCH: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
     GIT_MODIFIED: $(git status --porcelain 2>/dev/null | wc -l)
 
+# docs/pipeline.md argues the coverage path and the order of the test flags.
 jobs:
   build:
     desc: "Build app"
@@ -44,9 +45,6 @@ jobs:
   fmt:
     desc: "Format the code"
     steps:
-      # One pass over a data model of the source: every import block grouped
-      # and ordered, an import nothing reaches taken out, and an import a
-      # name needs put in.
       - splint fix ./...
       - go mod tidy
 
@@ -74,13 +72,5 @@ jobs:
     passthru: true
     tty: true
     steps:
-      # Package list last: gotestsum hands everything after -- to go test, and
-      # -coverprofile writes nothing without a word of complaint when the list
-      # precedes the flags. The profile is what `atkins cover` reports from.
-      #
-      # Every .cov file this repository produces goes under cover/, Go and PHP
-      # alike, so one directory is the coverage artifact of a run. That is this
-      # repository's own, which is why the vendored copy differs from the one
-      # in $HOME: the other repositories read pkg.cov at their root.
       - mkdir -p cover
       - gotestsum -- -count 1 -cover -coverpkg=./... -coverprofile=cover/pkg.cov ./...

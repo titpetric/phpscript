@@ -91,7 +91,7 @@ func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
 		},
 		{
 			// fetch() sends */* and, on a browser that labels its fetches, a
-			// Sec-Fetch-Dest of empty. Either one is enough on its own.
+			// Sec-Fetch-Dest of empty. Either one is enough alone.
 			name:    "fetch",
 			headers: map[string]string{"Accept": "*/*", "Sec-Fetch-Dest": "empty"},
 			body:    "404 page not found\n",
@@ -230,8 +230,8 @@ func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
 	}
 }
 
-// TestErrorPageRunsOnce pins that a broken error page cannot dispatch one of its
-// own. A 500.php that throws reaches the log and the request falls back to the
+// TestErrorPageRunsOnce pins that a broken error page cannot dispatch a second
+// one. A 500.php that throws reaches the log and the request falls back to the
 // plain status, and dispatches no second 500.php behind it.
 func TestErrorPageRunsOnce(t *testing.T) {
 	t.Parallel()
@@ -315,8 +315,8 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 
 // TestErrorPageSeesTheRequestItAnswersFor pins the $_SERVER keys a page
 // reads. They are Apache's ErrorDocument names and a page written against
-// Apache works here, and they describe the request that failed and not the
-// page that is answering for it.
+// Apache works here. They describe the request that failed and not the page
+// that is answering for it.
 func TestErrorPageSeesTheRequestItAnswersFor(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -378,7 +378,7 @@ func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	}
 }
 
-// post issues one request carrying a body and returns what the handler wrote.
+// post issues one request with a body and returns what the handler wrote.
 func post(h http.Handler, target, contentType, body string, headers map[string]string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	r.Header.Set("Content-Type", contentType)
@@ -442,8 +442,8 @@ echo "no route";`)},
 
 // TestFailedScriptErrorPageHasNoBody pins the other half of the split. By the
 // time a failing script reaches an error page it has read the body itself,
-// leaving no body to pass on, and the page sees exactly that and never
-// a payload it cannot read.
+// leaving no body to pass on. The page sees exactly that and never a payload
+// it cannot read.
 func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -465,7 +465,7 @@ echo $_SERVER["REQUEST_METHOD"], "|",
 
 // TestUnroutedRequestKeepsItsUploads is the same rule for $_FILES. A multipart
 // POST to a URL no file backs reaches the page with its parts intact and a
-// router that handles uploads can live in 404.php.
+// router that handles uploads can run from 404.php.
 func TestUnroutedRequestKeepsItsUploads(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{

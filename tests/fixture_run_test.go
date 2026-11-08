@@ -14,7 +14,7 @@ func TestRunFixtureOnPHP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// exit(3) picks the process status, which is not a failure on its own.
+	// exit(3) picks the process status, which alone is not a failure.
 	res := RunFixtureOn(t.Context(), fx, RunnerPHP)
 	if !res.Passed {
 		t.Fatalf("fixture failed: %s", res.FailureReason)

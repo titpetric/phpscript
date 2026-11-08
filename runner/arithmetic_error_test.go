@@ -25,7 +25,7 @@ func TestArithmeticError(t *testing.T) {
 }
 
 // TestDivisionByZeroError covers the class intdiv() and `%` raise on a zero
-// divisor. PHP 8 made it a class of its own under Error and a script catching
+// divisor. PHP 8 made it a separate class under Error and a script catching
 // DivisionByZeroError takes it and one catching Exception does not.
 func TestDivisionByZeroError(t *testing.T) {
 	t.Parallel()

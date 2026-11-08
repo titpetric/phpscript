@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// goRun executes src on a runtime carrying the default surface, the surface
+// goRun executes src on a runtime with the default surface, the surface
 // the import adds to: Run installs what the source opted into.
 func goRun(t *testing.T, src string) (string, error) {
 	t.Helper()
@@ -38,10 +38,10 @@ func goOutput(t *testing.T, src, want string) {
 }
 
 // TestRegisterGo pins the opt-in: a runtime answers for none of go's names
-// until a program imports the namespace, and that keeps them out of
+// until a program imports the namespace. That keeps them out of
 // function_exists and the generated reference. After the import every name the
-// tables carry resolves qualified, and none of them resolves bare: binding the
-// short name is the parser's job, per file.
+// tables hold resolves qualified and no name resolves bare: binding the short
+// name is the parser's job, per file.
 func TestRegisterGo(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -53,14 +53,14 @@ func TestRegisterGo(t *testing.T) {
 	// What answers bare before the import: php's min, max and copy. The
 	// import may add no name to this set.
 	bare := map[string]bool{}
-	for _, name := range model.GoBuiltinNames() {
+	for _, name := range modelutil.GoBuiltinNames() {
 		bare[name] = rt.FunctionExists(name)
 	}
 
-	if !rt.UseNamespace(model.GoNamespace) {
+	if !rt.UseNamespace(modelutil.GoNamespace) {
 		t.Fatal("the import installed nothing")
 	}
-	for _, name := range model.GoBuiltinNames() {
+	for _, name := range modelutil.GoBuiltinNames() {
 		if !rt.FunctionExists(`Runtime\Go\` + name) {
 			t.Errorf(`Runtime\Go\%s does not resolve after the import`, name)
 		}
@@ -70,7 +70,7 @@ func TestRegisterGo(t *testing.T) {
 	}
 	// A go type is a class as well as a conversion: `new Go\int64(5)` allocates
 	// through the constructor and class_exists reads the same table.
-	for _, name := range model.GoTypeNames() {
+	for _, name := range modelutil.GoTypeNames() {
 		if _, ok := rt.LookupConstructor(`Runtime\Go\` + name); !ok {
 			t.Errorf(`Runtime\Go\%s is in no class table`, name)
 		}
@@ -88,7 +88,7 @@ $s = append(make([]string, 0, 2), "a");
 echo len($s), cap($s), $s[0], int8(300), "\n";
 `, "12a44\n")
 	}
-	// A class is an element type too. php carries an object in a value of any
+	// A class is an element type too. php holds an object in a value of any
 	// type, the element the slice holds and the one make zeroes it with.
 	goOutput(t, `<?php
 use Runtime\Go;
@@ -102,7 +102,7 @@ $users = append(make([]User, 1), new User());
 echo len($users), $users[1]->name, "\n";
 `, "2ada\n")
 	// `use function Ns\f;` imports the one name php says it does. The install
-	// reads the namespace the symbol sits in and the binding resolves; the
+	// reads the namespace of the symbol and the binding resolves; the
 	// rest of go's builtins stay unbound and a qualified call reaches them.
 	goOutput(t, `<?php
 use function Runtime\Go\make;
@@ -128,9 +128,9 @@ echo min(3, 1, 2), Runtime\Go\min(3, 1, 2), \min([3, 1, 2]), "\n";
 }
 
 // TestGoSlices covers make, append, len and cap over a go slice: the length and
-// the capacity are the ones make allocated, append fills within the capacity,
-// and a foreach reads the slice back by index. A slice of a sized width holds
-// typed values and an element reads back carrying the width.
+// the capacity are the ones make allocated and append fills within the
+// capacity. A foreach reads the slice back by index. A slice of a sized width
+// holds typed values and an element reads back with the width.
 func TestGoSlices(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -153,7 +153,7 @@ var_dump($w[0]);
 }
 
 // TestGoArrays covers the same builtins over php's own values: append writes
-// through the array handle a script holds, a null stands for go's empty slice,
+// through the array handle a script holds, a null is go's empty slice,
 // and len is go's, which counts a string's bytes.
 func TestGoArrays(t *testing.T) {
 	t.Parallel()
@@ -209,8 +209,8 @@ echo "\n";
 }
 
 // TestGoPrinting covers min, max, print, println and panic. go's print writes
-// to the stream echo writes to, not to stderr, and a panic is the exception a
-// php catch can see.
+// to the stream echo writes to, not to stderr. A panic is the exception a php
+// catch can see.
 func TestGoPrinting(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php

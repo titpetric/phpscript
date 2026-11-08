@@ -8,11 +8,12 @@ package maps
 import (
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Maps`
+const Namespace = modelutil.GoNamespace + `\Maps`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)
@@ -24,7 +25,7 @@ func name(fn string) string { return Namespace + `\` + fn }
 // The result is an array because the keys are the answer.
 func clone(m any) *model.Array {
 	out := model.NewArray()
-	model.RangeValues(m, func(k, v any) bool {
+	modelutil.RangeValues(m, func(k, v any) bool {
 		out.Set(phpval.Key(k), v)
 		return true
 	})
@@ -36,7 +37,7 @@ func Register(rt *runner.Runtime) {
 	// Runtime\Go\Maps\Keys returns the keys of $m in order.
 	rt.RegisterFunc(name("Keys"), func(m any) []any {
 		out := []any{}
-		model.RangeValues(m, func(k, _ any) bool { out = append(out, k); return true })
+		modelutil.RangeValues(m, func(k, _ any) bool { out = append(out, k); return true })
 		return out
 	})
 	// Runtime\Go\Maps\Values returns the values of $m in order.
@@ -60,7 +61,7 @@ func Register(rt *runner.Runtime) {
 	// Runtime\Go\Maps\Copy returns $dst with every entry of $src set over it.
 	rt.RegisterFunc(name("Copy"), func(dst, src any) *model.Array {
 		out := clone(dst)
-		model.RangeValues(src, func(k, v any) bool {
+		modelutil.RangeValues(src, func(k, v any) bool {
 			out.Set(phpval.Key(k), v)
 			return true
 		})

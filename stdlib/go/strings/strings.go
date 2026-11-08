@@ -7,7 +7,7 @@ package strings
 import (
 	gostrings "strings"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -15,7 +15,7 @@ import (
 const repeatLimit = 256 << 20
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Strings`
+const Namespace = modelutil.GoNamespace + `\Strings`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)

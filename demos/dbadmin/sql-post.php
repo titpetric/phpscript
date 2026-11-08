@@ -5,7 +5,7 @@
 include "bootstrap.php";
 $query = trim($_POST["query"]);
 if ($query == "") {
-	die("Enter a SQL statement.");
+	die("Empty query");
 }
 
 $result = sql_execute($db, $query);

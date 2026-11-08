@@ -90,7 +90,7 @@ func Register(rt *runner.Runtime) {
 		if a, ok := v.(*model.Array); ok {
 			return int64(a.Len())
 		}
-		n, _ := model.LenValues(v)
+		n, _ := modelutil.LenValues(v)
 		return int64(n)
 	})
 }`,
@@ -216,6 +216,38 @@ func Register(rt *runner.Runtime) {
 			want: "parameter $values is model.Collection",
 		},
 		{
+			name: "a parameter of the Go-native slice",
+			src: `package b
+func Register(rt *runner.Runtime) {
+	rt.RegisterFunc("f", func(names []string) int64 { return int64(len(names)) })
+}`,
+			want: "parameter $names is []string",
+		},
+		{
+			name: "a parameter of the Go-native map",
+			src: `package b
+func Register(rt *runner.Runtime) {
+	rt.RegisterFunc("f", func(options map[string]any) int64 { return int64(len(options)) })
+}`,
+			want: "parameter $options is map[string]any",
+		},
+		{
+			name: "a parameter of bytes is a php string",
+			src: `package b
+func Register(rt *runner.Runtime) {
+	rt.RegisterFunc("f", func(data []byte) int64 { return int64(len(data)) })
+}`,
+			want: "",
+		},
+		{
+			name: "a variadic parameter takes one value per argument",
+			src: `package b
+func Register(rt *runner.Runtime) {
+	rt.RegisterFunc("f", func(parts ...string) int64 { return int64(len(parts)) })
+}`,
+			want: "",
+		},
+		{
 			name: "a type switch whose only other case is a php string",
 			src: `package b
 func Register(rt *runner.Runtime) {
@@ -236,7 +268,7 @@ func Register(rt *runner.Runtime) {
 			src: `package b
 func Register(rt *runner.Runtime) {
 	rt.RegisterFunc("f", func(subject any, pairs any) int64 {
-		n, _ := model.LenValues(subject)
+		n, _ := modelutil.LenValues(subject)
 		a, ok := pairs.(*model.Array)
 		if !ok {
 			return int64(n)

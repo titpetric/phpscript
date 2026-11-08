@@ -78,7 +78,7 @@ func TestInvokeStringArgumentCoercion(t *testing.T) {
 
 // Both dispatch paths refuse a call passing more arguments than the binding
 // declares, as PHP refuses it for an internal function. reflect.Value
-// .Call panics on the same call, and the check has to run before either path.
+// .Call panics on the same call. The check runs before either path.
 func TestInvokeTooManyArguments(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -105,7 +105,7 @@ func TestInvokeTooManyArguments(t *testing.T) {
 // The two numbers in the refusal are the ones a script can act on: the
 // parameters it may fill and the arguments it wrote. A binding declaring the
 // runtime context arrives with it prepended, and the Go signature is one longer
-// for it, and a count carrying it names a limit the signature does not accept
+// for it, and a count including it names a limit the signature does not accept
 // and a call at that limit fails with the same message.
 func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
 	t.Parallel()
@@ -148,7 +148,7 @@ func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
 }
 
 // Fewer arguments than the binding declares stays legal: a Go binding spells
-// PHP's optional parameters as extra ones, and they are zero-padded.
+// PHP's optional parameters as extra ones and the runtime zero-pads them.
 func TestInvokeTooFewArgumentsPads(t *testing.T) {
 	t.Parallel()
 	out, err := runBinding(t, "shout", func(a, b string) string { return "[" + a + "|" + b + "]" }, `<?php echo shout("a");`)
@@ -162,7 +162,7 @@ func TestInvokeTooFewArgumentsPads(t *testing.T) {
 
 // A Go method reached through PHP follows the same argument rules as a
 // registered function: the method path refuses the surplus and panics nowhere
-// inside reflect.Value.Call, and the message names the method a script typed.
+// inside reflect.Value.Call. The message names the method a script typed.
 type counter struct{}
 
 func (counter) Add(a, b string) string { return a + b }
@@ -255,13 +255,13 @@ func runInstant(t *testing.T, src string) string {
 	return out.String()
 }
 
-// instant is what runInstant's prelude constructs, as a Go value, and a test
-// can state its expectation as time.Time's own rendering, and never by copying
+// instant is what runInstant's prelude constructs, as a Go value. A test
+// states its expectation as time.Time's own rendering, never by copying a
 // string out of a previous run.
 var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
 
 // A string passed to a Go API that declares time.Duration uses Go's duration
-// syntax. The rule lives at the shared reflection boundary, and automatically
+// syntax. The rule holds at the shared reflection boundary, and automatically
 // exposed methods such as time.Time.Add need no PHP-specific adapter.
 func TestInvokeMethodParsesDurationString(t *testing.T) {
 	t.Parallel()
@@ -515,15 +515,15 @@ func TestUndefinedFunctionMessage(t *testing.T) {
 }
 
 // The stub installed for an unknown name must not outlive the declaration of a
-// function by that name. Registering one moves the function-table generation,
-// and that rebuilds the evaluation environment, and the stub in it.
+// function by that name. Registering one moves the function-table generation.
+// That rebuilds the evaluation environment, and the stub in it.
 func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 
-	// The runtime compiles and runs the call site while the name is unknown,
-	// and the environment holds the stub before the declaration below runs.
+	// The runtime compiles and runs the call site while the name is unknown.
+	// The environment holds the stub before the declaration below runs.
 	miss, err := parser.Parse(`<?php try { greet(); } catch (Throwable $e) { echo "undefined\n"; }`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

@@ -291,8 +291,8 @@ $storage->get("missing");
 // The constructor counts its calls, and a compile that gave up after the `new`
 // had already run would report two.
 //
-// An anonymous class is the unsupported construct: the bytecode carries a
-// class name where one carries its declaration.
+// An anonymous class is the unsupported construct: the bytecode names a
+// class where one holds its declaration.
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php

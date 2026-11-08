@@ -13,7 +13,7 @@ phpscript accepts files containing PHP blocks and inline text. The closing tag i
 
 ## declare()
 
-phpscript parses `declare(strict_types=1);` and the other directives, then ignores them. No semantics sit behind them to select: phpscript does not coerce argument types at all and neither strict nor coercive typing changes what a call does. Files written for stock PHP parse and run unchanged.
+phpscript parses `declare(strict_types=1);` and the other directives, then ignores them. The directives select no semantics: phpscript does not coerce argument types at all and neither strict nor coercive typing changes what a call does. Files written for stock PHP parse and run unchanged.
 
 ```php
 <?php

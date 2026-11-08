@@ -89,9 +89,9 @@ func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 }
 
 // callResolved invokes a function-table hit: lean when the entry's invoker
-// declares no context, through a materialised scope when it does. The
-// panic boundary, the argument-count check and the memory burst guard all
-// sit in invokeEntry either way.
+// declares no context, through a materialised scope when it does. invokeEntry
+// holds the panic boundary, the argument-count check and the memory burst
+// guard either way.
 func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any, error) {
 	if !entry.invoker().wantsCtx {
 		result, err := h.runtime.invokeEntry(entry, args, nil)
@@ -115,7 +115,7 @@ func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 // CallableValue takes `greet(...)` and `$fn(...)`, php 8.1's first-class
 // callable syntax over a name or a value, through the interpreter's resolution.
 //
-// A name the flat compiler declared sits in the function table too - runFlat
+// A name the flat compiler declared is in the function table too - runFlat
 // hoists before it runs - so the Closure resolves here and the body it names
 // runs on the interpreter when something calls the value, the way a callable
 // held in a value already does.
@@ -127,7 +127,7 @@ func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 }
 
 // CallableMember takes `$obj->method(...)` and `Class::method(...)`. The frame
-// snapshot is what carries `this` across, as it does for a static call.
+// snapshot forwards `this`, as it does for a static call.
 func (h *flatHost) CallableMember(target any, method any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallableMember(&scopeRef{scope: scope})(target, method)
@@ -138,7 +138,7 @@ func (h *flatHost) CallableMember(target any, method any) (any, error) {
 // CallStatic dispatches `Class::method(args...)` through the interpreter's
 // resolution: host statics, then a declared PHP method with the current
 // `$this` forwarded for the `self::` instance-call form. The frame snapshot
-// is what carries `this` across.
+// forwards `this`.
 func (h *flatHost) CallStatic(class string, method any, args []any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperStaticCall(&scopeRef{scope: scope})(class, method, args...)

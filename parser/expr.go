@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Expression parsing uses precedence climbing. The table below mirrors the
@@ -114,7 +115,7 @@ func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line
 	if op != "??=" {
 		return p.newAssignExpr(target, op, value, line), nil
 	}
-	if index, ok := model.UnwrapParenthesized(target).(*model.Index); ok && index.Index == nil {
+	if index, ok := modelutil.UnwrapParenthesized(target).(*model.Index); ok && index.Index == nil {
 		return nil, fmt.Errorf("line %d: ??= reads its target and [] cannot be read", line)
 	}
 	co := &model.Coalesce{Left: target, Right: value, Assign: true}
@@ -123,7 +124,7 @@ func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line
 
 // isLValue reports whether an assignment may target e.
 func isLValue(e model.Expr) bool {
-	switch model.UnwrapParenthesized(e).(type) {
+	switch modelutil.UnwrapParenthesized(e).(type) {
 	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp, *model.ListExpr:
 		return true
 	}
@@ -298,7 +299,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
 // `!` and `!$e instanceof Foo` negates the test and never tests the
-// negation and it sits below parseUnary. A bare class name on the
+// negation and its level is below parseUnary. A bare class name on the
 // right takes a qualification, the same resolution `new` and a static call get and a
 // `use` alias and an unqualified name inside a namespace reach the runtime
 // fully qualified. Any other operand - a variable, a parenthesized
@@ -327,7 +328,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 
 // parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
 // minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
-// exponent (`2 ** -1`, `2 ** 3 ** 2`) and it sits between
+// exponent (`2 ** -1`, `2 ** 3 ** 2`) and its level is between
 // parseUnary and parsePostfix, and not in the binPrec table.
 func (p *parser) parsePow() (model.Expr, error) {
 	base, err := p.parsePostfix()
@@ -384,7 +385,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				continue
 			}
 			// `$obj->{expr}(...)` calls the method the expression names and
-			// `$obj->{expr}` reads the property it names. The braces carry a
+			// `$obj->{expr}` reads the property it names. The braces hold a
 			// name no plain variable can spell since PHP 7:
 			// `$obj->{$calls["read"]}()` is the method `$calls` holds, where
 			// the unbraced form would subscript a property.
@@ -610,7 +611,7 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 			if err != nil {
 				return nil, err
 			}
-			return p.newCall(model.GoNamespace+`\`+name, name, args), nil
+			return p.newCall(modelutil.GoNamespace+`\`+name, name, args), nil
 		}
 		args, firstClass, err := p.parseCallArgs()
 		if err != nil {
@@ -626,7 +627,7 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 			if folded, ok := p.goFold(name, args); ok {
 				return folded, nil
 			}
-			call = p.newCall(model.GoNamespace+`\`+name, name, args)
+			call = p.newCall(modelutil.GoNamespace+`\`+name, name, args)
 		case !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\'):
 			call = p.newCall(p.qualify(name, false), name, args)
 		default:
@@ -841,8 +842,8 @@ func (p *parser) parseNew() (model.Expr, error) {
 // the runtime registers and reaches the declaration exactly like a written class, and
 // only the parser knows the difference. The spelling follows PHP's, which also
 // synthesizes a name and a script that prints get_class() sees something of the
-// same shape. The parser collects the declarations on the program because they sit in
-// an expression, where nothing walking statements would find them.
+// same shape. The parser collects the declarations on the program because they
+// occur in an expression, where nothing walking statements would find them.
 //
 // The arguments come before the heritage, as in PHP: `new class ($dsn)
 // implements Reader { ... }` passes $dsn to __construct.
@@ -889,8 +890,8 @@ func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
 // atFirstClassMarker reports whether the argument list starting at the current
 // token is exactly `(...)`. The lexer has no ellipsis token - a variadic
 // parameter reads three `.` operators in parseParamDecoration - and `.` is
-// string concatenation and one match takes the whole five-token shape rather
-// than consumed one token at a time and backed out of.
+// string concatenation and one match reads all five tokens before the parser
+// consumes any.
 func (p *parser) atFirstClassMarker() bool {
 	return p.isOpAt(0, "(") && p.isOpAt(1, ".") && p.isOpAt(2, ".") && p.isOpAt(3, ".") && p.isOpAt(4, ")")
 }

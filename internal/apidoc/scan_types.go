@@ -187,7 +187,7 @@ func recvTypeName(t ast.Expr) string {
 }
 
 // funcResultTypeName returns the type name of a declaration's first result,
-// for a constructor whose class doc lives on the type.
+// for a constructor whose class doc is on the type.
 func funcResultTypeName(decl *ast.FuncDecl) string {
 	if decl.Type.Results == nil || len(decl.Type.Results.List) == 0 {
 		return ""

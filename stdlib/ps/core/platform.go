@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -20,7 +20,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Platform`, registerPlatform)
 }
 
-// This file carries the platform surface a PHP program written for stock PHP
+// This file holds the platform surface a PHP program written for stock PHP
 // reads before it does anything else: the PHP_* constants, the
 // reflection-ish helpers (get_class, method_exists), the ini/filter stubs, and
 // the SPL exception hierarchy.
@@ -109,10 +109,10 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(runner.UploadErrCantWrite))
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
-	// E_ALL is not every bit set: php 8 dropped E_STRICT (2048) from it and it
-	// is 30719 here and in php 8, where php 7 reported 32767. The difference is
-	// only visible once a script can write E_ALL & ~E_NOTICE, which needs the
-	// bitwise operators.
+	// E_ALL is not every bit set: php 8 dropped E_STRICT (2048) from it,
+	// leaving 30719 here and in php 8, where php 7 reported 32767. The
+	// difference is only visible once a script can write E_ALL & ~E_NOTICE,
+	// which needs the bitwise operators.
 	rt.SetConst("E_ALL", int64(30719))
 	rt.SetConst("E_ERROR", int64(1))
 	rt.SetConst("E_WARNING", int64(2))
@@ -332,7 +332,7 @@ func phpStrtr(subject string, args ...any) string {
 	}
 	// The pairs are whatever collection a script passed: the array a literal
 	// builds, and the map or slice another binding returned.
-	count, ok := model.LenValues(args[0])
+	count, ok := modelutil.LenValues(args[0])
 	if !ok {
 		return subject
 	}
@@ -340,7 +340,7 @@ func phpStrtr(subject string, args ...any) string {
 	// replacement is order-independent and never rewrites its own output.
 	keys := make([]string, 0, count)
 	replacements := make(map[string]string, count)
-	model.RangeValues(args[0], func(key, val any) bool {
+	modelutil.RangeValues(args[0], func(key, val any) bool {
 		text := phpval.String(key)
 		if text == "" {
 			return true

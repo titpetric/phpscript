@@ -31,7 +31,7 @@ func TestRunFindings(t *testing.T) {
 	if !strings.Contains(out.String(), "count_array: parameter $array is *model.Array") {
 		t.Errorf("stdout names no finding:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "5 bindings point at a runtime value type") {
+	if !strings.Contains(out.String(), "6 bindings reach one shape of a script value") {
 		t.Errorf("stdout carries no total:\n%s", out.String())
 	}
 

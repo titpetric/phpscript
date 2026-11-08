@@ -28,8 +28,8 @@ func phpFnmatch(pattern, str string, flags ...any) bool {
 	if len(flags) > 0 {
 		mode = phpval.Int(flags[0])
 	}
-	// Folding both sides once is cheaper than folding per byte comparison,
-	// and it folds the pattern's bracket expressions along with everything
+	// Folding both sides once is cheaper than folding per byte comparison.
+	// It folds the pattern's bracket expressions along with everything
 	// else, which a per-byte comparison would have to do by hand.
 	if mode&fnmCasefold != 0 {
 		pattern = strings.ToLower(pattern)

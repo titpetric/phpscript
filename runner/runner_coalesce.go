@@ -2,13 +2,14 @@ package runner
 
 import (
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // coalesceAssign stores value where target reads null, as `$target ??= value`,
 // and answers what the target holds afterwards. It resolves the target once:
 // `$a[k()] ??= 1` calls k once, as php does.
 func (rt *Runtime) coalesceAssign(target, value model.Expr, scope *Scope) (any, error) {
-	switch tgt := model.UnwrapParenthesized(target).(type) {
+	switch tgt := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:
 		if tgt.Index != nil {
 			return rt.coalesceIndex(tgt, value, scope)

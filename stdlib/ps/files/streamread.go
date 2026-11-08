@@ -17,8 +17,8 @@ import (
 // host file: reading a whole file and splitting it costs less here, and a
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
-	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
-	// Go's io package and fseek passes the argument through as it arrives and
+	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, as Go's io
+	// package does, and fseek passes the argument through as it arrives and
 	// never translates it.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))

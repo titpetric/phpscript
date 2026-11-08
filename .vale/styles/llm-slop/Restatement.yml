@@ -5,20 +5,25 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bwhich is (?:what|why|where|how|the point|the reason|exactly)\b'
-  - '\band that is (?:what|why|the point)\b'
-  - '\bthat is (?:what|why) (?:makes|keeps|lets|gives)\b'
-  - '\bwhich is the (?:whole|entire) (?:point|reason)\b'
-  - '\bwhich is itself\b'
-  - '\bthe (?:whole|entire) point\b'
-  - '\bthat is the point\b'
-  - '\bthe point (?:is|being)\b'
-  - '\bthe reason (?:is|being) that\b'
-  - '\bin other words\b'
-  - '\bput (?:another way|differently)\b'
-  - '\bto be clear\b'
+  - '\bwhich\s+is\s+(?:what|why|where|how|the\s+point|the\s+reason|exactly)\b'
+  - '\band\s+that\s+is\s+(?:what|why|the\s+point)\b'
+  - '\bthat\s+is\s+(?:what|why)\s+(?:makes|keeps|lets|gives)\b'
+  - '\bwhich\s+is\s+the\s+(?:whole|entire)\s+(?:point|reason)\b'
+  - '\bwhich\s+is\s+itself\b'
+  - '\bthe\s+(?:whole|entire)\s+point\b'
+  - '\bthat\s+is\s+the\s+point\b'
+  - '\bthe\s+point\s+(?:is|being)\b'
+  - '\bthe\s+reason\s+(?:is|being)\s+that\b'
+  - '\bin\s+other\s+words\b'
+  - '\bput\s+(?:another\s+way|differently)\b'
+  - '\bto\s+be\s+clear\b'
   # "the answer" renames a return value the sentence already gave. A trailing
   # ", the answer X gives" is an appositive on a complete sentence; cut it.
-  - '\bthe answers?\b'
-  - '\bthe return value is\b'
-  - '\bwhat it comes down to\b'
+  - '\bthe\s+answers?\b'
+  - '\bthe\s+return\s+value\s+is\b'
+  - '\bwhat\s+it\s+comes\s+down\s+to\b'
+  # A trailing "whichever" clause naming the alternatives the sentence just
+  # named: ", whichever shape it names" after "a parameter naming one shape
+  # refuses the other". A bound keeps it - "30 seconds or 100 rows, whichever
+  # comes first" names a limit - so the token needs the pronoun subject.
+  - ',\s+whichever\s+\w+\s+(?:it|they|one)\s+\w+'

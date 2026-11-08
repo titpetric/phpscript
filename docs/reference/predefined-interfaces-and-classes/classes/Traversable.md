@@ -6,7 +6,7 @@
 
 Interface to detect whether a class is traversable using `foreach`.
 
-This is an abstract base interface. No class implements it on its own: a class reaches it by implementing [Iterator](Iterator.md) or [IteratorAggregate](IteratorAggregate.md), both of which extend it. Every class PHP considers iterable answers `instanceof Traversable`.
+This is an abstract base interface. No class implements it directly: a class reaches it by implementing [Iterator](Iterator.md) or [IteratorAggregate](IteratorAggregate.md), both of which extend it. Every class PHP considers iterable answers `instanceof Traversable`.
 
 ## Interface synopsis
 

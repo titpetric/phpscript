@@ -139,8 +139,8 @@ func TestCoalesceAssignLowersToAssignment(t *testing.T) {
 }
 
 // TestParenthesesOverridePrecedence covers the escape from the table: a
-// parenthesized group folds first whatever the levels say, and the parser
-// keeps the node so the formatter prints the parentheses the author wrote.
+// parenthesized group folds first whatever the levels say. The parser keeps
+// the node so the formatter prints the parentheses the author wrote.
 func TestParenthesesOverridePrecedence(t *testing.T) {
 	t.Parallel()
 	e := expression(t, `(1 + 2) * 3`)
@@ -185,7 +185,7 @@ func TestAssignmentIsRightAssociative(t *testing.T) {
 	}
 }
 
-// TestIsLValue covers what may sit on the left of an expression-level
+// TestIsLValue covers what may appear on the left of an expression-level
 // assignment: a variable, an index, a property, a static property and list(),
 // and nothing computed. A call result has nowhere to store a value and
 // accepting one would build a tree the runner cannot execute.

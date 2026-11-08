@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestInfo covers the sentinel the four fields carry. A build with no ldflags
+// TestInfo covers the sentinel the four fields hold. A build with no ldflags
 // behind it fills Commit, CommitTime and Branch with "unknown", and a line
 // reading "Commit: unknown" is noise and Run prints each of the three only
 // when it holds something else. The version line is always printed, because
@@ -28,7 +28,7 @@ func TestInfo(t *testing.T) {
 
 // TestRun covers the VCS block an injected build prints. Run cuts the commit
 // to twelve characters, the width of a git short hash and the column does not
-// carry forty characters nobody compares by eye. The full hash stays in the
+// hold forty characters nobody compares by eye. The full hash stays in the
 // Info; the cut touches the printed form alone.
 func TestRun(t *testing.T) {
 	out := render(t, Info{
@@ -62,7 +62,7 @@ func TestRun(t *testing.T) {
 // TestNewCommand covers where the command reads its figures from. Build is a
 // package variable main fills before it builds any command and the Run closure
 // reads it at call time and takes no argument for it: build information
-// describes the binary, and neither the configuration nor a flag carries it.
+// describes the binary, and neither the configuration nor a flag holds it.
 func TestNewCommand(t *testing.T) {
 	command := NewCommand(nil, nil)
 

@@ -16,7 +16,7 @@
 
 A Go host installs these arrays when it creates and registers a request context. Their values are ordinary phpscript arrays, while their reserved names remain visible in function scopes like PHP superglobals.
 
-A context built from an HTTP request fills what that request carries. A context built without one, as the `phpscript` CLI and a startup job build it, installs the same arrays empty, and a script reads them without failing on an undefined name.
+A context built from an HTTP request fills what that request sent. A context built without one, as the `phpscript` CLI and a startup job build it, installs the same arrays empty. A script reads them without failing on an undefined name.
 
 ## `$_GET`
 
@@ -56,7 +56,7 @@ if ($file["error"] === 0) {
 | `error`     | `UPLOAD_ERR_OK` (0), or 1, 4, 6, 7 for a part nothing stored. |
 | `size`      | Bytes written to `tmp_name`.                                  |
 
-A field named `files[]` collects every file sent under it, and its entry holds one array per key, not one value: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent under it, the way a repeated form value assigns over the one before it.
+A field named `files[]` collects every file sent under it. Its entry holds one array per key, not one value: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent under it, the way a repeated form value assigns over the one before it.
 
 The temporary copy lives for the duration of one request; a host handler removes it after writing the response. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce, as does `is_uploaded_file()`. Both arrive with the rest of the filesystem shims and the destination resolves against the same root.
 
@@ -64,11 +64,11 @@ A stored upload takes the `upload_file_mode` of the runner, `0644` by default, b
 
 ### Size limits
 
-`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them; see [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored and its entry carries `UPLOAD_ERR_INI_SIZE` and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all and both `$_POST` and `$_FILES` are empty.
+`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them; see [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored and its entry holds `UPLOAD_ERR_INI_SIZE` and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all and both `$_POST` and `$_FILES` are empty.
 
-An entry for a part nothing stored, for any of the error codes, describes only what the client sent: `name` and `full_path` carry it, `type` and `tmp_name` are empty and `size` is `0`.
+An entry for a part nothing stored, for any of the error codes, describes only what the client sent: `name` and `full_path` hold it, `type` and `tmp_name` are empty and `size` is `0`.
 
-Neither is catchable: they happen before the script runs. The runner reports why to the Go host through `Runtime.RecordError`; see [Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
+Neither limit is catchable: they happen before the script runs. The runner reports why to the Go host through `Runtime.RecordError`; see [Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
 
 PHP's per-form `MAX_FILE_SIZE` field is unavailable. The `UPLOAD_ERR_FORM_SIZE` and `UPLOAD_ERR_PARTIAL` constants exist, and no upload produces either one.
 
@@ -78,7 +78,7 @@ Contains one value per cookie sent with the request, keyed by cookie name. Setti
 
 ## `$_SERVER`
 
-Contains the part of PHP's server array that an HTTP request answers for on its own:
+Contains the part of PHP's server array that the request alone answers for:
 
 | Key                                             | Value                                                             |
 |-------------------------------------------------|-------------------------------------------------------------------|
@@ -121,9 +121,9 @@ Contains the query, form and cookie fields merged the way PHP's default `request
 $id = $_REQUEST["id"];
 ```
 
-The path values are the one divergence from PHP, whose `$_REQUEST` carries no route parameters: a path parameter is request input here, and it arrives under PHP's own name. A request field spelled like a path parameter is overwritten by it and `/users/42?id=abc` answers `"42"`.
+The path values are the one divergence from PHP, whose `$_REQUEST` lists no route parameters: a path parameter is request input here. It arrives under PHP's own name. A request field spelled like a path parameter is overwritten by it and `/users/42?id=abc` answers `"42"`.
 
-`$_REQUEST` is its own array, as in PHP: writing to it changes none of the arrays merged into it, and their writes do not appear in it.
+`$_REQUEST` is its own array, as in PHP: writing to it changes none of the arrays merged into it. Writes to those arrays do not appear in it.
 
 The path values arrive in `$_REQUEST`. There is no `$_PATH`.
 

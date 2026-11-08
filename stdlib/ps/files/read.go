@@ -41,7 +41,7 @@ func registerReads(rt *runner.Runtime, r root) {
 
 	// file_get_contents returns the contents of $filename as a string, or
 	// false on failure; php://input is the raw request body (stdin under the
-	// cli SAPI), and it looks for a relative path in the source filesystem
+	// cli SAPI). It looks for a relative path in the source filesystem
 	// first, then on the host.
 	rt.RegisterFunc("file_get_contents", func(filename string) any {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
@@ -113,7 +113,7 @@ func (r root) sourceFS() iofs.FS {
 }
 
 // statSource stats a script-supplied path in the source filesystem, and reports
-// the absence of that filesystem, or of a way to name the path inside it, as a
+// the absence of that filesystem, or of a way to name the path in it, as a
 // miss. A miss is not an answer: every caller falls through to the host.
 func (r root) statSource(p string) (iofs.FileInfo, error) {
 	source := r.sourceFS()

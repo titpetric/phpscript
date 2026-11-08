@@ -63,7 +63,7 @@ func RegisterRandom(rt *runner.Runtime) {
 const randMax = 2147483647
 
 // uniformInt64 picks from [min, max] inclusive. The span max-min+1 overflows
-// int64 when the bounds cover most of the type's range and big.Int carries it;
+// int64 when the bounds cover most of the type's range and big.Int holds it;
 // rand.Int does the rejection sampling that keeps the pick unbiased.
 func uniformInt64(name string, min, max int64) (int64, error) {
 	if min == max {

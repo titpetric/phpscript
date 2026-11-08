@@ -55,14 +55,8 @@ func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string
 }
 
 // DefaultStoragePath answers the directory a Session\Storage\Disk named no path
-// writes to, for an application rooted at dir.
-//
-// The leaf is a digest of the absolute root and two roots cannot collide and
-// the same root answers the same directory across restarts. An empty dir keeps
-// the bare directory, and prune() skips subdirectories.
-//
-// What a shared directory did to a virtual-host server is docs/security.md,
-// "Isolation between sites".
+// writes to, for an application rooted at dir. The leaf digests the absolute
+// root and two roots cannot collide. See docs/security.md on site isolation.
 func DefaultStoragePath(dir string) string {
 	base := filepath.Join(os.TempDir(), "phpscript-sessions")
 	if dir == "" {
@@ -176,7 +170,7 @@ func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 
 // DeleteByUser removes every session file holding userID, counting what it
 // took. The walk reads each session because the payload is the only place the
-// user appears: a file carries its session id as its name alone.
+// user appears: a file's name is its session id alone.
 func (s *StorageDisk) DeleteByUser(ctx context.Context, userID string) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err

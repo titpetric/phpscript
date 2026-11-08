@@ -14,13 +14,13 @@ $request_start_time = microtime(true);
 $db = new Database("dbadmin");
 $tpl = new MiniTPL\Template;
 
-// The user database is the .htpasswd file in this directory, and the session
-// is a cookie over it. Both are the defaults, and neither constructor names
-// one: the manager reads .htpasswd and keeps sessions on disk, and a reload
-// leaves everybody signed in.
+// The user database is the .htpasswd file in this directory. The session is a
+// cookie over it. Both are the defaults and neither constructor names one: the
+// manager reads .htpasswd and keeps sessions on disk, which leaves everybody
+// signed in across a reload.
 //
 // No password and no hash appears in this application. The runtime reads the
-// file, authenticate() answers a record or nothing, and a session carries the
+// file and authenticate() answers a record or nothing. The session holds the
 // user's id.
 $session = new Session\Manager;
 $auth = new Auth\Storage\PasswordFile;
@@ -32,10 +32,10 @@ $auth = new Auth\Storage\PasswordFile;
 $tpl->add_default("username", "");
 $tpl->add_default("user_id", "");
 
-// The sign-in and sign-out forms carry this token in a hidden field, and the
+// The sign-in and sign-out forms hold this token in a hidden field, and the
 // same value travels in a cookie; csrf_check() accepts a post only when the
-// two halves agree. A default, because the sign-out form sits in the header
-// of every page.
+// two halves agree. A default, because header.tpl renders the sign-out form on
+// every page.
 $tpl->add_default("csrf", csrf_token());
 
 /**
@@ -56,11 +56,11 @@ function require_login($session, $db, $tpl) {
 }
 
 /**
- * The signed-in user's row, read by the id the session carries.
+ * The signed-in user's row, read by the id the session holds.
  *
  * The id is a ULID computed from the username, and the user table is a view of
  * the password file and this is an ordinary primary-key read. A session whose
- * account the file has since dropped resolves to nothing, and the header
+ * account the file has since dropped resolves to nothing, and header.tpl
  * prints the id in place of a name.
  */
 function current_user($db, $session) {
@@ -83,22 +83,27 @@ function format_memory_bytes($bytes) {
 	return $bytes . " B";
 }
 
-function render_footer_stats() {
-	global $request_start_time;
-	$duration = microtime(true) - $request_start_time;
+/**
+ * The footer's render time and heap use, measured from $start_time.
+ *
+ * The caller passes the start time. `global` parses here and binds nothing
+ * (docs/design.md), and the subtraction against an unset name printed the
+ * epoch as the duration.
+ */
+function render_footer_stats($start_time) {
+	$duration = microtime(true) - $start_time;
 	$memory = memory_get_usage();
-	return sprintf("page rendered in %.4f seconds, used %s memory", $duration, format_memory_bytes($memory));
+	return sprintf("%.4f s · %s", $duration, format_memory_bytes($memory));
 }
 
 /**
  * The visitor's form token: the value of the csrf cookie, or a fresh one the
- * response stages as that cookie when the request carries none.
+ * response stages as that cookie when the request sends none.
  *
  * The pair is the double-submit pattern. A page on another origin can neither
- * read the cookie nor set it, and it cannot write a form whose hidden field
- * matches, and the token needs no store on the server. HttpOnly holds,
- * because the server renders the token into the form and no script reads the
- * cookie.
+ * read the cookie nor set it nor write a form whose hidden field matches. The
+ * token needs no store on the server. HttpOnly holds, because the server
+ * renders the token into the form and no script reads the cookie.
  */
 function csrf_token() {
 	if (isset($_COOKIE["csrf"]) && preg_match("/^[0-9a-f]{32}$/", $_COOKIE["csrf"]) == 1) {
@@ -112,8 +117,8 @@ function csrf_token() {
 
 /**
  * Whether the posted csrf field agrees with the csrf cookie. A post missing
- * either half fails, and the comparison is hash_equals, which says where the
- * two differ and no more.
+ * either half fails. The comparison is hash_equals, which reports that the two
+ * differ and not where.
  */
 function csrf_check() {
 	if (!isset($_COOKIE["csrf"]) || !isset($_POST["csrf"]) || $_COOKIE["csrf"] == "") {
@@ -124,7 +129,7 @@ function csrf_check() {
 }
 
 // There is no h() here, and no template names an escape filter: minitpl
-// escapes by markup context on its own, and a value crossing a second escaper
+// escapes by markup context unprompted, and a value crossing a second escaper
 // reaches the page as &amp;quot; where a quote belongs. The three templates
 // that show a null marker spell it themselves.
 function identifier_ok($name) {
@@ -133,7 +138,7 @@ function identifier_ok($name) {
 
 function qi($name) {
 	if (!identifier_ok($name)) {
-		die("Invalid SQL identifier.");
+		die("Invalid SQL identifier");
 	}
 
 	return "\"" . $name . "\"";
@@ -141,12 +146,12 @@ function qi($name) {
 
 function table_info($db, $table) {
 	if (!identifier_ok($table)) {
-		die("Invalid table name.");
+		die("Invalid table name");
 	}
 
 	$found = $db->get("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name = ? AND name NOT LIKE 'sqlite_%'", $table);
 	if (!$found) {
-		die("Table not found.");
+		die("Table not found");
 	}
 
 	return $found;
@@ -173,16 +178,16 @@ function csv_cell($value) {
 /**
  * Runs a console statement and returns the message, rows and column names.
  *
- * query() reports success as a boolean, and this function reads statements
- * that return rows with get_all() instead. Rows arrive as maps without a column order;
- * this sorts the names to keep the rendered table stable between requests.
+ * query() reports success as a boolean. get_all() reads a statement that
+ * returns rows and answers maps without a column order; this sorts the names to
+ * keep the rendered table stable between requests.
  */
 function sql_execute($db, $query) {
 	$prefix = strtolower(ltrim($query));
 	$returns_rows = strpos($prefix, "select") === 0 || strpos($prefix, "pragma") === 0 || strpos($prefix, "with") === 0 || strpos($prefix, "explain") === 0;
 	if (!$returns_rows) {
 		$db->query($query);
-		return array("message" => "Statement executed successfully.", "rows" => array(), "result_columns" => array());
+		return array("message" => "Statement executed", "rows" => array(), "result_columns" => array());
 	}
 
 	$rows = $db->get_all($query);
@@ -192,5 +197,5 @@ function sql_execute($db, $query) {
 		sort($result_columns);
 	}
 
-	return array("message" => "Query completed; " . count($rows) . " row(s) returned.", "rows" => $rows, "result_columns" => $result_columns);
+	return array("message" => count($rows) . " row(s)", "rows" => $rows, "result_columns" => $result_columns);
 }

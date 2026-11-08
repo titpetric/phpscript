@@ -21,7 +21,7 @@ Installing `Runtime.OnError` changes that propagation: the runtime passes each n
 
 Some failures belong to the request and not to the script: a body larger than `post_max_size`, a file part larger than `upload_max_filesize`. They happen before the first statement runs and there is no statement to wrap in `try`/`catch` and nothing throws. All a script sees is the result: an empty `$_POST` and `$_FILES`, or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`.
 
-A Go host sees the reason. `Runtime.RecordError` is where they arrive, and it does two things with each: records it on the trace of the request, where it shows up in the debug front end under a `php error` span, and passes it to a handler installed with `Runtime.OnError`. `Context.Errors` holds the same list, for a host that would rather answer the request itself, with a 413 say, than run the script at all.
+A Go host sees the reason. `Runtime.RecordError` is where they arrive. It does two things with each: records it on the trace of the request, where it shows up in the debug front end under a `php error` span, and passes it to a handler installed with `Runtime.OnError`. `Context.Errors` holds the same list, for a host that would rather answer the request itself, with a 413 say, than run the script at all.
 
 ```go
 rt.OnError(func(err error) { log.Printf("request: %v", err) })

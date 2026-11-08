@@ -5,17 +5,18 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // This file holds the direct compiler's operator sub-compilers: an
 // interpolated string, which is a compiled concatenation, the unary operators
-// and the binary operators. The dispatcher that reaches them lives in
+// and the binary operators. The dispatcher that reaches them is in
 // direct.go.
 
 // compileInterp compiles an interpolated string to one closure that writes
 // every part into a single builder. This compiles the parts once and an
 // embedded expression costs what the same expression costs anywhere else and
-// the literal pays no dispatch of its own per execution.
+// the literal pays no dispatch per execution.
 //
 // The builder is what a fold over Concat cannot do: a chain of pairwise
 // concatenations allocates an intermediate string per part, where this
@@ -53,9 +54,9 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 	case "!", "~", "-", "+":
 	case "++", "--":
 		// The value comes from the live scope at evaluation time and not
-		// from the slot snapshot, and the target is a general lvalue:
-		// the mark re-enters the runtime, exactly as the transpiled form
-		// does through __eval.
+		// from the slot snapshot. The target is a general lvalue: the mark
+		// re-enters the runtime, exactly as the transpiled form does
+		// through __eval.
 		return dc.markCall(n), nil
 	default:
 		return nil, fmt.Errorf("transpile: unsupported operator %q", n.Op)
@@ -109,7 +110,7 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
 	// `instanceof` with a bare name on the right names the class, and no
 	// constant to resolve.
 	if n.Op == "instanceof" {
-		if v, ok := model.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
+		if v, ok := modelutil.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
 			l, err := dc.compile(n.Left)
 			if err != nil {
 				return nil, err

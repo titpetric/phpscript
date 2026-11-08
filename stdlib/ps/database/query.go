@@ -11,13 +11,13 @@ import (
 // parsing SQL: the keyword the statement starts with, and the comment a caller
 // tagged it with.
 type queryInfo struct {
-	// Type is the leading keyword, lowercased: "select", "insert", "drop". It
-	// is empty when the statement holds nothing but comments, or starts with
-	// something that is not a word.
+	// Type is the leading keyword, lowercased: "select", "insert", "drop".
+	// Type stays empty when the statement holds nothing but comments, or
+	// starts with something that is not a word.
 	Type string
 
 	// Comment is the text of the first /* */ comment preceding the keyword,
-	// trimmed: `/* userGet */ select ...` carries "userGet".
+	// trimmed: `/* userGet */ select ...` reads as "userGet".
 	Comment string
 }
 

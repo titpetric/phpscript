@@ -42,7 +42,7 @@ func TestRegisterNamespace(t *testing.T) {
 // TestUseNamespace covers what an import does to a runtime. An import that
 // names no contributed namespace leaves the surface alone, an import that
 // names one runs the installer, and a second import of the same namespace
-// runs it no further time. The surface a runtime carries before the import is
+// runs it no further time. The surface a runtime has before the import is
 // the guarantee the mechanism exists for.
 func TestUseNamespace(t *testing.T) {
 	installs := 0

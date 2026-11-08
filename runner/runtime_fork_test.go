@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// forkParent is a runtime that has run src and it holds the declarations a fork
-// carries over.
+// forkParent returns a runtime that has run src, holding the declarations a
+// fork replays.
 func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -25,10 +25,9 @@ func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	return rt, &out
 }
 
-// TestRuntime_Fork covers what a fork carries and what it does not. It carries
-// the symbols the tree declared and the same function is callable on the child,
-// and none of the execution: a fork is safe on a goroutine of its own, which is
-// the whole reason it exists.
+// TestRuntime_Fork covers what a fork holds and what it does not. It holds the
+// symbols the tree declared and the same function is callable on the child. The
+// execution state stays behind: a fork runs safely on a separate goroutine.
 func TestRuntime_Fork(t *testing.T) {
 	t.Parallel()
 	parent, _ := forkParent(t, `<?php function twice($n) { return $n * 2; } $x = 7;`)
@@ -107,12 +106,11 @@ func TestRuntime_SetPreparer(t *testing.T) {
 }
 
 // TestRuntime_InvokeClosure covers the re-entry a host callback needs. The
-// declaration is AST and it runs on whichever runtime the caller holds, and it
+// declaration is AST and it runs on whichever runtime the caller holds. It
 // gets a scope holding its arguments alone.
 //
 // The declaration comes off the parse tree and not out of a script variable:
-// a *model.Closure is what the method takes, and that is the form a host
-// holding one has.
+// the method takes a *model.Closure, the form a host holding one has.
 func TestRuntime_InvokeClosure(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php $f = function ($n) { return $n + 1; };`)

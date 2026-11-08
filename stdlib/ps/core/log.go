@@ -25,8 +25,8 @@ func init() {
 // no error log.
 func registerLog(rt *runner.Runtime) {
 	// error_log records $message where the host is listening: on the trace of
-	// the request in flight, through the handler a Go host installed, and
-	// on the process error stream when neither is there. It returns true. php
+	// the request in flight, through the handler a Go host installed, and on
+	// the process error stream when both are missing. It returns true. php
 	// also takes $message_type, $destination and $additional_headers to
 	// choose between destinations; those are not implemented.
 	rt.RegisterFunc("error_log", func(message string) bool {

@@ -5,9 +5,27 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bnothing (?:more|else|at all)\b'
-  - '\b(?:there|here) (?:is|was|are) nothing\b'
-  - '\bnothing (?:to|but) (?:do|say|see|it)\b'
-  - '(?:^|[.!?]\s+)nothing\b'
+  - '\bnothing\s+(?:more|else|at\s+all)\b'
+  - '\b(?:there|here)\s+(?:is|was|are)\s+nothing\b'
+  - '\bnothing\s+(?:to|but)\s+(?:do|say|see|it)\b'
+  # A sentence opening on the word, which is the form that asserts an absolute
+  # instead of naming what does not happen.
+  #
+  # The `^` alternative stood here and had to go. Inside a comment vale
+  # anchors `^` at a line start, not a sentence start, so a wrapped sentence
+  # whose continuation line opened on the word matched. Demonstrated: the
+  # identical sentence fired on
+  #
+  #	// A reports what the linter found and the rest of the run reports
+  #	// nothing. That is one sentence wrapped across two lines.
+  #
+  # and passed on
+  #
+  #	// B says it on one line and reports nothing. That is the same sentence.
+  #
+  # Ten of these in splint alone, every one of them the middle of a sentence.
+  # RE2 cannot tell the two anchors apart, so the token takes the full stop
+  # and leaves a paragraph's first word alone.
+  - '[.!?]\s+nothing\b'
   - '\bnothing:\s'
   - ':\s*nothing\b'

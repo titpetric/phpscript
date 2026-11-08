@@ -1,8 +1,4 @@
-# The example application runs as the compose service `example`, which
-# publishes no port, so the suite is pointed at the container address. atkins
-# resolves $(...) itself before bash sees it, so the lookup is written as a
-# pipeline of xargs instead of command substitution.
-
+# Resolves the address of the compose service `example` and runs venom there.
 vars:
   compose: ../../../compose.yml
   address: "{{range .NetworkSettings.Networks}}http://{{.IPAddress}}:8080{{end}}"
@@ -21,7 +17,7 @@ tasks:
         | xargs --no-run-if-empty -I {} venom run venom.yml --var=host={}
 
   restart:
-    desc: "Reload the service so edited PHP sources are picked up"
+    desc: "Reload the service to read the edited PHP sources"
     cmds:
       - docker compose -f ${{ compose }} restart example
       - docker compose -f ${{ compose }} exec example true

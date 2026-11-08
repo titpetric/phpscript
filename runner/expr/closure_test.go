@@ -9,8 +9,8 @@ import (
 )
 
 // TestEnv covers the split the evaluation environment keeps. A per-expression
-// value sits in Vars at the slot the compiler assigned to its identifier, and
-// everything persistent sits in Base under its name. A registered function is
+// value goes in Vars at the slot the compiler assigned to its identifier, and
+// everything persistent goes in Base under its name. A registered function is
 // a Base entry with the variadic signature the compiled call reads it through,
 // and the compiler lists the names Eval installs there.
 func TestEnv(t *testing.T) {
@@ -58,7 +58,7 @@ func TestEnv(t *testing.T) {
 	}
 }
 
-// TestHelpers covers the dispatch the helper table carries: the compiled
+// TestHelpers covers the dispatch through the helper table: the compiled
 // chain holds the typed implementation for the operator it compiled and calls
 // it with the operands themselves, with no []any slice between them. One
 // operator reaches one field and a table filled for three operators records

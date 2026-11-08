@@ -10,7 +10,7 @@ import (
 
 // TestExprCache_GetExpr covers the read side of the per-node cache. The key is
 // node identity and no structural equality: SetExpr keys off the AST a program
-// holds, and that AST is the one Eval walks again and two equal nodes written
+// holds. That AST is the one Eval walks again and two equal nodes written
 // in two places are two entries. A nil cache answers a miss, which lets a
 // runtime with no cache run an expression without a check at every lookup.
 func TestExprCache_GetExpr(t *testing.T) {
@@ -88,7 +88,7 @@ func TestExprCache_EnsureFlat(t *testing.T) {
 // The benchmarks below pin the cost of the expression engine: compilation
 // and Eval per node shape. They are the before/after evidence for any engine
 // change; docs/allocation-performance.md describes how to take a run and
-// carries the measured history, including the expr-lang engine these
+// holds the measured history, including the expr-lang engine these
 // replaced.
 
 // benchExprRuntime builds a runtime with a small function table: names that

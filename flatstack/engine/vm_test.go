@@ -79,7 +79,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 	return host.echoed
 }
 
-// The locals snapshot the host holds predates the call and it still carries
+// The locals snapshot the host holds predates the call and it still keeps
 // the value the out parameter replaces. Writing it back would undo the write
 // and leave a reused $m holding the first call's matches.
 func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
@@ -91,7 +91,7 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 	`, map[string]func(*refTestHost, []any){
 		"preg_match_all": func(h *refTestHost, args []any) {
 			// Two calls in sequence and the second one writes a slot the
-			// snapshot already carries a value for.
+			// snapshot already holds a value for.
 			if _, ok := h.locals["m"]; ok {
 				setRef("second")(h, args)
 				return
@@ -167,7 +167,7 @@ func TestVMRefMarksArePerFrame(t *testing.T) {
 // release has to zero the whole backing array, not just the live prefix. The
 // pool holds the buffers for the life of the process and a value left above
 // the high-water mark of a later, smaller program would stay reachable
-// through the pool, and the collector would never free it.
+// through the pool. The collector would never free it.
 func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	st := &execState{
 		stack:       make([]any, 0, 8),
@@ -265,7 +265,7 @@ func (h *memoryTestHost) CheckMemory() error {
 }
 
 // TestMemoryHost covers the accounting hook the VM calls on a host that limits
-// memory. The VM reads the interval once per run, and it decides how often
+// memory. The VM reads the interval once per run. It sets how often
 // CheckMemory runs; the walker stays registered for the length of the run and
 // comes off on the way out and nothing walks the pooled state it closes over
 // past its release. The walk reaches the frame's initialised locals, where a
@@ -320,7 +320,7 @@ func (h *deadlineTestHost) CheckDeadline() error {
 // TestDeadlineHost covers the deadline hook. The interval is a constant in
 // the engine and not something the host settles once per run, because a
 // script can call set_time_limit after the run started. A run that answers
-// nil carries on to the end and the cost of a script with no limit and no
+// nil continues to the end and the cost of a script with no limit and no
 // client is the call itself.
 func TestDeadlineHost(t *testing.T) {
 	t.Parallel()

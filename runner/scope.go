@@ -10,9 +10,9 @@ type envContextKey struct{}
 
 // Scope is a flat variable table for one execution frame.
 //
-// PHP has no block scoping: variables introduced inside if/for/foreach bodies
-// live in the enclosing function scope. Each function call gets a fresh Scope;
-// the file body runs in the global Scope.
+// PHP has no block scoping: the enclosing function scope holds variables
+// introduced inside if/for/foreach bodies. Each function call gets a fresh
+// Scope; the file body runs in the global Scope.
 //
 // There is intentionally no `global` keyword implemented.
 type Scope struct {
@@ -69,8 +69,7 @@ func (s *Scope) Set(name string, val any) {
 	s.vars[name] = val
 }
 
-// Unset removes name from the frame, leaving a static's stored value as PHP
-// does.
+// Unset removes name from the frame, keeping a static's value as PHP does.
 func (s *Scope) Unset(name string) {
 	delete(s.statics, name)
 	delete(s.vars, name)
@@ -102,10 +101,10 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-// contextWithScope carries to a span the calling frame, and the file and line
-// to attribute it to, as the fields of one bindingCtx in place of three
-// context.WithValue layers. Bindings take rt.bindingContext, which picks the
-// request as the base while one is live; this one keeps the base the caller
+// contextWithScope returns a context holding the calling frame, and the file
+// and line to attribute a span to, as the fields of one bindingCtx in place of
+// three context.WithValue layers. Bindings take rt.bindingContext, which picks
+// the request as the base while one is live; this one keeps the base the caller
 // chose, for the trace region that must stay on the session chain.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	c := &bindingCtx{Context: ctx, scope: scope, env: rt.Env}

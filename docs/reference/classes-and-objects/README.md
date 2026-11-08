@@ -5,7 +5,7 @@
 | Classes, properties, methods   | Partial compatibility | The runtime supports basic declarations, construction, `$this`, fields, and method calls.                                                                                        |
 | Constructors                   | Compatibility         | The runtime calls `__construct` when present.                                                                                                                                    |
 | Class constants                | Compatibility         | The runtime supports declaration and `Class::NAME` access.                                                                                                                       |
-| Visibility, final, abstract    | Not enforced          | The parser accepts modifiers, which carry no PHP semantics.                                                                                                                      |
+| Visibility, final, abstract    | Not enforced          | The parser accepts modifiers, which have no PHP semantics.                                                                                                                       |
 | Inheritance                    | Partial compatibility | `extends` names a parent that a catch clause and `instanceof` filter on; a class receives no member through it.                                                                  |
 | Interfaces and traits          | Partial compatibility | `interface` declarations and `implements` are a contract: a class must declare every method its interfaces name, and inherits nothing from them. Traits are unavailable.         |
 | Static methods                 | Compatibility         | The runtime supports `Class::method()`, `self::method()` and `static::method()`.                                                                                                 |
@@ -37,11 +37,11 @@ $user = new User("Ada");
 echo $user->label();
 ```
 
-A class declares a property with `var` or with a visibility modifier, and the declaration may carry a type hint, but visibility is not enforced and the type is not checked.
+A class declares a property with `var` or with a visibility modifier, and the declaration may include a type hint, but visibility is not enforced and the type is not checked.
 
 ## Static members
 
-A `static` property is storage on the class, not on an instance. Every instance, and every static call, reads and writes the same value, and it outlives the object that first set it.
+A `static` property is storage on the class, not on an instance. Every instance, and every static call, reads and writes the same value. The value outlives the object that first set it.
 
 ```php
 class Registry
@@ -62,7 +62,7 @@ echo count(Registry::all());          // 1
 echo Registry::class;                 // Registry
 ```
 
-`self::` and `static::` both resolve to the class of the running method. There is no inheritance: late static binding has nothing to bind late to, and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()` and the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound inside it, as in PHP.
+`self::` and `static::` both resolve to the class of the running method. There is no inheritance: late static binding has nothing to bind late to, and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()` and the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound in its body, as in PHP.
 
 `new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-build recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, which is the one class either keyword could ever name here.
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Compare is PHP 8's <=>, which sort() and rsort() order by, answering -1, 0 or
@@ -85,11 +86,11 @@ func comparableArray(v any) (*model.Array, bool) {
 		return x, x != nil
 	case nil, bool, int, int64, float64, string:
 		// The values a sort sees most of the time, answered before
-		// model.IsCollection reaches for reflect.
+		// modelutil.IsCollection calls reflect.
 		return nil, false
 	}
-	if model.IsCollection(v) {
-		return model.ToArray(v), true
+	if modelutil.IsCollection(v) {
+		return modelutil.ToArray(v), true
 	}
 	return nil, false
 }
@@ -231,7 +232,7 @@ func phpNumeric(v any) (phpNum, bool) {
 	}
 	// A typed go value compares as the number it holds: int8(1) < 2 reads one
 	// number against another, and the width decides nothing about the order.
-	if widened, ok := model.GoWiden(v); ok {
+	if widened, ok := modelutil.GoWiden(v); ok {
 		return phpNumeric(widened)
 	}
 	return phpNum{}, false

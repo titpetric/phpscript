@@ -170,8 +170,8 @@ func TestFlatstackRefusesParent(t *testing.T) {
 }
 
 // TestFlatstackDestructuringTargetKind pins the wording of a rejected
-// destructuring target: storeTop serves both foreach and list(), and used to
-// report a foreach for either one.
+// destructuring target: storeTop serves both foreach and list() and names
+// the one the program wrote.
 func TestFlatstackDestructuringTargetKind(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

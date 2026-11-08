@@ -36,7 +36,7 @@ echo implode(",", $lines);`)
 }
 
 // TestExecReportsTheExitStatus covers a command that ran and failed: it has a
-// status to report and $result_code carries it and the return is the empty
+// status to report and $result_code holds it and the return is the empty
 // string a command printing nothing answers with. The status is a separate
 // output because a caller reading the return alone cannot tell a failure from
 // a command that printed nothing.
@@ -68,9 +68,9 @@ echo "[", implode("|", $padded), "][", count($empty), "]";`)
 }
 
 // TestSystemWritesAsItArrives covers what separates system() from exec(): the
-// output reaches the page while the command runs, and the return is still the
-// last line. A command that takes a while is one whose output a page wants
-// before it finishes.
+// output reaches the page while the command runs. The return is still the last
+// line. A command that takes a while is one whose output a page wants before it
+// finishes.
 func TestSystemWritesAsItArrives(t *testing.T) {
 	t.Parallel()
 	out := run(t, "", `<?php
@@ -82,9 +82,9 @@ echo "[", $last, "][", $code, "]";`)
 	}
 }
 
-// TestPassthruWritesBytesThrough covers the one to reach for when the output
-// is binary: the bytes arrive untouched, with no line splitting to trim them,
-// and the return is null and the status is the only thing to read. The same
+// TestPassthruWritesBytesThrough covers the one to call when the output is
+// binary: the bytes arrive untouched, with no line splitting to trim them. The
+// return is null and the status is the only thing to read. The same
 // bytes through exec() lose the trailing space exec() strips per line.
 func TestPassthruWritesBytesThrough(t *testing.T) {
 	t.Parallel()
@@ -115,10 +115,10 @@ echo "[", $text, "][", ($quiet === null ? "null" : "value"), "]";`)
 }
 
 // TestCommandsRefuseAnEmptyCommandLine covers the guard in front of every one
-// of them: an empty command names nothing to run and none of them starts a
-// shell. Each reports what it reports for a command it could not start, false
-// for the three and null for shell_exec. php 8 raises ValueError here and a
-// script written against php sees a return where it would see a throw.
+// of them: an empty command names nothing to run and no binding starts a shell.
+// Each reports what it reports for a command it could not start, false for the
+// three and null for shell_exec. php 8 raises ValueError here and a script
+// written against php sees a return where it would see a throw.
 func TestCommandsRefuseAnEmptyCommandLine(t *testing.T) {
 	t.Parallel()
 	out := run(t, "", `<?php

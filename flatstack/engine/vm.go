@@ -9,13 +9,14 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // scriptExit is what an exit() looks like from here.
 //
 // The concrete type is runner.ExitError, which this package cannot name:
-// runner imports this one. The method is the seam, and it carries the status
-// so a future caller needing the code has it without another interface.
+// runner imports this one. The method is the seam. It returns the status so a
+// future caller needing the code has it without another interface.
 type scriptExit interface {
 	ScriptExit() int
 }
@@ -24,7 +25,7 @@ type scriptExit interface {
 // former vmScratch buffers, the error handlers, the call frames and the pc
 // live here so the run loop's helpers are methods and not closures: a
 // closure capturing a loop variable by reference forces that variable onto
-// the heap on every Run, and this loop holds five of them.
+// the heap on every Run. This loop holds five of them.
 type execState struct {
 	program *Program
 	host    Host
@@ -272,7 +273,7 @@ func (st *execState) handle(runErr error) bool {
 }
 
 // enterUserFrame pushes a call frame for def and binds the arguments: the
-// receiver into paramSlots[0] when the def carries one, the positionals in
+// receiver into paramSlots[0] when the def takes one, the positionals in
 // order, and the leftovers into a trailing variadic collector as an array:
 // an empty one when the caller stops short of it, which is bindParams'
 // answer too. An argument the caller did not pass leaves its slot cold and
@@ -381,7 +382,7 @@ type callFrame struct {
 
 	// iterators is the caller's live foreach state. The compiler numbers
 	// iterators per function and a callee reuses the numbers its caller is
-	// standing in, and a recursive call reuses them exactly. Saving the slice
+	// using, and a recursive call reuses them exactly. Saving the slice
 	// here and handing the callee an empty one stops the call from closing a
 	// foreach the caller has in flight.
 	iterators []*iteratorState
@@ -556,7 +557,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	memInterval, memTick := 0, 0
 	if hasMemHost {
 		memInterval = memHost.MemoryCheckInterval()
-		// The pooled state carries its walker, armed once per state and
+		// The pooled state holds its walker, armed once per state and
 		// registration allocates nothing after the state's first use.
 		memHost.PushLiveWalker(st.walker)
 		defer memHost.PopLiveWalker()
@@ -579,8 +580,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				deadlineTick = 0
 				if timeErr := deadlineHost.CheckDeadline(); timeErr != nil {
 					// Not offered to st.handle: running out of time is not a
-					// condition the script gets to catch and carry on from,
-					// because there is no more time to carry on with.
+					// condition the script gets to catch and resume from,
+					// because no time remains.
 					return timeErr
 				}
 			}
@@ -664,7 +665,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				updated, binaryErr := host.Binary(operator, current, value)
 				if binaryErr != nil {
 					// A compound assignment can fail the same way the binary
-					// operator can ($x >>= -1), and the error is as catchable.
+					// operator can ($x >>= -1). The error is as catchable.
 					if st.handle(binaryErr) {
 						continue
 					}
@@ -1085,8 +1086,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 		case opRef:
 			// The setter writes the frame holding the call; a user function
-			// called before the setter runs installs its own st.locals, and
-			// this one keeps pointing at the caller's.
+			// called before the setter runs installs its own st.locals. This
+			// one keeps pointing at the caller's.
 			if st.refWrites == nil {
 				st.refWrites = make([]bool, len(st.locals))
 			}
@@ -1135,8 +1136,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 			method := inst.name
 			if inst.b != 0 {
-				// `$obj->$m(...)`: the method name value sits between the
-				// receiver and the arguments.
+				// `$obj->$m(...)`: the stack holds the method name value
+				// between the receiver and the arguments.
 				nameValue, popErr := st.pop()
 				if popErr != nil {
 					return popErr
@@ -1357,7 +1358,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			if popErr != nil {
 				return popErr
 			}
-			st.stack = append(st.stack, model.CopyValue(value))
+			st.stack = append(st.stack, modelutil.CopyValue(value))
 		case opIterClose:
 			if inst.a < len(st.iterators) {
 				st.iterators[inst.a] = nil
@@ -1540,7 +1541,7 @@ func loadLocal(host Host, program *Program, locals []any, initialized []bool, ex
 //
 // captured is the snapshot taken at the closure value's construction. Each
 // call gets a fresh frame seeded with it and one call cannot see another's
-// writes, and the closure keeps working after its defining frame returns.
+// writes. The closure keeps working after its defining frame returns.
 func closureValue(program *Program, host Host, def closureDef, captured []localSeed) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
@@ -1633,7 +1634,7 @@ func fastBinary(class int, left, right any) (any, bool) {
 
 // applyNamedValues writes host-visible variables back into their slots. A slot
 // marked in refWrites keeps what the by-reference setter put there: names is a
-// snapshot from before the call and it still carries the old value. A name the
+// snapshot from before the call and it still holds the old value. A name the
 // compiler never saw goes to extras, which this function makes on first use
 // and returns to the caller.
 func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) map[string]any {

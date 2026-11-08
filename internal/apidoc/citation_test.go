@@ -11,7 +11,7 @@ import (
 
 // TestCitation covers the four spellings one citation answers in: the
 // qualified Go symbol a description cites, the selector source writes, the
-// markdown link, and the name an implements clause carries.
+// markdown link, and the name an implements clause prints.
 func TestCitation(t *testing.T) {
 	t.Parallel()
 	c := Citation{
@@ -58,7 +58,7 @@ func TestCitation_Short(t *testing.T) {
 }
 
 // TestCitation_Link covers the one rule on links: a standard library symbol
-// carries its reference page and the listing names every other symbol bare,
+// links its reference page and the listing names every other symbol bare,
 // because no page exists to point a reader at.
 func TestCitation_Link(t *testing.T) {
 	t.Parallel()
@@ -68,7 +68,7 @@ func TestCitation_Link(t *testing.T) {
 	}
 }
 
-// TestCitation_Clause covers the name an implements clause carries: the PHP
+// TestCitation_Clause covers the name an implements clause prints: the PHP
 // spelling when a script can type one, the Go selector otherwise.
 func TestCitation_Clause(t *testing.T) {
 	t.Parallel()
@@ -120,7 +120,7 @@ func TestCite(t *testing.T) {
 }
 
 // TestIsStdlib covers the test that separates a standard library import path
-// from a module one: the first element of a module path carries a dot, the test
+// from a module one: the first element of a module path holds a dot, the test
 // the go command applies.
 func TestIsStdlib(t *testing.T) {
 	t.Parallel()
@@ -139,6 +139,6 @@ func TestIsStdlib(t *testing.T) {
 	}
 }
 
-// citedLocal is a type this module declares. It cites itself and carries no
-// link.
+// citedLocal is a type this module declares. It cites itself and links
+// nowhere.
 type citedLocal struct{}

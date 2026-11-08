@@ -137,8 +137,8 @@ var_dump(property_exists("Site", "greeting"));`)
 }
 
 // TestSPLObjectIdentity covers the identity php exposes, which is opaque and
-// stable for as long as the object is alive, and that is the only guarantee php
-// makes either. Two objects differ, one object reads the same twice, and the
+// stable for as long as the object is alive. That is the only guarantee php
+// makes either. Two objects differ, one object reads the same twice; the
 // hash is the id in the 32 hex digits php writes it in.
 func TestSPLObjectIdentity(t *testing.T) {
 	t.Parallel()

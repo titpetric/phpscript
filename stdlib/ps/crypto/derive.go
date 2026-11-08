@@ -52,7 +52,7 @@ func bcryptRevision(hash string) bool {
 		strings.IndexByte("abxy", hash[2]) >= 0 && hash[3] == '$'
 }
 
-// bcryptCost is the cost a stored hash carries, and an error for a
+// bcryptCost is the cost a stored hash records, and an error for a
 // string the library cannot read.
 func bcryptCost(hash string) (int, error) {
 	return bcrypt.Cost([]byte(hash))
@@ -62,12 +62,12 @@ func bcryptCost(hash string) (int, error) {
 //
 // bcrypt.Cost reads the revision and the cost digits and stops and a hash whose
 // body is not bcrypt's base64 parses, reports a cost and then refuses every
-// password. Checking the body tells a user database that such a line carries
-// damage, where the cost alone would read as a wrong password.
+// password. Checking the body tells a user database to refuse such a line,
+// where the cost alone would read as a wrong password.
 //
 // The width is exact because the format is: 7 bytes of prefix, 22 of salt and
 // 31 of tag, over an alphabet that is bcrypt's own and not standard base64.
-// The prefix carries a revision marker bcryptRevision reads and a line the
+// The prefix holds a revision marker bcryptRevision reads and a line the
 // parse accepts is one the dispatch would also verify.
 func bcryptEncoded(hash string) bool {
 	const (

@@ -8,7 +8,7 @@ import (
 )
 
 // browserHeaders is what an ordinary browser sends. The count is what matters:
-// a request carries a dozen or so, and an eager decode would copy each one
+// a request holds a dozen or so, and an eager decode would copy each one
 // into $_SERVER under its HTTP_ name even when the script reads none.
 var browserHeaders = map[string]string{
 	"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

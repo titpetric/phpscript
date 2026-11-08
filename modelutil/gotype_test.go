@@ -1,11 +1,11 @@
-package model_test
+package modelutil_test
 
 import (
 	"math"
 	"slices"
 	"testing"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // TestGoBuiltin covers the two name tables the import binds from: go's
@@ -13,40 +13,40 @@ import (
 // both the same way.
 func TestGoBuiltin(t *testing.T) {
 	for _, name := range []string{"make", "append", "len", "cap", "clear", "delete", "panic", "println", "int64", "any"} {
-		if !model.GoBuiltin(name) {
+		if !modelutil.GoBuiltin(name) {
 			t.Errorf("%s does not read as a builtin", name)
 		}
 	}
 	// The four that shadow a php name the import binds too: an import is the
 	// more specific name and `\min` is how a file reaches php's.
 	for _, name := range []string{"copy", "min", "max", "print"} {
-		if !model.GoBuiltin(name) {
+		if !modelutil.GoBuiltin(name) {
 			t.Errorf("%s does not read as a builtin", name)
 		}
 	}
 	// A name go has no builtin for stays php's, imported or not.
 	for _, name := range []string{"new", "strlen", "array_keys", ""} {
-		if model.GoBuiltin(name) {
+		if modelutil.GoBuiltin(name) {
 			t.Errorf("%s reads as a builtin the import binds", name)
 		}
 	}
-	if !model.GoType("float32") || model.GoType("Thing") {
+	if !modelutil.GoType("float32") || modelutil.GoType("Thing") {
 		t.Error("GoType does not answer for go's types alone")
 	}
-	names := model.GoBuiltinNames()
+	names := modelutil.GoBuiltinNames()
 	if !slices.IsSorted(names) {
 		t.Errorf("the names are not sorted: %v", names)
 	}
 	if !slices.Contains(names, "make") || !slices.Contains(names, "uint8") {
 		t.Errorf("the names cover one table and not both: %v", names)
 	}
-	if got, want := len(model.GoTypeNames()), 17; got != want {
+	if got, want := len(modelutil.GoTypeNames()), 17; got != want {
 		t.Errorf("GoTypeNames returns %d names, want %d", got, want)
 	}
 }
 
 // TestGoFold covers the conversion a type name applies to a value php has
-// already reduced to one of its own scalars, and the pairs it refuses: a
+// already reduced to one of php's scalars, and the pairs it refuses: a
 // string under a numeric type is phpval's to read, not this package's.
 func TestGoFold(t *testing.T) {
 	for _, test := range []struct {
@@ -80,7 +80,7 @@ func TestGoFold(t *testing.T) {
 		{"float32", 0.1, float32(0.1)},
 		{"float32", int64(2), float32(2)},
 	} {
-		got, ok := model.GoFold(test.name, test.in)
+		got, ok := modelutil.GoFold(test.name, test.in)
 		if !ok {
 			t.Errorf("%s(%v) folded nothing", test.name, test.in)
 			continue
@@ -103,7 +103,7 @@ func TestGoFold(t *testing.T) {
 		{"float64", "1.5"},
 		{"Thing", int64(1)},
 	} {
-		if _, ok := model.GoFold(test.name, test.in); ok {
+		if _, ok := modelutil.GoFold(test.name, test.in); ok {
 			t.Errorf("%s(%#v) folded a pair phpval decides", test.name, test.in)
 		}
 	}

@@ -40,8 +40,8 @@ func OverflowMulInt(x, y int64) (int64, bool) {
 }
 
 // AddInt, SubInt and MulInt add PHP semantics on top: integer arithmetic that
-// overflows becomes float and PHP_INT_MAX + 1 is 9.2233720368548E+18 rather
-// than a wrapped negative.
+// overflows becomes float and PHP_INT_MAX + 1 is 9.2233720368548E+18, never a
+// wrapped negative.
 
 // AddInt is PHP's + on two ints.
 func AddInt(x, y int64) any {

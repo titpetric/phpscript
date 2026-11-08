@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-// TestSkipError covers the error a refused file carries. Formatting rewrites a
-// file in place and the message names the file as well as the fault in
-// it, and Unwrap answers the reason and a caller matches on the parse error
-// itself and never on the wrapper.
+// TestSkipError covers the error the formatter reports for a refused file.
+// Formatting rewrites a file in place and the message names the file as well
+// as the fault in it. Unwrap answers the reason: a caller matches on the parse
+// error itself and never on the wrapper.
 func TestSkipError(t *testing.T) {
 	t.Parallel()
 	reason := errors.New("unexpected token")

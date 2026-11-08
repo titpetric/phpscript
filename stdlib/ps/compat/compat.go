@@ -1,4 +1,4 @@
-// Package compat implements the PHP language surface a script reaches for
+// Package compat implements the PHP language surface a script uses
 // directly, and no library it calls: functions whose behaviour follows from
 // what the interpreter does, not from what they compute.
 //
@@ -22,8 +22,8 @@
 //	$html = ob_get_clean();
 //
 // ob_start pushes a buffer onto the runtime with runner.PushOutput and the
-// capture covers everything that reaches Runtime.Output: echo, inline HTML, and
-// builtins that emit text of their own, such as die() with a message.
+// capture covers everything that reaches Runtime.Output: echo, inline HTML and
+// builtins that emit text directly, such as die() with a message.
 //
 // A function that reports "no buffer is active" returns false, as PHP does,
 // and no empty string; the two are distinguishable with ===.
@@ -46,8 +46,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Compat`, Register)
 }
 
-// Register installs symbols into the runtime. Each runtime gets its own buffer
-// stack and concurrent requests capture their own output.
+// Register installs symbols into the runtime.
 func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerDatetime(rt)
@@ -59,8 +58,8 @@ func Register(rt *runner.Runtime) {
 func registerBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
 	// A reset between programs drops the levels with the redirections they
-	// mirror and a reused runtime answers ob_get_level with what this program
-	// opened and none of what the last one left.
+	// mirror. A reused runtime answers ob_get_level with the levels this
+	// program opened, never a level the last one left.
 	rt.OnReset(buffers.reset)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a

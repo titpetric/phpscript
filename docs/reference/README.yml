@@ -53,7 +53,7 @@ sitemap:
       - path: predefined-interfaces-and-classes/reserved-interfaces.md
         description: Every interface and class PHP predefines, the version that added it, and what phpscript does about each.
       - path: predefined-interfaces-and-classes/classes/Traversable.md
-        description: The base interface foreach detects, and which no class declares on its own.
+        description: The base interface foreach detects, and which no class declares directly.
       - path: predefined-interfaces-and-classes/classes/Iterator.md
         description: The five methods foreach calls, why nothing dispatches through them, and a flattened workaround.
       - path: predefined-interfaces-and-classes/classes/IteratorAggregate.md
@@ -73,11 +73,11 @@ sitemap:
       - path: predefined-interfaces-and-classes/classes/stdClass.md
         description: The empty class new stdClass and the (object) cast both build.
       - path: predefined-interfaces-and-classes/classes/Generator.md
-        description: What a function containing `yield` returns, and why there is no coroutine model.
+        description: The class a generator function returns, and why phpscript has no coroutine model.
       - path: predefined-interfaces-and-classes/classes/Fiber.md
         description: Interruptible call stacks, left to the embedding Go application.
       - path: predefined-interfaces-and-classes/classes/WeakReference.md
-        description: A reference that does not keep its object alive, and why refcounts do not carry over.
+        description: A reference that does not keep its object alive, and why refcounts do not apply here.
       - path: predefined-interfaces-and-classes/classes/WeakMap.md
         description: A map keyed by object, resting on three unavailable features.
       - path: predefined-interfaces-and-classes/classes/Stringable.md

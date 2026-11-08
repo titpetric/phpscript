@@ -189,8 +189,8 @@ func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
 // Runtime\Router::Bind, before the first request either way.
 //
 // Start before mount is what the platform does, every module starting a step
-// ahead of any mounting, and the job binds before the router exists. Mount
-// before start is what a virtual host does, holding a router of its own.
+// ahead of any mounting. The job binds before the router exists. Mount before
+// start is what a virtual host does, holding its own router.
 func TestStartupBindsRoutes(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

@@ -88,13 +88,9 @@ func loadSuite(root fs.FS, dir, filename string, base config.Config, forbidden b
 	}, nil
 }
 
-// Provider answers the connections the fixtures below this suite root resolve.
-//
-// A suite that declared no env of its own resolves what the run does, which is
-// the process environment: a folder that named no connections gets no set of
-// a set of its own. A suite that declared one gets only what it named, the rule
-// a virtual host is already held to and a fixture cannot reach a database its
-// folder did not configure.
+// Provider answers the connections the fixtures below this suite root resolve:
+// what the suite declared under env, or the process environment when it
+// declared none. A fixture cannot reach a database its folder did not name.
 func (s *Suite) Provider() model.DatabaseProvider {
 	if s == nil {
 		return nil
@@ -111,7 +107,7 @@ func (s *Suite) Provider() model.DatabaseProvider {
 // Mail answers the mail servers the fixtures below this suite root send
 // through: what the suite declared, or nothing, the rule a virtual host
 // already follows. A fixture run delivers nothing - construction is a name
-// lookup, and the names are what the fixtures are about.
+// lookup. The names are what the fixtures are about.
 func (s *Suite) Mail() model.MailProvider {
 	if s == nil {
 		return nil
@@ -149,13 +145,12 @@ func (s *Suite) Teardown() string {
 	return s.Config.Test.Hooks.Teardown
 }
 
-// RunHook executes one hook file on a runtime carrying what a fixture below
-// this suite root carries: the standard library rooted at the suite, the host
-// bindings the fixtures use, and the suite's own connections.
+// RunHook executes one hook file on a runtime built like a fixture below this
+// suite root: the standard library rooted at the suite, the host bindings the
+// fixtures use, and the suite's own connections.
 //
 // The suite root is the runtime's filesystem and a hook names its migrations
-// the way an application does, relative to itself. Output goes to out, which a
-// caller not reporting the hook may discard.
+// relative to itself, the way an application does.
 func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	clean := path.Clean(filepath.ToSlash(file))
 
@@ -217,7 +212,7 @@ func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 
 // RunTeardown runs the teardown hooks in reverse, whatever the fixtures did.
 //
-// Every hook runs and the error list carries every failure, with no stop at
+// Every hook runs and the error list holds every failure, with no stop at
 // the first: the suites are independent, and a caller learns about every one
 // of them.
 func RunTeardown(ctx context.Context, suites []*Suite, out io.Writer) error {

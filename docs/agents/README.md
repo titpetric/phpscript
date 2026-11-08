@@ -2,11 +2,11 @@
 
 The sprint prompts, and the one contract they all run under.
 
-Read this before running any document in this directory, and before quoting a measurement anywhere: in a pull request, in an issue, or in a document. The protocol below is what makes two numbers comparable, and a number taken outside it does not count as evidence.
+Read this before running any document in this directory, and before quoting a measurement anywhere: in a pull request, in an issue, or in a document. The protocol below makes two numbers comparable. A number taken outside the protocol does not count as evidence.
 
 ## The documents
 
-An agent reads and executes each one on its own. None of them repeats what is here.
+An agent reads and executes each one separately. None of them repeats what is here.
 
 | Document                                               | Read when                                             | What it leaves behind                                                         |
 |--------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------|
@@ -24,7 +24,7 @@ A sprint is a worktree, a measurement and a commit per finding. An agent reads o
 
 Each sprint runs in its own git worktree. A worktree makes `$PWD/bin/phpscript` private and keeps two sprints off one branch.
 
-One finding is one commit. A sprint that produces four findings writes four, each reading on its own, and they all land on the one draft the "Where work lands" section defines. An agent opens no pull request.
+One finding is one commit. A sprint that produces four findings writes four, each one readable alone. All four land on the one draft the "Where work lands" section defines. An agent opens no pull request.
 
 Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the "Won't build" table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template.
 
@@ -95,7 +95,7 @@ The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and take
 
 ### The sprint gate
 
-`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, the write the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it replaces the binary on `PATH` that whoever measures next will time against.
+`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, the write the private-binary rule exists to prevent. It also builds a docker image a sprint has no use for. Running it replaces the binary on `PATH` that whoever measures next will time against.
 
 The gate is the subset that compiles nothing into a shared location, with the private binary first on `PATH`:
 
@@ -110,7 +110,7 @@ atkins test:introspection
 atkins fmt
 ```
 
-`fmt` runs twice, for the reason `default` also runs it twice: `test:introspection` writes the two generated documents under `docs/reference/` as its generators emit them, and the committed copies are mdox-normalised. Without the closing pass the gate reports a dirty tree that is nothing but table padding.
+`fmt` runs twice, for the reason `default` also runs it twice: `test:introspection` writes the two generated documents under `docs/reference/` as its generators emit them. The committed copies are mdox-normalised. Without the closing pass the gate reports a dirty tree that is nothing but table padding.
 
 `atkins build` and `atkins gen` belong to a release, not to a sprint. Neither the gate nor what it reported goes in a pull request body; `worktree verdict --from=main` is what states the branch is green.
 
@@ -130,13 +130,13 @@ There is no `b.ReportMetric` anywhere in the tree and there is no custom metric 
 
 `--time=100ms` per sample. A one-second sample over 264 fixtures on two runners does not finish, and once a long run starts swapping it measures the swap.
 
-The window has two edges, and a percentile is only a percentile between them.
+The window has two edges. A percentile is only a percentile between them.
 
 **A fixture whose single run costs more than the window** gets one run per sample and `p50`, `p95` and `p99` come back equal and describe one execution each. Report them as the single-run cost they are, never as a distribution.
 
 **A fixture whose single run costs far less than the window** fits tens of thousands of runs into it and its `p99` is the hundredth-slowest of those and measures scheduler preemption and collector assists. The tell is a wide `p99`/`p50` ratio on a cheap fixture while `gc_runs` is zero: there is no such work in it to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
 
-**A percentile run uses `--cache=off`.** Under `--cache=worker` the worker holds a runtime per fixture and a late sample window carries the collector load of every fixture the worker ran before it, and the set drifts upward across the run. That is the same retention the memory section is about, showing up in the timing column and not in resident bytes, and it fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser and not execution; one process per fixture is the alternative and is slower still.
+**A percentile run uses `--cache=off`.** Under `--cache=worker` the worker holds a runtime per fixture and a late sample window holds the collector load of every fixture the worker ran before it. The set drifts upward across the run. That is the same retention the memory section is about, showing up in the timing column and not in resident bytes. It fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser and not execution; one process per fixture is the alternative and is slower still.
 
 ### Memory
 
@@ -150,7 +150,7 @@ Three guards, all three required.
 GOMEMLIMIT=2GiB GOGC=100 ...
 ```
 
-The limit is soft: the collector works harder as the heap approaches it, and the kernel chooses no victim. That changes GC behaviour, and timing with it and both sides of a before/after pair carry the same `GOMEMLIMIT` and the manifest records it. A pair measured at two different limits is two measurements of two programs, the same way a CGO mismatch is.
+The limit is soft: the collector works harder as the heap approaches it, and the kernel chooses no victim. That changes GC behaviour, and timing with it and both sides of a before/after pair run at the same `GOMEMLIMIT` and the manifest records it. A pair measured at two different limits is two measurements of two programs, the same way a CGO mismatch is.
 
 **Scope a sampling run per area, not over the whole suite.** A runtime lives for as long as its parse cache does and a process that samples 264 fixtures holds 264 fixtures' worth of runtimes. One process per area releases it between areas:
 
@@ -174,13 +174,13 @@ Four rules. No script enforces them; they are protocol.
 - **A drift guard across a segment.** Compare the first quartile of a segment's samples against the last and publish the percentage. A segment that drifted is re-measured, not published.
 - **Drop a sample whose window overlapped a collection.** `--json` reports `gc_runs` per row. A row whose GC share differs between before and after is not comparable. Where a single request is the unit, drop the sample outright.
 
-What does not come back is `GOGC=off` with a heap budget in the gigabytes. That setting made the old numbers exact, and it also takes the host down.
+What does not come back is `GOGC=off` with a heap budget in the gigabytes. That setting made the old numbers exact. It also takes the host down.
 
 ### Baselines and commits
 
 Before and after come from the same worktree at two commits, both rebuilt from scratch, inside the same locked session where the run is short enough to allow it. `git stash` is not a baseline mechanism. The baseline is the merge-base, not whatever happened to be lying in the tree.
 
-Every artifact set carries `bench-manifest-<side>.txt` holding the commit sha, `go version`, `CGO_ENABLED`, the binary path, `GOMAXPROCS`, the date, `uname -a` and the exact command lines. The manifest is where a CGO mismatch or a stale binary surfaces before anybody publishes a number.
+Every artifact set holds a `bench-manifest-<side>.txt` naming the commit sha, `go version`, `CGO_ENABLED`, the binary path, `GOMAXPROCS`, the date, `uname -a` and the exact command lines. The manifest is where a CGO mismatch or a stale binary surfaces before anybody publishes a number.
 
 ### Counterbalance the blocks
 
@@ -188,7 +188,7 @@ Measuring every before sample and then every after sample does not compare two c
 
 The effect is neither small nor hypothetical. A main-against-main pair - the same binary measured twice - has produced a **-7.18% geomean** difference between adjacent blocks in one session. A published -7.11% improvement turned out to be exactly that artifact: re-measured with the blocks counterbalanced, the same commit reports -1.96%.
 
-So alternate. Order the blocks `A B B A`, repeated, with one sample per block, which cancels a linear drift exactly: whatever the slope is, each side sits on it the same number of times and at the same average position.
+So alternate. Order the blocks `A B B A`, repeated, with one sample per block, which cancels a linear drift exactly: whatever the slope is, each side samples it the same number of times and at the same average position.
 
 Compile once and interleave. `go test -c -o /tmp/x-A.test ./pkg` writes a test binary that runs as many times as you like and a pair costs two builds for the whole run and no build time lands between the blocks to drift across:
 
@@ -207,7 +207,7 @@ done
 
 Report the drift guard alongside the result: the baseline's early blocks against its own late blocks. If that number is near the size of the effect you claim, there is no effect to claim yet.
 
-### Rows that cannot carry a latency claim
+### Rows too noisy for a latency claim
 
 Some benchmarks do not resolve a small effect on this hardware, and saying so is the result. Known so far, each with the spread that disqualifies it:
 
@@ -235,23 +235,23 @@ Allocation, as that document writes it:
 | Return shape | B/op | allocs/op | ns/op |
 |--------------|-----:|----------:|------:|
 
-Latency, which no document carries yet:
+Latency, which no document holds yet:
 
 | Fixture | p50 us | p99 us | allocs/op | B/op |
 |---------|-------:|-------:|----------:|-----:|
 
-HTTP, which no document carries yet:
+HTTP, which no document holds yet:
 
 | Route | p50 ms | p99 ms | req/s |
 |-------|-------:|-------:|------:|
 
 `--json` reports nanoseconds; the table reports microseconds to one decimal, as `phpscript test` prints them. A run collects p95 and does not publish it.
 
-In a document, before and after are `(was)` and `(now)` row labels, never extra columns: a document's table is a reference to the current shape with the previous one beside it. A pull request body carries the tool's own shape instead; [The measurement table](#the-measurement-table) is that rule.
+In a document, before and after are `(was)` and `(now)` row labels, never extra columns: a document's table is a reference to the current shape with the previous one beside it. A pull request body takes the tool's own shape instead; [The measurement table](#the-measurement-table) is that rule.
 
 State the environment once above the table, in the form [../allocation-performance.md](../allocation-performance.md) uses: the harness, the box, the Go version and the CGO setting.
 
-No document in this directory carries a measurement. A number in a prompt goes stale, and then the prompt lies. Numbers live in the pull request body, in the document that owns the subject, and in the gitignored artifact.
+No document in this directory holds a measurement. A number in a prompt goes stale, and then the prompt lies. Numbers go in the pull request body, in the document that owns the subject, and in the gitignored artifact.
 
 ## Tests are not edited
 
@@ -285,7 +285,7 @@ No change adds, renames, retypes or removes a yaml-tagged field under `config/`.
 
 Defaults are part of the model. `config/config.yml` and the `Resolved` and `Validate` paths decide what an existing file means and changing a default changes behaviour for files nobody edited.
 
-A new place may read an existing field. Where a diagnosis needs a configuration change, the change is not made: the pull request carries the extended reasoning below and the operator decides.
+A new place may read an existing field. Where a diagnosis needs a configuration change, the change is not made: the pull request holds the extended reasoning below and the operator decides.
 
 ## Techniques
 
@@ -295,9 +295,9 @@ Three tiers, and one rule that applies to each.
 
 **Tier 2, allowed with an argued reason in the pull request and a fixture.** Immutability: sharing one value where the code copies it per use. The argument names what guarantees nobody writes to it; the fixture is the case where two requests hold it at once. The repository already leans this way - a handler shares its captures across requests, and flatstack's bytecode is immutable and shared by program identity.
 
-**Tier 3, needs the operator before anybody writes it, not after.** `unsafe` in any form. `unsafe.String` or `unsafe.Slice` over a buffer a caller may still write. Pointer rewriting of model values. A free list whose entries outlive a request. Any change to value semantics. These are the changes whose failure mode is a wrong answer under concurrency, and the suite is no proof of their absence. Each needs what aliases what, which test holds it, and a `-race` run over the affected packages.
+**Tier 3, needs the operator before anybody writes it, not after.** `unsafe` in any form. `unsafe.String` or `unsafe.Slice` over a buffer a caller may still write. Pointer rewriting of model values. A free list whose entries outlive a request. Any change to value semantics. These are the changes whose failure mode is a wrong answer under concurrency. The suite is no proof of their absence. Each needs what aliases what, which test holds it, and a `-race` run over the affected packages.
 
-**All three tiers.** An agent explores a technique by measuring it. A technique that loses on a measurement goes on the record, with its number and the reason. Rejected is a result: `../flatstack.md` records the typed-slot verdict and `../allocation-performance.md` records two reverted shapes, and both issue templates carry a considered-and-rejected field.
+**All three tiers.** An agent explores a technique by measuring it. A technique that loses on a measurement goes on the record, with its number and the reason. Rejected is a result: `../flatstack.md` records the typed-slot verdict and `../allocation-performance.md` records two reverted shapes, and both issue templates hold a considered-and-rejected field.
 
 ## Where work lands
 
@@ -307,15 +307,15 @@ Three destinations, decided by what changed.
 
 **A change under `docs/agents/`** goes straight to `main`: the coordinator commits and pushes it. These documents are the protocol agents read, not a product anybody reviews, and holding a protocol correction behind a review queue means every sprint in flight keeps following the wrong version.
 
-**Everything else** goes on `area/<subject>`, one branch per subject, carrying every finding in that subject. One finding is still one commit, with the body shape below as its commit message and the branch reads as the sequence of findings it holds: the history keeps them separate and the review unit collapses them. Code, its tests, its fixtures and the documentation that describes it travel together: a reviewer cannot judge a behaviour change whose documentation is in another queue.
+**Everything else** goes on `area/<subject>`, one branch per subject, holding every finding in that subject. One finding is still one commit, with the body shape below as its commit message and the branch reads as the sequence of findings it holds: the history keeps them separate and the review unit collapses them. Code, its tests, its fixtures and the documentation that describes it travel together: a reviewer cannot judge a behaviour change whose documentation is in another queue.
 
-**Documentation outside `docs/agents/`** goes on the area branch it belongs to, never a branch of its own.
+**Documentation outside `docs/agents/`** goes on the area branch it belongs to, never a separate branch.
 
 A sprint that produced nothing to commit reports and pushes nothing.
 
 ### What the coordinator does with the branches
 
-One pull request per area, and it stays a **draft** while any agent is still adding to that area - a draft is what stops a half-built merge. More than one agent may share an area; the coordinator assembles their branches onto it in an order the body states, because within an area they tend to touch the same files.
+One pull request per area. It stays a **draft** while any agent is still adding to that area - a draft is what stops a half-built merge. More than one agent may share an area; the coordinator assembles their branches onto it in an order the body states, because within an area they tend to touch the same files.
 
 The reason is review load. A pull request per finding produces more review than the findings are worth, and turns the operator's job into merging a queue. If a finding has to ship on its own - a live security defect is the plausible case - it says so in its report and leaves it on the area branch regardless. Splitting one out is the operator's call.
 
@@ -386,7 +386,7 @@ The naming rule is the gitignore rule. Every name below is already covered by a 
 | pprof            | `cpu-<label>.pprof`, `mem-<label>.pprof` | `*.pprof`           |
 | coverage         | `cover/<label>.cov`                      | `/cover/*`, `*.cov` |
 
-Raw output lives at the worktree root, or under `cover/` for coverage profiles, never under `docs/`. No artifact takes any other extension and that those lines keep covering it.
+Raw output goes to the worktree root, or under `cover/` for coverage profiles, never under `docs/`. No artifact takes any other extension; those lines keep covering it.
 
 The repository root already holds `bench-after.txt`, `bench-after2.txt`, `bench-after3.txt`, `bench-before.txt`, `bench-e2e-*.json` and `bench-profile-*.json` from earlier sprints, with no manifest and unknown build provenance. They are not baselines. The `flatstack.test`, `runner.test` and `tests.test` binaries beside them are leftovers of an earlier build, and `.gitignore` covers them.
 
@@ -398,6 +398,6 @@ The repository holds no `scripts/memprobe/`. What it got right survives above as
 
 What does not come back, each with its reason:
 
-- `GOGC=off` with `GOMEMLIMIT=off` and a heap budget in the gigabytes. It made a single sequential request an exact measurement, and it takes the host down.
+- `GOGC=off` with `GOMEMLIMIT=off` and a heap budget in the gigabytes. It made a single sequential request an exact measurement. It takes the host down.
 - A shell harness that restarts a server per segment. The restart is where the provenance gets lost.
 - `taskset -c 3` over a parallel benchmark. It measures one goroutine and reports it as concurrency.

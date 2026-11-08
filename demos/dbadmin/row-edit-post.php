@@ -6,7 +6,7 @@ include "bootstrap.php";
 $table = $_REQUEST["table"];
 $meta = table_info($db, $table);
 if (strpos(strtoupper($meta["sql"]), "WITHOUT ROWID") !== false) {
-	die("This table has no rowid.");
+	die("No rowid");
 }
 
 $rowid = (int)$_REQUEST["rowid"];

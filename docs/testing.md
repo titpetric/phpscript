@@ -8,9 +8,11 @@ go test ./...
 
 A change to language or runtime behavior lands with a `.phpt` fixture. Use a Go test in the package that owns the behavior when the assertion needs direct access to Go APIs, parser models, runtime state, concurrency, or error types, and add the fixture as well: a Go test proves the Go code does what its author meant, a fixture proves a script sees it.
 
-A Go test file takes the name of the file it covers: `dispatch_test.go` beside `dispatch.go`, the pairing `splint`'s `pairing` linter reads, and two test files covering one source are one test file. A suite that reaches the package only through its public API and names no file of it - a behaviour table over the engine, a benchmark arrangement, a regression per issue - goes under [`tests/`](../tests) in a folder of its own: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. No file there carries a source file's name and the linter excuses the directory.
+A Go test file takes the name of the file it covers: `dispatch_test.go` beside `dispatch.go`, the pairing `splint`'s `pairing` linter reads, and two test files covering one source are one test file. A suite that reaches the package only through its public API and names no file of it - a behaviour table over the engine, a benchmark arrangement, a regression per issue - goes under [`tests/`](../tests) in a separate folder: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. No file there takes a source file's name and the linter excuses the directory.
 
-A fixture does two jobs, and it must do both:
+`.splint.yml` caps a file at 400 lines and names four paths that cap higher. A test file cannot split freely: `pairing/orphan` wants `foo_test.go` beside `foo.go`, and one source file's whole contract lands in one test file whose inputs and failure messages run longer than the code they cover. `parser/*.go` is one subject, the grammar, and a split by line count would put the statement that opens a block in one file and the one that closes it in another. `flatstack/engine/*.go` is the instruction set and the loop that runs it, and a loop over a switch of every opcode is the shape that makes it quick. `model/ast.go` is the node set the parser writes and both engines read; `grouping/filename` exempts a file that compiles by itself, which this one does and a split one would not, leaving the choice between fifty files of six lines each and this one. A fifth entry argues for itself.
+
+A fixture does two jobs and must do both:
 
 1. It states the behavior and a change that alters the behavior fails a named test, ahead of any benchmark or demo.
 2. It records what PHP itself produces and the fixture measures the runtime against the language and never against its own output.
@@ -19,7 +21,7 @@ The second job is the one that finds defects. Expected output written from what 
 
 ## Go test utilities
 
-The [`tests` package](../tests) carries reusable bindings and setup for tests that need to exercise the runtime from another Go package. Import it with an alias to make clear that these are repository test helpers, not production APIs:
+The [`tests` package](../tests) holds reusable bindings and setup for tests that need to exercise the runtime from another Go package. Import it with an alias to make clear that these are repository test helpers, not production APIs:
 
 ```go
 import testutil "github.com/titpetric/phpscript/tests"
@@ -46,7 +48,7 @@ A `PLATFORM_DB_<NAME>=<driver>://<dsn>` variable names a connection, and the nam
 
 It builds a provider; it does not write to the process environment. The PostgreSQL and MySQL services are [`docker/service/postgres.yml`](../docker/service/postgres.yml) and [`docker/service/mysql.yml`](../docker/service/mysql.yml), which [`compose.yml`](../compose.yml) includes. `TestMain` calls `os.Exit` and call it as the external package's complete `TestMain`, never from an individual test.
 
-`phpscript test` is a different process and reads none of that. It builds its connections from its own environment plus the `env` list of the configuration that covers it and the pipeline jobs that run the binary carry [`.env.testing`](../.env.testing):
+`phpscript test` is a different process and reads none of that. It builds its connections from its own environment plus the `env` list of the configuration that covers it and the pipeline jobs that run the binary name [`.env.testing`](../.env.testing):
 
 ```yaml
 test:phpscript:matrix:
@@ -108,7 +110,7 @@ A parent that calls `t.Parallel()` returns before its parallel children run and 
 
 ## `.phpt` fixtures
 
-Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
+Fixtures go in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
 
 A fixture's own folder is its include root, and all three runtimes resolve against it: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes take that same folder as their root and a relative path in the fixture names the same file whichever runtime reads it.
 
@@ -185,13 +187,13 @@ require 'vendor/autoload.php';
 
 The include root keys the caches, because a cache keys on the path as the script wrote it and two roots can both hold a `code/functions.php`; a fixture reaching a different tree must not get a program cached for the embedded one. The key is absolute, since the relative spelling is ambiguous once the working directory moves.
 
-How far a cached program travels is `--cache`. The default, `worker`, keeps one set of caches and one runtime per worker loop, reused by the fixtures that worker runs serially: what a run holds scales with `--parallel` and not with the number of fixtures. `--cache=off` builds a set per fixture run and drops them, and its runtime, when the run ends and nothing one fixture parsed or declared is visible to the next. That is the flag to reach for when a fixture passes alone and fails in the suite.
+How far a cached program travels is `--cache`. The default, `worker`, keeps one set of caches and one runtime per worker loop, reused by the fixtures that worker runs serially: what a run holds scales with `--parallel` and not with the number of fixtures. `--cache=off` builds a set per fixture run and drops them, and its runtime, when the run ends and nothing one fixture parsed or declared is visible to the next. That is the flag for a fixture that passes alone and fails in the suite.
 
 Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them, and fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping the support files with their fixture is what keeps the include root a single directory; copy a support file that two areas need into each, because the harness rejects an include path that climbs out of the fixture's folder.
 
 ### Checking a fixture against PHP
 
-PHP 8.5 lives at `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and the matrix verifies it. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
+PHP 8.5 is at `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and the matrix verifies it. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
 
 ```bash
 cd tests/fixtures/arrays
@@ -215,7 +217,7 @@ Output: the metadata, `---`, what the code did, `---`, what it should have done.
 
 Write the fixture this way around. Run the source through `php` first, paste that output into the expected section, and then make phpscript produce it. Writing the expected section from phpscript's output tests the runtime against itself.
 
-Three kinds of fixture fall outside this check, and none of them is an excuse to skip it on the fixtures `php` can run:
+Three kinds of fixture fall outside the php check. It still applies to every fixture `php` can run:
 
 | Fixture uses                                                             | Why `php` cannot run it                                                       |
 |--------------------------------------------------------------------------|-------------------------------------------------------------------------------|
@@ -267,13 +269,13 @@ cd tests/fixtures/paths/api && php magic_scope_test.php > magic_scope_test.txt
 
 The same rule governs a `.phpt` expected section: the output is php's, pasted, not phpscript's.
 
-The form carries no frontmatter. There is nowhere to declare `runner`, `request`, `options`, `root` or `serial` and a fixture needing one of those is a `.phpt`. A `_test.php` with no `_test.txt` beside it stays a php file someone put in the tree, and `phpscript test` does not collect it.
+The form holds no frontmatter. There is nowhere to declare `runner`, `request`, `options`, `root` or `serial` and a fixture needing one of those is a `.phpt`. A `_test.php` with no `_test.txt` beside it stays a php file someone put in the tree, and `phpscript test` does not collect it.
 
 ## Suite configuration
 
-A folder that needs a bootstrap, a connection or a schema writes it down once, off every command line that reaches it. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run under it. A fixture resolves the nearest such file at or above its own directory, and the run resolves the nearest one at or above the working directory. A tree holding none behaves as it always did and this is a folder opting in.
+A folder that needs a bootstrap, a connection or a schema writes it down once, off every command line that reaches it. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run under it. A fixture resolves the nearest such file at or above its own directory. The run resolves the nearest one at or above the working directory. A tree holding none behaves as it always did and this is a folder opting in.
 
-[Test suites](configuration.md#test-suites) documents the block key by key. A suite root carries, for every fixture below it, the prelude they load, the connections they resolve, and two hook files:
+[Test suites](configuration.md#test-suites) documents the block key by key. A suite root names, for every fixture below it, the prelude they load, the connections they resolve, and two hook files:
 
 ```yaml
 env:
@@ -306,7 +308,7 @@ phpscript test tests/fixtures/scaffold
 
 Writing a database area this way is what keeps its fixtures out of everyone else's flags, and what lets them stay parallel: three of the four here read the seed and need no `serial:`, because none of them builds the state the others depend on. Only the one that writes is serial.
 
-Seed the rows from the hook. A `.up.sql` is the wrong place: `Database\Migrate` records a migration and never applies it twice and a seed inside one lands against a database that has never seen it and against no other. The hook deletes and reinserts, which leaves the same rows whatever state it found. Where a fixture asserts on generated ids, reset the sequence too: sqlite's `AUTOINCREMENT` keeps its high-water mark in `sqlite_sequence`, and a delete does not return it.
+Seed the rows from the hook. A `.up.sql` is the wrong place: `Database\Migrate` records a migration and never applies it twice and a seed inside one lands against a database that has never seen it and against no other. The hook deletes and reinserts, which leaves the same rows whatever state it found. Where a fixture asserts on generated ids, reset the sequence too: sqlite's `AUTOINCREMENT` keeps its high-water mark in `sqlite_sequence`. A delete does not return it.
 
 `@startup` is not this mechanism. Annotations are server surface: `phpscript server` scans `@route`, `@startup` and `@schedule` out of a source tree, per virtual host or per application root depending on its configuration, and a fixture run is neither of those scopes.
 
@@ -394,7 +396,7 @@ A change to language or runtime behavior is not finished until it has a fixture,
 
 ## Issue reproductions
 
-[`tests/fixtures/github`](../tests/fixtures/github) holds one file per GitHub issue, in the `.phpt` format under a `.yml` extension. No file there runs: the fixture runner discovers `.phpt` only, and the extension is what keeps a file written against *expected* behaviour out of the passing suite. The files stay after their issue closes, as the record of the report.
+[`tests/fixtures/github`](../tests/fixtures/github) holds one file per GitHub issue, in the `.phpt` format under a `.yml` extension. No file there runs: the fixture runner discovers `.phpt` only. The `.yml` extension keeps a file written against *expected* behaviour out of the passing suite. The files stay after their issue closes, as the record of the report.
 
 An issue whose behaviour a fixture can reach closes by renaming its file to `.phpt` and moving it to the area it belongs to. It joins the matrix from there.
 

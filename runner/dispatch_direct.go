@@ -23,7 +23,7 @@ import (
 
 // directGoMethod returns the typed call for a resolved method, nil when no
 // shape matches. base is the receiver the method resolved on and a cache
-// entry only carries a direct call its own receiver type answers.
+// entry only holds a direct call its own receiver type answers.
 func directGoMethod(base any, goName string) func(any, []any) (any, bool, error) {
 	switch goName {
 	case "Header":

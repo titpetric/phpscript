@@ -9,6 +9,7 @@ import (
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -100,7 +101,7 @@ func lintJSONFlags(file, src string, out *[]Diagnostic) {
 // the file and the line before it gets that far.
 func lintRoutes(file, src string, out *[]Diagnostic) {
 	for _, route := range annotations.ParseRoutes([]byte(src)) {
-		if _, err := model.ParseRoutePath(route.Path); err != nil {
+		if _, err := modelutil.ParseRoutePath(route.Path); err != nil {
 			*out = append(*out, Diagnostic{File: file, Line: route.Line, Message: err.Error()})
 		}
 	}
@@ -111,7 +112,7 @@ func lintRoutes(file, src string, out *[]Diagnostic) {
 // for the same condition and the finding is the warning that arrives before
 // the program runs.
 func lintInterfaces(file string, prog *model.Program, out *[]Diagnostic) {
-	for _, v := range model.CheckInterfaces(prog.Stmts) {
+	for _, v := range modelutil.CheckInterfaces(prog.Stmts) {
 		*out = append(*out, Diagnostic{
 			File:    file,
 			Line:    prog.SourceSpans[v.Decl].Start,

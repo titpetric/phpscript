@@ -32,7 +32,7 @@ const AreaNames = "all, secure, exec"
 var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
 
 // profile is what Register mounts, for the whole process: --stdlib limits the
-// runtime an operator started, and no single host inside it.
+// runtime an operator started, and no single host inside the process.
 var profile = All
 
 // ParseProfile reads a --stdlib value: area names separated by commas, empty

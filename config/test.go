@@ -14,19 +14,19 @@ var runKeys = []string{"parallel", "cache", "skip_php"}
 const runKeysOwner = "is set by the run, not by a suite"
 
 // Test configures `phpscript test`. The block holds the defaults a fixture
-// tree carries for itself and a suite describes what it needs and no command
+// tree sets for itself and a suite describes what it needs and no command
 // line repeats it on every invocation. A flag still wins: the file describes a
-// tree, and a flag is what an operator typed about this run of it.
+// tree. A flag is what an operator typed about this run of it.
 //
 // Include and Hooks belong to a suite root, the directory holding the file, and
 // apply to the fixtures below it. Parallel, Cache and SkipPHP describe the whole
-// run, and the command takes them from the configuration -f names or the one
+// run. The command takes them from the configuration -f names or the one
 // found above the working directory alone; a file below the invocation root
 // that sets one fails the run naming the key.
 type Test struct {
 	// Include names a file included ahead of every fixture below this suite
-	// root, once per session, for the functions and classes the fixtures expect
-	// to be there: a composer autoloader, a bootstrap file. The --include flag
+	// root, once per session, for the functions and classes the fixtures need:
+	// a composer autoloader, a bootstrap file. The --include flag
 	// overrides this key, and the session passes over a file that is not there.
 	Include string `yaml:"include"`
 
@@ -98,10 +98,7 @@ func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden boo
 }
 
 // Check rejects a test block whose values name nothing the run can act on.
-//
-// Whether a hook file exists is not checked here, because the file lives in the
-// caller's filesystem and not on disk. The run reports a missing hook when
-// it goes to execute it.
+// A hook file is not checked here; the run reports a missing one on execution.
 func (t Test) Check(filename string) error {
 	if t.Cache != "" && t.Cache != "worker" && t.Cache != "off" {
 		return fmt.Errorf("%s: test.cache must be worker or off, not %q", filename, t.Cache)

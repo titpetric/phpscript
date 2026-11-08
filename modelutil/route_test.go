@@ -1,0 +1,148 @@
+package modelutil_test
+
+import (
+	"testing"
+
+	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
+)
+
+func TestParseRoutePath(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		path string
+		want []model.RouteParam
+	}{
+		{"no parameters", "/health", nil},
+		{"one segment", "/a/{id}", []model.RouteParam{{Name: "id"}}},
+		{"remaining segments", "/c/{tail...}", []model.RouteParam{{Name: "tail", Rest: true}}},
+		{"constraint", "/b/{id:[0-9]+}", []model.RouteParam{{Name: "id", Pattern: "[0-9]+"}}},
+		{"braces inside a constraint", "/b/{id:[0-9]{3}}", []model.RouteParam{{Name: "id", Pattern: "[0-9]{3}"}}},
+		{"several", "/{a}/{b}/{c...}", []model.RouteParam{{Name: "a"}, {Name: "b"}, {Name: "c", Rest: true}}},
+		{"two in one segment", "/{month}-{day}", []model.RouteParam{{Name: "month"}, {Name: "day"}}},
+		{"terminator is not a parameter", "/posts/{$}", nil},
+		{"underscores and digits", "/{user_id2}", []model.RouteParam{{Name: "user_id2"}}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := modelutil.ParseRoutePath(test.path)
+			if err != nil {
+				t.Fatalf("ParseRoutePath(%q): %v", test.path, err)
+			}
+			if len(got) != len(test.want) {
+				t.Fatalf("got %+v, want %+v", got, test.want)
+			}
+			for i := range got {
+				if got[i] != test.want[i] {
+					t.Fatalf("got %+v, want %+v", got, test.want)
+				}
+			}
+		})
+	}
+}
+
+// Every rejected spelling is one a router would otherwise accept and answer
+// wrongly. chi registers {module=users} as a parameter of that literal name,
+// matches every request to the segment and exports nothing.
+func TestParseRoutePathRejects(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{"default value", "/a/{module=users}", "invalid route parameter"},
+		{"space in name", "/a/{user id}", "invalid route parameter"},
+		{"dash in name", "/a/{user-id}", "invalid route parameter"},
+		{"leading digit", "/a/{1st}", "invalid route parameter"},
+		{"empty", "/a/{}", "empty route parameter"},
+		{"empty name with pattern", "/a/{:[0-9]+}", "empty route parameter name"},
+		{"empty pattern", "/a/{id:}", "empty pattern"},
+		{"unclosed", "/a/{id", "unclosed"},
+		{"duplicate name", "/a/{id}/b/{id}", "duplicate route parameter"},
+		{"rest with a bad name", "/a/{tail-x...}", "invalid route parameter"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := modelutil.ParseRoutePath(test.path)
+			if err == nil {
+				t.Fatalf("ParseRoutePath(%q) accepted it", test.path)
+			}
+			if !contains(err.Error(), test.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, test.want)
+			}
+		})
+	}
+}
+
+// Each router receives the rendered pattern. The expectations come from chi
+// v5.3.2 and net/http.ServeMux: chi 404s on {tail...} and ServeMux panics on
+// {id:[0-9]+} and neither dialect is the authored one.
+func TestRenderRoutePath(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		path  string
+		chi   string
+		serve string
+	}{
+		{"plain", "/a/{id}", "/a/{id}", "/a/{id}"},
+		{"rest", "/c/{tail...}", "/c/*", "/c/{tail...}"},
+		{"constraint", "/b/{id:[0-9]+}", "/b/{id:[0-9]+}", "/b/{id}"},
+		{"braces in a constraint", "/b/{id:[0-9]{3}}", "/b/{id:[0-9]{3}}", "/b/{id}"},
+		{"literal", "/health", "/health", "/health"},
+		{"terminator", "/posts/{$}", "/posts/{$}", "/posts/{$}"},
+		{"mixed", "/{a}/{b:[0-9]+}/{c...}", "/{a}/{b:[0-9]+}/*", "/{a}/{b}/{c...}"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := modelutil.RenderRoutePath(test.path, model.RouteChi); got != test.chi {
+				t.Errorf("chi: got %q, want %q", got, test.chi)
+			}
+			if got := modelutil.RenderRoutePath(test.path, model.RouteServeMux); got != test.serve {
+				t.Errorf("servemux: got %q, want %q", got, test.serve)
+			}
+		})
+	}
+}
+
+// TestRouteDialect covers the two router syntaxes RenderRoutePath writes and
+// the distinct values behind them: a dialect selects the rewrite and two
+// dialects sharing one value would render a single syntax for both routers.
+//
+// chi 404s on {tail...} and ServeMux panics on {id:[0-9]+} and neither syntax
+// is the authored one and the zero value has to name a real router. RouteChi
+// takes it and a caller rendering without naming a dialect writes chi's syntax.
+func TestRouteDialect(t *testing.T) {
+	t.Parallel()
+	if model.RouteChi == model.RouteServeMux {
+		t.Fatal("the two dialects share one value")
+	}
+
+	var zero model.RouteDialect
+	if zero != model.RouteChi {
+		t.Errorf("the zero RouteDialect is %d, want RouteChi", zero)
+	}
+
+	const path = "/c/{tail...}"
+	if got := modelutil.RenderRoutePath(path, zero); got != "/c/*" {
+		t.Errorf("RenderRoutePath(%q, RouteChi) = %q, want \"/c/*\"", path, got)
+	}
+	if got := modelutil.RenderRoutePath(path, model.RouteServeMux); got != path {
+		t.Errorf("RenderRoutePath(%q, RouteServeMux) = %q, want it unchanged", path, got)
+	}
+}
+
+func contains(s, sub string) bool {
+	return len(sub) == 0 || len(s) >= len(sub) && indexOf(s, sub) >= 0
+}
+
+func indexOf(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
+}

@@ -58,7 +58,7 @@ CREATE TABLE bookmarks (
 INSERT INTO bookmarks (title, url) VALUES ('phpscript', 'https://github.com/titpetric/phpscript');
 ```
 
-A file carrying the `@startup` annotation applies them; the server runs that file to completion before it listens:
+A file with the `@startup` annotation applies them; the server runs that file to completion before it listens:
 
 ```php
 <?php
@@ -75,7 +75,7 @@ Migration files are append only. [Run migrations](database.md#run-migrations) co
 
 ## 4. Share setup between endpoints
 
-Every endpoint needs the same database handle and template engine and they live in one file that each endpoint includes. `bootstrap.php` is not routed and is outside `public/` and no request reaches it on its own:
+Every endpoint needs the same database handle and template engine. One file holds both and each endpoint includes it. `bootstrap.php` is not routed and is outside `public/`. No request reaches it directly:
 
 ```php
 <?php
@@ -136,7 +136,7 @@ $db->close();
 redirect_to("/?saved=1");
 ```
 
-A route declares path parameters in braces, and they arrive in `$_REQUEST`:
+A route declares path parameters in braces. They arrive in `$_REQUEST`:
 
 ```php
 <?php
@@ -161,7 +161,7 @@ Keep all `$_GET` and `$_POST` reads in the annotated files. Shared code that rea
 
 ## 6. Render the output
 
-The bundled engine compiles templates to PHP and a template carries the engine's own syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
+The bundled engine compiles templates to PHP and a template holds the engine's syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
 
 ```php
 $tpl->load("list.tpl");

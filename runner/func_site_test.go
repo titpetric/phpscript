@@ -6,11 +6,11 @@ import (
 
 // TestFuncSite covers the three shapes a declaration site prints in. PHP's
 // fatal error for a redeclared function names the first site, and for a script
-// carrying two declarations through a doubled include that file is the only
+// with two declarations through a doubled include that file is the only
 // thing naming the include.
 //
 // A site with no file is what a host passes in when it built the AST itself,
-// and a site with no line is a program carrying no line table. Both answer
+// and a site with no line is a program with no line table. Both answer
 // something a caller can write a message around.
 func TestFuncSite(t *testing.T) {
 	t.Parallel()

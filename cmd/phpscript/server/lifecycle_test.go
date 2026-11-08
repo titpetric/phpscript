@@ -11,7 +11,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// failingModule stands in for a startup module whose jobs did not run.
+// failingModule is a startup module whose jobs did not run.
 type failingModule struct {
 	ZeroModule
 	err     error
@@ -24,8 +24,8 @@ func (m *failingModule) Start(context.Context) error {
 }
 
 // TestNonFatalRecordsTheFailureInsteadOfReturningIt pins both halves of the
-// contract: the platform sees the module start, and the operator can still
-// find out that it did not.
+// contract: the platform sees the module start. The operator can still find
+// out that it failed.
 func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
@@ -64,7 +64,7 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 }
 
 // A module that starts cleanly records as a successful trace and still returns
-// nil and the wrapper is not something to reach for only when things break.
+// nil; the wrapper is not for broken startups alone.
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")

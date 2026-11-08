@@ -10,9 +10,8 @@ import (
 // another binding arrives as a Go slice, map or struct.
 var vmTypes = map[string]bool{"Array": true, "Object": true}
 
-// paramTypes are the types no binding parameter may declare: the value types,
-// and the two interfaces only a runtime value satisfies. A `[]string` fills
-// none of them and reflect.Call panics on the call either way.
+// paramTypes are the runtime value types and the two interfaces only a runtime
+// value satisfies. nativeShape holds the other half a parameter may not take.
 var paramTypes = map[string]bool{"Array": true, "Object": true, "Collection": true, "Keyed": true}
 
 // vmType names the runtime value type an expression denotes, pointer, slice,
@@ -61,8 +60,8 @@ func modelType(e ast.Expr, set map[string]bool) string {
 // value somewhere, and its *model.Array case is the interpreter's half of the
 // same decision.
 //
-// A `[]byte` is none. It carries a php string, and a case for one answers for
-// no collection. See phpval.Bytes and model.IsCollection, which agree.
+// A `[]byte` is none. It holds a php string, and a case for one answers for
+// no collection. See phpval.Bytes and modelutil.IsCollection, which agree.
 func nativeShape(e ast.Expr) bool {
 	switch t := e.(type) {
 	case *ast.MapType:
@@ -104,7 +103,7 @@ var vmCapabilities = map[string]bool{
 }
 
 // calledName is the function or method name a call expression names, without
-// its qualifier: `model.RangeValues(...)` is RangeValues and `a.Append(v)` is
+// its qualifier: `modelutil.RangeValues(...)` is RangeValues and `a.Append(v)` is
 // Append. A call of anything but a name answers "".
 func calledName(call *ast.CallExpr) string {
 	switch fn := call.Fun.(type) {

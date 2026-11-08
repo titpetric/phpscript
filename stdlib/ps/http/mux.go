@@ -33,8 +33,7 @@ type Mux struct {
 	middleware []*runner.Callable
 
 	// mount, when set, takes every registration in place of the ServeMux. A
-	// mux built by NewMountedMux keeps no routes of its own, so nothing on it
-	// can list them.
+	// mux built by NewMountedMux keeps no routes itself and cannot list them.
 	mount func(pattern string, handler nethttp.Handler) error
 }
 
@@ -45,7 +44,7 @@ func NewMux(rt *runner.Runtime) *Mux {
 	return m
 }
 
-// NewMountedMux returns a mux whose routes go to mount and are kept nowhere else.
+// NewMountedMux returns a mux whose routes go to mount and nowhere else.
 func NewMountedMux(rt *runner.Runtime, mount func(pattern string, handler nethttp.Handler) error) *Mux {
 	m := NewMux(rt)
 	m.mount = mount
@@ -66,8 +65,8 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	// Resolved here and a handler that cannot run on another runtime is an
 	// error where the script writes the route, ahead of a 500 on the first
 	// request that reaches it. The handler itself first: a middleware returns a
-	// closure that is callable whatever it holds, so resolving the wrapper
-	// alone would take a broken handler and refuse it a request too late.
+	// closure that is callable whatever it holds. Resolving the wrapper alone
+	// would take a broken handler and refuse it a request too late.
 	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
 		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
@@ -112,8 +111,8 @@ func (m *Mux) Use(middleware any) error {
 }
 
 // Group calls $fn with a mux that shares this one's routes and starts with its
-// middleware. What $fn passes to Use stays inside the group, which is how a
-// module isolates its routes from the rest of the router.
+// middleware. What $fn passes to Use stays inside the group, keeping a module's
+// routes clear of the rest of the router.
 func (m *Mux) Group(fn any) error {
 	callable, err := m.rt.AsCallable(fn)
 	if err != nil {
@@ -177,7 +176,7 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 
 // workers answers the pool this mux runs on, building a default one for a mux
 // that never called listen(): a Go host that mounted it serves it concurrently
-// too, and the script runs on the runtime that built it.
+// too. The script runs on the runtime that built it.
 func (m *Mux) workers() *runner.Pool {
 	m = m.root
 	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, 0, nil) })

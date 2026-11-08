@@ -146,7 +146,7 @@ try {
 }
 
 // TestRegisterRefusesAFileItCannotRead covers the loud failure: the
-// constructor refuses a file carrying a line in no format this build reads,
+// constructor refuses a file holding a line in no format this build reads,
 // names that line, and raises an ordinary catchable error.
 func TestRegisterRefusesAFileItCannotRead(t *testing.T) {
 	t.Parallel()

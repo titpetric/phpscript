@@ -17,7 +17,7 @@ type formatError struct {
 	message string
 }
 
-// Error renders the message php carries for the same format.
+// Error renders the message php reports for the same format.
 func (e *formatError) Error() string { return e.message }
 
 // ThrowableClass names the PHP class, implementing runner.Throwable.

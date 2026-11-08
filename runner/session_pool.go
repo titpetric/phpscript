@@ -53,11 +53,8 @@ func (p *SessionPool) Get() *Runtime {
 
 // Put resets rt and returns it to the list, dropping it when the list is full.
 //
-// The reset happens here and not at the next Get and a session lets go of the
-// values it built as it ends and an idle runtime holds nothing of the request
-// it answered: ResetSession drops the session's declarations and state, clears
-// the runtime-local caches keyed by AST nodes unless the include cache owns
-// those nodes, and detaches the context from the request it served.
+// The reset happens here and not at the next Get: an idle runtime holds nothing
+// of the request it answered.
 func (p *SessionPool) Put(rt *Runtime) {
 	// A frame still on the stack means a run this runtime started never
 	// returned, and no reset covers that state and this drops the runtime and

@@ -93,7 +93,7 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 }
 
 // syncBuffer is a writer two goroutines may use: a scheduled job writes what it
-// printed, and the test reads it.
+// printed. The test reads it.
 type syncBuffer struct {
 	mu  sync.Mutex
 	buf bytes.Buffer

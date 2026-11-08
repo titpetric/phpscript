@@ -11,9 +11,8 @@ import (
 //
 // The annotation registered a chi parameter literally named "module=users",
 // which matched every request to the segment and exported no value: a route
-// that looks live and a parameter that never arrives. There is no
-// default-value syntax, and the path is an authoring error that never
-// registers at all.
+// that looks live and a parameter that never arrives. The annotation takes no
+// default value. The path is an authoring error that never registers at all.
 func Test_Issue060(t *testing.T) {
 	t.Parallel()
 	routes := map[string]string{

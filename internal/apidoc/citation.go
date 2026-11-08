@@ -36,8 +36,8 @@ func (c Citation) Short() string {
 	return c.Go
 }
 
-// Link renders the citation as markdown. A standard library symbol carries a
-// link to its reference page; the listing names every other symbol bare.
+// Link renders the citation as markdown. A standard library symbol links to
+// its reference page; the listing names every other symbol bare.
 func (c Citation) Link() string {
 	if c.URL == "" {
 		return c.Symbol()
@@ -45,7 +45,7 @@ func (c Citation) Link() string {
 	return "[" + c.Symbol() + "](" + c.URL + ")"
 }
 
-// Clause is the name an implements clause carries: the PHP spelling when a
+// Clause is the name an implements clause prints: the PHP spelling when a
 // script can type one, the Go spelling otherwise.
 func (c Citation) Clause() string {
 	if c.PHP != "" {
@@ -73,7 +73,7 @@ func cite(t reflect.Type) Citation {
 }
 
 // isStdlib reports whether an import path names a package of the Go standard
-// library. The first element of such a path carries no dot, the test the go
+// library. The first element of such a path holds no dot, the test the go
 // command applies to tell a standard library package from a module one.
 func isStdlib(pkg string) bool {
 	if pkg == "" {

@@ -19,7 +19,7 @@ var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
 
 // answerTracker records whether a handler has begun its response and a throw
 // afterwards does not try to replace a status that is already on the wire, and
-// carries the throw itself back out of the worker.
+// stores the throw itself for the caller outside the worker.
 //
 // It forwards and buffers no body: a handler streaming a large body does not
 // have it held in memory for the sake of an error that may never come.
@@ -30,9 +30,9 @@ var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
 // it.
 //
 // callable, request and args are the work and the value submitted to the pool
-// is this one and the submit carries no closure. args is an array and no slice
-// so the Invoke arguments travel in the tracker: a variadic call site builds
-// one slice per request, and a slice of the array builds none.
+// is this one and the submit allocates no closure. args is an array and no
+// slice so the Invoke arguments travel in the tracker: a variadic call site
+// builds one slice per request, and a slice of the array builds none.
 type answerTracker struct {
 	nethttp.ResponseWriter
 	wrote   bool
@@ -51,8 +51,8 @@ type answerTracker struct {
 // tracker a runner.DoneJob and the submit costs no allocation.
 //
 // One buffered slot, emptied by the receive in answer and the next run the
-// tracker serves signals through the same channel. The safety rule the lending
-// carries is the free list's own: a tracker whose run answer did not see
+// tracker serves signals through the same channel. The lending's safety rule
+// is the free list's own: a tracker whose run answer did not see
 // finish never returns here and no channel a worker may still signal through
 // reaches a second request.
 func (a *answerTracker) Done() chan struct{} {
@@ -88,9 +88,9 @@ func (a *answerTracker) Run(rt *runner.Runtime) {
 }
 
 // release clears everything the request owns and puts the tracker back. The
-// writer, the request and the boxed arguments all reach outside this package,
-// and a tracker left holding them would keep a connection and a request body
-// alive for as long as the free list does.
+// writer, the request and the boxed arguments all reach outside the http
+// package, and a tracker left holding them would keep a connection and a
+// request body alive for as long as the free list does.
 func (a *answerTracker) release() {
 	a.ResponseWriter, a.failure = nil, nil
 	a.callable, a.request = nil, nil

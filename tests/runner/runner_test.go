@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -452,7 +453,7 @@ echo $out;`)
 	rt.RegisterFunc("token_name", parser.TokenName)
 	// Shape-agnostic, like the real stdlib is_array: TokenGetAll returns a
 	// []any of []any, and no *model.Array.
-	rt.RegisterFunc("is_array", model.IsCollection)
+	rt.RegisterFunc("is_array", modelutil.IsCollection)
 	// minitpl-style wrapped expression with the "." -> "__1" marker.
 	rt.SetGlobal("code", `<?php if ($this->_vars) { ?>`)
 
@@ -596,7 +597,7 @@ echo $b->render() . "|" . depth(3) . "|" . implode("-", $sizes);`
 	rt.RegisterFunc("strtoupper", strings.ToUpper)
 	rt.RegisterFunc("implode", func(sep string, items any) string {
 		var parts []string
-		model.RangeValues(items, func(_, v any) bool {
+		modelutil.RangeValues(items, func(_, v any) bool {
 			parts = append(parts, fmt.Sprint(v))
 			return true
 		})
@@ -607,7 +608,7 @@ echo $b->render() . "|" . depth(3) . "|" . implode("-", $sizes);`
 	rt.RegisterFunc("apply", func(items any, fn func(...any) (any, error)) ([]any, error) {
 		var out []any
 		var err error
-		model.RangeValues(items, func(_, v any) bool {
+		modelutil.RangeValues(items, func(_, v any) bool {
 			var mapped any
 			if mapped, err = fn(v); err != nil {
 				return false
@@ -663,8 +664,8 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 
 // TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList drives evaluation deeper
 // than the pooled environment free list and the runtime builds, nests,
-// discards and reuses environments while a call to a lazily installed function
-// is live at every level.
+// discards and reuses environments while every level holds an open call to a
+// lazily installed function.
 func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
 	t.Parallel()
 	got := run(t, `<?php

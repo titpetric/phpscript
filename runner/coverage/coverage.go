@@ -3,7 +3,7 @@
 // blocks a host renders from it.
 //
 // Coverage is an interpreter feature. flatstack is a performance-oriented
-// backend and carries no coverage support; a runner holding a collector
+// backend and supports no coverage; a runner holding a collector
 // executes interpreted (see runner.Runtime.SetCoverage).
 package coverage
 
@@ -76,8 +76,8 @@ func New() *Collector {
 
 // Register seeds every executable statement of program at count zero under
 // filename. A declaration does not execute and Register skips it; its body's
-// statements carry spans of their own. A statement already registered keeps its
-// count and re-including a cached program does not reset it.
+// statements register under separate spans. A statement already registered keeps
+// its count and re-including a cached program does not reset it.
 func (c *Collector) Register(filename string, program *model.Program) {
 	filename = Name(filename)
 	c.mu.Lock()
@@ -136,7 +136,7 @@ func (c *Collector) registerFuncs(filename string, program *model.Program) {
 		}
 	}
 	// A function declared inside another statement's body is in no list above
-	// but carries a span like any parsed statement and the sweep picks it up.
+	// but holds a span like any parsed statement and the sweep picks it up.
 	// A method arrives through its class, which keeps it prefixed.
 	for stmt := range program.SourceSpans {
 		if fd, ok := stmt.(*model.FuncDecl); ok && !seen[fd] {
@@ -145,10 +145,8 @@ func (c *Collector) registerFuncs(filename string, program *model.Program) {
 	}
 }
 
-// Files returns every registered filename, sorted. A file appears whether or
-// not it holds an executable statement: a file of pure declarations registers
-// no counts, and a report that renders only counted blocks would omit it,
-// reading as a gap where no code runs.
+// Files returns every registered filename, sorted. A file appears whether it
+// holds an executable statement or not.
 func (c *Collector) Files() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -182,9 +180,8 @@ func (c *Collector) Functions() []FuncSpan {
 	return funcs
 }
 
-// Hit charges one execution to a registered statement. An unregistered
-// statement (a declaration, or a program built without the parser) is not
-// counted.
+// Hit charges one execution to a registered statement. An unregistered one
+// (a declaration, a program built without the parser) is not counted.
 func (c *Collector) Hit(s model.Stmt) {
 	c.mu.Lock()
 	if entry, ok := c.stmts[s]; ok {
@@ -247,8 +244,8 @@ func coverable(s model.Stmt) bool {
 }
 
 // coverSpan is the line range charged for a statement. A compound statement's
-// parsed span covers its whole body, but the body's statements carry spans of
-// their own and coverSpan returns the header line alone: an untaken branch
+// parsed span covers its whole body, but the body's statements hold separate
+// spans and coverSpan returns the header line alone: an untaken branch
 // must not read as covered because the interpreter reaches its `if`.
 func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	switch n := s.(type) {

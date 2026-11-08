@@ -12,8 +12,8 @@ import (
 // This file is the PHP operator tables: comparison, identity, arithmetic,
 // bitwise and the unary operators. Both engines read them, the interpreter
 // directly and the bytecode host through flatHost.Binary and Unary and the
-// two cannot answer a different value for one expression. The coercions the
-// operators read (toInt, toFloat, phpString) live in convert.go.
+// two cannot answer a different value for one expression. convert.go holds the
+// coercions the operators read (toInt, toFloat, phpString).
 
 // phpLooseEqual is PHP's `==`, used by switch/case matching and the flatstack
 // host. It reads the same table as the comparison operators and null equals 0,
@@ -92,7 +92,7 @@ func inBoolDomain(v any) bool {
 // widening is int against int64, which are a single PHP type (int) that
 // arrives in two Go spellings: int64 from the parser and arithmetic, int from
 // a Go binding. Arrays compare pairwise in order, objects by instance, and a
-// host value a binding returned falls back to reflect equality on its own
+// host value a binding returned falls back to reflect equality on its Go
 // type.
 func phpIdentical(a, b any) bool {
 	switch x := a.(type) {
@@ -108,7 +108,7 @@ func phpIdentical(a, b any) bool {
 		y, ok := b.(string)
 		return ok && x == y
 	case []byte:
-		// A []byte is the string it carries and `===` against one compares text
+		// A []byte is the string it holds and `===` against one compares text
 		// and never reports two different types. See phpval.Bytes.
 		if y, ok := phpval.Bytes(b); ok {
 			return string(x) == y
@@ -226,7 +226,7 @@ func phpArith(op string, a, b any) (any, error) {
 	}
 	// Integer arithmetic that overflows becomes float in PHP and
 	// PHP_INT_MAX + 1 is 9.2233720368548E+18, with no wrap to a negative. The
-	// rules live in phpval so the flat VM's integer opcodes share them.
+	// phpval holds the rules so the flat VM's integer opcodes share them.
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
@@ -253,8 +253,8 @@ func phpArith(op string, a, b any) (any, error) {
 // keeps the longer one and treats the missing bytes as zero.
 //
 // Shifts are int64 operations. A count of 64 or more needs no special case: Go
-// defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`, which
-// is what PHP produces. A negative count is the one input with no answer, and
+// defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`; PHP
+// produces the same. A negative count is the one input with no answer, and
 // PHP raises ArithmeticError for it and picks neither.
 func phpBitwise(op string, a, b any) (any, error) {
 	switch op {

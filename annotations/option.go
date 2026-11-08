@@ -37,8 +37,8 @@ type config struct {
 // went wrong, empty unless the endpoint failed.
 //
 // A routed endpoint is a file outside the document root and it has no error
-// page of its own to find; the host that owns the document root supplies one of
-// these. A false answer, and a nil func, leave the response to the endpoint.
+// page to find; the host that owns the document root supplies one of these. A
+// false answer, and a nil func, leave the response to the endpoint.
 type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool
 
 // moduleName returns the platform module name for base, suffixed when the
@@ -99,8 +99,8 @@ func WithObservers(observers ...runner.Observer) Option {
 	}
 }
 
-// WithRuntimeFunc registers fn to customize each runtime once the standard
-// library and the request context sit on it.
+// WithRuntimeFunc registers fn to customize each runtime once it holds the
+// standard library and the request context.
 func WithRuntimeFunc(fn RuntimeFunc) Option {
 	return func(c *config) {
 		if fn != nil {
@@ -132,8 +132,8 @@ func WithModuleSuffix(suffix string) Option {
 	}
 }
 
-// WithErrorPages lets a host answer a routed endpoint's error response with a
-// page of its own. Startup and scheduled jobs answer to nobody and ignore it.
+// WithErrorPages lets a host answer a routed endpoint's error response with its
+// own page. Startup and scheduled jobs answer to nobody and ignore it.
 func WithErrorPages(fn ErrorPageFunc) Option {
 	return func(c *config) {
 		c.errorPages = fn

@@ -53,7 +53,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestMail_Send covers the deliveries a held client makes. The object carries
+// TestMail_Send covers the deliveries a held client makes. The object holds
 // a server name alone and each send resolves the credential afresh
 // inside the provider; one handle sends any number of messages, and every one
 // of them records the server the handle named.
@@ -106,7 +106,7 @@ func TestMail(t *testing.T) {
 
 // TestMailClass covers the class: `new Mail` is the default server and
 // `new Mail($name)` is the one the host configured under that name. Neither
-// spelling carries a credential.
+// spelling holds a credential.
 func TestMailClass(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
@@ -249,8 +249,8 @@ func TestMail_SendThroughAPlainProvider(t *testing.T) {
 }
 
 // TestMailUnknownServer pins the fail-fast: the constructor reports a name
-// nobody configured before a script has written a message, and the error
-// names the server the script selects, and no other.
+// nobody configured before a script has written a message. The error names
+// the server the script selects, and no other.
 func TestMailUnknownServer(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")

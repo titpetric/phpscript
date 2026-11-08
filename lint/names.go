@@ -16,9 +16,9 @@ import (
 // against two universes: the names the file declares itself, and the names a
 // runtime would answer for after stdlib registration. A miss is a warning, not
 // a failure, because a name can arrive through an include or an autoloader the
-// lint pass does not chase, but each finding is a line that would raise
-// "call to undefined function" or "undefined class" the moment it runs and it
-// is worth reading before the runtime says it.
+// lint pass does not chase. Each finding is a line that would raise "call to
+// undefined function" or "undefined class" the moment it runs, worth reading
+// before the runtime says it.
 
 var (
 	registryOnce sync.Once
@@ -185,7 +185,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		// autoloader declares no class until a name reaches it and
 		// including it and then refusing to autoload would leave every PSR-4
 		// class unknown, which is the finding the flag exists to
-		// remove. With no include there is no autoloader to run, and the
+		// remove. With no include there is no autoloader to run; the
 		// lookup would only cost a miss.
 		known, _ := rt.ClassExists(class, includeFile != "")
 		return known
@@ -245,7 +245,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 // astWalker visits every statement and every expression in a statement list,
 // at any nesting, including closure bodies written inside expressions. It
 // reports each expression with the source line of the statement holding it,
-// since expressions carry no spans of their own.
+// since an expression records no span itself.
 type astWalker struct {
 	prog *model.Program
 	stmt func(model.Stmt)

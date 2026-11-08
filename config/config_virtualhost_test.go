@@ -99,7 +99,7 @@ func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 }
 
 // TestVirtualHostLoadRejectsServer pins that a site cannot move the listen
-// address, and that the overlay says so, with no block dropped.
+// address. The overlay says so and drops no block.
 func TestVirtualHostLoadRejectsServer(t *testing.T) {
 	t.Parallel()
 	root := writeSite(t, `
@@ -119,7 +119,7 @@ server:
 }
 
 // TestVirtualHostLoadRejectsNestedVirtualHosts pins that a site cannot declare
-// sites of its own.
+// nested sites.
 func TestVirtualHostLoadRejectsNestedVirtualHosts(t *testing.T) {
 	t.Parallel()
 	root := writeSite(t, `
@@ -156,7 +156,7 @@ func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
 }
 
 // TestVirtualHostServerBlockIsHeldToBase pins the guard after the rejection:
-// the loaded configuration carries the operator's server block and no nested
+// the loaded configuration holds the operator's server block and no nested
 // sites whatever the file said.
 func TestVirtualHostServerBlockIsHeldToBase(t *testing.T) {
 	t.Parallel()
@@ -273,7 +273,7 @@ func TestVirtualHostDomains(t *testing.T) {
 }
 
 // TestValidateVirtualHosts covers the checks over the list as a whole. Each
-// case names its own domain, which the error has to carry.
+// case names its own domain, which the error has to name.
 func TestValidateVirtualHosts(t *testing.T) {
 	t.Parallel()
 	site := func(t *testing.T, source string, documentRoots ...string) string {
@@ -450,7 +450,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.Telemetry.Enabled = false
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
-		// The root router carries no dashboard and it shadows nothing.
+		// The root router mounts no dashboard and it shadows nothing.
 		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}

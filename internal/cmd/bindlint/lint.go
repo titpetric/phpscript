@@ -47,7 +47,7 @@ type pkg struct {
 
 // lint reports every binding in the tree at root that points at a runtime
 // value type. It reads one directory at a time: a binding and the helpers it
-// passes a script value to sit in one package, and the rules need no more
+// passes a script value to belong to one package, and the rules need no more
 // context than that.
 func lint(root string) ([]finding, error) {
 	var out []finding
@@ -104,9 +104,9 @@ func parseDir(root, dir string) (*pkg, error) {
 		}
 		file, err := parser.ParseFile(p.fset, filepath.Join(dir, name), nil, 0)
 		if err != nil {
-			// A file the parser refuses is a build failure, and the
-			// compiler reports it with more than this linter knows. It
-			// contributes no binding and no second opinion.
+			// A file the parser refuses is a build failure. The compiler
+			// reports it with more than this linter knows. It contributes
+			// no binding and no second opinion.
 			continue
 		}
 		p.files = append(p.files, file)
@@ -162,8 +162,8 @@ type binding struct {
 }
 
 // check applies both rules to every binding the package registers, reporting
-// each site once: one helper serves four bindings in stdlib/ps/core alone, and
-// the fix is one edit.
+// each site once: one helper serves four bindings in stdlib/ps/core alone and
+// one edit fixes it.
 func (p *pkg) check() []finding {
 	var out []finding
 	seen := map[string]bool{}
@@ -334,7 +334,7 @@ func registeredName(call *ast.CallExpr) string {
 	return name
 }
 
-// constructedType names the type a constructor returns, the type carrying the
+// constructedType names the type a constructor returns, the type holding the
 // methods a script calls on the class. A constructor returning a type from
 // another package, or an interface, names no method set here: the methods hang
 // off the implementation, under a name only the type checker resolves.

@@ -140,7 +140,7 @@ func TestBcryptParamsOf(t *testing.T) {
 // TestIsPasswordHash covers the stricter question a user database asks: not
 // "which derivation would run" but "could this value ever match". The two
 // differ on a hash whose prefix and cost parse and whose body does not:
-// password_verify answers false for one, and a parse refuses the line.
+// password_verify answers false for one. A parse refuses the line.
 func TestIsPasswordHash(t *testing.T) {
 	t.Parallel()
 
@@ -218,7 +218,7 @@ func BenchmarkPasswordHash(b *testing.B) {
 // BenchmarkPasswordVerify prices password_verify() against a stored hash. The
 // derivation is the one password_hash runs, at the work factors the hash
 // records and a login costs what the registration cost. Lowering the cost
-// leaves every stored hash at the cost it carries.
+// leaves every stored hash at the cost it records.
 func BenchmarkPasswordVerify(b *testing.B) {
 	stored := []params{
 		{algo: algoBcrypt, cost: 10},
@@ -255,9 +255,9 @@ func BenchmarkPasswordVerify(b *testing.B) {
 }
 
 // refusedHashes are the spellings password_verify answers by shape. No
-// derivation can turn any of them into a match: the first three carry no salt
+// derivation can turn any of them into a match: the first three hold no salt
 // and no tag, the fourth is bcrypt's 1997 spelling with no revision marker,
-// which php's crypt refuses, and the last is argon2 1.0, which derives a
+// which php's crypt refuses. The last is argon2 1.0, which derives a
 // different tag from the same parameters and argon2Decode refuses it as
 // unreadable.
 var refusedHashes = []struct{ name, hash string }{

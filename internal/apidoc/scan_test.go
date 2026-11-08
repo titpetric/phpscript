@@ -135,7 +135,7 @@ func register(rt *Runtime) {
 	}
 
 	// A package outside the tree has no signature here, whatever names it
-	// shares with one inside it.
+	// shares with a package the scan did read.
 	ctor := scanned.ctors[`Area\Compile`]
 	if ctor == nil {
 		t.Fatal(`Area\Compile: not scanned`)

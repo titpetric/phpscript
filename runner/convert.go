@@ -8,6 +8,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Value coercion mirrors PHP's loose typing where the runner needs a concrete
@@ -53,20 +54,20 @@ func phpTruthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
-		// A []byte reads as the string it carries and "" and "0" are falsey as
+		// A []byte reads as the string it holds and "" and "0" are falsey as
 		// they are for a string. See phpval.Bytes.
 		if s, ok := phpval.Bytes(v); ok {
 			return s != "" && s != "0"
 		}
 		// A typed go value reads as the number it holds: int8(0) is falsey, as
 		// php's 0 is.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return phpTruthy(widened)
 		}
 		// An empty collection is falsey whatever its Go type and a binding that
 		// returns a []string behaves like one that returns an *Array in
 		// `if ($rows)` and `empty($rows)`.
-		if n, ok := model.LenValues(v); ok {
+		if n, ok := modelutil.LenValues(v); ok {
 			return n > 0
 		}
 		return true
@@ -91,7 +92,7 @@ func toInt(v any) int64 {
 		return stringToInt(x)
 	default:
 		// A typed integer clips at PHP_INT_MAX, as phpval.Int reads one.
-		if clipped, ok := model.GoClipInt(v); ok {
+		if clipped, ok := modelutil.GoClipInt(v); ok {
 			return clipped
 		}
 		// A named Go scalar (time.Month, time.Duration) is an integer wearing
@@ -201,7 +202,7 @@ func helperCast(typ string, v any) any {
 		// This is the only context that converts one: php refuses arithmetic on
 		// an array with a TypeError and coerces nothing and toInt answers
 		// zero and the rule lives here and not there.
-		if model.IsCollection(v) {
+		if modelutil.IsCollection(v) {
 			if phpTruthy(v) {
 				return int64(1)
 			}
@@ -231,8 +232,8 @@ func helperCast(typ string, v any) any {
 		}
 		// (array) on a collection converts it, preserving keys; on a scalar it
 		// wraps the value, as PHP does.
-		if model.IsCollection(v) {
-			return model.ToArray(v)
+		if modelutil.IsCollection(v) {
+			return modelutil.ToArray(v)
 		}
 		a := model.NewArraySize(1)
 		a.Append(v)
@@ -251,7 +252,7 @@ func helperCast(typ string, v any) any {
 // The cast returns an object unchanged, which is PHP's behaviour and the reason
 // it makes no copy: `(object) $o === $o`. It copies nothing on the way in
 // either. PHP copies the array because arrays are values there; here they are
-// handles (docs/reference/types/value-semantics.md), and the cast is not the
+// handles (docs/reference/types/value-semantics.md). The cast is not the
 // place to make one exception to that. An array nested under a property stays
 // an array, as PHP does too, since its copy does not convert nested arrays
 // into objects.
@@ -259,11 +260,11 @@ func helperToObject(v any) any {
 	switch {
 	case v == nil:
 		return model.NewStdClass()
-	case model.IsCollection(v):
+	case modelutil.IsCollection(v):
 		// Ahead of the host-object test: an *model.Array is a pointer to a
-		// struct and would answer that test, and the value is an array.
+		// struct and would answer that test. The value is an array.
 		obj := model.NewStdClass()
-		model.RangeValues(v, func(key, val any) bool {
+		modelutil.RangeValues(v, func(key, val any) bool {
 			obj.SetProp(phpval.String(key), val)
 			return true
 		})
@@ -319,7 +320,7 @@ func toFloat(v any) float64 {
 	default:
 		// A typed go value reads as the number php holds it in: float32(0.5) is
 		// 0.5 and uint8(3) is 3.
-		if widened, ok := model.GoWiden(v); ok {
+		if widened, ok := modelutil.GoWiden(v); ok {
 			return toFloat(widened)
 		}
 		return 0

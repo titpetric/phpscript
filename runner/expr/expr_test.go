@@ -44,10 +44,10 @@ func TestProgram(t *testing.T) {
 }
 
 // TestRun covers evaluation against the runner's environment, and the single
-// recover the chain carries. The guard sits at the root and not at each
-// helper call and a panic anywhere down the chain surfaces as the error
-// PanicError built, and a host panic stays catchable as one PHP exception on
-// both engines.
+// recover the chain holds. The guard is at the root and not at each helper
+// call and a panic anywhere down the chain surfaces as the error PanicError
+// built, and a host panic stays catchable as one PHP exception on both
+// engines.
 func TestRun(t *testing.T) {
 	t.Parallel()
 	expression := &model.Binary{

@@ -18,7 +18,7 @@ package bindings
 import (
 	"fmt"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Entry is one name a package binds: the import path, the name go spells, the
@@ -34,7 +34,7 @@ type Entry struct {
 // standard library subset this build already links, which is a defect in the
 // binding package and no condition a program meets.
 func For(path string) *Set {
-	area, _, ok := model.GoImportArea(path)
+	area, _, ok := modelutil.GoImportArea(path)
 	if !ok {
 		panic(fmt.Sprintf("bindings: %q is no go package path", path))
 	}

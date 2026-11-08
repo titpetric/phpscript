@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// interfaceSet is the set reflectImplements tests a bound type against, and it
+// interfaceSet is the set reflectImplements tests a bound type against. It
 // holds two kinds of entry.
 //
 // runner.Throwable is the one contract of this module a script names, in a

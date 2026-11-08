@@ -88,7 +88,7 @@ func TestSizeYAML(t *testing.T) {
 	}
 }
 
-// TestSize_UnmarshalYAML covers the decoder hook on its own. Quoted or bare is
+// TestSize_UnmarshalYAML covers the decoder hook by itself. Quoted or bare is
 // the same size, because a document naming 8M means the bytes either way, and a
 // refused spelling leaves the field at the value it already held and never
 // zeroes it and a bad document cannot read as "no limit".

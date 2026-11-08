@@ -7,32 +7,40 @@ import (
 	"go/types"
 )
 
-// checkSignature reports a binding parameter declared as a runtime value type.
-//
-// Arguments arrive as `any`. A concrete parameter makes reflect.Call panic the
-// moment a script passes the `[]string` another binding returned, and the
-// binding is unreachable for every value the interpreter did not build.
+// checkSignature reports a binding parameter that only one of the two shapes
+// of a script collection fills.
 func (p *pkg) checkSignature(b binding) []finding {
 	if b.ftype == nil || b.ftype.Params == nil {
 		return nil
 	}
 	var out []finding
 	for _, field := range b.ftype.Params.List {
-		if paramType(field.Type) == "" {
+		refused := refusedParam(field.Type)
+		if refused == "" {
 			continue
 		}
-		name := types.ExprString(field.Type)
 		file, line := p.position(field.Pos())
 		out = append(out, finding{
 			file:    file,
 			line:    line,
 			binding: b.label(),
-			message: fmt.Sprintf("parameter %s is %s: a script value arrives as any, and a concrete "+
-				"parameter makes reflect.Call panic on the []string another binding returned. Take any "+
-				"and read it through model.RangeValues.", paramLabel(field), name),
+			message: fmt.Sprintf("parameter %s is %s: %s Take any and read it through "+
+				"modelutil.RangeValues.", paramLabel(field), types.ExprString(field.Type), refused),
 		})
 	}
 	return out
+}
+
+func refusedParam(e ast.Expr) string {
+	if paramType(e) != "" {
+		return "the interpreter builds that type for an array literal alone, and the call " +
+			"refuses the slice or map another binding returned."
+	}
+	if nativeShape(e) {
+		return "a binding fills that type and an array literal does not, and the call " +
+			"refuses the *model.Array the interpreter built."
+	}
+	return ""
 }
 
 // paramLabel names the parameter a finding is about, as a script spells it.
@@ -62,8 +70,8 @@ func (p *pkg) checkNarrowing(b binding) []finding {
 // map[string]any. A narrowing that only reads the value answers one of them
 // and silently takes the other path for the other.
 //
-// It has a reason when the type switch routes the native shape to a case of
-// its own, when the function reads the narrowed value's source through model
+// It has a reason when the type switch routes the native shape to its own
+// case, when the function reads the narrowed value's source through model
 // or reflect whatever shape it has, when the branch taking what the narrowing
 // did not match refuses it with an error - the loud refusal array_splice and
 // the array mutators document - or when it calls for a capability a Go-native
@@ -101,8 +109,8 @@ func (p *pkg) narrowings(label string, ftype *ast.FuncType, body *ast.BlockStmt)
 			line:    line,
 			binding: label,
 			message: fmt.Sprintf("narrows %s to %s and only reads it: the same value from another binding "+
-				"is a Go slice or map and takes the other path. Read it through model.RangeValues or "+
-				"model.LenValues, or refuse it with an error.", valueLabel(s.bound), s.typ),
+				"is a Go slice or map and takes the other path. Read it through modelutil.RangeValues or "+
+				"modelutil.LenValues, or refuse it with an error.", valueLabel(s.bound), s.typ),
 		})
 	}
 	return out
@@ -134,15 +142,15 @@ type site struct {
 func narrowingSites(body *ast.BlockStmt) []site {
 	var out []site
 	// A type switch and an assertion in an assignment both hold a
-	// TypeAssertExpr the walk reaches again on its own; taken records the ones
+	// TypeAssertExpr the walk reaches a second time; taken records the ones
 	// already read, with the variables they name.
 	taken := map[token.Pos]bool{}
 	refusals := errorBranches(body)
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch node := n.(type) {
 		case *ast.TypeSwitchStmt:
-			// A switch case takes no refusal: the native shape reaches a case
-			// of its own or it reaches none, and the default clause answers
+			// A switch case takes no refusal: the native shape reaches its
+			// own case or it reaches none, and the default clause answers
 			// for every type the function never considered.
 			out = append(out, switchSites(node, taken)...)
 		case *ast.AssignStmt:
@@ -268,8 +276,8 @@ func boundName(e ast.Expr) string {
 }
 
 // reachable returns the functions of the package a binding calls, and the
-// functions those call: a binding passes its argument to a helper, and the
-// narrowing is the binding's wherever the file holding it sits.
+// functions those call: a binding passes its argument to a helper. The
+// narrowing belongs to the binding wherever the file holding it sits.
 func (p *pkg) reachable(body *ast.BlockStmt) []*ast.FuncDecl {
 	if body == nil {
 		return nil
@@ -314,7 +322,7 @@ func calledNames(body *ast.BlockStmt) []string {
 // readsEveryShape reports whether a function reads the narrowed value's
 // source whatever shape it has: through model's collection helpers, phpval, or
 // reflection. The argument decides it, and not the call: a function reading
-// one value through model.RangeValues and narrowing another answers for the
+// one value through modelutil.RangeValues and narrowing another answers for the
 // first alone.
 func readsEveryShape(body *ast.BlockStmt, subject string) bool {
 	found := false
@@ -340,8 +348,8 @@ func readsEveryShape(body *ast.BlockStmt, subject string) bool {
 // a mutator needs the one shape that can grow and says so.
 //
 // The branch is the one beside the narrowing: `if !ok` after the assignment,
-// or the if statement the assertion sits in the init of. An error anywhere
-// else in the function belongs to another argument.
+// or the if statement whose init holds the assertion. An error anywhere else
+// in the function belongs to another argument.
 func errorBranches(body *ast.BlockStmt) map[token.Pos]bool {
 	out := map[token.Pos]bool{}
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -398,8 +406,8 @@ func mentions(e ast.Expr, name string) bool {
 	return found
 }
 
-// createsError reports whether a branch builds an error of its own, which is
-// the refusal a script catches. An error it received from elsewhere belongs to
+// createsError reports whether a branch builds its own error, which is the
+// refusal a script catches. An error it received from elsewhere belongs to
 // the call that made it.
 func createsError(branch ast.Node) bool {
 	if branch == nil {

@@ -1,8 +1,8 @@
 # Mail bindings
 
-`mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells one, and it cannot read one back.
+`mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells one and cannot read one back.
 
-That split is the whole design. Connection settings are operator configuration, the same way database credentials are and they live in the [`mail` block](../configuration.md#mail-servers) and reach a script only as a name it may construct against.
+That split is the whole design. Connection settings are operator configuration, the same way database credentials are. The [`mail` block](../configuration.md#mail-servers) holds them and they reach a script only as a name it may construct against.
 
 Both bindings are part of the standard library. A script includes nothing to reach them.
 
@@ -90,7 +90,7 @@ mail:
     from: Marketing <marketing@example.com>
 ```
 
-`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. With both `username` and `password`, the relay authenticates; with neither, a local mailhog accepts the unauthenticated connection. `from` may carry a display name, in which case the bare address becomes the envelope sender.
+`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. With both `username` and `password`, the relay authenticates; with neither, a local mailhog accepts the unauthenticated connection. `from` may hold a display name, in which case the bare address becomes the envelope sender.
 
 The full key reference, including `insecure` and the STARTTLS rules, is in [Mail servers](../configuration.md#mail-servers).
 
@@ -136,7 +136,7 @@ var_dump($mail->password);       // NULL
 var_dump($mail->host);           // NULL
 ```
 
-The object carries no properties and a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key and no `env` entry, `getenv()` never reaches them.
+The object holds no properties and a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key and no `env` entry, `getenv()` never reaches them.
 
 The constructor refuses the settings in place of a name and accepts nothing quietly:
 
@@ -174,8 +174,8 @@ provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, bo
 options.Mail = provider
 ```
 
-A `Deliver` reads the three parts of a plain-text message and a provider built over one refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's own `model.MailProvider`, whose `Send` is plain text: it carries the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`, as `mail.Provider` and `mail.Memory` do.
+A `Deliver` reads the three parts of a plain-text message and a provider built over one refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's own `model.MailProvider`, whose `Send` is plain text: it sends the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`, as `mail.Provider` and `mail.Memory` do.
 
-`mail.NewMemory(names...)` is a provider that queues messages and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name. Each queued `mail.Message` carries the HTML part and the Reply-To as the script sent them.
+`mail.NewMemory(names...)` is a provider that queues messages and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name. Each queued `mail.Message` holds the HTML part and the Reply-To as the script sent them.
 
 See [Go bindings](bindings.md) for how a host installs these.

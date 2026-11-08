@@ -8,13 +8,13 @@ package sql
 import (
 	"context"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/ps/database"
 )
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Database\SQL`
+const Namespace = modelutil.GoNamespace + `\Database\SQL`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)

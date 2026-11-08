@@ -14,8 +14,8 @@ import (
 
 // newServer builds a server over a handler answering "pong" on every path,
 // together with the runtime it belongs to. The handler is a plain net/http one
-// and no HTTP\Mux and the tests here read the listening half on its own: a
-// Mux brings a worker pool with it, and none of these tests is about that.
+// and no HTTP\Mux and the tests here read the listening half alone: a Mux
+// brings a worker pool with it and no test here covers that.
 func newServer(t *testing.T, ctx context.Context) (*runner.Runtime, *http.Server) {
 	t.Helper()
 
@@ -80,8 +80,8 @@ func TestServer(t *testing.T) {
 }
 
 // TestServer_Listen covers binding the port. It returns the address the system
-// picked and a script that bound port 0 can report it, and it does not block:
-// the script carries on and calls wait() when it has nothing left.
+// picked and a script that bound port 0 can report it. It does not block: the
+// script runs on and calls wait() when it has nothing left.
 //
 // A second listen on a running server is an error, because the server still
 // answers on the first address and a silent rebind would lose it.

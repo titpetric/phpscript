@@ -8,13 +8,14 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
-// isComposite reports whether a value renders as more than one line, which is
-// what decides whether var_export breaks after the arrow.
+// isComposite reports whether a value renders as more than one line. var_export
+// breaks after the arrow for a composite.
 func isComposite(value any) bool {
-	return model.IsCollection(value) || isObjectLike(value)
+	return modelutil.IsCollection(value) || isObjectLike(value)
 }
 
 // isObjectLike reports whether a value prints as an object. It repeats the
@@ -28,7 +29,7 @@ func isObjectLike(value any) bool {
 	if _, ok := value.(*model.Object); ok {
 		return true
 	}
-	if model.IsCollection(value) {
+	if modelutil.IsCollection(value) {
 		return false
 	}
 	rv := reflect.ValueOf(value)
@@ -52,7 +53,7 @@ func classOf(value any) string {
 		return object.Class.Name
 	}
 	// A callable value prints as php's Closure: `$this->fn(...)`, the
-	// first-class callable syntax the shorter `$this->fn` stands in for, answers
+	// first-class callable syntax the shorter `$this->fn` abbreviates, answers
 	// a Closure and has no other name.
 	if _, ok := value.(*runner.Callable); ok {
 		return "Closure"
@@ -85,7 +86,7 @@ func objectKey(value any) (uintptr, bool) {
 	return 0, false
 }
 
-// objectField is one property of an object. scope carries var_dump's
+// objectField is one property of an object. scope holds var_dump's
 // visibility annotation (":\"Class\":private", ":protected"), empty for a
 // public property.
 type objectField struct {
@@ -96,7 +97,7 @@ type objectField struct {
 
 // objectFields returns an object's properties in the order it reads them back:
 // the declared fields first, in declaration order, then the ones the script
-// added, in the order it added them. A dynamic property carries no scope
+// added, in the order it added them. A dynamic property has no scope
 // annotation, because only a declaration can name a visibility.
 func objectFields(value any) []objectField {
 	if object, ok := value.(*model.Object); ok {
@@ -219,8 +220,8 @@ func exportFloat(f float64) string {
 }
 
 // printString renders a scalar the way print_r and echo do: true is 1, false
-// and null are nothing, and a float carries precision=14 digits and not
-// var_dump's round-tripping ones.
+// and null are nothing, and a float prints at precision=14 and not
+// var_dump's round-tripping digits.
 func printString(value any) string {
 	switch x := value.(type) {
 	case nil:

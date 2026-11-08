@@ -38,8 +38,8 @@ func TestRuntime_CompiledTree(t *testing.T) {
 }
 
 // TestRuntimeMemoryReporting covers the figures memory_get_usage() and
-// memory_get_peak_usage() answer with. Both come off a walk of the live roots,
-// and the usage is what is reachable now and the peak is the highest a walk has
+// memory_get_peak_usage() answer with. Both come off a walk of the live roots.
+// The usage is what is reachable now and the peak is the highest a walk has
 // seen: an allocation made and released between two walks does not raise it,
 // and php's allocator-level peak counts it.
 func TestRuntimeMemoryReporting(t *testing.T) {

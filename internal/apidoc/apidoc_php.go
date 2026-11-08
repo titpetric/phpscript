@@ -48,8 +48,8 @@ func (c Class) Describe() []string {
 }
 
 // cited names the Go package and symbol behind the class, and the interfaces
-// the bound type satisfies. A standard library symbol carries a link to its
-// reference page; the citation names every other symbol bare.
+// the bound type satisfies. A standard library symbol links to its reference
+// page; the citation names every other symbol bare.
 func (c Class) cited() []string {
 	lines := []string{}
 	if c.Binds == "" && c.Uses.Name == "" {
@@ -66,8 +66,8 @@ func (c Class) cited() []string {
 	return append(lines, "Implements "+strings.Join(parts, ", ")+".")
 }
 
-// usesSymbol is the symbol the citation names, written bare when it sits in
-// the package the class binds and qualified when it comes from elsewhere.
+// usesSymbol is the symbol the citation names, written bare when the class
+// binds the package that declares it, qualified when it comes from elsewhere.
 func (c Class) usesSymbol() string {
 	if c.Uses.URL == "" && c.Uses.Package == c.Binds {
 		return c.Uses.Name
@@ -75,7 +75,7 @@ func (c Class) usesSymbol() string {
 	return c.Uses.Link()
 }
 
-// implementsClause is the interface list the class header carries, empty for a
+// implementsClause is the interface list the class header prints, empty for a
 // bound type that satisfies none of the set.
 func (c Class) implementsClause() string {
 	if len(c.Implements) == 0 {

@@ -5,7 +5,7 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bNot a \w+\.\s+Not a \w+\.'
-  - '\bNot \w+\.\s+Not \w+\.\s+'
-  - '\bone (?:word|thing|reason):\s*$'
-  - '\bthe (?:real|actual) (?:problem|issue|answer) (?:is|was)\b'
+  - '\bNot\s+a\s+\w+\.\s+Not\s+a\s+\w+\.'
+  - '\bNot\s+\w+\.\s+Not\s+\w+\.\s+'
+  - '\bone\s+(?:word|thing|reason):\s*$'
+  - '\bthe\s+(?:real|actual)\s+(?:problem|issue|answer)\s+(?:is|was)\b'

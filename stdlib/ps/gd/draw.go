@@ -50,8 +50,7 @@ func registerDraw(rt *runner.Runtime) {
 			return false
 		}
 		// A starting point outside the image fills nothing and still answers
-		// true, as GD does: there is no region to walk, and the
-		// call is not an error.
+		// true, as GD does: no region to walk and no error.
 		if !image_ptIn(im, x, y) {
 			return true
 		}
@@ -94,7 +93,7 @@ func normalise(x1, y1, x2, y2 int) image.Rectangle {
 }
 
 // line is Bresenham. The standard library draws no lines, and the axis aligned
-// shortcut is not enough: imagerectangle and any ported border code reach for
+// shortcut is not enough: imagerectangle and any ported border code take
 // arbitrary endpoints.
 func line(im *Image, x1, y1, x2, y2 int, packed int64) {
 	dx := abs(x2 - x1)

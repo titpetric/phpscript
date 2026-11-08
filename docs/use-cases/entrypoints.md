@@ -1,6 +1,6 @@
 # Custom entrypoints
 
-The server reaches PHP through a request: a URL resolves to a file, the request fills the superglobals, and the file runs top to bottom. That is the right shape for a site. A Go program calling one function needs another.
+The server reaches PHP through a request: a URL resolves to a file, the request fills the superglobals and the file runs top to bottom. That is the right shape for a site. A Go program calling one function needs another.
 
 `runner.Lookup` is the other shape. The host names a symbol and the signature it wants, and gets a Go function back.
 
@@ -33,7 +33,7 @@ An `http.ResponseWriter` and an `*http.Request` are Go values and they arrive as
 
 The runtime checks neither hint, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
 
-## What an invocation carries
+## What an invocation receives
 
 The arguments alone.
 
@@ -59,7 +59,7 @@ A host needing the superglobals still has them: build the runtime, `runner.FromR
 
 The symbol may be anywhere under the runtime's source root. A runtime that has loaded nothing parses its tree through a `Precompiler` on the first lookup and there is no load step to remember; a host that already precompiled, or that has been serving requests, resolves against the cache it filled.
 
-A free function in a namespaced file carries the namespace and `App\Handler\index` is the whole name. That name resolves, and so does any trailing part of it:
+A free function in a namespaced file keeps the namespace in its name and `App\Handler\index` is the whole name. That name resolves and so does any trailing part of it:
 
 ```go
 runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index") // exact
@@ -67,7 +67,7 @@ runner.Lookup[http.HandlerFunc](rt, "Handler\\index")      // by segment
 runner.Lookup[http.HandlerFunc](rt, "index")               // by name
 ```
 
-The last one is an error if two namespaces declare an `index`. `*runner.LookupError` carries the names that matched and a host binding its handlers at startup reads which spelling to use, and serves no handler on a guess.
+The last one is an error if two namespaces declare an `index`. `*runner.LookupError` lists the names that matched and a host binding its handlers at startup reads which spelling to use, and serves no handler on a guess.
 
 ## Signatures
 
@@ -80,7 +80,7 @@ runner.Lookup[func(*testing.T)](rt, "test_users")
 runner.Lookup[func(...string) string](rt, "join")
 ```
 
-A returned value takes PHP's own coercions into the declared result: `1` fills a `bool` the way `if (1)` reads it, `"42"` fills an `int`, and an array fills a `[]string` or a `map[string]int`. An error has to go somewhere - a signature ending in `error` receives it, and one that does not passes it to the runtime's error sink, the same place a failed script's error goes.
+A returned value takes PHP's own coercions into the declared result: `1` fills a `bool` the way `if (1)` reads it, `"42"` fills an `int` and an array fills a `[]string` or a `map[string]int`. An error has to go somewhere - a signature ending in `error` receives it, and one that does not passes it to the runtime's error sink, the same place a failed script's error goes.
 
 ## Concurrency
 
@@ -139,11 +139,11 @@ Pooling is 37x a fresh runtime per request and 59x less garbage, which is the pa
 
 `pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops it all. That also drops the declarations and the lookup binds the symbol again per request - at a few hundred nanoseconds and the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
 
-A pool does not carry the writer: `runner.New` fixes it for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
+A pool holds no writer: `runner.New` fixes it for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
 
 ## Limits
 
-A looked-up symbol runs on the interpreter even under a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table and not the runtime's.
+A looked-up symbol runs on the interpreter even under a runtime built with `NewFlatStack`, because a flat-declared function belongs to the bytecode program's table and not the runtime's.
 
 `Options.Include` is not run per invocation and a composer autoloader is not installed by a lookup. A function that needs one requires it in its own body, or the host runs the prelude on the runtime before looking anything up.
 

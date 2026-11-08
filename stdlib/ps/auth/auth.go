@@ -8,7 +8,7 @@
 // reaches PHP. A script gets a verdict, a primary key and a username.
 //
 // A record derives its key from its username and a user database with no id
-// column still has stable primary keys for other tables to carry.
+// column still has stable primary keys for other tables to reference.
 // crypto.ULIDFrom is the derivation and stdlib/ps/auth/user.go is the record.
 //
 // Session\Manager turns a verdict into a session; this package knows nothing
@@ -29,8 +29,7 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
 
-// RegisterRoot installs the user stores with paths resolved against dir and a
-// file a script names is the file it would read with file_get_contents and no
+// RegisterRoot installs the user stores with paths resolved against dir; no
 // spelling reaches outside the application root.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	// Auth\Storage\PasswordFile authenticates against an apache-format

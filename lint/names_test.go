@@ -10,7 +10,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestSetInclude covers what the flag buys and the ordering it carries. The
+// TestSetInclude covers what the flag buys and the ordering it requires. The
 // linter runs the recorded path against the name registry before it checks any
 // file and the names an application declares resolve as well as the standard
 // library's. knownRuntime builds the registry once per process and a caller

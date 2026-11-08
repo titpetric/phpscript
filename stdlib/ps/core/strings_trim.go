@@ -42,7 +42,7 @@ func phpTrim(side trimSide, def string) func(string, ...string) string {
 }
 
 // charMask reads a trim character list into a byte set, as PHP's php_charmask
-// does: a byte stands for itself and "a..z" is every byte from the first to the
+// does: a byte means itself and "a..z" is every byte from the first to the
 // last, both included.
 //
 // A range whose end sorts below its start, or one missing either end, stays the

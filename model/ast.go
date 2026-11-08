@@ -31,8 +31,8 @@ type Expr interface {
 type Program struct {
 	Stmts     []Stmt
 	Namespace string // set when the file declares `namespace Name;`
-	// NamespaceLine is the source line of the namespace declaration, which is
-	// not a statement of its own. The formatter needs it to place the comments
+	// NamespaceLine is the source line of the namespace declaration, which no
+	// statement node records. The formatter needs it to place the comments
 	// written above it.
 	NamespaceLine int
 	// SourceSpans records original statement lines when Program came from the
@@ -86,7 +86,7 @@ type ExprStmt struct {
 }
 
 // Assign is `Target = Value`. Op may be "=", ".=", "+=", "[]=" (append).
-// expr-lang cannot mutate and the runner handles assignment on its own.
+// expr-lang cannot mutate and the runner executes assignment itself.
 type Assign struct {
 	Target Expr // Var, PropAccess or Index
 	Op     string
@@ -98,8 +98,8 @@ type If struct {
 	Cond Expr
 	Then []Stmt
 	Else []Stmt // may itself contain a single nested *If for elseif chains
-	// ElseLine is the source line of the `else` or `elseif` keyword, which is
-	// not a statement of its own. It marks where the then arm ends and the
+	// ElseLine is the source line of the `else` or `elseif` keyword, which no
+	// statement node records. It marks where the then arm ends and the
 	// formatter can tell a comment written above the keyword from one written
 	// below it.
 	ElseLine int
@@ -236,7 +236,7 @@ type UseImport struct {
 
 // Declare is `declare(strict_types=1);` or `declare(ticks=1) { ... }`. The
 // runtime has one set of semantics and no directive varies it and the node
-// carries the directives for printing and the runtime ignores them; a block
+// holds the directives for printing and the runtime ignores them; a block
 // form still runs its body.
 type Declare struct {
 	Directives []DeclareDirective
@@ -259,7 +259,7 @@ type Unset struct {
 // StaticVar is `static $x [= expr][, $y ...];` inside a function body. Each
 // initializer runs once per function lifetime; the bindings persist across
 // calls (per closure value for closures), which is PHP's function-static
-// semantics. Storage lives on the runtime, keyed by this node's address.
+// semantics. The runtime owns the storage, keyed by this node's address.
 type StaticVar struct {
 	Vars []StaticVarDecl
 }
@@ -334,9 +334,8 @@ type SwitchCase struct {
 }
 
 // Break exits the nearest loop or switch. Line is its source line, which also
-// makes the node an address of its own: Go assigns every
-// zero-sized allocation the same one, and the formatter keys source spans by
-// node.
+// makes the node non-zero-sized: Go assigns every zero-sized allocation the
+// same address, and the formatter keys source spans by node.
 type Break struct {
 	Line int
 }
@@ -527,7 +526,7 @@ type Index struct {
 }
 
 // PropAccess is field access. The README allows both `$obj->field` and the new
-// `obj.field` notation; both parse to this node. NameExpr carries the property
+// `obj.field` notation; both parse to this node. NameExpr holds the property
 // name when a variable or a braced expression supplies it (`$obj->$name`,
 // `$obj->{$expr}`); Name is empty then.
 type PropAccess struct {
@@ -555,7 +554,7 @@ type Call struct {
 // MethodCall is `Base->method(args...)` or `Base.method(args...)`.
 //
 // The variable spelling `Base->$m(args...)` calls the method that `$m` names:
-// MethodExpr carries that expression and Method is empty.
+// MethodExpr holds that expression and Method is empty.
 type MethodCall struct {
 	Base       Expr
 	Method     string
@@ -568,7 +567,7 @@ type MethodCall struct {
 //
 // Decl holds an anonymous class, `new class { ... }`, under a name the parser
 // synthesized so everything downstream resolves it as a written one; the parser
-// collects the declarations on Program.AnonClasses. ClassExpr carries
+// collects the declarations on Program.AnonClasses. ClassExpr holds
 // `new $className(...)`, which resolves at run time and may name a PHP class or
 // a registered Go constructor.
 type New struct {
@@ -599,19 +598,6 @@ type Parenthesized struct {
 	X Expr
 }
 
-// UnwrapParenthesized returns the expression inside any explicit grouping.
-// A consumer that inspects expression shape without evaluating it uses
-// this so parentheses remain semantically transparent.
-func UnwrapParenthesized(e Expr) Expr {
-	for {
-		p, ok := e.(*Parenthesized)
-		if !ok {
-			return e
-		}
-		e = p.X
-	}
-}
-
 // Binary is an infix operator. Op covers arithmetic (+ - * / % **), string
 // concat ("."), comparison (== != === !== < <= > >=), logical (&& ||) and
 // bitwise (& | ^ << >>).
@@ -638,7 +624,7 @@ type Coalesce struct {
 }
 
 // ClassConst is `Class::NAME` / `self::NAME` class-constant access. The
-// pseudo-constant `Class::class` carries Name "class" and resolves to the
+// pseudo-constant `Class::class` sets Name to "class" and resolves to the
 // fully-qualified class name as a string.
 type ClassConst struct {
 	Class string
@@ -651,7 +637,7 @@ type ClassConst struct {
 // run against the class alone.
 //
 // The variable spelling `Class::$m(args...)` calls the method that `$m` names:
-// MethodExpr carries that expression and Method is empty.
+// MethodExpr holds that expression and Method is empty.
 type StaticCall struct {
 	Class      string
 	Method     string

@@ -7,7 +7,7 @@ import (
 )
 
 // Env is the engine's evaluation environment. Per-expression values (PHP
-// variables, bare-name constants, closure literals) live in Vars, indexed by
+// variables, bare-name constants, closure literals) go in Vars, indexed by
 // the slot the compiler assigned to their identifier; everything persistent
 // (the PHP-semantic helpers, installed functions) stays in Base.
 type Env struct {
@@ -15,17 +15,17 @@ type Env struct {
 	Base map[string]any
 
 	// Scratch is the argument arena scratchCall boxes into, growing across
-	// evaluations and reset when the environment goes back to its pool. It
-	// is stack-disciplined: a call pushes its arguments, borrows the region
-	// for the call, and pops it when the call returns and the compiler puts
-	// only the helpers that never keep their argument slice onto it.
+	// evaluations and reset when the environment goes back to its pool. The
+	// arena is stack-disciplined: a call pushes its arguments, borrows the
+	// region for the call, and pops it when the call returns and the compiler
+	// puts only the helpers that never keep their argument slice onto it.
 	Scratch []any
 }
 
 // closure evaluates one node against the runner's evaluation environment.
 type closure = func(env *Env) (any, error)
 
-// Helpers carries the typed implementations of the PHP-semantic helper
+// Helpers holds the typed implementations of the PHP-semantic helper
 // functions. The engine calls them directly, without the []any argument
 // slice or a per-call panic guard. Only the pure helpers belong here;
 // anything that re-enters the interpreter (__call, __get, __new, registered

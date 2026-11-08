@@ -6,7 +6,7 @@
 
 Wrapper that protects a sensitive value against accidental exposure.
 
-In a stack trace, PHP replaces a parameter carrying the `SensitiveParameter` attribute with one of these, and the value does not appear in the trace a failure prints.
+In a stack trace, PHP replaces every parameter declared `SensitiveParameter` with one of these. The value does not appear in the trace a failure prints.
 
 ## Class synopsis
 

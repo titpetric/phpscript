@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// semanticHost records what the engine delegated. It carries every method the
+// semanticHost records what the engine delegated. It implements every method the
 // test programs reach and leaves the rest to the embedded nil interface and a
 // program reaching an unexpected one fails loudly and never silently.
 type semanticHost struct {
@@ -63,8 +63,8 @@ func runHost(t *testing.T, host Host, source string) {
 
 // TestEntry covers the pair foreach walks. The engine owns iteration state
 // and no value semantics and what a collection holds is the host's answer:
-// Entries renders it to a key and a value per step, and the loop binds them
-// in the order the slice holds.
+// Entries renders it to a key and a value per step. The loop binds them in
+// the order the slice holds.
 func TestEntry(t *testing.T) {
 	t.Parallel()
 	host := &semanticHost{entries: []Entry{
@@ -114,7 +114,7 @@ func TestHost(t *testing.T) {
 	}
 
 	// The VM answers two int operands itself and never reaches the host: the
-	// fast path covers the arithmetic a hot loop runs, and the host takes the
+	// fast path covers the arithmetic a hot loop runs. The host takes the
 	// shapes it cannot.
 	host.binary, host.echoed = nil, nil
 	runHost(t, host, `<?php $n = 1; echo $n + 2;`)

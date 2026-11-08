@@ -5,12 +5,8 @@ import (
 	"fmt"
 )
 
-// Open creates a *DB from a driver name and a DSN, the default open function
-// of DatabaseProvider.
-//
-// The connection is not instrumented. Query level spans belong to the driver,
-// not to the provider and a caller that wants them supplies an instrumented
-// open function instead.
+// Open returns a *DB from a driver name and a DSN, the default open function of
+// DatabaseProvider. The connection is not instrumented.
 func Open(driver, dsn string) (*DB, error) {
 	pool, err := sql.Open(driver, dsn)
 	if err != nil {

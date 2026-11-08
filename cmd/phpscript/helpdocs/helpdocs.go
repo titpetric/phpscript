@@ -37,8 +37,8 @@ type Command struct {
 }
 
 // Examples returns the rendered example document for one command, or the empty
-// string when it has none. A command's cli.Usage hook returns it and
-// `phpscript test --help` carries the same table the long help does.
+// string where no document exists. A command's cli.Usage hook returns it and
+// `phpscript test --help` prints the same table the long help does.
 func Examples(name string, markdown bool) string {
 	src, err := fs.ReadFile(docs, "example."+name+".md")
 	if err != nil {
@@ -94,8 +94,8 @@ func commandTable(w io.Writer, commands []Command, markdown bool) {
 	t.Flush()
 }
 
-// flagTable writes one flag set as a table. pflag prints its own defaults in a
-// shape of its own; this is the shape the rest of the tool prints in.
+// flagTable writes one flag set as a table. pflag prints defaults in another
+// shape; this is the shape the rest of the tool prints in.
 func flagTable(w io.Writer, fs *FlagSet, markdown bool) {
 	t := table.New(w, markdown,
 		table.Column{Title: "Flag"},

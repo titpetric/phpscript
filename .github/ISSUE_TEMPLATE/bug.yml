@@ -7,14 +7,14 @@ body:
       value: |
         A bug is behaviour that misleads: a silent no-op, a value that
         stringifies wrong, a route that registers and then answers nothing.
-        Demonstrate it with a failing .phpt first; the fix lands with that
+        Show it with a failing .phpt first; the fix lands with that
         fixture passing. For a function that simply does not exist, use the
         feature gap template instead.
   - type: textarea
     id: current
     attributes:
       label: Current behaviour
-      description: What the runtime does today. Paste real output, name the file and line when the cause is known.
+      description: What the runtime does today. Paste real output. Name the file and line when you know the cause.
     validations:
       required: true
   - type: textarea
@@ -28,7 +28,7 @@ body:
     id: repro
     attributes:
       label: Reproduction (.phpt)
-      description: A fixture in the tests/fixtures format that fails today and passes when the bug is fixed. Note any environment it needs, such as a PLATFORM_DB_* variable.
+      description: A fixture in the tests/fixtures format that fails today and passes once the fix lands. Note any environment it needs, such as a PLATFORM_DB_* variable.
       render: text
     validations:
       required: true

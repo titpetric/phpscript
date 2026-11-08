@@ -80,7 +80,7 @@ rt.OnError(func(err error) {
 
 The callback consumes each non-exit statement error and execution continues. It can prevent an enclosing PHP `try`/`catch` from receiving the error; omit `OnError` when PHP code should control propagation.
 
-The runtime context is accessible over `rt.Context()`, and carries the running span. `SpanFromContext` returns nil outside a trace and every span method tolerates that and the callback needs no guard.
+The runtime context is accessible over `rt.Context()`, and holds the running span. `SpanFromContext` returns nil outside a trace and every span method tolerates that and the callback needs no guard.
 
 ## Errors over HTTP
 
@@ -92,7 +92,7 @@ header("Cache-Control: no-store", true, 404);
 header("HTTP/1.1 404 Not Found");
 ```
 
-An uncaught exception sets one too. The code carried by the exception becomes the status when it falls between 400 and 599:
+An uncaught exception sets one too. The exception's code becomes the status when it falls between 400 and 599:
 
 ```php
 throw new Exception("The article moved", 503);
@@ -112,9 +112,9 @@ try {
 }
 ```
 
-The `exit()` ends the request there. A runtime where a catch clause could swallow it would carry on into the error branch and render a page under a `Location` header already staged. `finally` does not run either, for the same reason it does not in PHP.
+The `exit()` ends the request there. A runtime where a catch clause could swallow it would continue into the error branch and render a page under a `Location` header already staged. `finally` does not run either, for the same reason it does not in PHP.
 
-A response that failed carries the status alone. What went wrong is in the server log and on the request trace, both addressed by the request id the response carries, and not in a body the client reads back.
+A response that failed holds the status alone. What went wrong is in the server log and on the request trace, both addressed by the request id in the response, and not in a body the client reads back.
 
 ### Error pages
 
@@ -163,12 +163,12 @@ An `include` resolves against the application root and not the document root and
 | `REDIRECT_QUERY_STRING` | Its query string                                     |
 | `REDIRECT_ERROR_NOTES`  | What went wrong, when the request failed on a script |
 
-`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's. A page may answer with a status of its own, and the status of the call is only the default. The server logs a page that fails itself, and the request falls back to the plain status, dispatching no second page behind it.
+`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's. A page may answer with its own status and the status of the call is only the default. The server logs a page that fails itself, and the request falls back to the plain status, dispatching no second page behind it.
 
-Whether the page also gets `$_POST`, `$_FILES` and `php://input` depends on which of the two things went wrong, and the rule is not a policy:
+Whether the page also gets `$_POST`, `$_FILES` and `php://input` depends on which of the two things went wrong. The rule is not a policy:
 
-- **The request matched nothing.** No file answered for it and no script ran and nothing read the body and the page gets it whole. This is what lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives the way its target endpoint would see it, and the page answers `http_response_code(200)` and includes what it routes to.
-- **A script failed.** It had already read the body by the time it threw, and it has no body left to hand on. `$_POST` and `$_FILES` are empty and `php://input` reads nothing.
+- **The request matched nothing.** No file answered for it and no script ran and nothing read the body and the page gets it whole. This is what lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives the way its target endpoint would see it. The page answers `http_response_code(200)` and includes what it routes to.
+- **A script failed.** It had already read the body by the time it threw, leaving nothing to hand on. `$_POST` and `$_FILES` are empty and `php://input` reads nothing.
 
 ```php
 <?php
@@ -187,7 +187,7 @@ if ($path === "/article" && $_SERVER["REQUEST_METHOD"] === "POST") {
 
 An error page is a website's answer, and an API on the same server wants no part of it. The path cannot tell the two apart: `phpscript server` mounts one catch-all and an unrouted `/api/users/99` and an unrouted `/blog/old-post` arrive the same way. The server reads the request and the script instead, and renders a page only when all three hold:
 
-1. **The request carries an HTML accept header.** A browser navigating sends `text/html` in `Accept` and `Sec-Fetch-Dest: document`. A `fetch()`, an XHR, curl, an `<img>` and a stylesheet do not, and neither does a `HEAD` request. `*/*` matches everything and is not a request for HTML.
+1. **The request names HTML in its accept header.** A browser navigating sends `text/html` in `Accept` and `Sec-Fetch-Dest: document`. A `fetch()`, an XHR, curl, an `<img>`, a stylesheet and a `HEAD` request do not. `*/*` matches everything and is not a request for HTML.
 2. **The script wrote no body.** A script that echoed something has answered, and its answer stands.
 3. **The script set no `Content-Type`.** A script that declared what it answers with has declared that it does not answer in HTML.
 

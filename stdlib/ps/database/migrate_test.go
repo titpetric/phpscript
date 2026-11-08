@@ -70,7 +70,7 @@ func TestDatabaseMigrate_Load(t *testing.T) {
 // TestDatabaseMigrate_Run covers applying a schema, and the empty set. Every
 // statement of every matched file runs against the connection and the tables
 // are there when Run returns. A pattern matching nothing returns nil: a script
-// can hold a schema directory it has not filled yet, and the binding has
+// can hold a schema directory it has not filled yet. The binding has
 // always let such a script start.
 func TestDatabaseMigrate_Run(t *testing.T) {
 	t.Parallel()
@@ -109,7 +109,7 @@ func TestDatabaseMigrate_Run(t *testing.T) {
 // newLiveMigrate returns a migration handle over an in-memory sqlite and the
 // given script filesystem. It holds the pool to one connection, because a
 // second connection to ":memory:" opens a second database and would find no
-// schema. The blank import in provider_test.go registers the driver, and it
+// schema. The blank import in provider_test.go registers the driver. It
 // compiles into this same test binary.
 func newLiveMigrate(t *testing.T, root fs.FS) *DatabaseMigrate {
 	t.Helper()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // lintReferences reports the reference markers that parse and confer nothing
@@ -63,15 +64,14 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // value to two or more names.
 //
 // PHP copies an array on assignment and there each name holds its own
-// array. phpscript's arrays are references and one array sits
-// under both names and a later write through either is visible through the
-// other, a bug
-// the shape hides and never announces.
+// array. phpscript's arrays are references and both names point at one array;
+// a later write through either is visible through the other, a bug the shape
+// hides and never announces.
 //
 // The rule sees only the chains the parser left after fixing the ones it can.
 // The parser splits a chain ending in an array literal into one allocation
-// per name (parser.lowerChainedAlloc), and that chain never reaches here; it
-// leaves a chain ending in a scalar literal alone, and this check skips it,
+// per name (parser.lowerChainedAlloc); that chain never reaches here. It
+// leaves a chain ending in a scalar literal alone. This check skips that one,
 // because a string or a number has no interior for the names to share. What
 // remains is a chain ending in a name, a call or a `new`, where either the
 // value is a handle the names really do share -- `$dba = $dbb = new Database`
@@ -79,7 +79,7 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // known until the statement runs. Both are worth reading again, and the
 // finding says so.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
-	chained, ok := model.UnwrapParenthesized(n.Value).(*model.AssignExpr)
+	chained, ok := modelutil.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
 		return
 	}
@@ -97,19 +97,19 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 // `$a = $b = $c = '00'` by the `'00'` and not by the assignment that binds
 // `$c`.
 func chainedValue(n *model.AssignExpr) model.Expr {
-	v := model.UnwrapParenthesized(n.Value)
+	v := modelutil.UnwrapParenthesized(n.Value)
 	for {
 		// `$a ??= '00'` assigns a Coalesce the parser built (parser.assignExpr)
 		// and the value the names would share sits on the right of it.
 		if co, ok := v.(*model.Coalesce); ok && co.Assign {
-			v = model.UnwrapParenthesized(co.Right)
+			v = modelutil.UnwrapParenthesized(co.Right)
 			continue
 		}
 		next, ok := v.(*model.AssignExpr)
 		if !ok {
 			return v
 		}
-		v = model.UnwrapParenthesized(next.Value)
+		v = modelutil.UnwrapParenthesized(next.Value)
 	}
 }
 
@@ -131,7 +131,7 @@ func isScalarLiteral(e model.Expr) bool {
 	case *model.Unary:
 		switch v.Op {
 		case "-", "+", "!", "~":
-			return !v.Postfix && isScalarLiteral(model.UnwrapParenthesized(v.X))
+			return !v.Postfix && isScalarLiteral(modelutil.UnwrapParenthesized(v.X))
 		}
 	}
 	return false

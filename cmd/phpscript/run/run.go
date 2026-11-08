@@ -24,7 +24,8 @@ import (
 // Name is the command title.
 const Name = "Run php script"
 
-// NewCommand creates a new run command.
+// NewCommand returns the run command over a copy of cfg. A later change to the
+// configuration does not reach the run.
 func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 	appConfig := config.Value(cfg)
 
@@ -37,13 +38,9 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 	}
 }
 
-// Run runs the command with options and CLI arguments.
-//
-// It runs the script once, and again for every SIGHUP: a reload cancels the
+// Run runs the script once, and again for every SIGHUP: a reload cancels the
 // generation running so a served script runs its shutdown callbacks and stops
-// listening, then re-reads the file. SIGINT and SIGTERM end it for good. All
-// three arrive through ctx, which runOnce sets on the runtime, because a
-// script with nothing watching would ignore them.
+// listening, then re-reads the file. SIGINT and SIGTERM end it for good.
 func Run(ctx context.Context, args []string, config config.Config, globals *flags.Options) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")
@@ -69,9 +66,9 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 		runErr := runOnce(generation, script, root, args, config, globals)
 		stop()
 
-		// A reload replaces the generation and its error with it: the reload
-		// ends the script, and that ending is no failure of the run. Anything
-		// else is the end of the run.
+		// A reload replaces the generation and its error with it. The reload
+		// ends the script; that ending is no failure of the run. Anything else
+		// is the end of the run.
 		if ctx.Err() != nil || !reloaded() {
 			return runErr
 		}

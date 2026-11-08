@@ -7,7 +7,7 @@ import (
 )
 
 // TestPair covers one already-decoded form field. Multipart values and the
-// cookie header arrive decoded and a Pair carries the name and the value as
+// cookie header arrive decoded and a Pair holds the name and the value as
 // they are and parseKey reads the bracket path off the name afterwards: a name
 // that held `%5B` before decoding nests, and a name that holds a literal
 // bracket after decoding nests too.
@@ -31,7 +31,7 @@ func TestPair(t *testing.T) {
 // query string. Order is the order ParsePairs applies pairs in and two pairs
 // naming one variable leave the last value, and the last assignment decides
 // the shape: a scalar written over an array replaces it. The limits are
-// php.ini's, and the parse drops a name past the nesting limit whole.
+// php.ini's. The parse drops a name past the nesting limit whole.
 func TestParsePairs(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -61,7 +61,7 @@ func TestParsePairs(t *testing.T) {
 		},
 		{
 			// The dot inside the bracket survives as part of the key, and
-			// flatten joins a nested path with a dot of its own.
+			// flatten joins a nested path with a separate dot.
 			name:  "a name is mangled at the top level alone",
 			pairs: []shared.Pair{{Name: "a.b", Value: "1"}, {Name: "e[f.g]", Value: "2"}},
 			want:  "a_b=1 e.f.g=2",

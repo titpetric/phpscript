@@ -6,7 +6,7 @@ import (
 )
 
 // TestMatchOffsetStartsAtBytes covers the other direction: PHP's $offset is a
-// byte offset, and it has to keep meaning that when the match runs on the
+// byte offset. It stays a byte offset when the match runs on the
 // backtracking engine, which the non-zero offset itself selects.
 func TestMatchOffsetStartsAtBytes(t *testing.T) {
 	t.Parallel()

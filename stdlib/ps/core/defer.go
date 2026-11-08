@@ -18,7 +18,7 @@ func RegisterDefer(rt *runner.Runtime) {
 	// script ends at top level; deferred callbacks run last-in, first-out.
 	rt.RegisterFunc("defer", func(ctx context.Context, callback any) error {
 		// The runtime's own verdict and no reflect.Kind check: a PHP
-		// closure is a value carrying its declaration, not a bare func, and
+		// closure is a value holding its declaration, not a bare func, and
 		// no other spelling of a callable is a func either.
 		if _, ok := rt.Callable(callback); !ok {
 			return fmt.Errorf("defer: argument must be callable")

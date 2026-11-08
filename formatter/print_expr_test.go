@@ -93,7 +93,7 @@ $indexed = $handlers[0](...);
 func TestFirstClassCallableIsNotACall(t *testing.T) {
 	t.Parallel()
 	// A zero-argument call and the callable that names it print differently,
-	// the node carries the spelling for that reason.
+	// the node holds the spelling for that reason.
 	out, err := formatter.Source("<?php\n$a = greet();\n$b = greet(...);\n")
 	if err != nil {
 		t.Fatal(err)

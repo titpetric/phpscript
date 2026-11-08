@@ -17,8 +17,7 @@ func init() {
 // Both end early when the script runs out of time or the client it answers
 // goes away: a sleep that ran on past either would be the one place nothing
 // could stop a script. Neither takes a context parameter. The injected one is
-// the script's, and the connection lives beside it; the binding reads both off
-// the runtime.
+// the script's; the binding reads it and the connection off the runtime.
 func registerSleep(rt *runner.Runtime) {
 	// sleep pauses the script for $seconds and returns 0. A negative count
 	// throws, as it does in php. The wait ends early, still returning 0, when

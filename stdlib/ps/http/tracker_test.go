@@ -65,7 +65,7 @@ func TestTrackerForwardsWriteString(t *testing.T) {
 }
 
 // headerOnlyWriter narrows a recorder to the three ResponseWriter methods and
-// the tracker sees a writer with no WriteString of its own.
+// the tracker sees a writer with no WriteString.
 type headerOnlyWriter struct {
 	inner *httptest.ResponseRecorder
 }

@@ -4,12 +4,12 @@ message: "Write '%s', not '%s'."
 level: error
 ignorecase: true
 swap:
-  'serves as': is
-  'stands as': is
-  'acts as': is
-  'functions as': is
-  'exists as': is
-  'can be seen as': is
-  'is designed to': does
-  'is intended to': does
-  'is responsible for': does
+  'serves\s+as': is
+  'stands\s+as': is
+  'acts\s+as': is
+  'functions\s+as': is
+  'exists\s+as': is
+  'can\s+be\s+seen\s+as': is
+  'is\s+designed\s+to': does
+  'is\s+intended\s+to': does
+  'is\s+responsible\s+for': does

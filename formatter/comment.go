@@ -89,8 +89,8 @@ func (p *printer) comment(c Comment) {
 }
 
 // CollectComments returns every comment of src in source order, with the lines
-// it occupied and whether it stood on a line of its own. The AST holds no
-// comments and this is what keeps them in a file the formatter rewrites.
+// it occupied and whether it stood alone on a line. The AST holds no comments
+// and this is what keeps them in a file the formatter rewrites.
 func CollectComments(src string) []Comment {
 	var out []Comment
 	offset := 0

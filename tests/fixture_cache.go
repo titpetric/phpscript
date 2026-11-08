@@ -126,8 +126,8 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 	key := f.runtimeKey()
 	if w.interp != nil && w.interpKey == key {
 		// Reset, not ResetSession: the last fixture's compiled expressions and
-		// source spans key on AST nodes this one will never look up, and
-		// they would hold that fixture's tree alive behind them.
+		// source spans key on AST nodes this one will never look up. They
+		// would hold that fixture's tree alive behind them.
 		if f.interp == w.interp {
 			w.interp.ResetSession(out, f.stdin())
 		} else {
@@ -162,7 +162,7 @@ func (f *Fixture) runtimeKey() string {
 // would serve a fixture in one folder the code/functions.php belonging to
 // another - and with --autoload, autoload.php names a different file under
 // every invocation root. The expression caches key on source text, which
-// carries no root and one of each per worker is right.
+// holds no root and one of each per worker is right.
 type worker struct {
 	include     map[string]*runner.IncludeCache
 	flatInclude map[string]*flatstack.IncludeCache
@@ -249,8 +249,8 @@ func currentWorker(ctx context.Context) *worker {
 //
 // Absolute, because the relative spelling is ambiguous: a cached path is
 // relative to a root, and two roots reached from different working directories
-// can both carry the name "suite". A fixture given an app root resolves against
-// that too and the key names both trees.
+// can both answer to the name "suite". A fixture given an app root resolves
+// against that too and the key names both trees.
 func (f *Fixture) cacheRoot() string {
 	if f.rootKey != "" {
 		return f.rootKey

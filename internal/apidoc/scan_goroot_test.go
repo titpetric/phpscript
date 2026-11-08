@@ -6,8 +6,8 @@ import (
 )
 
 // TestGorootDocs covers what the Go distribution answers about a standard
-// library type a class binds. HTTP\Request carries 22 properties and 20
-// methods whose godoc lives in the distribution and not in this module. The
+// library type a class binds. HTTP\Request holds 22 properties and 20
+// methods whose godoc is in the distribution and not in this module. The
 // scan of the module tree reaches none of it.
 func TestGorootDocs(t *testing.T) {
 	t.Parallel()
@@ -41,7 +41,7 @@ func TestGorootDocs(t *testing.T) {
 
 // TestGorootDocsUnknown covers the two misses. A package not in the
 // distribution and a type it does not declare both answer nil, and the listing
-// then carries the structure reflection sees and no prose.
+// then prints the structure reflection sees and no prose.
 func TestGorootDocsUnknown(t *testing.T) {
 	t.Parallel()
 	if got := gorootDocs("github.com/titpetric/phpscript/stdlib/ps/http", "Client"); got != nil {

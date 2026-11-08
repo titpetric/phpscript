@@ -13,7 +13,7 @@ import (
 // dropping an area needs no edit to another file. Importing the package is what
 // installs them, the way a program imports a database/sql driver.
 //
-// One name per file stands for the area behind it. A file whose init() stopped
+// One name per file names the area behind it. A file whose init() stopped
 // running, or whose registration moved out from under it, takes its name with
 // it and fails here.
 func TestCoreAreasRegisterThemselves(t *testing.T) {

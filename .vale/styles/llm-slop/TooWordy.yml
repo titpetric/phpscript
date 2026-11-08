@@ -11,9 +11,9 @@ message: "'%s' is too wordy."
 ignorecase: true
 level: error
 tokens:
-  - a number of
+  - a\s+number\s+of
   - abundance
-  - accede to
+  - accede\s+to
   - accelerate
   - accentuate
   - accompany
@@ -23,51 +23,51 @@ tokens:
   - acquiesce
   - acquire
   - additional
-  - adjacent to
+  - adjacent\s+to
   - adjustment
   - admissible
   - advantageous
-  - adversely impact
+  - adversely\s+impact
   - advise
   - aforementioned
   - aggregate
   - aircraft
-  - all of
-  - all things considered
+  - all\s+of
+  - all\s+things\s+considered
   - alleviate
   - allocate
-  - along the lines of
-  - already existing
+  - along\s+the\s+lines\s+of
+  - already\s+existing
   - alternatively
   - amazing
   - ameliorate
   - anticipate
   - apparent
   - appreciable
-  - as a matter of fact
-  - as a means of
-  - as far as I'm concerned
-  - as of yet
-  - as to
-  - as yet
+  - as\s+a\s+matter\s+of\s+fact
+  - as\s+a\s+means\s+of
+  - as\s+far\s+as\s+I'm\s+concerned
+  - as\s+of\s+yet
+  - as\s+to
+  - as\s+yet
   - ascertain
   - assistance
-  - at the present time
-  - at this time
+  - at\s+the\s+present\s+time
+  - at\s+this\s+time
   - attain
-  - attributable to
+  - attributable\s+to
   - authorize
-  - because of the fact that
+  - because\s+of\s+the\s+fact\s+that
   - belated
-  - benefit from
+  - benefit\s+from
   - bestow
-  - by means of
-  - by virtue of
-  - by virtue of the fact that
+  - by\s+means\s+of
+  - by\s+virtue\s+of
+  - by\s+virtue\s+of\s+the\s+fact\s+that
   - cease
-  - close proximity
+  - close\s+proximity
   - commence
-  - comply with
+  - comply\s+with
   - concerning
   - consequently
   - consolidate
@@ -76,8 +76,8 @@ tokens:
   - depart
   - designate
   - discontinue
-  - due to the fact that
-  - each and every
+  - due\s+to\s+the\s+fact\s+that
+  - each\s+and\s+every
   - economical
   - eliminate
   - elucidate
@@ -93,57 +93,57 @@ tokens:
   - expend
   - expiration
   - facilitate
-  - factual evidence
+  - factual\s+evidence
   - feasible
   - finalize
-  - first and foremost
-  - for all intents and purposes
-  - for the most part
-  - for the purpose of
+  - first\s+and\s+foremost
+  - for\s+all\s+intents\s+and\s+purposes
+  - for\s+the\s+most\s+part
+  - for\s+the\s+purpose\s+of
   - forfeit
   - formulate
-  - have a tendency to
-  - honest truth
+  - have\s+a\s+tendency\s+to
+  - honest\s+truth
   - however
-  - if and when
+  - if\s+and\s+when
   - impacted
   - implement
-  - in a manner of speaking
-  - in a timely manner
-  - in a very real sense
-  - in accordance with
-  - in addition
-  - in all likelihood
-  - in an effort to
-  - in between
-  - in excess of
-  - in lieu of
-  - in light of the fact that
-  - in many cases
-  - in my opinion
-  - in order to
-  - in regard to
-  - in some instances
-  - in terms of
-  - in the case of
-  - in the event that
-  - in the final analysis
-  - in the nature of
-  - in the near future
-  - in the process of
+  - in\s+a\s+manner\s+of\s+speaking
+  - in\s+a\s+timely\s+manner
+  - in\s+a\s+very\s+real\s+sense
+  - in\s+accordance\s+with
+  - in\s+addition
+  - in\s+all\s+likelihood
+  - in\s+an\s+effort\s+to
+  - in\s+between
+  - in\s+excess\s+of
+  - in\s+lieu\s+of
+  - in\s+light\s+of\s+the\s+fact\s+that
+  - in\s+many\s+cases
+  - in\s+my\s+opinion
+  - in\s+order\s+to
+  - in\s+regard\s+to
+  - in\s+some\s+instances
+  - in\s+terms\s+of
+  - in\s+the\s+case\s+of
+  - in\s+the\s+event\s+that
+  - in\s+the\s+final\s+analysis
+  - in\s+the\s+nature\s+of
+  - in\s+the\s+near\s+future
+  - in\s+the\s+process\s+of
   - inception
-  - incumbent upon
+  - incumbent\s+upon
   - indicate
   - indication
   - initiate
   - irregardless
-  - is applicable to
-  - is authorized to
-  - is responsible for
-  - it is
-  - it is essential
-  - it seems that
-  - it was
+  - is\s+applicable\s+to
+  - is\s+authorized\s+to
+  - is\s+responsible\s+for
+  - it\s+is
+  - it\s+is\s+essential
+  - it\s+seems\s+that
+  - it\s+was
   - magnitude
   - maximum
   - methodology
@@ -154,41 +154,41 @@ tokens:
   - multiple
   - necessitate
   - nevertheless
-  - not certain
-  - not many
-  - not often
-  - not unless
-  - not unlike
+  - not\s+certain
+  - not\s+many
+  - not\s+often
+  - not\s+unless
+  - not\s+unlike
   - notwithstanding
-  - null and void
+  - null\s+and\s+void
   - numerous
   - objective
   - obligate
   - obtain
-  - on the contrary
-  - on the other hand
-  - one particular
+  - on\s+the\s+contrary
+  - on\s+the\s+other\s+hand
+  - one\s+particular
   - optimum
   - overall
-  - owing to the fact that
+  - owing\s+to\s+the\s+fact\s+that
   - participate
   - particulars
-  - pass away
-  - pertaining to
-  - point in time
+  - pass\s+away
+  - pertaining\s+to
+  - point\s+in\s+time
   - portion
   - possess
   - preclude
   - previously
-  - prior to
+  - prior\s+to
   - prioritize
   - procure
   - proficiency
-  - provided that
+  - provided\s+that
   - purchase
-  - put simply
-  - readily apparent
-  - refer back
+  - put\s+simply
+  - readily\s+apparent
+  - refer\s+back
   - regarding
   - relocate
   - remainder
@@ -199,31 +199,31 @@ tokens:
   - retain
   - satisfy
   - shall
-  - should you wish
-  - similar to
+  - should\s+you\s+wish
+  - similar\s+to
   - solicit
-  - span across
+  - span\s+across
   - strategize
   - subsequent
   - substantial
-  - successfully complete
+  - successfully\s+complete
   - sufficient
   - terminate
-  - the month of
-  - the point I am trying to make
+  - the\s+month\s+of
+  - the\s+point\s+I\s+am\s+trying\s+to\s+make
   - therefore
-  - time period
-  - took advantage of
+  - time\s+period
+  - took\s+advantage\s+of
   - transmit
   - transpire
-  - type of
-  - until such time as
+  - type\s+of
+  - until\s+such\s+time\s+as
   - utilization
   - utilize
   - validate
-  - various different
-  - what I mean to say is
-  - whether or not
-  - with respect to
-  - with the exception of
+  - various\s+different
+  - what\s+I\s+mean\s+to\s+say\s+is
+  - whether\s+or\s+not
+  - with\s+respect\s+to
+  - with\s+the\s+exception\s+of
   - witnessed

@@ -7,6 +7,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -16,18 +17,18 @@ func init() {
 }
 
 // registerArrays installs the array shims. They take `any`, not *model.Array,
-// and read their input through model.RangeValues and a script can pass either
+// and read their input through modelutil.RangeValues and a script can pass either
 // a PHP array or the native Go slice/map a binding returned. Those that build
 // a fresh list return a []any (one allocation, presized) in place of an
 // *model.Array (a struct, a map[any]any, a growing key slice and an interface
 // box per key). The ones that preserve or merge keys still return
-// *model.Array, because only *model.Array carries PHP's ordered hybrid-key
+// *model.Array, because only *model.Array implements PHP's ordered hybrid-key
 // semantics.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
 	// count returns the number of elements in $array; non-array values count as 0.
 	rt.RegisterFunc("count", func(array any) int64 {
-		n, _ := model.LenValues(array)
+		n, _ := modelutil.LenValues(array)
 		return int64(n)
 	})
 	// in_array reports whether $needle occurs in $haystack, comparing loosely
@@ -42,10 +43,10 @@ func registerArrays(rt *runner.Runtime) {
 	// values as strings and keeping the first occurrence and its key; it takes
 	// $flags and ignores it.
 	rt.RegisterFunc("array_unique", func(array any, flags ...any) *model.Array {
-		n, _ := model.LenValues(array)
+		n, _ := modelutil.LenValues(array)
 		out := model.NewArraySize(n)
 		seen := make(map[string]bool, n)
-		model.RangeValues(array, func(k, v any) bool {
+		modelutil.RangeValues(array, func(k, v any) bool {
 			s := phpval.String(v)
 			if !seen[s] {
 				seen[s] = true
@@ -67,16 +68,16 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("end", func(array any) any { return edgeValue(array, false) })
 	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
 	rt.RegisterFunc("array_keys", func(array any) []any {
-		n, _ := model.LenValues(array)
+		n, _ := modelutil.LenValues(array)
 		out := make([]any, 0, n)
-		model.RangeValues(array, func(k, _ any) bool { out = append(out, k); return true })
+		modelutil.RangeValues(array, func(k, _ any) bool { out = append(out, k); return true })
 		return out
 	})
 	// array_values returns the values of $array as a list indexed from zero.
 	rt.RegisterFunc("array_values", func(array any) []any {
-		n, _ := model.LenValues(array)
+		n, _ := modelutil.LenValues(array)
 		out := make([]any, 0, n)
-		model.RangeValues(array, func(_, v any) bool { out = append(out, v); return true })
+		modelutil.RangeValues(array, func(_, v any) bool { out = append(out, v); return true })
 		return out
 	})
 	// array_slice returns up to $length elements of $array starting at
@@ -155,8 +156,8 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return phpArrayFilter(array, fn, mode)
 	})
-	// array_reduce folds $array with $callback, which receives the carry and
-	// the value, starting from $initial and returning null for an empty
+	// array_reduce folds $array with $callback, which receives the accumulator
+	// and the value, starting from $initial and returning null for an empty
 	// array.
 	rt.RegisterFunc("array_reduce", func(array any, callback any, initial ...any) (any, error) {
 		fn, ok := rt.Callable(callback)
@@ -218,7 +219,7 @@ func arrayHasKey(array any, key any) (any, bool) {
 	}
 	var found any
 	ok := false
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		if !arrayIdentical(phpval.Key(k), want) {
 			return true
 		}
@@ -238,13 +239,13 @@ func phpArrayKeyExists(key, array any) bool {
 
 // phpArrayFilter keeps the elements fn accepts. It returns an *model.Array
 // because the result keeps the keys of the input, holes included, which is a
-// shape only *model.Array carries (rule 4 of docs/allocation-performance.md).
+// shape only *model.Array holds (rule 4 of docs/allocation-performance.md).
 // A nil fn is PHP's omitted callback: it keeps the truthy values.
 func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model.Array, error) {
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 	out := model.NewArraySize(n)
 	var filterErr error
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		keep := false
 		if fn == nil {
 			keep = phpval.Truthy(v)
@@ -282,7 +283,7 @@ func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model
 // callback, matching PHP.
 func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, error) {
 	var reduceErr error
-	model.RangeValues(array, func(_, v any) bool {
+	modelutil.RangeValues(array, func(_, v any) bool {
 		next, err := fn(carry, v)
 		if err != nil {
 			reduceErr = err
@@ -301,9 +302,9 @@ func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, er
 // that the flip of the value "1" is the key 1, the same key `$a[1] = x` would
 // have written.
 func phpArrayFlip(array any) *model.Array {
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 	out := model.NewArraySize(n)
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		switch key := phpval.Key(v).(type) {
 		case int64:
 			out.Set(key, k)
@@ -323,11 +324,11 @@ func phpArrayFlip(array any) *model.Array {
 func phpArrayReverse(array any, preserveKeys ...any) any {
 	preserve := len(preserveKeys) > 0 && phpval.Truthy(preserveKeys[0])
 
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 	keys := make([]any, 0, n)
 	vals := make([]any, 0, n)
 	strKeys := false
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		key := phpval.Key(k)
 		if _, isInt := key.(int64); !isInt {
 			strKeys = true
@@ -366,7 +367,7 @@ func phpArraySum(array any) any {
 		total   float64
 		isFloat bool
 	)
-	model.RangeValues(array, func(_, v any) bool {
+	modelutil.RangeValues(array, func(_, v any) bool {
 		n := phpval.Number(v)
 		if !isFloat {
 			if x, ok := n.(int64); ok {

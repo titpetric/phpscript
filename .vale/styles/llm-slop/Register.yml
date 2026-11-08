@@ -40,7 +40,28 @@ swap:
   outlier: name the difference
   'state-of-the-art': current
   'best-in-class': name the comparison
-  'deep dive': detail
-  'under the hood': in the implementation
-  'at its core': name the component
-  'the beauty of': cut this
+  'deep\s+dive': detail
+  'dive\s+into': read
+  'under\s+the\s+hood': in the implementation
+  'at\s+its\s+core': name the component
+  'the\s+beauty\s+of': cut this
+  # The brochure vocabulary. Each one praises a thing instead of saying what
+  # it does, and the swap is the question it leaves unanswered. None appears
+  # in the standard library corpus.
+  powerful: name the capability
+  versatile: name the uses
+  effortlessly: automatically
+  unleash: enable
+  unleashes: enables
+  'full\s+potential': name the limit
+  'rich\s+set\s+of': the named parts
+  'wealth\s+of': the count
+  'cater\s+to': serve
+  'caters\s+to': serves
+  'tailored\s+to': written for
+  'best\s+practice': name the rule
+  'the\s+world\s+of': cut this
+  'shed\s+light\s+on': measure
+  'gain\s+insight': measure
+  'pave\s+the\s+way': name what comes next
+  'a\s+testament\s+to': name the evidence

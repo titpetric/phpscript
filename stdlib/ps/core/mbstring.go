@@ -26,7 +26,7 @@ func init() {
 func registerMultibyte(rt *runner.Runtime) {
 	// mb_strlen returns the number of characters in $string; the $encoding
 	// argument "8bit" answers in bytes, the byte-count escape hatch for
-	// binary data, and it reads every other encoding as UTF-8.
+	// binary data. Every other encoding reads as UTF-8.
 	rt.RegisterFunc("mb_strlen", func(s string, encoding ...any) int64 {
 		if eightBit([]any(encoding), 0) {
 			return int64(len(s))

@@ -90,7 +90,7 @@ func TestSpanSource(t *testing.T) {
 
 // TestWithSpanFilename covers the location reaching a span. A binding
 // instruments without naming a file and every span started from that context
-// carries the file the interpreter published and the line beside it.
+// records the file the interpreter published and the line beside it.
 func TestWithSpanFilename(t *testing.T) {
 	t.Parallel()
 	tracer := newRecordingTracer(t)
@@ -107,7 +107,7 @@ func TestWithSpanFilename(t *testing.T) {
 		t.Errorf("span source = %q:%d, want queries/users.php:23", span.Filename, span.Line)
 	}
 
-	// A span started without a location carries none and a Go-only call does
+	// A span started without a location records none and a Go-only call does
 	// not inherit the line of whatever ran before it.
 	StartSpan(ctx, "flush", KindInternal).End()
 	spans = trace.Clone().Spans

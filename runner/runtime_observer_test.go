@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// telemetryRecorder is a runtime observer recording into a trace of its own and
+// telemetryRecorder is a runtime observer recording into a separate trace and
 // the tests can assert on what the interpreter reported without a server.
 type telemetryRecorder struct {
 	states    []telemetry.State
@@ -378,8 +378,8 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 		t.Fatalf("included = %v, want %v", recorder.included, want)
 	}
 
-	// One span per include, measured from the include to its return, rather
-	// than an opening and a closing marker to pair up.
+	// One span per include, measured from the include to its return. No
+	// opening and closing marker to pair up.
 	if want := []string{"include one.php", "include nested.tpl", "include two.php"}; !reflect.DeepEqual(recorder.traces, want) {
 		t.Fatalf("traces = %q, want %q", recorder.traces, want)
 	}
@@ -416,10 +416,10 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 }
 
 // TestRuntimeObserverCollapsesIncludes covers what the default level reports
-// of a request's includes: one span at the end naming the files, instead of
-// the span per file the debug level publishes. An application that autoloads a
-// class per file includes dozens of them, and a name and a microsecond each is
-// a listing rather than a request.
+// of a request's includes: one span at the end naming the files, where the
+// debug level publishes a span per file. An application that autoloads a class
+// per file includes dozens of them, and a name and a microsecond each turns
+// the trace into a file listing.
 func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -451,7 +451,7 @@ func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
 		t.Errorf("files = %v, want %q", span.Attributes["files"], want)
 	}
 
-	// The count still arrives per include: it is the attribute on the request
+	// The count still arrives per include, as the attribute on the request
 	// span, which a reader sees without opening the inventory.
 	if want := []int{1, 2, 3}; !reflect.DeepEqual(recorder.included, want) {
 		t.Fatalf("included = %v, want %v", recorder.included, want)
@@ -460,7 +460,7 @@ func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
 
 // TestRuntimeObserverTraceLevelMarksFrames covers the mark the default level
 // puts on a frame, which is the whole of how a trace of an interpreter stays
-// readable: the recorder keeps the frames that were slow and drops the rest,
+// readable: the recorder keeps the slow frames and drops the rest,
 // and the debug level asks it to keep them all.
 func TestRuntimeObserverTraceLevelMarksFrames(t *testing.T) {
 	t.Parallel()
@@ -499,8 +499,8 @@ func TestRuntimeObserverTraceLevelMarksFrames(t *testing.T) {
 
 // TestRuntimeObserverTraceLevelOff covers the level that silences the
 // interpreter: no frame, no include, no inventory. What a binding or a script
-// measured is not the interpreter's own work and still records, and so does
-// the error of a run that failed.
+// measured is not the interpreter's own work and still records. The error of
+// a run that failed records too.
 func TestRuntimeObserverTraceLevelOff(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -525,8 +525,8 @@ func TestRuntimeObserverTraceLevelOff(t *testing.T) {
 		t.Error("the binding's span went with the interpreter's; the level is not the recorder's")
 	}
 
-	// The count is the request span's attribute and not an interpreter span,
-	// so the level does not silence it.
+	// The count is the request span's attribute and not an interpreter span;
+	// the level does not silence it.
 	if want := []int{1, 2}; !reflect.DeepEqual(recorder.included, want) {
 		t.Fatalf("included = %v, want %v", recorder.included, want)
 	}

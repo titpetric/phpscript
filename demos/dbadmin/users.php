@@ -5,16 +5,16 @@
 // The user table is a view of .htpasswd, rebuilt on every start.
 //
 // No migration owns it and schema/ leaves it out: the password file owns every
-// row here. A reload drops and refills the table, which picks up
-// a user appended to that file - `@startup` jobs run again on SIGHUP - and the
-// database stores no account, no password and no hash of its own.
+// row here. A reload drops and refills the table, which picks up a user
+// appended to that file - `@startup` jobs run again on SIGHUP. The database
+// stores no account, no password and no hash.
 //
-// The id is the primary key other tables carry, and it follows from the
-// username, and it survives the rebuild: a user removed from the file loses
-// this row alone, and adding the name back restores the same id.
+// The id is the primary key other tables reference. It follows from the
+// username and survives the rebuild: a user removed from the file loses this
+// row alone, and adding the name back restores the same id.
 //
-// The filename matters. `@startup` files run in path order, and migrate.php
-// creates the schema, and this name has to sort after it.
+// The filename matters. `@startup` files run in path order and this name sorts
+// after migrate.php, which creates the schema.
 $db = new Database("dbadmin");
 $auth = new Auth\Storage\PasswordFile;
 
@@ -22,10 +22,10 @@ if (!$auth->exists()) {
 	return;
 }
 
-// The ids the table carried before the rebuild. A name the file dropped loses
-// its row here, and whoever holds a session under that id loses the session
-// with it: this job notices a removal and signs the account out. A
-// first start has no table and no rows.
+// The ids the table held before the rebuild. A name the file dropped loses its
+// row here, and whoever holds a session under that id loses the session with
+// it: this job notices a removal and signs the account out. A first start has
+// no table and no rows.
 $held = [];
 if ($db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user'")) {
 	foreach ($db->get_all("SELECT id FROM \"user\"") as $row) {
@@ -42,8 +42,8 @@ $db->query("CREATE TABLE \"user\" (id TEXT NOT NULL PRIMARY KEY, username TEXT N
 $db->query("CREATE UNIQUE INDEX uidx_user_username ON \"user\" (username)");
 
 foreach ($auth->users() as $user) {
-	// get_id() is the computed ULID, and the record renders as its username
-	// in a string context, and the second placeholder takes "$user".
+	// get_id() is the computed ULID. The record renders as its username in a
+	// string context and the second placeholder takes "$user".
 	$db->query("INSERT INTO \"user\" (id, username) VALUES (?, ?)", $user->get_id(), "$user");
 	unset($held[$user->get_id()]);
 }
@@ -52,8 +52,8 @@ $db->commit();
 $db->close();
 
 // Whatever remains in $held is an account the file dropped, and every session
-// it signs goes now. The session store is the default one, the same disk
-// folder the pages read, and a cookie a removed user kept lands on /login.
+// it signs goes now. The session store is the default, the same disk folder the
+// pages read, and a cookie a removed user kept lands on /login.
 if ($held) {
 	$session = new Session\Manager;
 	foreach (array_keys($held) as $id) {

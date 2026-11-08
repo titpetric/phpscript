@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // This file is the direct compiler's node dispatcher: one case per expression
@@ -268,7 +269,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		return baseCall("__invoke", append([]closure{callee}, args...)), nil
 
 	case *model.AssignExpr:
-		v, isVar := model.UnwrapParenthesized(n.Target).(*model.Var)
+		v, isVar := modelutil.UnwrapParenthesized(n.Target).(*model.Var)
 		if isVar && (n.Op == "=" || n.Op == "") {
 			val, err := dc.compile(n.Value)
 			if err != nil {
@@ -307,8 +308,8 @@ func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	}
 	args := make([]closure, len(n.Args))
 	for i, a := range n.Args {
-		if model.ByRefArg(n.Name, n.Fallback, i) {
-			if v, ok := model.UnwrapParenthesized(a).(*model.Var); ok {
+		if modelutil.ByRefArg(n.Name, n.Fallback, i) {
+			if v, ok := modelutil.UnwrapParenthesized(a).(*model.Var); ok {
 				// The transpiler also registers the variable itself; Eval
 				// resolving it keeps the two paths' bindings identical.
 				dc.bindVar(v.Name, false)

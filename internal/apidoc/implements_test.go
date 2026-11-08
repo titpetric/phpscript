@@ -11,9 +11,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestReflectImplements covers the clause a class definition carries. The set
+// TestReflectImplements covers the clause a class definition prints. The set
 // is the one interface of this module a script names and the standard library
-// conventions a caller acts on, and a bound type satisfying none of it carries
+// conventions a caller acts on, and a bound type satisfying none of it prints
 // no clause.
 func TestReflectImplements(t *testing.T) {
 	t.Parallel()
@@ -43,8 +43,8 @@ func TestReflectImplements(t *testing.T) {
 }
 
 // TestReflectImplementsCites pins how the listing cites a matched interface: a
-// standard library one by import path with its reference page, and this
-// module's by name with no page to point at.
+// standard library one by import path with its reference page; this module's
+// by name, because no page exists to point at.
 func TestReflectImplementsCites(t *testing.T) {
 	t.Parallel()
 	mux := reflectImplements(reflect.TypeOf(http.NewServeMux()))

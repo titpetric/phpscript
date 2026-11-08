@@ -6,7 +6,7 @@
 
 Denotes a class as having a `__toString()` method.
 
-PHP adds it implicitly to any class declaring `__toString()`, and the interface exists mainly to let a parameter declare `string|Stringable` and accept either.
+PHP adds it implicitly to any class declaring `__toString()`. The interface exists mainly to let a parameter declare `string|Stringable` and accept either.
 
 ## Interface synopsis
 
@@ -31,4 +31,4 @@ public function __toString(): string
 - phpscript has no `Stringable`. The name is not declared.
 - The method it names is unavailable: `__toString()` is a magic method, and phpscript supports no magic method beyond `__construct` and `__invoke`. This is a decision; see [Design decisions](../../../design.md).
 - An object put where a string belongs renders as an empty string; it does not raise the error PHP raises. Call a method that returns the string.
-- [Throwable](Throwable.md) extends this interface in PHP, and that is the source of a thrown object's `__toString()`.
+- [Throwable](Throwable.md) extends this interface in PHP. That is the source of a thrown object's `__toString()`.

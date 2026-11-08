@@ -98,7 +98,7 @@ func TestRegexpCompile(t *testing.T) {
 			want: "a1b2",
 		},
 		{
-			// A []byte return is the text it carries, and no list of integers.
+			// A []byte return is the text it holds, and no list of integers.
 			name: "find returns bytes as a string",
 			src: `$b = (new Regexp\Compile('\d+'))->find("abc 42 def");
 				echo $b, ":", strlen($b), ":", gettype($b);`,

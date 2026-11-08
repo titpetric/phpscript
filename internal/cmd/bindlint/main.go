@@ -37,7 +37,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, f)
 	}
 	if len(findings) > 0 {
-		fmt.Fprintf(stdout, "\n%d bindings point at a runtime value type\n", len(findings))
+		fmt.Fprintf(stdout, "\n%d bindings reach one shape of a script value\n", len(findings))
 		return 1
 	}
 	return 0

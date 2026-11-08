@@ -11,9 +11,9 @@ import (
 
 // TestNewCommand covers the shape every phpscript command shares: the
 // constructor takes the configuration and the global options because one
-// signature covers all nine, and this command reads neither and both
-// arguments are nil here and the command still builds. It declares no flags
-// of its own and Bind stays nil and the shared flags are all it binds.
+// signature covers all nine. This command reads neither; both arguments are
+// nil here and the command still builds. It declares no flags: Bind stays nil
+// and the shared flags are all it binds.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -55,8 +55,7 @@ func TestRun(t *testing.T) {
 			t.Errorf("token stream does not name %q:\n%s", want, out)
 		}
 	}
-	// The echo sits on the second line of the file, and the line number is
-	// what makes a token stream readable against the source.
+	// The echo is on the second line of the file; the line number locates a token in the source.
 	if !strings.Contains(out, `T_ECHO                        "echo"`) {
 		t.Errorf("the echo token is not rendered with its text:\n%s", out)
 	}

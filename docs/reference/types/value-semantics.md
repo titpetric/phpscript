@@ -30,7 +30,7 @@ grow($a);
 echo count($a);                 // phpscript: 3   PHP: unchanged
 ```
 
-Code that only reads a shared array behaves the same in both and this survives in practice: most calls only read an array argument. Code that writes to an array it holds as its own diverges, and it fails silently, because nothing in the shape of `$b = $a` says two names are now one array.
+Code that only reads a shared array behaves the same in both and this survives in practice: most calls only read an array argument. Code that writes to an array it holds as its own diverges silently, because nothing in the shape of `$b = $a` says two names are now one array.
 
 Copy explicitly where independence matters:
 
@@ -40,7 +40,7 @@ $copy = array_merge(array(), $original);
 
 ## Chained assignment allocates once per name
 
-The parser splits a chain that ends in an array literal into one assignment per name and each name gets an allocation of its own:
+The parser splits a chain that ends in an array literal into one assignment per name and each name gets its own allocation:
 
 ```php
 $inlines = $blocks = array();   // parsed as: $blocks = array(); $inlines = array();
@@ -95,11 +95,11 @@ foreach ($a as $v) {}
 echo implode(",", $a);            // phpscript: 1,2,3    PHP: 1,2,2
 ```
 
-`unset($v)` after the loop is the PHP idiom that avoids it, and it remains good practice, but the trap itself needs a live reference to spring, and phpscript has none.
+`unset($v)` after the loop is the PHP idiom that avoids it and remains good practice. The trap needs a live reference to spring, and phpscript creates no reference.
 
 ## `&` elsewhere does not create a reference
 
-Outside `foreach`, `&` has no work to do. No part of the value model can stand for "the storage another name uses" and the parser consumes it wherever PHP allows it and then discards it. Source written for PHP still parses, and every spelling binds by value:
+Outside `foreach`, `&` has no work to do. No part of the value model expresses "the storage another name uses" and the parser consumes it wherever PHP allows it and then discards it. Source written for PHP still parses, and every spelling binds by value:
 
 ```php
 $a = 1;

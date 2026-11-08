@@ -5,11 +5,11 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bexperts (?:argue|say|agree|recommend)\b'
-  - '\bstudies (?:show|suggest)\b'
-  - '\bindustry (?:reports|practice) (?:suggest|show)\b'
-  - '\bit is (?:widely|generally) (?:known|accepted|understood)\b'
-  - '\bmany (?:believe|argue|would say)\b'
-  - '\bsome would (?:say|argue)\b'
-  - '\bconventional wisdom\b'
-  - '\bbest practice is\b'
+  - '\bexperts\s+(?:argue|say|agree|recommend)\b'
+  - '\bstudies\s+(?:show|suggest)\b'
+  - '\bindustry\s+(?:reports|practice)\s+(?:suggest|show)\b'
+  - '\bit\s+is\s+(?:widely|generally)\s+(?:known|accepted|understood)\b'
+  - '\bmany\s+(?:believe|argue|would\s+say)\b'
+  - '\bsome\s+would\s+(?:say|argue)\b'
+  - '\bconventional\s+wisdom\b'
+  - '\bbest\s+practice\s+is\b'

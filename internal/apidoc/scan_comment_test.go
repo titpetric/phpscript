@@ -28,7 +28,7 @@ func TestCleanComment(t *testing.T) {
 }
 
 // TestDeclCommentRewritesTheSymbol covers the godoc fallback: a registration
-// with no comment of its own takes the declaration's, with the Go name the
+// with no comment takes the declaration's, with the Go name the
 // comment opens on replaced by the name a script types. A comment opening on
 // something else travels unchanged.
 func TestDeclCommentRewritesTheSymbol(t *testing.T) {

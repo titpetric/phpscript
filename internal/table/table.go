@@ -93,9 +93,7 @@ func (t *Table) Flush() {
 }
 
 // Summary writes a line below the table, in the header color on a terminal.
-// The blank line before it carries meaning: markdown ends a table at the
-// first line that is not a row and a reader takes a summary butted against one
-// for part of the table.
+// A blank line precedes it: markdown reads the next line as another row.
 func (t *Table) Summary(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)
 	if !t.markdown {
@@ -173,7 +171,7 @@ func (t *Table) flushMarkdown() {
 	}
 }
 
-// pad widens value to its column. The printed value carries color escapes that
+// pad widens value to its column. The printed value holds color escapes that
 // occupy no cell and Width reads plain.
 func (t *Table) pad(column int, value, plain string) string {
 	padding := strings.Repeat(" ", max(0, t.widths[column]-Width(plain)))

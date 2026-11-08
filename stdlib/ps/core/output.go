@@ -7,6 +7,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -105,10 +106,10 @@ func (w *valueWriter) leave(value any) {
 // export writes value as PHP source at the given indent, backing var_export.
 func (w *valueWriter) export(value any, indent int) {
 	switch {
-	case model.IsCollection(value):
+	case modelutil.IsCollection(value):
 		w.pad(indent)
 		w.b.WriteString("array (\n")
-		model.RangeValues(value, func(key, val any) bool {
+		modelutil.RangeValues(value, func(key, val any) bool {
 			w.exportEntry(exportKey(key), val, indent+2, indent+2)
 			return true
 		})
@@ -130,7 +131,7 @@ func (w *valueWriter) export(value any, indent int) {
 		for _, field := range objectFields(value) {
 			// PHP indents an object's property names three spaces past the
 			// object but recurses at two and a nested array under a property
-			// sits one column to the left of its own key. Odd, but var_export
+			// starts one column left of its key. Odd, but var_export
 			// emits that and a fixture diff holds this to it.
 			w.exportEntry(exportKey(field.name), field.value, indent+3, indent+2)
 		}
@@ -178,14 +179,14 @@ func (w *valueWriter) dump(value any, indent int) {
 		return
 	case string:
 		// PHP counts the bytes, not the characters: a two-byte é makes
-		// string(2), and that is how a script sees a broken encoding.
+		// string(2). That is how a script sees a broken encoding.
 		w.b.WriteString("string(" + strconv.Itoa(len(x)) + ") \"" + x + "\"\n")
 		return
 	}
 
 	// A typed go value reads back under its own type: `int8(44)`, the way go
-	// prints one. php has no value of the kind and no output to match, and
-	// this is the one reader that names the width - see the divergences in
+	// prints one. php has no value of the kind and no output to match. This
+	// is the one reader that names the width - see the divergences in
 	// docs/README.md.
 	if width, ok := model.GoWidthOf(value); ok {
 		w.b.WriteString(width.Name + "(" + phpval.String(value) + ")\n")
@@ -193,10 +194,10 @@ func (w *valueWriter) dump(value any, indent int) {
 	}
 
 	switch {
-	case model.IsCollection(value):
-		n, _ := model.LenValues(value)
+	case modelutil.IsCollection(value):
+		n, _ := modelutil.LenValues(value)
 		w.b.WriteString("array(" + strconv.Itoa(n) + ") {\n")
-		model.RangeValues(value, func(key, val any) bool {
+		modelutil.RangeValues(value, func(key, val any) bool {
 			w.pad(indent + 2)
 			w.b.WriteString("[" + dumpKey(key) + "]=>\n")
 			w.dump(val, indent+2)
@@ -233,7 +234,7 @@ func (w *valueWriter) dump(value any, indent int) {
 func (w *valueWriter) printR(value any, depth int) {
 	header := ""
 	switch {
-	case model.IsCollection(value):
+	case modelutil.IsCollection(value):
 		header = "Array\n"
 	case isObjectLike(value):
 		if _, ok := w.enter(value); !ok {
@@ -243,7 +244,7 @@ func (w *valueWriter) printR(value any, depth int) {
 		defer w.leave(value)
 		header = classOf(value) + " Object\n"
 	default:
-		// A scalar has no lines of its own: the caller's entry closes it, and
+		// A scalar writes no lines: the caller's entry closes it, and
 		// print_r of a bare scalar returns just the text.
 		w.b.WriteString(printString(value))
 		return
@@ -260,8 +261,8 @@ func (w *valueWriter) printR(value any, depth int) {
 		// the blank line PHP leaves after a nested array.
 		w.b.WriteByte('\n')
 	}
-	if model.IsCollection(value) {
-		model.RangeValues(value, func(key, val any) bool {
+	if modelutil.IsCollection(value) {
+		modelutil.RangeValues(value, func(key, val any) bool {
 			entry(phpval.String(key), val)
 			return true
 		})

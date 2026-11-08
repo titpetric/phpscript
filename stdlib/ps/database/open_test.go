@@ -36,7 +36,7 @@ func TestOpen(t *testing.T) {
 // newLiveDatabase returns a client over an in-memory sqlite holding a users
 // table with two rows. It holds the pool to one connection, because a second
 // connection to ":memory:" opens a second database and would find no table.
-// The blank import in provider_test.go registers the driver, and it compiles
+// The blank import in provider_test.go registers the driver. It compiles
 // into this same test binary.
 func newLiveDatabase(t *testing.T) *Database {
 	t.Helper()

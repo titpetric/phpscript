@@ -404,7 +404,7 @@ func TestResponseJSONReportsBadBody(t *testing.T) {
 }
 
 // TestClientTimesOut pins that a client always has a deadline: the one
-// failure a script cannot recover from on its own.
+// failure a script cannot recover from.
 func TestClientTimesOut(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})

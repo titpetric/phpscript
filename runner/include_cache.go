@@ -26,8 +26,8 @@ type IncludeCache struct {
 	precompiled int64
 
 	// version counts the writes. A reader deriving something from the whole
-	// cache keeps its own copy against the version it builds at, and the
-	// count is what tells it the copy is stale. Entry count does not: a Set
+	// cache keeps its own copy against the version it builds at. The count
+	// tells it the copy is stale. Entry count does not: a Set
 	// replacing a re-parsed file leaves the count alone.
 	version uint64
 }

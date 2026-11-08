@@ -127,7 +127,7 @@ func TestProvider(t *testing.T) {
 // TestProvider_Configured covers the verdict the constructor reads and `new
 // Mail("marketing")` fails where the delivery would. An empty name is the
 // "default" server, as `new Mail` and mail() both resolve. For a name nobody
-// configured, the error carries the name the call passes and says nothing
+// configured, the error repeats the name the call passes and says nothing
 // about the configuration.
 func TestProvider_Configured(t *testing.T) {
 	t.Parallel()
@@ -224,7 +224,7 @@ func TestProvider_SendMessage(t *testing.T) {
 // TestDeliver covers the one function a host replaces to send by a transport
 // that is not SMTP. It reads the credential the name resolved to, with the
 // port already filled in, and the three parts of the message; name resolution
-// and tenant isolation sit above it and a transport does none of its own.
+// and tenant isolation run ahead of it and a transport does neither itself.
 func TestDeliver(t *testing.T) {
 	t.Parallel()
 	var (
@@ -253,9 +253,9 @@ func TestDeliver(t *testing.T) {
 
 // TestNewProviderFunc covers the transport swap, the way
 // database.NewDatabaseProvider takes its connector. A host passing nil sends
-// over SMTP and the zero value of the option is the behaviour of a host that
-// said nothing about transport: the dial refused by a port nobody listens on
-// carries the SMTP path's own wording.
+// over SMTP and the zero value of the option is the behaviour of a host saying
+// nothing about transport: a dial against a port nobody listens on fails with
+// the SMTP path's own wording.
 func TestNewProviderFunc(t *testing.T) {
 	t.Parallel()
 	provider := mailstdlib.NewProviderFunc(nil, map[string]mailstdlib.Config{

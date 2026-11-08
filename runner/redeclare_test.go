@@ -65,7 +65,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 			if !errors.As(err, &redeclared) {
 				t.Fatalf("error is %T, want *runner.RedeclareError", err)
 			}
-			// Exception and no name of its own and the clause a
+			// Exception and no distinct name and the clause a
 			// script would write for it takes it.
 			if got := redeclared.ThrowableClass(); got != "Exception" {
 				t.Errorf("ThrowableClass() = %q, want %q", got, "Exception")
@@ -76,7 +76,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 
 // TestRedeclaringThroughAnIncludeIsCatchable is the case that reaches a script
 // and not the host: an include hoists inside the script's own flow and the
-// try around it takes the error and the program carries on.
+// try around it takes the error and the program continues.
 func TestRedeclaringThroughAnIncludeIsCatchable(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{
@@ -100,10 +100,10 @@ try {
 
 // TestRedeclareNamesTheWholePathBelowTheRoot pins the spelling of the file in
 // the message. php prints host paths; a runtime whose scripts may come out of
-// an fs.FS has none to print and the path is the one the script named, resolved
-// against the root. What it must not do is shorten to a basename: two files
-// called helpers.php in different folders is exactly the case the message
-// exists to tell apart.
+// an fs.FS has no host path to print and the path is the one the script named,
+// resolved against the root. What it must not do is shorten to a basename: two
+// files called helpers.php in different folders is exactly the case the
+// message exists to tell apart.
 func TestRedeclareNamesTheWholePathBelowTheRoot(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{
@@ -161,7 +161,7 @@ func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 // which are PHP's own text for the same condition minus the clauses a missing
 // site leaves empty. A declaration refused against a registered binding names no
 // earlier site, because there is no PHP declaration to point at, and a program
-// a host assembled carries no file and Error drops the location clauses and
+// a host assembled has no file and Error drops the location clauses and
 // never writes one empty.
 func TestRedeclareError_Error(t *testing.T) {
 	t.Parallel()
@@ -198,8 +198,8 @@ func TestRedeclareError_Error(t *testing.T) {
 
 // TestRedeclareError_GetMessage and TestRedeclareError_GetCode cover what a
 // script reads off the caught value. The message is the error's own text and a
-// `catch` printing getMessage() prints what a Go host received from Run, and
-// the code is PHP's zero because there is no error number for this.
+// `catch` printing getMessage() prints what a Go host received from Run. The
+// code is PHP's zero because there is no error number for this.
 func TestRedeclareError_GetMessage(t *testing.T) {
 	t.Parallel()
 	err := &runner.RedeclareError{

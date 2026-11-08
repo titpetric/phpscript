@@ -9,14 +9,18 @@ import (
 
 // Register installs the bindings.
 func Register(rt *runner.Runtime) {
-	// A parameter declared as the runtime type: reflect.Call panics on the
-	// []string another binding returns.
+	// A parameter declared as the runtime type: the call refuses the []string
+	// another binding returns.
 	rt.RegisterFunc("count_array", func(array *model.Array) int64 {
 		return int64(array.Len())
 	})
 	// A slice of them is the same finding.
 	rt.RegisterFunc("count_rows", func(rows []*model.Array) int64 {
 		return int64(len(rows))
+	})
+	// The other half: a Go-native collection refuses the array literal.
+	rt.RegisterFunc("count_names", func(names []string) int64 {
+		return int64(len(names))
 	})
 	// A narrowing the binding only reads.
 	rt.RegisterFunc("read_options", func(value any) string {

@@ -22,10 +22,7 @@ type Logger struct {
 }
 
 // New returns a logger writing to the default slog logger, failing the span in
-// ctx on Error.
-//
-// The name prefixes the message, which separates two libraries logging the
-// same word. An empty name logs the message by itself.
+// ctx on Error. The name prefixes every message and an empty name adds none.
 func New(ctx context.Context, name string) *Logger {
 	return &Logger{
 		ctx:  ctx,
@@ -55,8 +52,7 @@ func (l *Logger) Info(msg string, args ...any) {
 }
 
 // Warn logs a message at warning level and records nothing on the span, for a
-// degradation the work survives: a session store that fell back to memory
-// still serves the request and failing its trace would report an outage.
+// degradation the work survives.
 func (l *Logger) Warn(msg string, args ...any) {
 	if l == nil {
 		return
@@ -66,10 +62,7 @@ func (l *Logger) Warn(msg string, args ...any) {
 }
 
 // Error logs a message at error level and records it on the logger's own span,
-// which fails that span and the trace with it. The error is the first one among
-// the values where the caller passes one and the span keeps the failure itself
-// and never only its message. The span is not ended: it belongs to
-// whoever opened it, and the work it measures is still theirs to finish.
+// failing that span and the trace with it. The span is not ended.
 func (l *Logger) Error(msg string, args ...any) {
 	if l == nil {
 		return

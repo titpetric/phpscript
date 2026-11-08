@@ -128,7 +128,7 @@ func TestLoadSuiteFS(t *testing.T) {
 }
 
 // TestSuite_Provider covers the connections the fixtures below a suite root
-// resolve. A folder that named no env of its own answers nothing and the
+// resolve. A folder that named no env answers nothing and the
 // binding stays on the process environment; one that named an env gets only
 // what it named, the rule a virtual host is already held to.
 func TestSuite_Provider(t *testing.T) {
@@ -314,7 +314,7 @@ func TestRunSetup(t *testing.T) {
 	}
 }
 
-// TestRunTeardown covers the reverse order, and that every hook runs. The
+// TestRunTeardown covers the reverse order and that every hook runs. The
 // suites are independent and a caller learns about every failure and not the
 // innermost one alone.
 func TestRunTeardown(t *testing.T) {

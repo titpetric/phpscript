@@ -5,17 +5,18 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // phpArrayColumn projects one field out of every row. The real caller is
 // Database::get_all, which returns a []map[string]any and this reads the rows
-// through model.RangeValues and takes any collection shape.
+// through modelutil.RangeValues and takes any collection shape.
 //
 // Without $index_key the result is a plain list, a presized []any. With one the
 // function keys the result by a value taken from the rows, which can be a
 // hybrid of int and string keys and it returns an *model.Array (rule 4).
 func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 
 	var index any
 	if len(indexKey) > 0 {
@@ -23,7 +24,7 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	}
 	if index == nil {
 		out := make([]any, 0, n)
-		model.RangeValues(array, func(_, row any) bool {
+		modelutil.RangeValues(array, func(_, row any) bool {
 			if v, ok := arrayColumnValue(row, columnKey); ok {
 				out = append(out, v)
 			}
@@ -33,7 +34,7 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	}
 
 	out := model.NewArraySize(n)
-	model.RangeValues(array, func(_, row any) bool {
+	modelutil.RangeValues(array, func(_, row any) bool {
 		v, ok := arrayColumnValue(row, columnKey)
 		if !ok {
 			return true
@@ -89,7 +90,7 @@ func arrayStrict(strict []any) bool {
 func arrayFind(needle, haystack any, strict bool) (any, bool) {
 	var key any
 	found := false
-	model.RangeValues(haystack, func(k, v any) bool {
+	modelutil.RangeValues(haystack, func(k, v any) bool {
 		if strict {
 			if !arrayIdentical(needle, v) {
 				return true
@@ -124,19 +125,18 @@ func arrayIdentical(x, y any) bool {
 //
 // PHP reindexes the integer keys of the result and keeps the string ones, and
 // $preserve_keys asks it to keep the integers too. The result is a list only
-// when nothing in the selected run carries a string key and nothing named the
+// when nothing in the selected run has a string key and nothing named the
 // original integers; that case returns []any, which is the cheap shape
-// (docs/allocation-performance.md), and the rest returns a *model.Array
+// (docs/allocation-performance.md). The rest returns a *model.Array
 // because the keys are then part of the result.
 //
 // This reads $length as PHP reads it: omitted or null runs to the end of the
-// array, and a negative value stops that many elements short of the end rather
-// than yielding nothing.
+// array, and a negative value stops that many elements short of the end.
 func phpArraySlice(array any, offset int64, args ...any) any {
-	n, _ := model.LenValues(array)
+	n, _ := modelutil.LenValues(array)
 	keys := make([]any, 0, n)
 	vals := make([]any, 0, n)
-	model.RangeValues(array, func(k, v any) bool {
+	modelutil.RangeValues(array, func(k, v any) bool {
 		keys = append(keys, k)
 		vals = append(vals, v)
 		return true
@@ -197,10 +197,10 @@ func phpArraySlice(array any, offset int64, args ...any) any {
 }
 
 func phpArrayMap(fn func(...any) (any, error), a any) ([]any, error) {
-	n, _ := model.LenValues(a)
+	n, _ := modelutil.LenValues(a)
 	out := make([]any, 0, n)
 	var mapErr error
-	model.RangeValues(a, func(_, v any) bool {
+	modelutil.RangeValues(a, func(_, v any) bool {
 		mapped, err := fn(v)
 		if err != nil {
 			mapErr = err

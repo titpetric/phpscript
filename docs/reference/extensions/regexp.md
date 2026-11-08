@@ -28,7 +28,7 @@ phpscript compiles each pattern with whichever engine can express it:
 
 One case depends on the call and not on the pattern. A non-zero `$offset` moves where the match starts without moving where the subject begins and `^` and `\b` still see the real start of the string. RE2 has no entry point that takes a start position, and slicing `$subject` would move the start and a call with an offset runs on the backtracking engine whichever one compiled the pattern. phpscript compiles a pattern RE2 accepted a second time, once, on the first call that passes an offset.
 
-phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee and a one-second timeout bounds a match it runs; a pattern that exceeds it reports no match, and the request is not held.
+phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee and a one-second timeout bounds a match it runs; a pattern that exceeds it reports no match without holding the request.
 
 phpscript compiles each pattern once per runtime and caches it and the choice of engine is not paid for on each call.
 
@@ -44,7 +44,7 @@ Without this, the gap is worse than a missing feature: a pattern RE2 cannot comp
 
 **Replacements.** `preg_replace` accepts both PHP spellings of a group reference in the replacement, `\1` and `$1`, and normalises them to `${1}` so that a reference followed by a digit, `\1` before a literal `0`, still names group 1.
 
-**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default: `$matches[0]` is every whole match, `$matches[1]` every capture of group 1, and so on. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
+**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default: `$matches[0]` is every whole match and `$matches[n]` every capture of group n. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
 
 **Offsets.** `PREG_OFFSET_CAPTURE` turns every entry into a pair of the matched text and its offset, and `-1` is the offset of a group that matched nothing. The offsets are byte offsets, as PHP reports them even under the `u` modifier: a match after a two-byte character starts at 2, not at 1. phpscript reads `$offset` the same way, and counts from the end of the subject when the offset is negative. An `$offset` outside the subject is a failed call, not a failed match: `preg_match` returns `false`.
 
@@ -69,7 +69,7 @@ foreach ($rx->find_all_string_submatch($subject, -1) as $match) {
 
 Both are constructors over the package function of the same name and an expression that does not parse throws the error `regexp.Compile` returned, catchable by any clause. The value is a `*regexp.Regexp` and every exported method of that type is callable as PHP spells it: `find_string`, `find_all_string_submatch`, `replace_all_string`, `split`, `num_subexp`, `subexp_names`. `get_class()` answers `Regexp`, which is the Go type behind the value.
 
-Three differences from `preg_*` are the reason to reach for it. The binding reports named groups: `$rx->subexp_names()` and `$rx->subexp_index("host")` answer what `$matches["name"]` does not carry. The constructor compiles a pattern once, where the `preg_*` cache keys on pattern text per runtime. And `Regexp\CompilePOSIX` has no `preg_*` counterpart at all: it takes the leftmost-longest match and `a|ab` finds `ab` where the Perl-syntax engines find `a`.
+Three differences from `preg_*` are the reason to use it. The binding reports named groups: `$rx->subexp_names()` and `$rx->subexp_index("host")` answer what `$matches["name"]` does not hold. The constructor compiles a pattern once, where the `preg_*` cache keys on pattern text per runtime. And `Regexp\CompilePOSIX` has no `preg_*` counterpart at all: it takes the leftmost-longest match and `a|ab` finds `ab` where the Perl-syntax engines find `a`.
 
 `MustCompile` and `MustCompilePOSIX` are not registered, because they panic where a script needs an error to catch. [Regexp bindings](../../bindings-regexp.md) is the walkthrough, including every fixture.
 
@@ -87,8 +87,8 @@ preg_match_all("/\{(block|inline) (\w+)\}(.*?)\{\/\\1\}/s", $template, $matches)
 
 ## Implementation
 
-`preg_*` lives in [stdlib/ps/compat/regex.go](../../../stdlib/ps/compat/regex.go), with the rest of the PHP surface whose behaviour follows from what the interpreter does and not from what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterArea` and a host needing a different surface builds its runtime without it.
+`preg_*` is in [stdlib/ps/compat/regex.go](../../../stdlib/ps/compat/regex.go), with the rest of the PHP surface whose behaviour follows from what the interpreter does and not from what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterArea` and a host needing a different surface builds its runtime without it.
 
-The engine choice lives in `compilePCRE`. The `pattern` type in the same file is the only thing the shims talk to and the two engines are indistinguishable from PHP.
+`compilePCRE` makes the engine choice. The `pattern` type in the same file is the only thing the shims talk to and the two engines are indistinguishable from PHP.
 
-`Regexp\` is a separate package, [stdlib/ps/regexp](../../../stdlib/ps/regexp), because it computes and depends on nothing the interpreter does, and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.
+`Regexp\` is a separate package, [stdlib/ps/regexp](../../../stdlib/ps/regexp), because it computes and depends on nothing the interpreter does and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.

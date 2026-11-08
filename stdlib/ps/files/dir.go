@@ -8,10 +8,10 @@ import (
 
 // registerDirs installs the directory-handle functions. They are the other way
 // a script reads a directory: scandir answers with the whole listing at once,
-// while opendir returns a handle a loop walks one name at a time, which is
-// what a recursive walk written in PHP looks like.
+// while opendir returns a handle a loop walks one name at a time, the shape a
+// recursive walk written in PHP takes.
 //
-// The handle carries the listing taken at open time, and no open descriptor. A
+// The handle holds the listing taken at open time, and no open descriptor. A
 // source filesystem an embedded application ships has no descriptor to hold
 // open, and both filesystems have to answer the same way and opendir reads the
 // listing through root.readDir - the same reader scandir uses.
@@ -37,7 +37,7 @@ func registerDirs(rt *runner.Runtime, r root) {
 	})
 
 	// readdir returns the next name in $dir_handle, or false once the listing
-	// runs out; it lists "." and "..", as php lists them, and the handle is
+	// runs out; it lists "." and "..", as php lists them. The handle is
 	// mandatory, because there is no last-opened directory to fall back on.
 	rt.RegisterFunc("readdir", func(dirHandle any) any {
 		h, ok := dirHandle.(*openDir)

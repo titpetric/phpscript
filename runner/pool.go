@@ -15,7 +15,7 @@ const DefaultQueue = 1024
 
 // Pool runs PHP on a fixed set of forks, fed from one queue: the workers are
 // the parallelism and the queue is the backpressure and a run that finds every
-// worker busy waits its turn and starts no runtime of its own.
+// worker busy waits its turn and starts no extra runtime.
 //
 // No type here wraps sync.Pool. The worker count is the contract, and sync.Pool
 // drops entries on a collection.
@@ -51,8 +51,8 @@ type poolRun struct {
 // handlers wait on a database wants more. Zero queue is DefaultQueue.
 //
 // The pool calls output once per worker, for where that worker's runtime
-// writes while no writer sits over it. A host wanting a run's output to reach
-// somewhere of its own pushes a writer inside the run; see Runtime.PushOutput.
+// writes until a run pushes a writer over it. A host wanting a run's output
+// somewhere else pushes one inside the run; see Runtime.PushOutput.
 func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 	if workers <= 0 {
 		workers = goruntime.GOMAXPROCS(0)
@@ -113,7 +113,7 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 		done = ctx.Done()
 	}
 	// The lender's channel in place of one per submit, and the make only
-	// where no job carries one.
+	// where no job lends one.
 	var finished chan struct{}
 	if lender, ok := job.(DoneJob); ok {
 		finished = lender.Done()

@@ -11,12 +11,12 @@ import (
 	goslices "slices"
 
 	"github.com/titpetric/phpscript/internal/phpval"
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
 // Namespace is the name a script imports.
-const Namespace = model.GoNamespace + `\Slices`
+const Namespace = modelutil.GoNamespace + `\Slices`
 
 func init() {
 	runner.RegisterNamespace(Namespace, Register)

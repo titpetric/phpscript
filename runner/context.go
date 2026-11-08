@@ -12,12 +12,13 @@ import (
 	"unsafe"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner/mapmap"
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
-// Context carries HTTP request data exposed to PHP as superglobals, header
-// functions, and staged response headers.
+// Context holds HTTP request data exposed to PHP as superglobals, header
+// functions and staged response headers.
 type Context struct {
 	Get     map[string]string
 	Post    map[string]string
@@ -43,7 +44,7 @@ type Context struct {
 	//
 	// The flat maps above are not the same information. They hold one string
 	// per literal field name, the shape a Go host reads and what
-	// Session\Manager looks a cookie up in, and they cannot express what the
+	// Session\Manager looks a cookie up in. They cannot express what the
 	// decoder needs: `a[]=1&a[]=2` is one repeated name and a map keeps only
 	// the second value.
 	//
@@ -54,7 +55,7 @@ type Context struct {
 	CookieVars *model.Array
 
 	// Files holds the file parts of a multipart body keyed by form field name,
-	// in the order sent. A field carries more than one file when the
+	// in the order sent. A field holds more than one file when the
 	// form repeats it, which HTML spells as a "name[]" field.
 	Files map[string][]*UploadedFile
 
@@ -74,7 +75,7 @@ type Context struct {
 	rawBody *[]byte
 
 	// decode holds the request and what decoding has pulled out of it so far. A
-	// Context built by a host has none: no bytes wait to decode, and the
+	// Context built by a host leaves it nil: no bytes wait to decode, and the
 	// fields above are what it holds. A pointer for the same reason status is,
 	// and a decode through one copy shows in every other.
 	decode *decoder
@@ -148,7 +149,7 @@ func newContext() Context {
 	}
 }
 
-// routePatternKey carries the route path as its author declared it, which
+// routePatternKey names the route path as its author declared it, which
 // RoutePattern puts on the request context.
 type routePatternKey struct{}
 
@@ -175,16 +176,12 @@ func FromRequest(r *http.Request) Context {
 	return FromRequestOptions(r, Options{})
 }
 
-// FromRequestOptions builds a Context from an HTTP request. Path values come
-// out of the matched ServeMux pattern via r.PathValue.
+// FromRequestOptions builds a Context from an HTTP request, path values out of
+// the matched ServeMux pattern.
 //
 // A decode records query, form and cookie fields twice: flat for a Go host,
-// and decoded for the superglobals. Both keep the last value when a name
-// repeats, as PHP's parser does.
-//
-// upload_max_filesize and post_max_size limit what the body may carry;
-// max_input_vars and max_input_nesting_level bound what the decode builds
-// from it.
+// decoded for the superglobals. Both keep the last value when a name repeats,
+// as PHP's parser does.
 func FromRequestOptions(r *http.Request, opts Options) Context {
 	c := newContext()
 	c.decode = &decoder{request: r, options: opts}
@@ -300,7 +297,7 @@ func (c Context) files() map[string][]*UploadedFile {
 }
 
 // HeaderMap answers the request headers by canonical name, building the map on
-// the first call. A request carries a dozen and most pages read none.
+// the first call. A request sends a dozen and most pages read none.
 func (c Context) HeaderMap() map[string]string {
 	if c.Headers != nil || c.decode == nil {
 		return c.Headers
@@ -420,7 +417,7 @@ func (c Context) decodeForm() {
 // A {name...} parameter is the exception. chi has no such syntax and
 // RenderRoutePath spells it as chi's * wildcard, which chi publishes under "*".
 func (c Context) pathValues(r *http.Request) {
-	params, err := model.ParseRoutePath(routePattern(r))
+	params, err := modelutil.ParseRoutePath(routePattern(r))
 	if err != nil {
 		// The linter reports a path the grammar refuses and registration skips
 		// it and reaching here means a host registered it directly.
@@ -482,7 +479,7 @@ func (c Context) serverVars(r *http.Request) {
 
 	// CONTENT_TYPE and CONTENT_LENGTH mirror the two headers, and appear only
 	// when the request sent them. PHP sets CONTENT_TYPE for any request
-	// carrying the header, a bodyless GET included.
+	// with the header, a bodyless GET included.
 	if contentType := r.Header.Get("Content-Type"); contentType != "" {
 		c.Server["CONTENT_TYPE"] = contentType
 	}
@@ -538,7 +535,7 @@ func (c Context) Errors() []error {
 // memoryFootprint estimates the bytes this Context holds on the host side of
 // the request boundary: the superglobal source maps, headers, arguments and
 // upload metadata. The superglobal arrays Register seeds into the runtime are
-// separate copies the walk counts on its own.
+// separate copies that a different walk counts.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
 	// What decoding has filled in, not what it could: forcing a parse to

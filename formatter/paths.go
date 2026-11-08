@@ -32,7 +32,7 @@ func Changed(results []Result) []string {
 
 // walk formats every file paths names, writing each one back where write says
 // so. Reading and writing errors end the walk; a file the formatter cannot
-// take responsibility for comes back skipped and the walk carries on.
+// take responsibility for comes back skipped and the walk continues.
 func walk(paths []string, write bool) ([]Result, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {

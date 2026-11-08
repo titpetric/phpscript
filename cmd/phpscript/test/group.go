@@ -13,7 +13,7 @@ import (
 // what lets the runner print a table per area in place of one long table and
 // a reader takes a folder's fixtures as a set.
 type fixtureGroup struct {
-	Dir      string // folder holding the fixtures, "." when they sit in the run directory
+	Dir      string // folder holding the fixtures, "." when they are in the run directory
 	Fixtures []*tests.Fixture
 	Paths    []string // full display path, per fixture
 	Labels   []string // basename, the name the table shows
@@ -27,14 +27,14 @@ type groupTotals struct {
 	Total    int
 	Duration time.Duration
 	// Engines is the per-runner share of the time, in report order. Only a
-	// matrix run carries it: a plain run has one engine and Duration already
+	// matrix run fills it: a plain run has one engine and Duration already
 	// is its figure.
 	Engines []engineDuration
 }
 
 // engineDuration is the time one runner spent, summed over its fixture runs.
 // Under --parallel the engines together can exceed the wall-clock Duration
-// they sit beside, which measures the run and not the work.
+// beside them, which measures the run and not the work.
 type engineDuration struct {
 	Runner   tests.Runner
 	Duration time.Duration
@@ -76,7 +76,7 @@ func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, 
 	var workers sync.WaitGroup
 	workers.Add(min(parallel, end-start))
 	for id := range min(parallel, end-start) {
-		// Each goroutine is one worker with a number, and the number is what
+		// Each goroutine is one worker with a number, the number
 		// --cache=worker scopes a cache to. Its loop is serial and two
 		// fixtures never touch a worker's cache at once.
 		go func(id int) {
@@ -94,8 +94,8 @@ func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, 
 }
 
 // groupFixtures buckets fixtures by the folder holding them, preserving the
-// order discovery established both between folders and inside one, which is
-// what list.GroupByDir does for any path list.
+// order discovery established both between folders and inside one.
+// list.GroupByDir does that for any path list.
 func groupFixtures(fixtures []*tests.Fixture, displayPaths []string) []fixtureGroup {
 	buckets := list.GroupByDir(displayPaths)
 	groups := make([]fixtureGroup, 0, len(buckets))

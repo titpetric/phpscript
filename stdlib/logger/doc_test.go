@@ -31,7 +31,7 @@ func TestLoggerLeavesTheSpanOpen(t *testing.T) {
 	ctx, span := telemetry.Start(ctx, "migrate", telemetry.KindDatabase)
 	discard(New(ctx, "migrate")).Error("failed", "error", errors.New("syntax error"))
 
-	// Read before the caller ends it: the span carries the failure and is
+	// Read before the caller ends it: the span records the failure and is
 	// still open and the duration it reports is the work and not the log line.
 	recorded := trace.Clone().Spans[1]
 	if recorded.Err() == nil {

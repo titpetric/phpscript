@@ -99,7 +99,7 @@ func DeepSize(v any, visited visitedSet) int64 {
 // EstimateValueSize is a shallow estimate of what a value costs, in bytes: a
 // scalar or string is its own size, a collection is its header plus one level
 // of entries, and anything else is the shallow sizeof. The estimate is cheap
-// enough to run on every binding's result, and it undercounts a deeper graph
+// enough to run on every binding's result. It undercounts a deeper graph
 // by design: the walk that does not is DeepSize.
 func EstimateValueSize(v any) int64 {
 	if v == nil {

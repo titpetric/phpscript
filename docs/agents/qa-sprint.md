@@ -6,7 +6,7 @@ Read this when running a correctness pass over the tree. It runs under the contr
 
 ## Scope
 
-Four deliverables, in the order they pay off:
+Four deliverables, in the order to produce them:
 
 - A diagnosed bug, with the fixture that pins it, and the fix.
 - Code nothing reaches, deleted.
@@ -29,15 +29,15 @@ phpscript test --matrix -v ./tests/...
 
 A `SKIP` is a fixture that opted a runtime out, or a missing `php` binary. Any other non-pass fails the run.
 
-**The known divergences, read as claims.** `../README.md` carries a long list of places phpscript differs from PHP, and nearly every entry names the fixture that pins it. Re-run those fixtures against `php` directly. An entry whose fixture stops demonstrating what the prose says is either a fixed divergence nobody deleted the paragraph for, or a new one.
+**The known divergences, read as claims.** `../README.md` lists the places phpscript differs from PHP, and nearly every entry names the fixture that pins it. Re-run those fixtures against `php` directly. An entry whose fixture stops demonstrating what the prose says is either a fixed divergence nobody deleted the paragraph for, or a new one.
 
 **The advisory findings.** `phpscript lint ./...` over the demo trees and the fixture corpus. Undefined names, unreachable code and unused variables. A finding over `demos/` is worth more than one over a fixture, because a demo is real code.
 
-**The bindings the audit marks TODO.** `../allocation-performance.md` carries a per-binding audit whose legend distinguishes optimal, allocates-by-design, and a real improvement available. The TODO rows are a worklist the audit already triaged.
+**The bindings the audit marks TODO.** `../allocation-performance.md` holds a per-binding audit whose legend distinguishes optimal, allocates-by-design, and a real improvement available. The TODO rows are a worklist the audit already triaged.
 
 **A thin fixture area.** `../test-fixtures.md` is one table per area. An area with three fixtures covering a stdlib surface with thirty functions is where a defect is sitting unobserved.
 
-**`tests/fixtures/github/`** is the record of each report and no backlog: the three files there carry closed reports, each naming the regression test that guards it. Read it for the shape of a good report; it holds no open work.
+**`tests/fixtures/github/`** is the record of each report and no backlog: the three files there hold closed reports, each naming the regression test that guards it. Read it for the shape of a good report; it holds no open work.
 
 ## Diagnosis
 
@@ -48,7 +48,7 @@ A diagnosis comes before a fix and has four parts:
 - The file and line that decides. Not the file the symptom appears in.
 - Whether the behaviour is a bug or a documented divergence.
 
-That last part is the one that gets skipped. `../README.md` carries each divergence as a claim. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where something depends on the divergence, the fix is wrong and the finding is a documentation defect. Where the claim is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
+That last part is the one that gets skipped. `../README.md` states each divergence as a claim. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where something depends on the divergence, the fix is wrong and the finding is a documentation defect. Where the claim is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
 
 Three groups have no `php` to appeal to, and [../testing.md](../testing.md) lists them: host bindings, runtime introspection, and host request state. A diagnosis in one of those states what defines the expected output instead.
 
@@ -87,7 +87,7 @@ Four false positives, each real in this tree. A symbol reached only:
 - from a demo or a venom suite, which no Go test reads;
 - by registered name, which every binding is. A PHP source line calls a binding by its string name and it has no Go caller at all.
 
-Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name comes out in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration and a removal that rides along with a rename is two changes in one.
+Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name comes out in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration and a removal in the same commit as a rename is two changes in one.
 
 Every rule blocks and a finding is work and never a number to raise. The three paths `.splint.yml` exempts from the length limit are the whole list, and a change that adds a fourth argues for it.
 

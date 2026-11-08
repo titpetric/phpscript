@@ -155,7 +155,7 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "yes",
 		},
 
-		// A []byte is the string it carries, everywhere a script reads a string.
+		// A []byte is the string it holds, everywhere a script reads a string.
 		{
 			name: "[]byte return is a string",
 			php:  `<?php $b = bind_bytes(); echo $b . ":" . strlen($b) . ":" . gettype($b);`,
@@ -192,9 +192,9 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "[]",
 		},
 
-		// A callback is an argument shape and no return shape and its table
-		// lives in TestBindingTakesEveryCallableSpelling below: every spelling
-		// against both declared shapes, with the errors beside it.
+		// A callback is an argument shape and no return shape. Its table is
+		// TestBindingTakesEveryCallableSpelling below: every spelling against
+		// both declared shapes, with the errors beside it.
 
 		// A trailing error surfaces to PHP as a catchable throw.
 		{
@@ -219,9 +219,9 @@ func TestBindingReturnShapes(t *testing.T) {
 }
 
 // TestBindingStdlibInteropAcrossShapes pins the behaviour of the stdlib
-// predicates and collection helpers against native Go return shapes. These are
-// the functions a script reaches for after calling a binding, and they are the
-// blast radius of switching a binding away from *model.Array.
+// predicates and collection helpers against native Go return shapes. A script
+// calls these after a binding returns: the blast radius of switching a binding
+// away from *model.Array.
 func TestBindingStdlibInteropAcrossShapes(t *testing.T) {
 	cases := []struct {
 		name string
@@ -445,8 +445,8 @@ func TestBindingStdlibInteropAcrossShapes(t *testing.T) {
 	}
 }
 
-// TestBindingSliceCannotGrow documents the one operation a native slice cannot
-// carry: `$a[] =` append. A slice cannot grow through the interface value
+// TestBindingSliceCannotGrow documents the one operation a native slice
+// refuses: `$a[] =` append. A slice cannot grow through the interface value
 // holding it and a binding whose result the script appends to must return a
 // *model.Array. Writing an existing element is fine (see below).
 func TestBindingSliceCannotGrow(t *testing.T) {
@@ -1065,9 +1065,9 @@ func BenchmarkScriptRecords(b *testing.B) {
 }
 
 // Explode is the stdlib function templates exercise most. These bracket the
-// change: the legacy binding is the *model.Array implementation stdlib used to
-// have, the native one is what it returns now, and the third runs the real
-// stdlib explode() so the two stay honest.
+// change: the legacy binding returns *model.Array, the native one returns what
+// stdlib returns today. The third runs the real stdlib explode() to keep the
+// two honest.
 
 func BenchmarkCallExplodeLegacy(b *testing.B) {
 	benchmarkCall(b, "bind_explode_legacy", reflect.ValueOf(","), reflect.ValueOf("a,b,c,d,e"))
@@ -1108,7 +1108,7 @@ func BenchmarkScriptPregMatch(b *testing.B) {
 // docs/allocation-performance.md records the result.
 //
 // So the pair measures no cost. It measures the absence of one: the
-// full stdlib and a single registered binding come out byte-identical, and a
+// full stdlib and a single registered binding come out byte-identical. A
 // script pays for the functions it calls and not for the size of the table
 // it could call from. Keep them as the guard on that - a change that reintroduces
 // per-registration work in the environment shows up here as the two rows

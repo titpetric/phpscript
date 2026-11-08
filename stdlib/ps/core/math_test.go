@@ -38,7 +38,7 @@ var_dump(abs(-5), abs(5), abs(-5.5), abs("-7"), abs(0), abs(-0.0));`)
 // is an int and 2**63 is a float.
 //
 // A negative or fractional exponent is a float whatever the base, because the
-// answer is not a whole number of the base.
+// result is not a whole number of the base.
 func TestPow(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -94,7 +94,7 @@ var_dump(number_format(1000000), number_format(-0.5), number_format(0.5), number
 
 // TestMinMax covers the two spellings php accepts: two or more arguments, or
 // one array holding them. The comparison is php's and min() and max() compare
-// a mixed list the way php compares those values, and the winner keeps its own
+// a mixed list the way php compares those values. The winner keeps its own
 // type.
 func TestMinMax(t *testing.T) {
 	t.Parallel()

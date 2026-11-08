@@ -76,7 +76,7 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 // sourceName names the file the runtime reads a fixture's PHP section from.
 //
 // A fixture is a document and no file the runtime can open and sourceFS
-// serves its body as one. The name carries the .phpt through, which no real
+// serves its body as one. The name keeps the .phpt, which no real
 // file in the tree ends in and it shadows nothing the fixture includes.
 //
 // It keeps the fixture's whole path and not its base, because the parser
@@ -98,7 +98,7 @@ func (f *Fixture) sourceName() string {
 //
 // FindFixtures names a fixture from the working directory and the path arrives
 // absolute or with leading ".." segments, and fs.ValidPath rejects both.
-// Dropping the leading segments keeps the folder the fixture sits in, and the
+// Dropping the leading segments keeps the folder holding the fixture. The
 // parser compiles __DIR__ from that.
 func fsName(p string) string {
 	p = path.Clean(p)
@@ -125,8 +125,7 @@ func (f *Fixture) sourceFS(root fs.FS) fs.FS {
 	return unionFS{root, sources}
 }
 
-// SetAppRoot points the fixture at the application root its autoload folder
-// and prelude includes resolve against, none of which has to be there.
+// SetAppRoot names the application root autoload and includes resolve against.
 func (f *Fixture) SetAppRoot(root string, includes ...string) {
 	f.appRoot = root
 	f.includes = includes
@@ -152,9 +151,8 @@ func (f *Fixture) Coverage() *coverage.Collector {
 	return f.coverage
 }
 
-// RootDir returns the directory a fixture's includes resolve against. That is
-// the directory holding it, which is also where the php runner executes, unless
-// the fixture named another one with `root:`.
+// RootDir returns the directory a fixture's includes resolve against and the
+// php runner executes in: the one holding it, or the one it named with `root:`.
 func (f *Fixture) RootDir() string {
 	dir := filepath.Dir(f.Path)
 	if f.Root == "" {
@@ -163,10 +161,10 @@ func (f *Fixture) RootDir() string {
 	return filepath.Join(dir, f.Root)
 }
 
-// realRoot reports whether the fixture named a directory on disk rather
-// than the embedded tree. Such a fixture gets its own include caches: those
-// key on the path as the script wrote it and a fixture reaching a different
-// tree must not read back a program cached for the embedded one.
+// realRoot reports whether the fixture named a directory on disk. Such a
+// fixture gets its own include caches: those key on the path as the script
+// wrote it and a fixture reaching a different tree must not read back a
+// program cached for the embedded one.
 func (f *Fixture) realRoot() bool {
 	return f.Root != "" || f.appRoot != ""
 }
@@ -198,7 +196,7 @@ func (u unionFS) Open(name string) (fs.File, error) {
 // includePrelude includes the files the test command named with --include
 // before the fixture body runs. It runs every session, because ResetSession
 // clears user declarations. It skips a file that is not there: the flag
-// names what to load when the application carries it.
+// names what to load when the application holds it.
 func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 	for _, name := range f.includes {
 		clean := strings.TrimPrefix(path.Clean(filepath.ToSlash(name)), "/")
@@ -225,8 +223,8 @@ func (f *Fixture) runnerOptions() runner.Options {
 	options.Mail = f.mail
 	options.Precompile = true
 	if f.realRoot() {
-		// A fixture that names a root needs the real filesystem: it reaches
-		// for a tree phpscript does not embed, a vendor directory being the
+		// A fixture that names a root needs the real filesystem: it reads a
+		// tree phpscript does not embed, a vendor directory being the
 		// motivating case.
 		options.RootFS = os.DirFS(f.RootDir())
 	}

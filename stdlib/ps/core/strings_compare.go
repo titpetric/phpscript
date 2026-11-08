@@ -44,8 +44,8 @@ func registerStringCompare(rt *runner.Runtime) {
 const wholeString = -1
 
 // clampLength reads strncmp's $length. PHP 8 raises a ValueError below zero;
-// the bindings here clamp instead, and a length of zero compares nothing, which
-// is what PHP returns for that call.
+// the bindings here clamp instead, and a length of zero compares nothing, the
+// result PHP returns for that call.
 func clampLength(length int64) int {
 	if length < 0 {
 		return 0

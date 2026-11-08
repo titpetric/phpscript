@@ -15,8 +15,8 @@ import (
 // TestCommandsBindWithGlobals binds every command the way decorate does: the
 // global flags first, then the command's own. pflag panics on a name declared
 // twice on one set and a command that reuses a global's name fails here and
-// never in a run of that command. A command package binding on a flag set of
-// its own never meets the globals and cannot see the clash.
+// never in a run of that command. A command package binding on its own flag
+// set never meets the globals and cannot see the clash.
 func TestCommandsBindWithGlobals(t *testing.T) {
 	t.Parallel()
 	for _, command := range commands() {
@@ -63,8 +63,8 @@ func TestWantsHelp(t *testing.T) {
 }
 
 // TestWriteHelp covers the long help: the shared flags printed once, then every
-// registered command with the flags it adds of its own. A command's section
-// repeats no shared flag, because the document names the shared set once.
+// registered command with the flags it adds. A command's section repeats no
+// shared flag, because the document names the shared set once.
 func TestWriteHelp(t *testing.T) {
 	t.Parallel()
 	file, err := os.CreateTemp(t.TempDir(), "help")
@@ -104,7 +104,7 @@ func TestWriteHelp(t *testing.T) {
 }
 
 // TestRunToolPrefix pins the ambiguity rule: the prefix is the name the binary
-// runs as, so phpscript never runs phpx-* tools and phpx never runs phpscript-*.
+// runs as. phpscript runs no phpx-* tool and phpx runs no phpscript-* tool.
 func TestRunToolPrefix(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -134,7 +134,7 @@ func TestRunToolPrefix(t *testing.T) {
 }
 
 // TestWithToolsReplacesBuiltin pins that a discovered test tool replaces the
-// built-in and a new tool is appended.
+// built-in and withTools appends a new tool.
 func TestWithToolsReplacesBuiltin(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -159,8 +159,7 @@ func TestWithToolsReplacesBuiltin(t *testing.T) {
 
 // TestDecorate covers what a command gets for free. decorate binds the shared
 // flags onto it and wraps its Run with the work they imply and no command
-// package repeats either, and a command naming no usage of its own takes the
-// examples
+// package repeats either, and a command naming no usage takes the examples
 // registered under its name.
 func TestDecorate(t *testing.T) {
 	t.Parallel()

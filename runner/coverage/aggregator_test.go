@@ -31,7 +31,7 @@ func TestAggregator_Add(t *testing.T) {
 }
 
 // TestAggregator_Blocks covers the entries a writer builds a profile from: one
-// per executable statement, in the order the profile carries them.
+// per executable statement, in the order the profile lists them.
 func TestAggregator_Blocks(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()
@@ -110,7 +110,7 @@ func TestAggregator(t *testing.T) {
 	}
 }
 
-// TestAggregator_Files pins that the composed key carries the filename,
+// TestAggregator_Files pins that the composed key holds the filename,
 // and the same line of two files stays two entries.
 func TestAggregator_Files(t *testing.T) {
 	t.Parallel()

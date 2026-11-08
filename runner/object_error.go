@@ -4,7 +4,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// objectError carries an instance of a declared class that a script threw.
+// objectError holds an instance of a declared class that a script threw.
 //
 // An object is not an error and throwing one needs a wrapper to travel through
 // the same path a built-in throwable takes. The wrapper records the one class

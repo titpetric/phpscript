@@ -1,9 +1,9 @@
-package model_test
+package modelutil_test
 
 import (
 	"testing"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // TestGoImportArea covers the path-to-area mapping an `import` resolves
@@ -28,7 +28,7 @@ func TestGoImportArea(t *testing.T) {
 		{"math/big", `Runtime\Go\Math\Big`, "big"},
 		{"io/fs", `Runtime\Go\IO\Fs`, "fs"},
 	} {
-		area, alias, ok := model.GoImportArea(tc.path)
+		area, alias, ok := modelutil.GoImportArea(tc.path)
 		if !ok {
 			t.Errorf("%q resolves to no area", tc.path)
 			continue
@@ -43,7 +43,7 @@ func TestGoImportArea(t *testing.T) {
 		"", "github.com/titpetric/phpscript", "net//http", "math/rand/v2",
 		"Net/HTTP", "net/http;", "../strings", "net/http/",
 	} {
-		if area, alias, ok := model.GoImportArea(path); ok {
+		if area, alias, ok := modelutil.GoImportArea(path); ok {
 			t.Errorf("%q resolves to (%s, %s), want a refusal", path, area, alias)
 		}
 	}

@@ -5,12 +5,12 @@ import (
 )
 
 // TestClass_Field covers reading a declaration back off a class. A caller
-// reaches for it when the name alone is not enough: the formatter prints the
-// visibility and the type hint an author wrote, and the runtime refuses a write
+// reads it when the name alone is not enough: the formatter prints the
+// visibility and the type hint an author wrote. The runtime refuses a write
 // to a private property from outside.
 //
-// A name the class does not declare answers the zero Field and false, which is
-// what separates an undeclared property from one declared with no visibility.
+// A name the class does not declare answers the zero Field and false, which
+// separates an undeclared property from one declared with no visibility.
 func TestClass_Field(t *testing.T) {
 	t.Parallel()
 	class := &Class{

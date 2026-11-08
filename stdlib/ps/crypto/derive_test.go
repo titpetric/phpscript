@@ -6,8 +6,8 @@ import (
 )
 
 // TestDerive covers both derivations through the one entry point
-// password_hash() uses: a bcrypt hash carries php's revision marker and the
-// cost it derives at, an argon2 hash carries the PHC string form, and each
+// password_hash() uses: a bcrypt hash holds php's revision marker and the
+// cost it derives at, an argon2 hash holds the PHC string form, and each
 // one verifies.
 func TestDerive(t *testing.T) {
 	t.Parallel()
@@ -70,7 +70,7 @@ func TestBcryptVerify(t *testing.T) {
 }
 
 // phpBcryptHash is php's own derivation of "hunter2hunter2" at cost 4, the
-// vector the auth fixtures also carry:
+// vector the auth fixtures also hold:
 //
 //	php -r 'echo password_hash("hunter2hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
 const phpBcryptHash = "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"

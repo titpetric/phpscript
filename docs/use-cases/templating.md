@@ -26,7 +26,7 @@ $tpl->assign('name', 'phpscript');
 $tpl->render();
 ```
 
-Using templates and `$tpl->assign`, the template renders the arbitrary data you assign to it into HTML or other formats. The template engine supports the php syntax itself. The engine loads a template, compiles it into PHP code, and then runs it through `include`.
+`$tpl->assign` passes arbitrary data to the template, which renders it into HTML or other formats. The template engine supports the php syntax itself. The engine loads a template, compiles it into PHP code, and then runs it through `include`.
 
 ## The model
 
@@ -115,7 +115,7 @@ $db = new UserStorage();
 $db->saveUserMemberships($id, $_POST['user_groups']);
 ```
 
-The `UserStorage` class owns all the database interactions, including transactionality details. Keep this in mind as best practice.
+The `UserStorage` class owns all the database interactions, including transactionality details. Keep them there.
 
 ## References
 

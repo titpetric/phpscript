@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// hashRuntime returns a runtime carrying the digest bindings alone.
+// hashRuntime returns a runtime with the digest bindings alone.
 func hashRuntime(t *testing.T) *runner.Runtime {
 	t.Helper()
 
@@ -93,7 +93,7 @@ func TestRegisterHash_binary(t *testing.T) {
 	}
 }
 
-// TestRegisterHash_unknownAlgorithm covers a name this build does not carry.
+// TestRegisterHash_unknownAlgorithm covers a name this build does not list.
 // No nearest answer exists and the call fails with PHP 8's ValueError wording
 // and a script that catches it reads a familiar message.
 func TestRegisterHash_unknownAlgorithm(t *testing.T) {

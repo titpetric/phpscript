@@ -15,7 +15,7 @@ import (
 //	openssl passwd -apr1 -salt Zx1kLm9q hunter2hunter2
 //
 // The work factors are the lowest each format accepts, because what is under
-// test is the dispatch and not the derivation. A file in production carries
+// test is the dispatch and not the derivation. A file in production holds
 // bcrypt at a cost docs/reference/extensions/hashing.md prices.
 const testPassword = "hunter2hunter2"
 
@@ -27,8 +27,8 @@ var testHashes = map[string]string{
 	"sha":      "{SHA}/IxesZSAbjGiE/BzEx5zsAEqD7U=",
 }
 
-// unreadableHashes are the values a line may not carry. Four of them are real
-// formats this build will not read, and the rest are what a damaged file looks
+// unreadableHashes are the values a line may not hold. Four of them are real
+// formats this build will not read. The rest are what a damaged file looks
 // like; they are one list because the refusal is one refusal, and a plain-text
 // password is not distinguishable from a truncated hash.
 var unreadableHashes = map[string]string{
@@ -39,7 +39,7 @@ var unreadableHashes = map[string]string{
 	"truncated bcrypt": "$2y$04$j1zOEFHUWgLb8D1SytMeoe",
 	// The 1997 spelling with no minor revision, then a revision php's crypt
 	// never wrote. php -r answers bool(false) for both through
-	// password_verify and a line carrying either would verify nowhere.
+	// password_verify and a line holding either would verify nowhere.
 	"bcrypt no revision":  "$2$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
 	"bcrypt bad revision": "$2c$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
 	"bcrypt bad base64":   "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEb!!!",
@@ -93,7 +93,7 @@ func TestVerifyRefusesUnreadable(t *testing.T) {
 
 // TestFormatErrorNamesTheRemedy covers the two messages an operator acts on.
 // php's `$1$` is one character away from apache's `$apr1$` and is the mistake
-// worth a sentence of its own.
+// worth its own sentence.
 func TestFormatErrorNamesTheRemedy(t *testing.T) {
 	t.Parallel()
 

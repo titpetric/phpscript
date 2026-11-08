@@ -5,8 +5,8 @@
 // reads is the request, which holds still for the length of that request.
 // Rendering it into a *model.Array copies every entry into a second
 // representation on the way in, whether the script names the variable or not.
-// A MapMap answers from the request and holds what a script wrote, nothing
-// else.
+// A MapMap answers from the request and holds the keys a script wrote and no
+// others.
 //
 // The edits are request-scoped and their map comes from a pool and goes back
 // cleared and never freed.
@@ -33,7 +33,7 @@ type Source interface {
 	Range(fn func(key string, value any) bool) bool
 }
 
-// MapMap reads through a Source and writes to a layer of its own.
+// MapMap reads through a Source and writes to a separate layer.
 //
 // Read answers the layer first and a script that assigns to a key sees what it
 // assigned; the write touches no source, which stays shared. No copy leaves
@@ -166,7 +166,7 @@ func (m *MapMap) Len() int {
 
 // Range visits the source in its own order, then the keys only the layer holds.
 //
-// A key the layer overwrote arrives in the source's position carrying the
+// A key the layer overwrote arrives in the source's position with the
 // written value and assigning to an existing key does not move it.
 func (m *MapMap) Range(fn func(key, value any) bool) {
 	if m == nil {
@@ -235,7 +235,7 @@ func (s MapSource) Range(fn func(key string, value any) bool) bool {
 }
 
 // ValueSource reads a map whose values are already PHP values, the shape a
-// superglobal carrying nested data needs: a query string decodes `a[]=1&a[]=2`
+// superglobal holding nested data needs: a query string decodes `a[]=1&a[]=2`
 // to an array under one name, and no map of strings can hold that.
 type ValueSource map[string]any
 
@@ -261,11 +261,11 @@ func (s ValueSource) Range(fn func(key string, value any) bool) bool {
 // RequestSource derives the CGI names from the request itself and serving one
 // builds no map.
 //
-// Extra carries the names the request cannot answer on its own, which are the
-// ones a caller computed: the clock for REQUEST_TIME, and whatever the host
-// decided about the scheme behind a proxy. A Source of its own and a caller
-// passes the map it already has with no copy into another. It serves reads,
-// takes no write, and wins over a derived name.
+// Extra holds the names the request cannot derive, which are the ones a
+// caller computed: the clock for REQUEST_TIME, and whatever the host decided
+// about the scheme behind a proxy. Its type is Source and a caller passes the
+// map it already has with no copy into another. It serves reads, takes no
+// write, and wins over a derived name.
 type RequestSource struct {
 	Request *http.Request
 	Extra   Source

@@ -53,7 +53,7 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
-			// Kept so Run can read which flags the command line carries. A
+			// Kept so Run can read which flags the command line names. A
 			// configuration supplies a default and a flag overrides it, and
 			// the value alone cannot tell the two apart: an operator forcing
 			// -p 1 over a file naming 4 means it.
@@ -86,13 +86,13 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	paths := args
 	if len(paths) == 0 {
 		// A bare invocation means the whole tree: a pipeline that names no
-		// paths runs from the application root, where the fixtures live in
+		// paths runs from the application root, where the fixtures are in
 		// the folders below. An explicit "." keeps its non-recursive meaning.
 		paths = []string{"./..."}
 	}
 
 	// Suite discovery comes before the flag checks in run, because the
-	// run-wide options a phpscript.yml carries are among what run checks.
+	// run-wide options a phpscript.yml sets are among what run checks.
 	found, err := discoverSuites(opts.Config, paths)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	if len(fixtures) == 0 {
 		// The empty report still goes out, the way a failing run's does at the
 		// end of this function: a consumer reading stdout gets well-formed JSON
-		// either way, and the error is what carries the exit code.
+		// either way. The error sets the exit code.
 		if opts.JSON {
 			_ = json.NewEncoder(os.Stdout).Encode(jsonReport{Results: []jsonFixture{}})
 		}
@@ -200,7 +200,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 
 	if opts.Matrix {
 		failed := runMatrix(ctx, groups, opts, report)
-		// Only the runtime column collects: flatstack carries no coverage
+		// Only the runtime column collects: flatstack has no coverage
 		// support and the php column is another process.
 		if opts.Cover != "" {
 			if err := writeCoverage(opts, fixtures); err != nil {
@@ -318,7 +318,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	// With -v, coverage drops to the file level, under the folder loading it.
 	// A fixture table cannot report that: its column says how much of what a
 	// fixture loads runs, and never which file goes unvisited.
-	// A folder whose fixtures loaded no PHP file of their own has no section.
+	// A folder whose fixtures loaded no PHP file has no section.
 	if opts.Verbose {
 		writeFolderFileReport(os.Stdout, covers)
 	}

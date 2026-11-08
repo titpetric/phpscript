@@ -18,9 +18,8 @@ type Row struct {
 	Total   int
 }
 
-// Percent is the row's statement-weighted coverage, adjusted for the empty
-// case: a symbol with no runnable statement has nothing left uncovered and 0/0
-// reads as covered, and never as a zero dragging every average down.
+// Percent returns the row's statement-weighted coverage. A symbol with no
+// runnable statement reads as 100, never as a zero dragging the average down.
 func (r Row) Percent() float64 {
 	if r.Total == 0 {
 		return 100

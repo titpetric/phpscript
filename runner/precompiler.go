@@ -48,7 +48,7 @@ func (p Precompiler) Run() int {
 	}
 
 	// This measures the cost and estimates nothing. A parsed program is a
-	// graph of nodes with no size of its own to add up, and the number worth
+	// graph of nodes with no single size to add up, and the number worth
 	// reporting is what the process holds because of the pass. Both reads
 	// follow a collection and the figure is live heap on each side and never
 	// whatever the collector has yet to sweep.

@@ -1,9 +1,9 @@
 // Package toolchain discovers external tools named <binary>-<tool> on PATH.
 //
-// The prefix is the base name of the running binary, so phpscript finds
+// The prefix is the base name of the running binary: phpscript finds
 // phpscript-gen and a renamed copy called phpx finds phpx-gen. A binary never
 // picks up the tools of another prefix: phpscript ignores phpx-gen, and phpx
-// ignores phpscript-gen. docs/cli/README.md carries the rule.
+// ignores phpscript-gen. docs/cli/README.md states the rule.
 package toolchain
 
 import (

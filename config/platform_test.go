@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestPlatformOptions covers what the alias stands for: the options a server
+// TestPlatformOptions covers what the alias names: the options a server
 // starts under, assembled from the server block and the telemetry one. The
 // type is platform.Options, which this package names in one file alone.
 func TestPlatformOptions(t *testing.T) {

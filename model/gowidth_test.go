@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
@@ -9,8 +10,8 @@ import (
 
 // TestGoWidthNamed covers the width table. A sized name answers its bits and
 // its sign, go's two aliases answer the width they alias, and a name php
-// already carries - int, int64, float64 - answers nothing, because `int64(5)`
-// is php's 5 and carries no width.
+// already has - int, int64, float64 - answers nothing, because `int64(5)`
+// is php's 5 and holds no width.
 func TestGoWidthNamed(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -43,7 +44,43 @@ func TestGoWidthNamed(t *testing.T) {
 	}
 }
 
-// TestGoWidthOf covers the width a value carries. php's own types carry none,
+// TestGoWidth_Valid covers a width a host assembled by hand: it names a go
+// numeric type and declares the size go declares for that name.
+//
+// The zero value fails. A caller that skipped GoWidthNamed holds one, and an
+// unchecked zero width narrows every value to int64.
+func TestGoWidth_Valid(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"int8", "uint64", "float32", "rune", "byte"} {
+		w, _ := model.GoWidthNamed(name)
+		if err := w.Valid(); err != nil {
+			t.Errorf("GoWidthNamed(%q).Valid() = %v, want nil", name, err)
+		}
+	}
+	for _, tc := range []struct {
+		name  string
+		width model.GoWidth
+		want  string
+	}{
+		{"the zero value", model.GoWidth{}, "names no go numeric type"},
+		{"a name go has none of", model.GoWidth{Name: "int128", Bits: 128, Signed: true}, "names no go numeric type"},
+		{"php's own int", model.GoWidth{Name: "int64", Bits: 64, Signed: true}, "names no go numeric type"},
+		{"the wrong width for the name", model.GoWidth{Name: "int8", Bits: 16, Signed: true}, "declares 16 bits"},
+		{"the wrong signedness", model.GoWidth{Name: "uint8", Bits: 8, Signed: true}, "signed true"},
+		{"an alias under its own name", model.GoWidth{Name: "rune", Bits: 32, Signed: true}, "declares 32 bits"},
+	} {
+		err := tc.width.Valid()
+		if err == nil {
+			t.Errorf("%s: Valid() = nil, want an error naming %q", tc.name, tc.want)
+			continue
+		}
+		if !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: Valid() = %v, want it to name %q", tc.name, err, tc.want)
+		}
+	}
+}
+
+// TestGoWidthOf covers the width a value holds. php's own types hold none,
 // and int64 is among them: php's int is the 64 bit one.
 func TestGoWidthOf(t *testing.T) {
 	t.Parallel()
@@ -70,90 +107,6 @@ func TestGoWidthOf(t *testing.T) {
 	for _, value := range []any{nil, int64(1), int(1), float64(1), "1", true, model.NewArray()} {
 		if w, ok := model.GoWidthOf(value); ok {
 			t.Errorf("GoWidthOf(%#v) = %q, want no width", value, w.Name)
-		}
-	}
-}
-
-// TestGoWiden covers reading a typed value as a php number. Every integer
-// width answers php's int, a float width answers php's float, and an unsigned
-// value above PHP_INT_MAX answers a float, which is the only php number that
-// holds it.
-func TestGoWiden(t *testing.T) {
-	t.Parallel()
-	for value, want := range map[any]any{
-		int8(-5):               int64(-5),
-		int16(-5):              int64(-5),
-		int32(-5):              int64(-5),
-		uint8(255):             int64(255),
-		uint16(65535):          int64(65535),
-		uint32(1):              int64(1),
-		uint(7):                int64(7),
-		uint64(math.MaxUint64): float64(math.MaxUint64),
-		float32(0.5):           float64(0.5),
-	} {
-		got, ok := model.GoWiden(value)
-		if !ok {
-			t.Errorf("GoWiden(%#v) = false", value)
-			continue
-		}
-		if got != want {
-			t.Errorf("GoWiden(%#v) = %#v, want %#v", value, got, want)
-		}
-	}
-	if got, ok := model.GoWiden(int64(1)); ok {
-		t.Errorf("GoWiden(int64(1)) = %#v, want no widening", got)
-	}
-}
-
-// TestGoInt covers the bits an operation computes over. An unsigned value past
-// PHP_INT_MAX keeps its bits here, where GoWiden reaches the float php holds
-// it in, and narrowing it back reads the low byte it still has.
-func TestGoInt(t *testing.T) {
-	t.Parallel()
-	bits, ok := model.GoInt(uint64(math.MaxUint64))
-	if !ok {
-		t.Fatal("GoInt(uint64 max) = false")
-	}
-	if bits != -1 {
-		t.Errorf("GoInt(uint64 max) = %d, want -1", bits)
-	}
-	unsigned, ok := model.GoUint(uint64(math.MaxUint64))
-	if !ok {
-		t.Fatal("GoUint(uint64 max) = false")
-	}
-	if unsigned != math.MaxUint64 {
-		t.Errorf("GoUint(uint64 max) = %d, want %d", unsigned, uint64(math.MaxUint64))
-	}
-	if _, ok := model.GoInt(float32(1)); ok {
-		t.Error("GoInt(float32(1)) = true, want no integer bits")
-	}
-}
-
-// TestGoClipInt covers the integer php reads a typed value as. An unsigned
-// value past PHP_INT_MAX clips there, where the bits read -1 and the float php
-// holds the value in reduces to 0. A float width answers no integer at all,
-// the float domain holding the value php reads.
-func TestGoClipInt(t *testing.T) {
-	t.Parallel()
-	for value, want := range map[any]int64{
-		int8(-5):               -5,
-		uint8(255):             255,
-		uint64(math.MaxUint64): math.MaxInt64,
-		uint(math.MaxUint64):   math.MaxInt64,
-		uint64(7):              7,
-	} {
-		got, ok := model.GoClipInt(value)
-		if !ok {
-			t.Errorf("GoClipInt(%#v) = false", value)
-			continue
-		}
-		if got != want {
-			t.Errorf("GoClipInt(%#v) = %d, want %d", value, got, want)
-		}
-	}
-	for _, value := range []any{float32(1), int64(1), "1", nil} {
-		if got, ok := model.GoClipInt(value); ok {
-			t.Errorf("GoClipInt(%#v) = %d, want php's own reading", value, got)
 		}
 	}
 }
@@ -207,37 +160,5 @@ func TestGoWidthZero(t *testing.T) {
 		if got := w.Zero(); got != want {
 			t.Errorf("%s.Zero() = %#v, want %#v", width, got, want)
 		}
-	}
-}
-
-// TestGoStep covers ++ and -- at a width. The step wraps where go's does: the
-// largest int8 steps up to the smallest, and the smallest unsigned value steps
-// down to the largest, with no widening to a php float at either end.
-func TestGoStep(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		value any
-		delta int64
-		want  any
-	}{
-		{int8(127), 1, int8(-128)},
-		{int8(-128), -1, int8(127)},
-		{uint8(255), 1, uint8(0)},
-		{uint8(0), -1, uint8(255)},
-		{uint64(math.MaxUint64), 1, uint64(0)},
-		{float32(1.5), 1, float32(2.5)},
-		{float32(1.5), -1, float32(0.5)},
-	} {
-		got, ok := model.GoStep(tc.value, tc.delta)
-		if !ok {
-			t.Errorf("GoStep(%#v, %d) = false", tc.value, tc.delta)
-			continue
-		}
-		if got != tc.want {
-			t.Errorf("GoStep(%#v, %d) = %#v, want %#v", tc.value, tc.delta, got, tc.want)
-		}
-	}
-	if got, ok := model.GoStep(int64(1), 1); ok {
-		t.Errorf("GoStep(int64(1), 1) = %#v, want php's own increment", got)
 	}
 }

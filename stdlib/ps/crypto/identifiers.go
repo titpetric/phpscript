@@ -11,16 +11,10 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// RegisterIdentifiers installs the id generators. Neither is a PHP name:
-// PHP's own library mints no unique ids and ports reach for composer packages
-// (ramsey/uuid, symfony/ulid) whose value is exactly the entropy source this
-// package already owns. Both live here and not in a Go dependency, because
-// each is a format over crypto/rand.
-//
-// The two share one layout (a 48-bit millisecond timestamp followed by
-// randomness) and both sort by creation time. ulid() renders it in Crockford
-// base32; uuid() renders it as a version 7 UUID, the hexadecimal spelling of
-// the same idea.
+// RegisterIdentifiers installs the id generators. Neither ulid() nor uuid() is
+// a PHP name: PHP's own library mints no unique ids. Both are a format over
+// crypto/rand sharing one layout, a 48-bit millisecond timestamp followed by
+// randomness, and both sort by creation time.
 func RegisterIdentifiers(rt *runner.Runtime) {
 	// ulid returns a 26-character ULID: a millisecond timestamp and 80 random
 	// bits in Crockford base32 and ids sort by creation time. Ids from the
@@ -57,8 +51,7 @@ func RegisterIdentifiers(rt *runner.Runtime) {
 	})
 }
 
-// ULIDFrom renders a ULID computed from seed: the first 128 bits of its sha256
-// digest, in the same Crockford base32 as ulid(), with no timestamp in it.
+// ULIDFrom returns seed's sha256 digest as a ULID, holding no timestamp.
 func ULIDFrom(seed string) string {
 	sum := sha256.Sum256([]byte(seed))
 	return encodeCrockford([16]byte(sum[:16]))

@@ -9,7 +9,7 @@ import (
 
 // TestBuffersNest covers the stack discipline a template engine renders
 // through: ob_start pushes a level, a flush writes into the level below it,
-// and a clean drops its text. Writing a flushed level to the real output
+// a clean drops its text. Writing a flushed level to the real output
 // instead would make an outer buffer miss everything an inner one rendered.
 func TestBuffersNest(t *testing.T) {
 	t.Parallel()

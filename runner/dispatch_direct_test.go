@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// directTestWriter answers Write and WriteString, standing in for the
+// directTestWriter answers Write and WriteString, a test double for the
 // response writer the typed bridge serves.
 type directTestWriter struct {
 	strings.Builder
@@ -63,7 +63,7 @@ func TestDirectGoMethodMatchesTheReflectPath(t *testing.T) {
 		t.Errorf("stringWrites = %d, want the write through io.StringWriter", writer.stringWrites)
 	}
 	// An argument the bridge does not cover takes the reflect path: an int64
-	// converts to no []byte, and the TypeError is that path's own.
+	// converts to no []byte. The TypeError is that path's own.
 	if _, err = rt.callGoMethod(writer, "write", []any{int64(7)}, scope); err == nil {
 		t.Error("write(7) raised nothing")
 	} else {

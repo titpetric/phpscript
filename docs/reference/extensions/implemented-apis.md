@@ -213,8 +213,8 @@ function array_push(mixed $array, mixed ...$values): int
 
 ```php
 /**
- * array_reduce folds $array with $callback, which receives the carry and
- * the value, starting from $initial and returning null for an empty
+ * array_reduce folds $array with $callback, which receives the accumulator
+ * and the value, starting from $initial and returning null for an empty
  * array.
  */
 function array_reduce(mixed $array, callable $callback, mixed ...$initial): mixed
@@ -374,7 +374,7 @@ function usort(mixed $array, callable $callback): bool
 /**
  * array_chunk splits $array into arrays of at most $length entries; it keys
  * the chunks from zero either way, and $preserve_keys decides whether the
- * entries inside them keep their own keys or get new ones from zero.
+ * entries inside a chunk keep their own keys or get new ones from zero.
  */
 function array_chunk(mixed $array, int $length, bool ...$preserve_keys): array
 ```
@@ -442,7 +442,7 @@ function array_intersect_key(mixed $array, mixed ...$others): array
 
 ```php
 /**
- * array_is_list reports whether $array carries the integer keys 0 to
+ * array_is_list reports whether $array has the integer keys 0 to
  * count-1 in that order, the shape of a list. An empty array is a list.
  */
 function array_is_list(mixed $array): bool
@@ -861,10 +861,7 @@ function php_sapi_name(): string
 ```
 
 ```php
-/**
- * set_include_path sets the path list used by the default SPL autoloader and
- * returns its previous value.
- */
+// set_include_path sets the autoloader path list and returns the previous value.
 function set_include_path(string $value): string
 ```
 
@@ -927,8 +924,8 @@ function set_time_limit(int $seconds): bool
 ```php
 /**
  * error_log records $message where the host is listening: on the trace of
- * the request in flight, through the handler a Go host installed, and
- * on the process error stream when neither is there. It returns true. php
+ * the request in flight, through the handler a Go host installed, and on
+ * the process error stream when both are missing. It returns true. php
  * also takes $message_type, $destination and $additional_headers to
  * choose between destinations; those are not implemented.
  */
@@ -1051,7 +1048,7 @@ function mb_stripos(string $haystack, string $needle, mixed ...$rest): mixed
 /**
  * mb_strlen returns the number of characters in $string; the $encoding
  * argument "8bit" answers in bytes, the byte-count escape hatch for
- * binary data, and it reads every other encoding as UTF-8.
+ * binary data. Every other encoding reads as UTF-8.
  */
 function mb_strlen(string $s, mixed ...$encoding): int
 ```
@@ -1878,7 +1875,7 @@ function escapeshellarg(string $arg): string
 /**
  * escapeshellcmd returns $command with the shell metacharacters in it
  * backslash-escaped, leaving quotes that come in pairs alone;
- * escapeshellarg is the one to reach for, since this leaves a quoted
+ * escapeshellarg is the one to call, since this leaves a quoted
  * argument's own contents live.
  */
 function escapeshellcmd(string $command): string
@@ -2032,7 +2029,7 @@ function file_exists(string $filename): bool
 /**
  * file_get_contents returns the contents of $filename as a string, or
  * false on failure; php://input is the raw request body (stdin under the
- * cli SAPI), and it looks for a relative path in the source filesystem
+ * cli SAPI). It looks for a relative path in the source filesystem
  * first, then on the host.
  */
 function file_get_contents(string $filename): mixed
@@ -2042,7 +2039,7 @@ function file_get_contents(string $filename): mixed
 /**
  * file_put_contents writes $data to $filename and returns the number of
  * bytes written, or false on failure; FILE_APPEND appends in place of
- * truncating, LOCK_EX does nothing, and it refuses a path outside
+ * truncating, LOCK_EX does nothing. It refuses a path outside
  * writable_paths.
  */
 function file_put_contents(string $filename, string $data, int ...$flags): mixed
@@ -2125,8 +2122,8 @@ function ftell(resource $stream): mixed
 ```php
 /**
  * fwrite takes any writer, not just a handle fopen() produced: STDOUT and
- * STDERR are the process's own streams, and a binding is free to hand PHP
- * an io.Writer of its own.
+ * STDERR are the process's own streams. A binding may pass PHP its own
+ * io.Writer.
  */
 function fwrite(resource $stream, string $s): mixed
 ```
@@ -2136,7 +2133,7 @@ function fwrite(resource $stream, string $s): mixed
  * getcwd returns the working directory, written from the source
  * filesystem's root: "/" for the root itself, "/app" for a directory
  * below it. PHP answers a host path; a runtime that may serve its scripts
- * out of an embedded tree has none to answer with.
+ * out of an embedded tree has no host path to answer with.
  */
 function getcwd(): string
 ```
@@ -2168,8 +2165,8 @@ function is_executable(string $filename): bool
 ```php
 /**
  * is_file reports whether $filename names an ordinary file, in the source
- * filesystem or on the host; a directory is not one, and neither is a
- * path that does not exist.
+ * filesystem or on the host; a directory is not one and a missing path is
+ * not one.
  */
 function is_file(string $filename): bool
 ```
@@ -2178,8 +2175,8 @@ function is_file(string $filename): bool
 /**
  * is_readable reports whether a script can open $filename for reading,
  * which here is whether it exists: a path inside the root is readable by
- * the process that is asking, and the source filesystem carries no
- * permissions of its own.
+ * the process that is asking, and the source filesystem holds no
+ * permission bits.
  */
 function is_readable(string $filename): bool
 ```
@@ -2210,7 +2207,7 @@ function mkdir(string $directory, mixed ...$permissions): bool
 ```php
 /**
  * move_uploaded_file moves uploaded file $from to $to; a $from this
- * request did not upload returns false, and it refuses a $to outside
+ * request did not upload returns false. It refuses a $to outside
  * writable_paths.
  */
 function move_uploaded_file(string $from, string $to): bool
@@ -2228,7 +2225,7 @@ function opendir(string $directory): mixed
 ```php
 /**
  * pathinfo returns the parts of $path as an array of dirname, basename,
- * extension and filename; a path with no dot carries no extension key,
+ * extension and filename; a path with no dot returns no extension key,
  * which php leaves out and never empties. It never touches
  * the filesystem and it answers about a path that does not exist.
  */
@@ -2238,7 +2235,7 @@ function pathinfo(string $path): array
 ```php
 /**
  * readdir returns the next name in $dir_handle, or false once the listing
- * runs out; it lists "." and "..", as php lists them, and the handle is
+ * runs out; it lists "." and "..", as php lists them. The handle is
  * mandatory, because there is no last-opened directory to fall back on.
  */
 function readdir(mixed $dir_handle): mixed
@@ -2248,8 +2245,8 @@ function readdir(mixed $dir_handle): mixed
 /**
  * realpath returns $path written from the root, with . and .. resolved,
  * or false when nothing is there; php answers a host path, and a runtime
- * that may serve its scripts out of an embedded tree has none to answer
- * with and this answers the spelling getcwd() and __DIR__ use.
+ * that may serve its scripts out of an embedded tree has no host path to
+ * answer with and this answers the spelling getcwd() and __DIR__ use.
  */
 function realpath(string $path): mixed
 ```
@@ -2471,7 +2468,7 @@ function header(string $header, mixed ...$opts): void
 /**
  * http_response_code stages the response status in $response_code and
  * returns the one it replaced; called without one it returns the status
- * the response will carry, or false when there is no request to answer for.
+ * the response will send, or false when there is no request to answer for.
  */
 function http_response_code(mixed ...$opts): mixed
 ```
@@ -2489,7 +2486,7 @@ function setcookie(string $name, mixed ...$opts): bool
 ```php
 /**
  * setrawcookie stages a Set-Cookie header the way setcookie does, writing
- * $value as it stands and a value carrying a semicolon or a space is the
+ * $value as it stands and a value with a semicolon or a space is the
  * caller's to handle; the encoder does nothing with it.
  */
 function setrawcookie(string $name, mixed ...$opts): bool
@@ -2655,11 +2652,9 @@ class Auth\Storage\PasswordFile
     /**
      * authenticate reports the user $key names when $secret is theirs.
      * 
-     * A missing user and a wrong password are one answer and nothing a caller can
-     * see distinguishes them. What does distinguish them is time: a key the file
-     * does not carry costs no derivation, and one it carries costs whatever that
-     * line's format does. Closing that gap belongs to rate limiting, which bounds
-     * what any timing is worth; see docs/reference/extensions/hashing.md.
+     * A missing user and a wrong password are one answer, separable by time alone:
+     * a key the file does not hold costs no derivation. Rate limiting bounds what
+     * that is worth, see docs/reference/extensions/hashing.md.
      */
     public function authenticate(string $key, string $secret): mixed {}
 
@@ -2674,9 +2669,9 @@ class Auth\Storage\PasswordFile
     /**
      * users is every record in the file, ordered by username.
      * 
-     * It carries no hash and a script may hold it: everything above here sees a
+     * It holds no hash and a script may keep it: everything above here sees a
      * table of two columns, and the third column never leaves this package. A
-     * caller writes the rows into a table of its own and rebuilds it when the file
+     * caller writes the rows into its own table and rebuilds it when the file
      * changes.
      */
     public function users(): array {}
@@ -2701,8 +2696,7 @@ class Database
 
     /**
      * begin starts a transaction and opens the span measuring it. The span stays
-     * open until Commit or Rollback and a transaction is one region in the trace
-     * and no open marker and close marker to pair up.
+     * open until Commit or Rollback ends it.
      */
     public function begin(): mixed {}
 
@@ -2718,12 +2712,9 @@ class Database
     /**
      * get returns the first result row, or false when the query matches no rows.
      * 
-     * A row is a native map: foreach walks it, $row["col"] indexes it,
-     * $row["extra"] = 1 writes to it and unset($row["col"]) takes a column out of
-     * it. A map carries no column order and
-     * `foreach ($row as $column => $value)` visits columns in arbitrary order;
-     * a script that needs a stable order names its columns in the SELECT and
-     * indexes them.
+     * A row is a native map: foreach walks it, $row["col"] indexes it and
+     * unset($row["col"]) takes a column out. A map holds no column order; a script
+     * that needs one names its columns in the SELECT and indexes them.
      */
     public function get(string $query, mixed ...$args): mixed {}
 
@@ -2787,14 +2778,8 @@ class Database\Migrate
     public function __construct(string ...$names) {}
 
     /**
-     * load selects the migrations to run, as a glob against the runtime source
-     * filesystem. Load itself opens no file: mig reads the files it applies, and a
-     * pattern matching no file shows up as wrong only once Run looks.
-     * 
-     * A script names its migrations relative to itself ("./schema/*.up.sql") and
-     * Load joins the work directory in. What the pattern matched is what mig
-     * records and a database migrated by the older binding - which recorded the
-     * base name under no project - applies every file again.
+     * load names the migrations to run, as a glob against the runtime source
+     * filesystem with the work directory joined in. It opens no file; Run does.
      */
     public function load(string $pattern): void {}
 
@@ -2840,9 +2825,9 @@ Area `Runtime\PS\Exceptions`.
 
 ```php
 /**
- * Exception is PHP's base exception class; the SPL classes are the same Go
- * type carrying a different class name and a catch clause filters on the
- * name and not on a subclass relation.
+ * Exception is PHP's base exception class; the SPL exception and Error
+ * classes are the same Go type under a different class name and a catch
+ * clause filters on the name and not on a subclass relation.
  */
 class Exception
 {
@@ -2883,14 +2868,14 @@ class HTTP\Client
 
     /**
      * parallel sends every request in $requests at once and returns the responses
-     * under the same keys and the call takes as long as the slowest request rather
-     * than the sum. $requests is an array of HTTP\Request keyed by a name the
-     * script chooses, each bounded by the client's timeout.
+     * under the same keys. The call takes as long as the slowest request.
+     * $requests is an array of HTTP\Request keyed by a name the script chooses,
+     * each bounded by the client's timeout.
      * 
      * One request failing does not fail the others and does not throw: that
-     * response reports $response->ok() as false and $response->err() as the reason,
-     * and a script sees every outcome. A throw means the argument is no array of
-     * requests.
+     * response reports $response->ok() as false and $response->err() as the
+     * reason. A script sees every outcome. A throw means the argument is no
+     * array of requests.
      */
     public function parallel(mixed $requests): array {}
 
@@ -2915,7 +2900,7 @@ Area `Runtime\PS\HTTP`.
 /**
  * HTTP\Mux routes requests to the PHP functions that answer them. The mux is
  * net/http's ServeMux and $mux->handle("GET /users/{id}", $fn) takes the
- * patterns Go takes, and it calls a handler with the response writer and the
+ * patterns Go takes. It calls a handler with the response writer and the
  * request themselves.
  */
 class HTTP\Mux
@@ -2924,8 +2909,8 @@ class HTTP\Mux
 
     /**
      * group calls $fn with a mux that shares this one's routes and starts with its
-     * middleware. What $fn passes to Use stays inside the group, which is how a
-     * module isolates its routes from the rest of the router.
+     * middleware. What $fn passes to Use stays inside the group, keeping a module's
+     * routes clear of the rest of the router.
      */
     public function group(callable $fn): void {}
 
@@ -3053,9 +3038,8 @@ class HTTP\Server
     /**
      * shutdown is http.Server.Shutdown with a second of grace, then Close.
      * 
-     * It returns no value and throws no error: a script writes it into a
-     * register_shutdown_function callback, which runs when the script has already
-     * ended and has nowhere to put a failure. Calling it twice, or without having
+     * It returns no value and throws no error: a register_shutdown_function
+     * callback has nowhere to put one. Calling it twice, or without having
      * listened, is not an error either.
      */
     public function shutdown(): void {}
@@ -3075,10 +3059,8 @@ Area `Runtime\PS\Core\JSON`.
 /**
  * JSON\Decoder returns a decoder reading from $stream.
  * 
- * UseNumber is on, as in json_decode(): without it Go reads every number as a
- * float, and the 7 in a document would come back as 7.0. With it a whole
- * number is an int and only a fractional one is a float, as php
- * answers and what a row written back out has to preserve.
+ * UseNumber is on, as in json_decode(): a whole number comes back an int and
+ * only a fractional one a float, the way php answers.
  */
 class JSON\Decoder
 {
@@ -3106,7 +3088,7 @@ Area `Runtime\PS\Core\JSON`.
  * `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
  * string of it existing first, and an encoder over php://output writes the
  * response as the script builds it. Both take the io.Reader or io.Writer
- * they wrap and any handle fopen() returns works, and so do STDIN and
+ * they wrap and any handle fopen() returns works, as do STDIN and
  * STDOUT.
  */
 class JSON\Encoder
@@ -3116,16 +3098,15 @@ class JSON\Encoder
     /**
      * encode writes $value to the stream as JSON, followed by a newline.
      * 
-     * The newline is Go's, not php's: an Encoder writes a stream of values, and the
-     * newline is what separates one from the next. A single value followed by a
+     * The newline is Go's, not php's: an Encoder writes a stream of values; the
+     * newline separates one from the next. A single value followed by a
      * newline is still valid JSON to any reader.
      */
     public function encode(mixed $value): void {}
 
     /**
-     * set_indent is json.Encoder.SetIndent: the encoder breaks each value across
-     * lines, $indent per level under $prefix, and two empty strings go back to one
-     * line per value.
+     * set_indent is json.Encoder.SetIndent: $indent per level under $prefix, and
+     * two empty strings go back to one line per value.
      */
     public function set_indent(string $prefix, string $indent): void {}
 }
@@ -3155,12 +3136,9 @@ class Mail
     public function __construct(mixed ...$names) {}
 
     /**
-     * send sends an email through the server this client names. $body is the plain
-     * text; a non-empty $html travels beside it as the alternative a mail client
-     * prefers, and a non-empty $reply_to, one address, is where a reply goes. It
-     * throws, sending nothing, when $reply_to is not one address. The runtime
-     * injects the context and a script calls
-     * `$mail->send($to, $subject, $body, $html, $reply_to)`, the last two optional.
+     * send sends an email through the server this client names, as
+     * `$mail->send($to, $subject, $body, $html, $reply_to)` with the last two
+     * optional. It throws, sending nothing, when $reply_to is not one address.
      */
     public function send(string $recipient, string $subject, string $body, string $html, string $reply_to): void {}
 }
@@ -3175,7 +3153,7 @@ Area `Runtime\PS\Regexp`.
 ```php
 /**
  * Regexp\Compile compiles $expr as an RE2 expression and throws when it
- * does not parse; the value it builds carries every method Go's
+ * does not parse; the value it builds holds every method Go's
  * regexp.Regexp has.
  */
 class Regexp\Compile
@@ -3380,8 +3358,7 @@ class Session\Manager
 
     /**
      * delete_by_user signs one user out of every client, answering how many sessions
-     * it took. It clears this manager's own session when the sweep took it and
-     * valid() answers false in the same request the account went away in.
+     * it took. It clears this manager's own session when the sweep took that one.
      */
     public function delete_by_user(string $user_id): int {}
 
@@ -3403,9 +3380,8 @@ class Session\Manager
      * session for the user it names. It reports whether the credential held; a
      * wrong password is false and no error.
      * 
-     * The session carries the user's primary key and a row written during the
-     * session references the user the way any other table does. The username
-     * stays in the user database, and a caller that needs it reads it there.
+     * The session holds the user's primary key. The username stays in the user
+     * database and a caller that needs it reads it there.
      */
     public function login(string $key, string $secret): bool {}
 
@@ -3413,12 +3389,8 @@ class Session\Manager
     public function set_auth(mixed $users): void {}
 
     /**
-     * set_storage replaces the storage sessions live in.
-     * 
-     * This is the setter half of the constructor: a script that took the
-     * manager's defaults and then needs memory storage says so here, and the rest
-     * of the manager holds. It wraps the storage for tracing as the constructor
-     * does and the trace names whichever backend answered.
+     * set_storage replaces the storage that holds sessions, wrapping it for tracing
+     * as the constructor does.
      */
     public function set_storage(mixed $storage): void {}
 
@@ -3456,7 +3428,7 @@ class Session\Storage\Disk
     /**
      * delete_by_user removes every session file holding userID, counting what it
      * took. The walk reads each session because the payload is the only place the
-     * user appears: a file carries its session id as its name alone.
+     * user appears: a file's name is its session id alone.
      */
     public function delete_by_user(string $user_id): int {}
 
@@ -3512,9 +3484,8 @@ Area `Runtime\PS\Core\SharedMemory`.
 ```php
 /**
  * SharedMemory returns the store the host bound into the runtime
- * context, and a store of its own when the host bound none. No command in
- * this tree binds one and `new SharedMemory` holds nothing across requests
- * until an embedding host adds SharedMemoryContext.
+ * context, or a fresh one. No command in this tree calls SharedMemoryContext,
+ * and `new SharedMemory` then holds no value across requests.
  */
 class SharedMemory
 {
@@ -3542,11 +3513,9 @@ class SharedMemory
     public function set(string $key, string $value): void {}
 
     /**
-     * usage reports what the store holds: how many entries, how many counters, and
-     * the bytes of the keys and values behind them.
-     * 
-     * The byte figure is the strings themselves, not the map overhead around them,
-     * which is the same basis memory_get_usage() reports a PHP value on.
+     * usage reports the entry count, the counter count, and the bytes of the keys
+     * and values behind them: the strings alone, not the map overhead, on the same
+     * basis memory_get_usage() reports.
      */
     public function usage(): int {}
 }

@@ -41,8 +41,8 @@ func Register(rt *runner.Runtime) {
 
 	// The layouts worth naming, under Go's own names for them. A layout is an
 	// ordinary string and a script can write any of them out; a constant spells
-	// the one a script reaches for by default and nobody has to remember it.
-	// TIME_RFC3339 is the only layout here that carries the offset and it
+	// the one a script uses by default and nobody has to remember it.
+	// TIME_RFC3339 is the only layout here that holds the offset and it
 	// survives a round trip through a database column or a JSON payload. A
 	// namespaced constant does not parse in this runtime and the Time\ prefix
 	// the classes use becomes TIME_ here.

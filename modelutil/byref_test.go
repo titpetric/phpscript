@@ -1,4 +1,4 @@
-package model
+package modelutil
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 // TestByRefArg covers the argument positions a builtin writes back through,
 // counted from zero the way PHP counts them: preg_match's third argument is the
 // match array, preg_replace_callback's fifth is the replacement count. A
-// namespaced file carries both the qualified call name and the global name it
+// namespaced file holds both the qualified call name and the global name it
 // falls back to and either spelling has to match.
 //
 // exec's $output, its second argument, is absent from the table: the caller

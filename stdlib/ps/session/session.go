@@ -1,6 +1,6 @@
 // Package session implements Session\Manager and the Session\Storage\*
-// family: an HTTP-only cookie carrying an opaque, randomly generated session
-// ID, and the storage the data behind that ID lives in. Memory storage lasts
+// family: an HTTP-only cookie with an opaque, randomly generated session
+// ID, and the storage that holds the data behind that ID. Memory storage lasts
 // as long as the process; disk storage is a file per session under a directory
 // the host chooses, and prunes by modification time.
 //
@@ -35,10 +35,6 @@ func Register(rt *runner.Runtime) {
 // $storage_path the script names resolves against dir, cannot climb out of it,
 // and must sit inside the runtime's writable_paths and the directory it creates
 // is one the script could also have written a file into.
-//
-// Without that, the constructor mkdir'd whatever the script named: a vhost could
-// create a directory anywhere the process could write, and read and write session
-// files there, while file_exists() on the same path answered false.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	// Session\Storage\Memory is session storage backed by process memory;
 	// sessions vanish when the process exits.
@@ -80,7 +76,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 // promise. It lives as long as the runtime that built it, and a server forks
 // one per worker and a session minted on one worker is invisible to the next
 // and a login fails at random. One line costs less to read than that symptom.
-// The line names the path and the reason, and the trace names the backend on
+// The line names the path and the reason. The trace names the backend on
 // every session span.
 //
 // Warn and not Error: the request that constructed this serves fine, and

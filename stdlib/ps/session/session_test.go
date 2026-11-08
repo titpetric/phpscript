@@ -145,8 +145,8 @@ func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 
 // TestRegister covers the three classes the stdlib wiring installs, rooted at
 // the process working directory the way the filesystem shims are. Memory
-// storage round-trips through the script, and a manager is constructible over
-// it and a script reaches the whole surface without a host naming a root.
+// storage round-trips through the script. A manager is constructible over it
+// and a script reaches the whole surface without a host naming a root.
 func TestRegister(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -182,7 +182,7 @@ echo " " . $manager->session_cookie_name;
 // it and the directory the constructor creates is one the script could also
 // have written a file into.
 //
-// Without it the constructor made whatever the script named, and a site could
+// Without it the constructor made whatever the script named. A site could
 // read and write session files anywhere the process could write while
 // file_exists() on the same path answered false.
 func TestRegisterRoot(t *testing.T) {
@@ -253,7 +253,7 @@ var_dump($session->login("admin", "wrong"));
 		t.Fatalf("run: %v (output %q)", err, out)
 	}
 
-	// The session carries the id computed from the username, the value
+	// The session holds the id computed from the username, the value
 	// crypto.ULIDFrom("admin") answers.
 	want := "bool(true)\n4CD5VEBDA10GAVVT88QN6YW5EZ\nbool(true)\nbool(false)\nbool(false)\n"
 	if out != want {
@@ -262,7 +262,7 @@ var_dump($session->login("admin", "wrong"));
 }
 
 // TestRegisteredManagerWithoutAPasswordFile covers a site that has no user
-// database. The default store still constructs, because a manager carries a
+// database. The default store still constructs, because a manager holds a
 // cookie and a storage before any login, and the login alone fails.
 func TestRegisteredManagerWithoutAPasswordFile(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())

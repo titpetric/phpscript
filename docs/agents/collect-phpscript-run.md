@@ -8,20 +8,20 @@ Read this when the question is which function the cost is in. It runs under the 
 
 One script, one profile, and no other work in the frames.
 
-That is why this is the per-function tool. A profile of `phpscript test` carries fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` carries the script.
+That is why this is the per-function tool. A profile of `phpscript test` shows fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` shows the script.
 
 ## Preconditions
 
 The contract's lock and private binary.
 
-phpscript writes the profile when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end on its own: `testdata/phpscript-http-bridge/server.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
+phpscript writes the profile when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end without a signal: `testdata/phpscript-http-bridge/server.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
 
 Two parsing traps:
 
 - `-t` before a command name is `--testconfig`, which runs no command. Write global flags where their meaning is unambiguous.
 - `run` is the default command and `phpscript app.php` and `phpscript run app.php` are the same thing. Both accept the global flags.
 
-`run` has no flags of its own. It reads the global set: `--cover`, `--coverfile`, `--cpuprofile`, `--memprofile`, `-f`, `--include`, `-v`, `-w`.
+`run` defines no flags. It reads the global set: `--cover`, `--coverfile`, `--cpuprofile`, `--memprofile`, `-f`, `--include`, `-v`, `-w`.
 
 ## The run
 
@@ -99,7 +99,7 @@ go tool pprof -sample_index=alloc_objects -top -nodecount=40 mem-after.pprof
 
 What a one-shot run includes that a benchmark loop does not: process start, the parse, and the whole of `stdlib.Register` - 322 functions, 41 classes and 152 constants. On a short script those frames are most of the profile. That is the honest cost of a single invocation and the wrong profile for a hot loop.
 
-A single run is one sample. It has no interval and it ranks frames and does not compare two commits on its own. Where a delta is the claim, the delta comes from a benchmark.
+A single run is one sample with no interval. It ranks frames; it compares no two commits. Where a delta is the claim, the delta comes from a benchmark.
 
 ## What this cannot answer
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner/expr"
 )
 
@@ -59,7 +60,7 @@ func stringOffset(idx any) (int64, bool) {
 	case nil:
 		return 0, true
 	}
-	if _, ok := model.GoWiden(idx); ok {
+	if _, ok := modelutil.GoWiden(idx); ok {
 		return toInt(idx), true
 	}
 	return 0, false
@@ -80,8 +81,8 @@ func helperIndex(base, idx any) any {
 		// PREG_OFFSET_CAPTURE report. A negative offset counts from the end.
 		// mb_substr($s, $i, 1) is the character read.
 		//
-		// A []byte takes the same branch, being the string it carries rather
-		// than a list of integers. See phpval.Bytes.
+		// A []byte takes the same branch, read as the string it holds and
+		// never as a list of integers. See phpval.Bytes.
 		text := phpString(base)
 		i, numeric := stringOffset(idx)
 		if !numeric {
@@ -132,12 +133,12 @@ func helperIndex(base, idx any) any {
 // objects (Props bag) and, by reflection, exported fields of Go structs. When a
 // PHP object has no matching property but has a method by that name, it returns
 // a *Callable bound to that object; this supports PHP idioms such as
-// `call_user_func_array($this->query, $args)`, and a router takes one as a
+// `call_user_func_array($this->query, $args)`. A router takes one as a
 // handler registered as `$this->fnName`.
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
-		// A bound callable produced here can outlive the expression that read it,
-		// and the closure copies the scope by value and not through the reference.
+		// A bound callable produced here can outlive the expression that read it.
+		// The closure copies the scope by value and not through the reference.
 		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:

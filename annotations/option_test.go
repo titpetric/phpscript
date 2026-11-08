@@ -79,9 +79,9 @@ func TestModuleSuffixEmpty(t *testing.T) {
 	}
 }
 
-// TestWithIncludeCache covers the cache a host that precompiled its tree hands
-// over: the endpoint reads its entrypoint back out of it, and parses
-// the file and the program that ran is the one the cache holds.
+// TestWithIncludeCache covers the cache a host that precompiled its tree
+// supplies: the endpoint reads its entrypoint through it and the program that
+// ran is the one the cache holds.
 func TestWithIncludeCache(t *testing.T) {
 	t.Parallel()
 	cache := runner.NewIncludeCache()

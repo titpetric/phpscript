@@ -75,7 +75,7 @@ func (p *printer) blank() {
 // retains one source blank line and adds separation after block statements and
 // before a call that follows assignments.
 func (p *printer) stmts(stmts []model.Stmt) {
-	// A block opens with no blank line of its own, whatever the source did
+	// A block opens with no leading blank line, whatever the source did
 	// between the brace and the first statement.
 	p.lastLine = 0
 	for i, s := range stmts {
@@ -98,13 +98,13 @@ func (p *printer) body(stmts []model.Stmt, end int) {
 	p.depth--
 }
 
-// stmtEnd is the line a statement closes on, read to place the comments
-// written inside it.
+// stmtEnd returns the line a statement closes on, read to place the comments
+// the statement encloses.
 func (p *printer) stmtEnd(s model.Stmt) int {
 	return p.spans[s].End
 }
 
-// blankBetween reports the blank lines the printer adds of its own accord.
+// blankBetween reports the blank lines the printer adds itself.
 // stmt keeps the ones the author wrote, by comparing source lines.
 func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	switch prev.(type) {

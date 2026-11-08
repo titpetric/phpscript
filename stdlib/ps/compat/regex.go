@@ -14,8 +14,8 @@
 // first library this runtime targets, and reporting "no match" for it
 // compiled every `{block}` and `{inline}` definition into garbage.
 //
-// RE2 stays the default: the faster of the two, and it cannot backtrack
-// catastrophically. The fallback carries a match timeout for that reason.
+// RE2 stays the default: the faster of the two engines, with no catastrophic
+// backtracking. The fallback sets a match timeout for that reason.
 //
 // A third gap is in RE2's API and not in its syntax and it decides the
 // engine per call and not per pattern. PHP's $offset moves where a match
@@ -25,7 +25,7 @@
 // has no entry point that takes a start position. regexp2's
 // FindStringMatchStartingAt does and a non-zero $offset runs on the
 // backtracking engine even for a pattern RE2 compiled and a pattern
-// can carry both engines.
+// holds both engines.
 //
 // The two engines disagree about what an index counts: RE2 reports byte
 // offsets, regexp2 matches over a []rune and reports rune indexes. PHP's
@@ -123,8 +123,8 @@ const backtrackTimeout = time.Second
 
 // phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches,
 // $flags, $offset), returning the number of matches, or false for a pattern
-// that does not compile. PHP leaves $matches untouched in that case rather
-// than emptying it and the failure is distinguishable from "no matches".
+// that does not compile. PHP leaves $matches untouched in that case. The
+// failure is distinguishable from "no matches".
 //
 // $flags selects PREG_PATTERN_ORDER (the default) or PREG_SET_ORDER, either
 // combined with PREG_OFFSET_CAPTURE and PREG_UNMATCHED_AS_NULL.
@@ -230,9 +230,9 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 // $limit caps the number of pieces, the last of which holds the unsplit rest;
 // 0, -1 and an omitted argument all mean no limit, and any other negative
 // value splits nothing, which is PHP's behaviour and not a reading of it.
-// Only a piece that reaches the result counts against the limit, which is
-// what makes PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an
-// empty piece that NO_EMPTY drops leaves the limit alone.
+// Only a piece that reaches the result counts against the limit, which makes
+// PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an empty piece
+// that NO_EMPTY drops leaves the limit alone.
 func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {

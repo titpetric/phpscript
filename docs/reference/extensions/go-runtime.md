@@ -16,33 +16,33 @@ php rejects a file that uses the syntax: `make([]string, 0, 10)` is a parse erro
 
 ## Builtins
 
-Each builtin behaves as go's. Where php has a value of its own in the same place, this is the behaviour:
+Each builtin behaves as go's. Where php has its own value in the same place, this is the behaviour:
 
-| Call                        | Over a php value                                              |
-|-----------------------------|---------------------------------------------------------------|
-| `append($dst, ...$values)`  | A php array grows in place, and the handle comes back.        |
-| `len($value)`               | An array's entries, a string's bytes, zero for null.          |
-| `cap($value)`               | An array reports its length.                                  |
-| `delete($collection, $key)` | Takes a php array as well as a go map.                        |
-| `clear($collection)`        | Empties a php array; zeroes a go slice of its length.         |
-| `copy($dst, $src)`          | Reads a php array as the source.                              |
-| `min`, `max`                | Values, never an array. `\min([3, 1, 2])` is php's.           |
-| `panic($value)`             | Throws a `RuntimeException` carrying `panic: ` and the value. |
-| `print`, `println`          | Write to the script's output.                                 |
+| Call                        | Over a php value                                             |
+|-----------------------------|--------------------------------------------------------------|
+| `append($dst, ...$values)`  | A php array grows in place, and the handle comes back.       |
+| `len($value)`               | An array's entries, a string's bytes, zero for null.         |
+| `cap($value)`               | An array reports its length.                                 |
+| `delete($collection, $key)` | Takes a php array as well as a go map.                       |
+| `clear($collection)`        | Empties a php array; zeroes a go slice of its length.        |
+| `copy($dst, $src)`          | Reads a php array as the source.                             |
+| `min`, `max`                | Values, never an array. `\min([3, 1, 2])` is php's.          |
+| `panic($value)`             | Throws a `RuntimeException` reading `panic: ` and the value. |
+| `print`, `println`          | Write to the script's output.                                |
 
-`new`, `recover`, `close` and the complex family stay unbound: php writes `new` and `catch` itself, and the rest need [channels](#no-channels) or a value php has none of.
+`new`, `recover`, `close` and the complex family stay unbound: php writes `new` and `catch` itself, and the rest need [channels](#no-channels) or a value php has no spelling for.
 
 ## Conversions
 
 A type name converts one value. php reads it through its own semantics first, where `"12"` becomes 12, and go's width truncates what comes out: `int8(300)` is 44 and `uint8(-1)` is 255. A call with no argument answers the type's zero value.
 
-`int`, `int64` and `float64` name widths php already carries, and `int64(5)` is php's 5. The sized names answer a typed value instead. Each name is a class too, and `new Go\int64("7")` converts through it.
+`int`, `int64` and `float64` name widths php already has, and `int64(5)` is php's 5. The sized names answer a typed value instead. Each name is a class too, and `new Go\int64("7")` converts through it.
 
 A literal folds while the file parses and reaches no function table at run time. The parser and the binding read one table, and `int8(300)` and `int8($n)` over a `$n` of 300 answer the same `int8(44)`.
 
 ## Typed values
 
-A typed value carries one of go's sized widths. The type travels with it, through a variable, an array, a slice, a binding and a return, and `var_dump` names the width:
+A typed value holds one of go's sized widths. The type travels with it, through a variable, an array, a slice, a binding and a return, and `var_dump` names the width:
 
 ```php
 use Runtime\Go;
@@ -81,7 +81,7 @@ An unsigned value past `PHP_INT_MAX` prints what go prints. `echo`, `%d` and `%u
 
 ## Slices
 
-`make`'s first argument is a type, the one argument in the language written as one. The element type is any builtin type name, a class name, or a `[]` nesting of those; a class name allocates `any`, the element php carries an instance in.
+`make`'s first argument is a type, the one argument in the language written as one. The element type is any builtin type name, a class name, or a `[]` nesting of those; a class name allocates `any`, the element php stores an instance in.
 
 ```php
 use Runtime\Go;
@@ -117,4 +117,4 @@ class Row
 
 [Channels](https://go.dev/ref/spec#Channel_types) stay out, and the decision stands. A channel is a rendezvous between goroutines and a phpscript program starts none: the `go` statement has no spelling here, `select` waits on no case, and a channel with one end is a deadlock behind an API.
 
-Concurrency here is the server. Each request answers on a [runtime of its own](../../use-cases/http-server.md), and two of them share state through [`SharedMemory`](../../use-cases/shared-memory.md), a database, or a queue a binding owns. A binding whose Go side runs goroutines keeps the channels there and returns the result.
+Concurrency here is the server. Each request answers on [its own runtime](../../use-cases/http-server.md), and two of them share state through [`SharedMemory`](../../use-cases/shared-memory.md), a database, or a queue a binding owns. A binding whose Go side runs goroutines keeps the channels there and returns the result.

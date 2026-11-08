@@ -289,7 +289,7 @@ func TestFixtureRequest(t *testing.T) {
 }
 
 // TestFixtureResponse covers the headers a fixture holds the response to. The
-// block is assertions and no input and it carries only what a run compares
+// block is assertions and no input and it holds only what a run compares
 // against.
 func TestFixtureResponse(t *testing.T) {
 	fx, err := ParseFixture([]byte("name: response\ndescription: response block\nresponse:\n  headers:\n    Content-Type: text/plain\n---\n<?php\n---\n"), "response.phpt")
@@ -323,8 +323,8 @@ func TestFixture_SetRootFS(t *testing.T) {
 
 // TestFixture_SetAppRoot covers the second filesystem a fixture runs over: the
 // application root holding the prelude. The fixture directory answers first,
-// and a fixture's own relative include keeps meaning what it meant, and the
-// run reads the prelude off the root beneath it.
+// and a fixture's own relative include keeps meaning what it meant. The run
+// reads the prelude off the root beneath it.
 func TestFixture_SetAppRoot(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "prelude.php"), []byte("<?php\nfunction prelude_tag() { return \"tagged\"; }\n"), 0o600); err != nil {
@@ -342,7 +342,7 @@ func TestFixture_SetAppRoot(t *testing.T) {
 		t.Fatalf("fixture failed: %s", res.FailureReason)
 	}
 
-	// The run skips an include the application does not carry: the setting
+	// The run skips an include the application lacks: the setting
 	// says what to load when the tree holds it.
 	fx.SetAppRoot(dir, "prelude.php", "absent.php")
 	if res := RunFixture(t.Context(), fx); !res.Passed {
@@ -352,7 +352,7 @@ func TestFixture_SetAppRoot(t *testing.T) {
 
 // TestFixture_SetDatabase covers the connections a fixture's Database bindings
 // resolve through. The suite passes the provider its setup hook applied the
-// schema with and runnerOptions carries that one into the run and opens no
+// schema with and runnerOptions sends that one into the run and opens no
 // second pool over the same DSN.
 func TestFixture_SetDatabase(t *testing.T) {
 	provider := database.New(nil)
@@ -369,8 +369,8 @@ func TestFixture_SetDatabase(t *testing.T) {
 }
 
 // TestFixture_SetMail covers the mail servers a fixture may name. The run
-// leaves no state behind: construction is a name lookup, and the names are
-// what the fixtures assert on.
+// leaves no state behind: construction is a name lookup. The names are what
+// the fixtures assert on.
 func TestFixture_SetMail(t *testing.T) {
 	provider := mail.NewProvider(nil)
 
@@ -386,7 +386,7 @@ func TestFixture_SetMail(t *testing.T) {
 }
 
 // TestFixture_SetCoverage covers the collector the runtime runner reports
-// statements to. Only that runner carries one: flatstack has no coverage
+// statements to. Only that runner holds one: flatstack has no coverage
 // support, and the php runner is a second process.
 func TestFixture_SetCoverage(t *testing.T) {
 	fx := &Fixture{Name: "cover", Path: "cover.phpt"}

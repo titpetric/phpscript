@@ -11,7 +11,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestResult carries execution outcome for a single fixture.
+// TestResult holds the execution outcome for a single fixture.
 type TestResult struct {
 	Name          string `json:"name"`
 	Description   string `json:"description"`

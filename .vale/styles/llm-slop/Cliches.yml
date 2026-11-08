@@ -11,700 +11,700 @@ message: "Try to avoid using clichés like '%s'."
 ignorecase: true
 level: error
 tokens:
-  - a chip off the old block
-  - a clean slate
-  - a dark and stormy night
-  - a far cry
-  - a fine kettle of fish
-  - a loose cannon
-  - a penny saved is a penny earned
-  - a tough row to hoe
-  - a word to the wise
-  - ace in the hole
-  - acid test
-  - add insult to injury
-  - against all odds
-  - air your dirty laundry
-  - all fun and games
-  - all in a day's work
-  - all talk, no action
-  - all thumbs
-  - all your eggs in one basket
-  - all's fair in love and war
-  - all's well that ends well
-  - almighty dollar
-  - American as apple pie
-  - an axe to grind
-  - another day, another dollar
-  - armed to the teeth
-  - as luck would have it
-  - as old as time
-  - as the crow flies
-  - at loose ends
-  - at my wits end
-  - avoid like the plague
-  - babe in the woods
-  - back against the wall
-  - back in the saddle
-  - back to square one
-  - back to the drawing board
-  - bad to the bone
-  - badge of honor
-  - bald faced liar
-  - ballpark figure
-  - banging your head against a brick wall
-  - baptism by fire
-  - barking up the wrong tree
-  - bat out of hell
-  - be all and end all
-  - beat a dead horse
-  - beat around the bush
-  - been there, done that
-  - beggars can't be choosers
-  - behind the eight ball
-  - bend over backwards
-  - benefit of the doubt
-  - bent out of shape
-  - best thing since sliced bread
-  - bet your bottom dollar
-  - better half
-  - better late than never
-  - better mousetrap
-  - better safe than sorry
-  - between a rock and a hard place
-  - beyond the pale
-  - bide your time
-  - big as life
-  - big cheese
-  - big fish in a small pond
-  - big man on campus
-  - bigger they are the harder they fall
-  - bird in the hand
-  - bird's eye view
-  - birds and the bees
-  - birds of a feather flock together
-  - bit the hand that feeds you
-  - bite the bullet
-  - bite the dust
-  - bitten off more than he can chew
-  - black as coal
-  - black as pitch
-  - black as the ace of spades
-  - blast from the past
-  - bleeding heart
-  - blessing in disguise
-  - blind ambition
-  - blind as a bat
-  - blind leading the blind
-  - blood is thicker than water
-  - blood sweat and tears
-  - blow off steam
-  - blow your own horn
-  - blushing bride
-  - boils down to
-  - bolt from the blue
-  - bone to pick
-  - bored stiff
-  - bored to tears
-  - bottomless pit
-  - boys will be boys
-  - bright and early
-  - brings home the bacon
-  - broad across the beam
-  - broken record
-  - brought back to reality
-  - bull by the horns
-  - bull in a china shop
-  - burn the midnight oil
-  - burning question
-  - burning the candle at both ends
-  - burst your bubble
-  - bury the hatchet
-  - busy as a bee
-  - by hook or by crook
-  - call a spade a spade
-  - called onto the carpet
-  - calm before the storm
-  - can of worms
-  - can't cut the mustard
-  - can't hold a candle to
-  - case of mistaken identity
-  - cat got your tongue
-  - cat's meow
-  - caught in the crossfire
-  - caught red-handed
-  - checkered past
-  - chomping at the bit
-  - cleanliness is next to godliness
-  - clear as a bell
-  - clear as mud
-  - close to the vest
-  - cock and bull story
-  - cold shoulder
-  - come hell or high water
-  - cool as a cucumber
-  - cool, calm, and collected
-  - cost a king's ransom
-  - count your blessings
-  - crack of dawn
-  - crash course
-  - creature comforts
-  - cross that bridge when you come to it
-  - crushing blow
-  - cry like a baby
-  - cry me a river
-  - cry over spilt milk
-  - crystal clear
-  - curiosity killed the cat
-  - cut and dried
-  - cut through the red tape
-  - cut to the chase
-  - cute as a bugs ear
-  - cute as a button
-  - cute as a puppy
-  - cuts to the quick
-  - dark before the dawn
-  - day in, day out
-  - dead as a doornail
-  - devil is in the details
-  - dime a dozen
-  - divide and conquer
-  - dog and pony show
-  - dog days
-  - dog eat dog
-  - dog tired
-  - don't burn your bridges
-  - don't count your chickens
-  - don't look a gift horse in the mouth
-  - don't rock the boat
-  - don't step on anyone's toes
-  - don't take any wooden nickels
-  - down and out
-  - down at the heels
-  - down in the dumps
-  - down the hatch
-  - down to earth
-  - draw the line
-  - dressed to kill
-  - dressed to the nines
-  - drives me up the wall
-  - dull as dishwater
-  - dyed in the wool
-  - eagle eye
-  - ear to the ground
-  - early bird catches the worm
-  - easier said than done
-  - easy as pie
-  - eat your heart out
-  - eat your words
-  - eleventh hour
-  - even the playing field
-  - every dog has its day
-  - every fiber of my being
-  - everything but the kitchen sink
-  - eye for an eye
-  - face the music
-  - facts of life
-  - fair weather friend
-  - fall by the wayside
-  - fan the flames
-  - feast or famine
-  - feather your nest
-  - feathered friends
-  - few and far between
-  - fifteen minutes of fame
-  - filthy vermin
-  - fine kettle of fish
-  - fish out of water
-  - fishing for a compliment
-  - fit as a fiddle
-  - fit the bill
-  - fit to be tied
-  - flash in the pan
-  - flat as a pancake
-  - flip your lid
-  - flog a dead horse
-  - fly by night
-  - fly the coop
-  - follow your heart
-  - for all intents and purposes
-  - for the birds
-  - for what it's worth
-  - force of nature
-  - force to be reckoned with
-  - forgive and forget
-  - fox in the henhouse
-  - free and easy
-  - free as a bird
-  - fresh as a daisy
-  - full steam ahead
-  - fun in the sun
-  - garbage in, garbage out
-  - gentle as a lamb
-  - get a kick out of
-  - get a leg up
-  - get down and dirty
-  - get the lead out
-  - get to the bottom of
-  - get your feet wet
-  - gets my goat
-  - gilding the lily
-  - give and take
-  - go against the grain
-  - go at it tooth and nail
-  - go for broke
-  - go him one better
-  - go the extra mile
-  - go with the flow
-  - goes without saying
-  - good as gold
-  - good deed for the day
-  - good things come to those who wait
-  - good time was had by all
-  - good times were had by all
-  - greased lightning
-  - greek to me
-  - green thumb
-  - green-eyed monster
-  - grist for the mill
-  - growing like a weed
-  - hair of the dog
-  - hand to mouth
-  - happy as a clam
-  - happy as a lark
-  - hasn't a clue
-  - have a nice day
-  - have high hopes
-  - have the last laugh
-  - haven't got a row to hoe
-  - head honcho
-  - head over heels
-  - hear a pin drop
-  - heard it through the grapevine
-  - heart's content
-  - heavy as lead
-  - hem and haw
-  - high and dry
-  - high and mighty
-  - high as a kite
-  - hit paydirt
-  - hold your head up high
-  - hold your horses
-  - hold your own
-  - hold your tongue
-  - honest as the day is long
-  - horns of a dilemma
-  - horse of a different color
-  - hot under the collar
-  - hour of need
-  - I beg to differ
-  - icing on the cake
-  - if the shoe fits
-  - if the shoe were on the other foot
-  - in a jam
-  - in a jiffy
-  - in a nutshell
-  - in a pig's eye
-  - in a pinch
-  - in a word
-  - in hot water
-  - in the gutter
-  - in the nick of time
-  - in the thick of it
-  - in your dreams
-  - it ain't over till the fat lady sings
-  - it goes without saying
-  - it takes all kinds
-  - it takes one to know one
-  - it's a small world
-  - it's only a matter of time
-  - ivory tower
-  - Jack of all trades
-  - jockey for position
-  - jog your memory
-  - joined at the hip
-  - judge a book by its cover
-  - jump down your throat
-  - jump in with both feet
-  - jump on the bandwagon
-  - jump the gun
-  - jump to conclusions
-  - just a hop, skip, and a jump
-  - just the ticket
-  - justice is blind
-  - keep a stiff upper lip
-  - keep an eye on
-  - keep it simple, stupid
-  - keep the home fires burning
-  - keep up with the Joneses
-  - keep your chin up
-  - keep your fingers crossed
-  - kick the bucket
-  - kick up your heels
-  - kick your feet up
-  - kid in a candy store
-  - kill two birds with one stone
-  - kiss of death
-  - knock it out of the park
-  - knock on wood
-  - knock your socks off
-  - know him from Adam
-  - know the ropes
-  - know the score
-  - knuckle down
-  - knuckle sandwich
-  - knuckle under
-  - labor of love
-  - ladder of success
-  - land on your feet
-  - lap of luxury
-  - last but not least
-  - last hurrah
-  - last-ditch effort
-  - law of the jungle
-  - law of the land
-  - lay down the law
-  - leaps and bounds
-  - let sleeping dogs lie
-  - let the cat out of the bag
-  - let the good times roll
-  - let your hair down
-  - let's talk turkey
-  - letter perfect
-  - lick your wounds
-  - lies like a rug
-  - life's a bitch
-  - life's a grind
-  - light at the end of the tunnel
-  - lighter than a feather
-  - lighter than air
-  - like clockwork
-  - like father like son
-  - like taking candy from a baby
-  - like there's no tomorrow
-  - lion's share
-  - live and learn
-  - live and let live
-  - long and short of it
-  - long lost love
-  - look before you leap
-  - look down your nose
-  - look what the cat dragged in
-  - looking a gift horse in the mouth
-  - looks like death warmed over
-  - loose cannon
-  - lose your head
-  - lose your temper
-  - loud as a horn
-  - lounge lizard
-  - loved and lost
-  - low man on the totem pole
-  - luck of the draw
-  - luck of the Irish
-  - make hay while the sun shines
-  - make money hand over fist
-  - make my day
-  - make the best of a bad situation
-  - make the best of it
-  - make your blood boil
-  - man of few words
-  - man's best friend
-  - mark my words
-  - meaningful dialogue
-  - missed the boat on that one
-  - moment in the sun
-  - moment of glory
-  - moment of truth
-  - money to burn
-  - more power to you
-  - more than one way to skin a cat
-  - movers and shakers
-  - moving experience
-  - naked as a jaybird
-  - naked truth
-  - neat as a pin
-  - needle in a haystack
-  - needless to say
-  - neither here nor there
-  - never look back
-  - never say never
-  - nip and tuck
-  - nip it in the bud
-  - no guts, no glory
-  - no love lost
-  - no pain, no gain
-  - no skin off my back
-  - no stone unturned
-  - no time like the present
-  - no use crying over spilled milk
-  - nose to the grindstone
-  - not a hope in hell
-  - not a minute's peace
-  - not in my backyard
-  - not playing with a full deck
-  - not the end of the world
-  - not written in stone
-  - nothing to sneeze at
-  - nothing ventured nothing gained
-  - now we're cooking
-  - off the top of my head
-  - off the wagon
-  - off the wall
-  - old hat
-  - older and wiser
-  - older than dirt
-  - older than Methuselah
-  - on a roll
-  - on cloud nine
-  - on pins and needles
-  - on the bandwagon
-  - on the money
-  - on the nose
-  - on the rocks
-  - on the spot
-  - on the tip of my tongue
-  - on the wagon
-  - on thin ice
-  - once bitten, twice shy
-  - one bad apple doesn't spoil the bushel
-  - one born every minute
-  - one brick short
-  - one foot in the grave
-  - one in a million
-  - one red cent
-  - only game in town
-  - open a can of worms
-  - open and shut case
-  - open the flood gates
-  - opportunity doesn't knock twice
-  - out of pocket
-  - out of sight, out of mind
-  - out of the frying pan into the fire
-  - out of the woods
-  - out on a limb
-  - over a barrel
-  - over the hump
-  - pain and suffering
-  - pain in the
-  - panic button
-  - par for the course
-  - part and parcel
-  - party pooper
-  - pass the buck
-  - patience is a virtue
-  - pay through the nose
-  - penny pincher
-  - perfect storm
-  - pig in a poke
-  - pile it on
-  - pillar of the community
-  - pin your hopes on
-  - pitter patter of little feet
-  - plain as day
-  - plain as the nose on your face
-  - play by the rules
-  - play your cards right
-  - playing the field
-  - playing with fire
-  - pleased as punch
-  - plenty of fish in the sea
-  - point with pride
-  - poor as a church mouse
-  - pot calling the kettle black
-  - pretty as a picture
-  - pull a fast one
-  - pull your punches
-  - pulling your leg
-  - pure as the driven snow
-  - put it in a nutshell
-  - put one over on you
-  - put the cart before the horse
-  - put the pedal to the metal
-  - put your best foot forward
-  - put your foot down
-  - quick as a bunny
-  - quick as a lick
-  - quick as a wink
-  - quick as lightning
-  - quiet as a dormouse
-  - rags to riches
-  - raining buckets
-  - raining cats and dogs
-  - rank and file
-  - rat race
-  - reap what you sow
-  - red as a beet
-  - red herring
-  - reinvent the wheel
-  - rich and famous
-  - rings a bell
-  - ripe old age
-  - ripped me off
-  - rise and shine
-  - road to hell is paved with good intentions
-  - rob Peter to pay Paul
-  - roll over in the grave
-  - rub the wrong way
-  - ruled the roost
-  - running in circles
-  - sad but true
-  - sadder but wiser
-  - salt of the earth
-  - scared stiff
-  - scared to death
-  - sealed with a kiss
-  - second to none
-  - see eye to eye
-  - seen the light
-  - seize the day
-  - set the record straight
-  - set the world on fire
-  - set your teeth on edge
-  - sharp as a tack
-  - shoot for the moon
-  - shoot the breeze
-  - shot in the dark
-  - shoulder to the wheel
-  - sick as a dog
-  - sigh of relief
-  - signed, sealed, and delivered
-  - sink or swim
-  - six of one, half a dozen of another
-  - skating on thin ice
-  - slept like a log
-  - slinging mud
-  - slippery as an eel
-  - slow as molasses
-  - smart as a whip
-  - smooth as a baby's bottom
-  - sneaking suspicion
-  - snug as a bug in a rug
-  - sow wild oats
-  - spare the rod, spoil the child
-  - speak of the devil
-  - spilled the beans
-  - spinning your wheels
-  - spitting image of
-  - spoke with relish
-  - spread like wildfire
-  - spring to life
-  - squeaky wheel gets the grease
-  - stands out like a sore thumb
-  - start from scratch
-  - stick in the mud
-  - still waters run deep
-  - stitch in time
-  - stop and smell the roses
-  - straight as an arrow
-  - straw that broke the camel's back
-  - strong as an ox
-  - stubborn as a mule
-  - stuff that dreams are made of
-  - stuffed shirt
-  - sweating blood
-  - sweating bullets
-  - take a load off
-  - take one for the team
-  - take the bait
-  - take the bull by the horns
-  - take the plunge
-  - takes one to know one
-  - takes two to tango
-  - the more the merrier
-  - the real deal
-  - the real McCoy
-  - the red carpet treatment
-  - the same old story
-  - there is no accounting for taste
-  - thick as a brick
-  - thick as thieves
-  - thin as a rail
-  - think outside of the box
-  - third time's the charm
-  - this day and age
-  - this hurts me worse than it hurts you
-  - this point in time
-  - three sheets to the wind
-  - through thick and thin
-  - throw in the towel
-  - tie one on
-  - tighter than a drum
-  - time and time again
-  - time is of the essence
-  - tip of the iceberg
-  - tired but happy
-  - to coin a phrase
-  - to each his own
-  - to make a long story short
-  - to the best of my knowledge
-  - toe the line
-  - tongue in cheek
-  - too good to be true
-  - too hot to handle
-  - too numerous to mention
-  - touch with a ten foot pole
-  - tough as nails
-  - trial and error
-  - trials and tribulations
-  - tried and true
-  - trip down memory lane
-  - twist of fate
-  - two cents worth
-  - two peas in a pod
-  - ugly as sin
-  - under the counter
-  - under the gun
-  - under the same roof
-  - under the weather
-  - until the cows come home
-  - unvarnished truth
-  - up the creek
-  - uphill battle
-  - upper crust
-  - upset the applecart
-  - vain attempt
-  - vain effort
-  - vanquish the enemy
-  - vested interest
-  - waiting for the other shoe to drop
-  - wakeup call
-  - warm welcome
-  - watch your p's and q's
-  - watch your tongue
-  - watching the clock
-  - water under the bridge
-  - weather the storm
-  - weed them out
-  - week of Sundays
-  - went belly up
-  - wet behind the ears
-  - what goes around comes around
-  - what you see is what you get
-  - when it rains, it pours
-  - when push comes to shove
-  - when the cat's away
-  - when the going gets tough, the tough get going
-  - white as a sheet
-  - whole ball of wax
-  - whole hog
-  - whole nine yards
-  - wild goose chase
-  - will wonders never cease?
-  - wisdom of the ages
-  - wise as an owl
-  - wolf at the door
-  - words fail me
-  - work like a dog
-  - world weary
-  - worst nightmare
-  - worth its weight in gold
-  - wrong side of the bed
-  - yanking your chain
-  - yappy as a dog
-  - years young
-  - you are what you eat
-  - you can run but you can't hide
-  - you only live once
-  - you're the boss
-  - young and foolish
-  - young and vibrant
+  - a\s+chip\s+off\s+the\s+old\s+block
+  - a\s+clean\s+slate
+  - a\s+dark\s+and\s+stormy\s+night
+  - a\s+far\s+cry
+  - a\s+fine\s+kettle\s+of\s+fish
+  - a\s+loose\s+cannon
+  - a\s+penny\s+saved\s+is\s+a\s+penny\s+earned
+  - a\s+tough\s+row\s+to\s+hoe
+  - a\s+word\s+to\s+the\s+wise
+  - ace\s+in\s+the\s+hole
+  - acid\s+test
+  - add\s+insult\s+to\s+injury
+  - against\s+all\s+odds
+  - air\s+your\s+dirty\s+laundry
+  - all\s+fun\s+and\s+games
+  - all\s+in\s+a\s+day's\s+work
+  - all\s+talk,\s+no\s+action
+  - all\s+thumbs
+  - all\s+your\s+eggs\s+in\s+one\s+basket
+  - all's\s+fair\s+in\s+love\s+and\s+war
+  - all's\s+well\s+that\s+ends\s+well
+  - almighty\s+dollar
+  - American\s+as\s+apple\s+pie
+  - an\s+axe\s+to\s+grind
+  - another\s+day,\s+another\s+dollar
+  - armed\s+to\s+the\s+teeth
+  - as\s+luck\s+would\s+have\s+it
+  - as\s+old\s+as\s+time
+  - as\s+the\s+crow\s+flies
+  - at\s+loose\s+ends
+  - at\s+my\s+wits\s+end
+  - avoid\s+like\s+the\s+plague
+  - babe\s+in\s+the\s+woods
+  - back\s+against\s+the\s+wall
+  - back\s+in\s+the\s+saddle
+  - back\s+to\s+square\s+one
+  - back\s+to\s+the\s+drawing\s+board
+  - bad\s+to\s+the\s+bone
+  - badge\s+of\s+honor
+  - bald\s+faced\s+liar
+  - ballpark\s+figure
+  - banging\s+your\s+head\s+against\s+a\s+brick\s+wall
+  - baptism\s+by\s+fire
+  - barking\s+up\s+the\s+wrong\s+tree
+  - bat\s+out\s+of\s+hell
+  - be\s+all\s+and\s+end\s+all
+  - beat\s+a\s+dead\s+horse
+  - beat\s+around\s+the\s+bush
+  - been\s+there,\s+done\s+that
+  - beggars\s+can't\s+be\s+choosers
+  - behind\s+the\s+eight\s+ball
+  - bend\s+over\s+backwards
+  - benefit\s+of\s+the\s+doubt
+  - bent\s+out\s+of\s+shape
+  - best\s+thing\s+since\s+sliced\s+bread
+  - bet\s+your\s+bottom\s+dollar
+  - better\s+half
+  - better\s+late\s+than\s+never
+  - better\s+mousetrap
+  - better\s+safe\s+than\s+sorry
+  - between\s+a\s+rock\s+and\s+a\s+hard\s+place
+  - beyond\s+the\s+pale
+  - bide\s+your\s+time
+  - big\s+as\s+life
+  - big\s+cheese
+  - big\s+fish\s+in\s+a\s+small\s+pond
+  - big\s+man\s+on\s+campus
+  - bigger\s+they\s+are\s+the\s+harder\s+they\s+fall
+  - bird\s+in\s+the\s+hand
+  - bird's\s+eye\s+view
+  - birds\s+and\s+the\s+bees
+  - birds\s+of\s+a\s+feather\s+flock\s+together
+  - bit\s+the\s+hand\s+that\s+feeds\s+you
+  - bite\s+the\s+bullet
+  - bite\s+the\s+dust
+  - bitten\s+off\s+more\s+than\s+he\s+can\s+chew
+  - black\s+as\s+coal
+  - black\s+as\s+pitch
+  - black\s+as\s+the\s+ace\s+of\s+spades
+  - blast\s+from\s+the\s+past
+  - bleeding\s+heart
+  - blessing\s+in\s+disguise
+  - blind\s+ambition
+  - blind\s+as\s+a\s+bat
+  - blind\s+leading\s+the\s+blind
+  - blood\s+is\s+thicker\s+than\s+water
+  - blood\s+sweat\s+and\s+tears
+  - blow\s+off\s+steam
+  - blow\s+your\s+own\s+horn
+  - blushing\s+bride
+  - boils\s+down\s+to
+  - bolt\s+from\s+the\s+blue
+  - bone\s+to\s+pick
+  - bored\s+stiff
+  - bored\s+to\s+tears
+  - bottomless\s+pit
+  - boys\s+will\s+be\s+boys
+  - bright\s+and\s+early
+  - brings\s+home\s+the\s+bacon
+  - broad\s+across\s+the\s+beam
+  - broken\s+record
+  - brought\s+back\s+to\s+reality
+  - bull\s+by\s+the\s+horns
+  - bull\s+in\s+a\s+china\s+shop
+  - burn\s+the\s+midnight\s+oil
+  - burning\s+question
+  - burning\s+the\s+candle\s+at\s+both\s+ends
+  - burst\s+your\s+bubble
+  - bury\s+the\s+hatchet
+  - busy\s+as\s+a\s+bee
+  - by\s+hook\s+or\s+by\s+crook
+  - call\s+a\s+spade\s+a\s+spade
+  - called\s+onto\s+the\s+carpet
+  - calm\s+before\s+the\s+storm
+  - can\s+of\s+worms
+  - can't\s+cut\s+the\s+mustard
+  - can't\s+hold\s+a\s+candle\s+to
+  - case\s+of\s+mistaken\s+identity
+  - cat\s+got\s+your\s+tongue
+  - cat's\s+meow
+  - caught\s+in\s+the\s+crossfire
+  - caught\s+red-handed
+  - checkered\s+past
+  - chomping\s+at\s+the\s+bit
+  - cleanliness\s+is\s+next\s+to\s+godliness
+  - clear\s+as\s+a\s+bell
+  - clear\s+as\s+mud
+  - close\s+to\s+the\s+vest
+  - cock\s+and\s+bull\s+story
+  - cold\s+shoulder
+  - come\s+hell\s+or\s+high\s+water
+  - cool\s+as\s+a\s+cucumber
+  - cool,\s+calm,\s+and\s+collected
+  - cost\s+a\s+king's\s+ransom
+  - count\s+your\s+blessings
+  - crack\s+of\s+dawn
+  - crash\s+course
+  - creature\s+comforts
+  - cross\s+that\s+bridge\s+when\s+you\s+come\s+to\s+it
+  - crushing\s+blow
+  - cry\s+like\s+a\s+baby
+  - cry\s+me\s+a\s+river
+  - cry\s+over\s+spilt\s+milk
+  - crystal\s+clear
+  - curiosity\s+killed\s+the\s+cat
+  - cut\s+and\s+dried
+  - cut\s+through\s+the\s+red\s+tape
+  - cut\s+to\s+the\s+chase
+  - cute\s+as\s+a\s+bugs\s+ear
+  - cute\s+as\s+a\s+button
+  - cute\s+as\s+a\s+puppy
+  - cuts\s+to\s+the\s+quick
+  - dark\s+before\s+the\s+dawn
+  - day\s+in,\s+day\s+out
+  - dead\s+as\s+a\s+doornail
+  - devil\s+is\s+in\s+the\s+details
+  - dime\s+a\s+dozen
+  - divide\s+and\s+conquer
+  - dog\s+and\s+pony\s+show
+  - dog\s+days
+  - dog\s+eat\s+dog
+  - dog\s+tired
+  - don't\s+burn\s+your\s+bridges
+  - don't\s+count\s+your\s+chickens
+  - don't\s+look\s+a\s+gift\s+horse\s+in\s+the\s+mouth
+  - don't\s+rock\s+the\s+boat
+  - don't\s+step\s+on\s+anyone's\s+toes
+  - don't\s+take\s+any\s+wooden\s+nickels
+  - down\s+and\s+out
+  - down\s+at\s+the\s+heels
+  - down\s+in\s+the\s+dumps
+  - down\s+the\s+hatch
+  - down\s+to\s+earth
+  - draw\s+the\s+line
+  - dressed\s+to\s+kill
+  - dressed\s+to\s+the\s+nines
+  - drives\s+me\s+up\s+the\s+wall
+  - dull\s+as\s+dishwater
+  - dyed\s+in\s+the\s+wool
+  - eagle\s+eye
+  - ear\s+to\s+the\s+ground
+  - early\s+bird\s+catches\s+the\s+worm
+  - easier\s+said\s+than\s+done
+  - easy\s+as\s+pie
+  - eat\s+your\s+heart\s+out
+  - eat\s+your\s+words
+  - eleventh\s+hour
+  - even\s+the\s+playing\s+field
+  - every\s+dog\s+has\s+its\s+day
+  - every\s+fiber\s+of\s+my\s+being
+  - everything\s+but\s+the\s+kitchen\s+sink
+  - eye\s+for\s+an\s+eye
+  - face\s+the\s+music
+  - facts\s+of\s+life
+  - fair\s+weather\s+friend
+  - fall\s+by\s+the\s+wayside
+  - fan\s+the\s+flames
+  - feast\s+or\s+famine
+  - feather\s+your\s+nest
+  - feathered\s+friends
+  - few\s+and\s+far\s+between
+  - fifteen\s+minutes\s+of\s+fame
+  - filthy\s+vermin
+  - fine\s+kettle\s+of\s+fish
+  - fish\s+out\s+of\s+water
+  - fishing\s+for\s+a\s+compliment
+  - fit\s+as\s+a\s+fiddle
+  - fit\s+the\s+bill
+  - fit\s+to\s+be\s+tied
+  - flash\s+in\s+the\s+pan
+  - flat\s+as\s+a\s+pancake
+  - flip\s+your\s+lid
+  - flog\s+a\s+dead\s+horse
+  - fly\s+by\s+night
+  - fly\s+the\s+coop
+  - follow\s+your\s+heart
+  - for\s+all\s+intents\s+and\s+purposes
+  - for\s+the\s+birds
+  - for\s+what\s+it's\s+worth
+  - force\s+of\s+nature
+  - force\s+to\s+be\s+reckoned\s+with
+  - forgive\s+and\s+forget
+  - fox\s+in\s+the\s+henhouse
+  - free\s+and\s+easy
+  - free\s+as\s+a\s+bird
+  - fresh\s+as\s+a\s+daisy
+  - full\s+steam\s+ahead
+  - fun\s+in\s+the\s+sun
+  - garbage\s+in,\s+garbage\s+out
+  - gentle\s+as\s+a\s+lamb
+  - get\s+a\s+kick\s+out\s+of
+  - get\s+a\s+leg\s+up
+  - get\s+down\s+and\s+dirty
+  - get\s+the\s+lead\s+out
+  - get\s+to\s+the\s+bottom\s+of
+  - get\s+your\s+feet\s+wet
+  - gets\s+my\s+goat
+  - gilding\s+the\s+lily
+  - give\s+and\s+take
+  - go\s+against\s+the\s+grain
+  - go\s+at\s+it\s+tooth\s+and\s+nail
+  - go\s+for\s+broke
+  - go\s+him\s+one\s+better
+  - go\s+the\s+extra\s+mile
+  - go\s+with\s+the\s+flow
+  - goes\s+without\s+saying
+  - good\s+as\s+gold
+  - good\s+deed\s+for\s+the\s+day
+  - good\s+things\s+come\s+to\s+those\s+who\s+wait
+  - good\s+time\s+was\s+had\s+by\s+all
+  - good\s+times\s+were\s+had\s+by\s+all
+  - greased\s+lightning
+  - greek\s+to\s+me
+  - green\s+thumb
+  - green-eyed\s+monster
+  - grist\s+for\s+the\s+mill
+  - growing\s+like\s+a\s+weed
+  - hair\s+of\s+the\s+dog
+  - hand\s+to\s+mouth
+  - happy\s+as\s+a\s+clam
+  - happy\s+as\s+a\s+lark
+  - hasn't\s+a\s+clue
+  - have\s+a\s+nice\s+day
+  - have\s+high\s+hopes
+  - have\s+the\s+last\s+laugh
+  - haven't\s+got\s+a\s+row\s+to\s+hoe
+  - head\s+honcho
+  - head\s+over\s+heels
+  - hear\s+a\s+pin\s+drop
+  - heard\s+it\s+through\s+the\s+grapevine
+  - heart's\s+content
+  - heavy\s+as\s+lead
+  - hem\s+and\s+haw
+  - high\s+and\s+dry
+  - high\s+and\s+mighty
+  - high\s+as\s+a\s+kite
+  - hit\s+paydirt
+  - hold\s+your\s+head\s+up\s+high
+  - hold\s+your\s+horses
+  - hold\s+your\s+own
+  - hold\s+your\s+tongue
+  - honest\s+as\s+the\s+day\s+is\s+long
+  - horns\s+of\s+a\s+dilemma
+  - horse\s+of\s+a\s+different\s+color
+  - hot\s+under\s+the\s+collar
+  - hour\s+of\s+need
+  - I\s+beg\s+to\s+differ
+  - icing\s+on\s+the\s+cake
+  - if\s+the\s+shoe\s+fits
+  - if\s+the\s+shoe\s+were\s+on\s+the\s+other\s+foot
+  - in\s+a\s+jam
+  - in\s+a\s+jiffy
+  - in\s+a\s+nutshell
+  - in\s+a\s+pig's\s+eye
+  - in\s+a\s+pinch
+  - in\s+a\s+word
+  - in\s+hot\s+water
+  - in\s+the\s+gutter
+  - in\s+the\s+nick\s+of\s+time
+  - in\s+the\s+thick\s+of\s+it
+  - in\s+your\s+dreams
+  - it\s+ain't\s+over\s+till\s+the\s+fat\s+lady\s+sings
+  - it\s+goes\s+without\s+saying
+  - it\s+takes\s+all\s+kinds
+  - it\s+takes\s+one\s+to\s+know\s+one
+  - it's\s+a\s+small\s+world
+  - it's\s+only\s+a\s+matter\s+of\s+time
+  - ivory\s+tower
+  - Jack\s+of\s+all\s+trades
+  - jockey\s+for\s+position
+  - jog\s+your\s+memory
+  - joined\s+at\s+the\s+hip
+  - judge\s+a\s+book\s+by\s+its\s+cover
+  - jump\s+down\s+your\s+throat
+  - jump\s+in\s+with\s+both\s+feet
+  - jump\s+on\s+the\s+bandwagon
+  - jump\s+the\s+gun
+  - jump\s+to\s+conclusions
+  - just\s+a\s+hop,\s+skip,\s+and\s+a\s+jump
+  - just\s+the\s+ticket
+  - justice\s+is\s+blind
+  - keep\s+a\s+stiff\s+upper\s+lip
+  - keep\s+an\s+eye\s+on
+  - keep\s+it\s+simple,\s+stupid
+  - keep\s+the\s+home\s+fires\s+burning
+  - keep\s+up\s+with\s+the\s+Joneses
+  - keep\s+your\s+chin\s+up
+  - keep\s+your\s+fingers\s+crossed
+  - kick\s+the\s+bucket
+  - kick\s+up\s+your\s+heels
+  - kick\s+your\s+feet\s+up
+  - kid\s+in\s+a\s+candy\s+store
+  - kill\s+two\s+birds\s+with\s+one\s+stone
+  - kiss\s+of\s+death
+  - knock\s+it\s+out\s+of\s+the\s+park
+  - knock\s+on\s+wood
+  - knock\s+your\s+socks\s+off
+  - know\s+him\s+from\s+Adam
+  - know\s+the\s+ropes
+  - know\s+the\s+score
+  - knuckle\s+down
+  - knuckle\s+sandwich
+  - knuckle\s+under
+  - labor\s+of\s+love
+  - ladder\s+of\s+success
+  - land\s+on\s+your\s+feet
+  - lap\s+of\s+luxury
+  - last\s+but\s+not\s+least
+  - last\s+hurrah
+  - last-ditch\s+effort
+  - law\s+of\s+the\s+jungle
+  - law\s+of\s+the\s+land
+  - lay\s+down\s+the\s+law
+  - leaps\s+and\s+bounds
+  - let\s+sleeping\s+dogs\s+lie
+  - let\s+the\s+cat\s+out\s+of\s+the\s+bag
+  - let\s+the\s+good\s+times\s+roll
+  - let\s+your\s+hair\s+down
+  - let's\s+talk\s+turkey
+  - letter\s+perfect
+  - lick\s+your\s+wounds
+  - lies\s+like\s+a\s+rug
+  - life's\s+a\s+bitch
+  - life's\s+a\s+grind
+  - light\s+at\s+the\s+end\s+of\s+the\s+tunnel
+  - lighter\s+than\s+a\s+feather
+  - lighter\s+than\s+air
+  - like\s+clockwork
+  - like\s+father\s+like\s+son
+  - like\s+taking\s+candy\s+from\s+a\s+baby
+  - like\s+there's\s+no\s+tomorrow
+  - lion's\s+share
+  - live\s+and\s+learn
+  - live\s+and\s+let\s+live
+  - long\s+and\s+short\s+of\s+it
+  - long\s+lost\s+love
+  - look\s+before\s+you\s+leap
+  - look\s+down\s+your\s+nose
+  - look\s+what\s+the\s+cat\s+dragged\s+in
+  - looking\s+a\s+gift\s+horse\s+in\s+the\s+mouth
+  - looks\s+like\s+death\s+warmed\s+over
+  - loose\s+cannon
+  - lose\s+your\s+head
+  - lose\s+your\s+temper
+  - loud\s+as\s+a\s+horn
+  - lounge\s+lizard
+  - loved\s+and\s+lost
+  - low\s+man\s+on\s+the\s+totem\s+pole
+  - luck\s+of\s+the\s+draw
+  - luck\s+of\s+the\s+Irish
+  - make\s+hay\s+while\s+the\s+sun\s+shines
+  - make\s+money\s+hand\s+over\s+fist
+  - make\s+my\s+day
+  - make\s+the\s+best\s+of\s+a\s+bad\s+situation
+  - make\s+the\s+best\s+of\s+it
+  - make\s+your\s+blood\s+boil
+  - man\s+of\s+few\s+words
+  - man's\s+best\s+friend
+  - mark\s+my\s+words
+  - meaningful\s+dialogue
+  - missed\s+the\s+boat\s+on\s+that\s+one
+  - moment\s+in\s+the\s+sun
+  - moment\s+of\s+glory
+  - moment\s+of\s+truth
+  - money\s+to\s+burn
+  - more\s+power\s+to\s+you
+  - more\s+than\s+one\s+way\s+to\s+skin\s+a\s+cat
+  - movers\s+and\s+shakers
+  - moving\s+experience
+  - naked\s+as\s+a\s+jaybird
+  - naked\s+truth
+  - neat\s+as\s+a\s+pin
+  - needle\s+in\s+a\s+haystack
+  - needless\s+to\s+say
+  - neither\s+here\s+nor\s+there
+  - never\s+look\s+back
+  - never\s+say\s+never
+  - nip\s+and\s+tuck
+  - nip\s+it\s+in\s+the\s+bud
+  - no\s+guts,\s+no\s+glory
+  - no\s+love\s+lost
+  - no\s+pain,\s+no\s+gain
+  - no\s+skin\s+off\s+my\s+back
+  - no\s+stone\s+unturned
+  - no\s+time\s+like\s+the\s+present
+  - no\s+use\s+crying\s+over\s+spilled\s+milk
+  - nose\s+to\s+the\s+grindstone
+  - not\s+a\s+hope\s+in\s+hell
+  - not\s+a\s+minute's\s+peace
+  - not\s+in\s+my\s+backyard
+  - not\s+playing\s+with\s+a\s+full\s+deck
+  - not\s+the\s+end\s+of\s+the\s+world
+  - not\s+written\s+in\s+stone
+  - nothing\s+to\s+sneeze\s+at
+  - nothing\s+ventured\s+nothing\s+gained
+  - now\s+we're\s+cooking
+  - off\s+the\s+top\s+of\s+my\s+head
+  - off\s+the\s+wagon
+  - off\s+the\s+wall
+  - old\s+hat
+  - older\s+and\s+wiser
+  - older\s+than\s+dirt
+  - older\s+than\s+Methuselah
+  - on\s+a\s+roll
+  - on\s+cloud\s+nine
+  - on\s+pins\s+and\s+needles
+  - on\s+the\s+bandwagon
+  - on\s+the\s+money
+  - on\s+the\s+nose
+  - on\s+the\s+rocks
+  - on\s+the\s+spot
+  - on\s+the\s+tip\s+of\s+my\s+tongue
+  - on\s+the\s+wagon
+  - on\s+thin\s+ice
+  - once\s+bitten,\s+twice\s+shy
+  - one\s+bad\s+apple\s+doesn't\s+spoil\s+the\s+bushel
+  - one\s+born\s+every\s+minute
+  - one\s+brick\s+short
+  - one\s+foot\s+in\s+the\s+grave
+  - one\s+in\s+a\s+million
+  - one\s+red\s+cent
+  - only\s+game\s+in\s+town
+  - open\s+a\s+can\s+of\s+worms
+  - open\s+and\s+shut\s+case
+  - open\s+the\s+flood\s+gates
+  - opportunity\s+doesn't\s+knock\s+twice
+  - out\s+of\s+pocket
+  - out\s+of\s+sight,\s+out\s+of\s+mind
+  - out\s+of\s+the\s+frying\s+pan\s+into\s+the\s+fire
+  - out\s+of\s+the\s+woods
+  - out\s+on\s+a\s+limb
+  - over\s+a\s+barrel
+  - over\s+the\s+hump
+  - pain\s+and\s+suffering
+  - pain\s+in\s+the
+  - panic\s+button
+  - par\s+for\s+the\s+course
+  - part\s+and\s+parcel
+  - party\s+pooper
+  - pass\s+the\s+buck
+  - patience\s+is\s+a\s+virtue
+  - pay\s+through\s+the\s+nose
+  - penny\s+pincher
+  - perfect\s+storm
+  - pig\s+in\s+a\s+poke
+  - pile\s+it\s+on
+  - pillar\s+of\s+the\s+community
+  - pin\s+your\s+hopes\s+on
+  - pitter\s+patter\s+of\s+little\s+feet
+  - plain\s+as\s+day
+  - plain\s+as\s+the\s+nose\s+on\s+your\s+face
+  - play\s+by\s+the\s+rules
+  - play\s+your\s+cards\s+right
+  - playing\s+the\s+field
+  - playing\s+with\s+fire
+  - pleased\s+as\s+punch
+  - plenty\s+of\s+fish\s+in\s+the\s+sea
+  - point\s+with\s+pride
+  - poor\s+as\s+a\s+church\s+mouse
+  - pot\s+calling\s+the\s+kettle\s+black
+  - pretty\s+as\s+a\s+picture
+  - pull\s+a\s+fast\s+one
+  - pull\s+your\s+punches
+  - pulling\s+your\s+leg
+  - pure\s+as\s+the\s+driven\s+snow
+  - put\s+it\s+in\s+a\s+nutshell
+  - put\s+one\s+over\s+on\s+you
+  - put\s+the\s+cart\s+before\s+the\s+horse
+  - put\s+the\s+pedal\s+to\s+the\s+metal
+  - put\s+your\s+best\s+foot\s+forward
+  - put\s+your\s+foot\s+down
+  - quick\s+as\s+a\s+bunny
+  - quick\s+as\s+a\s+lick
+  - quick\s+as\s+a\s+wink
+  - quick\s+as\s+lightning
+  - quiet\s+as\s+a\s+dormouse
+  - rags\s+to\s+riches
+  - raining\s+buckets
+  - raining\s+cats\s+and\s+dogs
+  - rank\s+and\s+file
+  - rat\s+race
+  - reap\s+what\s+you\s+sow
+  - red\s+as\s+a\s+beet
+  - red\s+herring
+  - reinvent\s+the\s+wheel
+  - rich\s+and\s+famous
+  - rings\s+a\s+bell
+  - ripe\s+old\s+age
+  - ripped\s+me\s+off
+  - rise\s+and\s+shine
+  - road\s+to\s+hell\s+is\s+paved\s+with\s+good\s+intentions
+  - rob\s+Peter\s+to\s+pay\s+Paul
+  - roll\s+over\s+in\s+the\s+grave
+  - rub\s+the\s+wrong\s+way
+  - ruled\s+the\s+roost
+  - running\s+in\s+circles
+  - sad\s+but\s+true
+  - sadder\s+but\s+wiser
+  - salt\s+of\s+the\s+earth
+  - scared\s+stiff
+  - scared\s+to\s+death
+  - sealed\s+with\s+a\s+kiss
+  - second\s+to\s+none
+  - see\s+eye\s+to\s+eye
+  - seen\s+the\s+light
+  - seize\s+the\s+day
+  - set\s+the\s+record\s+straight
+  - set\s+the\s+world\s+on\s+fire
+  - set\s+your\s+teeth\s+on\s+edge
+  - sharp\s+as\s+a\s+tack
+  - shoot\s+for\s+the\s+moon
+  - shoot\s+the\s+breeze
+  - shot\s+in\s+the\s+dark
+  - shoulder\s+to\s+the\s+wheel
+  - sick\s+as\s+a\s+dog
+  - sigh\s+of\s+relief
+  - signed,\s+sealed,\s+and\s+delivered
+  - sink\s+or\s+swim
+  - six\s+of\s+one,\s+half\s+a\s+dozen\s+of\s+another
+  - skating\s+on\s+thin\s+ice
+  - slept\s+like\s+a\s+log
+  - slinging\s+mud
+  - slippery\s+as\s+an\s+eel
+  - slow\s+as\s+molasses
+  - smart\s+as\s+a\s+whip
+  - smooth\s+as\s+a\s+baby's\s+bottom
+  - sneaking\s+suspicion
+  - snug\s+as\s+a\s+bug\s+in\s+a\s+rug
+  - sow\s+wild\s+oats
+  - spare\s+the\s+rod,\s+spoil\s+the\s+child
+  - speak\s+of\s+the\s+devil
+  - spilled\s+the\s+beans
+  - spinning\s+your\s+wheels
+  - spitting\s+image\s+of
+  - spoke\s+with\s+relish
+  - spread\s+like\s+wildfire
+  - spring\s+to\s+life
+  - squeaky\s+wheel\s+gets\s+the\s+grease
+  - stands\s+out\s+like\s+a\s+sore\s+thumb
+  - start\s+from\s+scratch
+  - stick\s+in\s+the\s+mud
+  - still\s+waters\s+run\s+deep
+  - stitch\s+in\s+time
+  - stop\s+and\s+smell\s+the\s+roses
+  - straight\s+as\s+an\s+arrow
+  - straw\s+that\s+broke\s+the\s+camel's\s+back
+  - strong\s+as\s+an\s+ox
+  - stubborn\s+as\s+a\s+mule
+  - stuff\s+that\s+dreams\s+are\s+made\s+of
+  - stuffed\s+shirt
+  - sweating\s+blood
+  - sweating\s+bullets
+  - take\s+a\s+load\s+off
+  - take\s+one\s+for\s+the\s+team
+  - take\s+the\s+bait
+  - take\s+the\s+bull\s+by\s+the\s+horns
+  - take\s+the\s+plunge
+  - takes\s+one\s+to\s+know\s+one
+  - takes\s+two\s+to\s+tango
+  - the\s+more\s+the\s+merrier
+  - the\s+real\s+deal
+  - the\s+real\s+McCoy
+  - the\s+red\s+carpet\s+treatment
+  - the\s+same\s+old\s+story
+  - there\s+is\s+no\s+accounting\s+for\s+taste
+  - thick\s+as\s+a\s+brick
+  - thick\s+as\s+thieves
+  - thin\s+as\s+a\s+rail
+  - think\s+outside\s+of\s+the\s+box
+  - third\s+time's\s+the\s+charm
+  - this\s+day\s+and\s+age
+  - this\s+hurts\s+me\s+worse\s+than\s+it\s+hurts\s+you
+  - this\s+point\s+in\s+time
+  - three\s+sheets\s+to\s+the\s+wind
+  - through\s+thick\s+and\s+thin
+  - throw\s+in\s+the\s+towel
+  - tie\s+one\s+on
+  - tighter\s+than\s+a\s+drum
+  - time\s+and\s+time\s+again
+  - time\s+is\s+of\s+the\s+essence
+  - tip\s+of\s+the\s+iceberg
+  - tired\s+but\s+happy
+  - to\s+coin\s+a\s+phrase
+  - to\s+each\s+his\s+own
+  - to\s+make\s+a\s+long\s+story\s+short
+  - to\s+the\s+best\s+of\s+my\s+knowledge
+  - toe\s+the\s+line
+  - tongue\s+in\s+cheek
+  - too\s+good\s+to\s+be\s+true
+  - too\s+hot\s+to\s+handle
+  - too\s+numerous\s+to\s+mention
+  - touch\s+with\s+a\s+ten\s+foot\s+pole
+  - tough\s+as\s+nails
+  - trial\s+and\s+error
+  - trials\s+and\s+tribulations
+  - tried\s+and\s+true
+  - trip\s+down\s+memory\s+lane
+  - twist\s+of\s+fate
+  - two\s+cents\s+worth
+  - two\s+peas\s+in\s+a\s+pod
+  - ugly\s+as\s+sin
+  - under\s+the\s+counter
+  - under\s+the\s+gun
+  - under\s+the\s+same\s+roof
+  - under\s+the\s+weather
+  - until\s+the\s+cows\s+come\s+home
+  - unvarnished\s+truth
+  - up\s+the\s+creek
+  - uphill\s+battle
+  - upper\s+crust
+  - upset\s+the\s+applecart
+  - vain\s+attempt
+  - vain\s+effort
+  - vanquish\s+the\s+enemy
+  - vested\s+interest
+  - waiting\s+for\s+the\s+other\s+shoe\s+to\s+drop
+  - wakeup\s+call
+  - warm\s+welcome
+  - watch\s+your\s+p's\s+and\s+q's
+  - watch\s+your\s+tongue
+  - watching\s+the\s+clock
+  - water\s+under\s+the\s+bridge
+  - weather\s+the\s+storm
+  - weed\s+them\s+out
+  - week\s+of\s+Sundays
+  - went\s+belly\s+up
+  - wet\s+behind\s+the\s+ears
+  - what\s+goes\s+around\s+comes\s+around
+  - what\s+you\s+see\s+is\s+what\s+you\s+get
+  - when\s+it\s+rains,\s+it\s+pours
+  - when\s+push\s+comes\s+to\s+shove
+  - when\s+the\s+cat's\s+away
+  - when\s+the\s+going\s+gets\s+tough,\s+the\s+tough\s+get\s+going
+  - white\s+as\s+a\s+sheet
+  - whole\s+ball\s+of\s+wax
+  - whole\s+hog
+  - whole\s+nine\s+yards
+  - wild\s+goose\s+chase
+  - will\s+wonders\s+never\s+cease?
+  - wisdom\s+of\s+the\s+ages
+  - wise\s+as\s+an\s+owl
+  - wolf\s+at\s+the\s+door
+  - words\s+fail\s+me
+  - work\s+like\s+a\s+dog
+  - world\s+weary
+  - worst\s+nightmare
+  - worth\s+its\s+weight\s+in\s+gold
+  - wrong\s+side\s+of\s+the\s+bed
+  - yanking\s+your\s+chain
+  - yappy\s+as\s+a\s+dog
+  - years\s+young
+  - you\s+are\s+what\s+you\s+eat
+  - you\s+can\s+run\s+but\s+you\s+can't\s+hide
+  - you\s+only\s+live\s+once
+  - you're\s+the\s+boss
+  - young\s+and\s+foolish
+  - young\s+and\s+vibrant

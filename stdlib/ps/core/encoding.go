@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
@@ -142,7 +142,7 @@ func phpBase64Decode(str string, strict ...any) any {
 		count++
 	}
 	if isStrict {
-		// A trailing group of one character carries no whole byte, and the
+		// A trailing group of one character holds no whole byte. The
 		// padding has to complete the last group without overshooting it.
 		if count%4 == 1 {
 			return false
@@ -222,7 +222,7 @@ func urlEncode(str string, form bool) string {
 	return b.String()
 }
 
-// The decoders live in stdlib/shared because the runner needs them too: it
+// The decoders are in stdlib/shared because the runner needs them too: it
 // builds $_GET and $_POST from a request with the same rules parse_str applies
 // to a string. Two implementations would let a form arrive one way through the
 // superglobals and another through parse_str.
@@ -236,7 +236,7 @@ func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 // with register_globals in PHP 8.
 //
 // The setter is nil when a script omitted the argument. PHP raises an
-// ArgumentCountError for that call, and this runtime pads a short call instead.
+// ArgumentCountError for that call. This runtime pads a short call instead.
 // phpParseStr then returns before the decode and writes nothing.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
@@ -245,12 +245,12 @@ func phpParseStr(str string, result func(any)) {
 	result(shared.ParseStr(str, shared.Limits{}))
 }
 
-// phpHTTPBuildQuery takes data as any and reads it through model.RangeValues.
+// phpHTTPBuildQuery takes data as any and reads it through modelutil.RangeValues.
 // A *model.Array keeps its insertion order and a map[string]any row from a
 // database binding arrives with no array conversion first.
 func phpHTTPBuildQuery(data any) string {
 	var b strings.Builder
-	if n, ok := model.LenValues(data); ok {
+	if n, ok := modelutil.LenValues(data); ok {
 		// Pairs run to roughly a key, a value, '=' and '&'.
 		b.Grow(n * 16)
 	}
@@ -262,7 +262,7 @@ func phpHTTPBuildQuery(data any) string {
 // A nested value takes the name key[sub], and urlEncode escapes the
 // brackets along with the rest of that name as it writes the pair.
 func buildQuery(b *strings.Builder, prefix string, data any) {
-	model.RangeValues(data, func(key, val any) bool {
+	modelutil.RangeValues(data, func(key, val any) bool {
 		name := phpval.String(key)
 		if prefix != "" {
 			name = prefix + "[" + name + "]"
@@ -270,7 +270,7 @@ func buildQuery(b *strings.Builder, prefix string, data any) {
 		switch {
 		case val == nil:
 			// PHP drops a null entry and emits no empty value.
-		case model.IsCollection(val):
+		case modelutil.IsCollection(val):
 			buildQuery(b, name, val)
 		default:
 			if b.Len() > 0 {

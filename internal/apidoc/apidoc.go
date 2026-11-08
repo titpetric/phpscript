@@ -1,8 +1,8 @@
 // Package apidoc generates docs/reference/extensions/implemented-apis.md.
 // It combines two sources of truth: the live runtime, which names every
-// registration and its Go signature, and a scan of the Go source, which
-// carries the doc comment written next to each registration and the parameter
-// names the reflect API cannot see. See scripts/list-apis for the entry point.
+// registration and its Go signature, and a scan of the Go source, which reads
+// the doc comment written next to each registration and the parameter names
+// the reflect API cannot see. See scripts/list-apis for the entry point.
 package apidoc
 
 import (
@@ -58,8 +58,8 @@ type Method struct {
 // Rename answers the entry under whichever of them a caller asked about.
 //
 // PHP renders it the way `go doc` renders a Go type, in PHP spelling: the
-// description, the properties the bound Go type carries, then the constructor
-// and the methods. A declaration ends at the semicolon and carries no body,
+// description, the properties the bound Go type holds, then the constructor
+// and the methods. A declaration ends at the semicolon and omits the body,
 // because the implementation is Go and no PHP a reader could open.
 type Class struct {
 	Name    string   `json:"name"`
@@ -77,7 +77,7 @@ type Class struct {
 	// returns, the key the doc index holds this class's godoc under.
 	GoType string `json:"go_type,omitempty"`
 
-	// Binds is the import path of the package the bound Go type lives in.
+	// Binds is the import path of the package that declares the bound Go type.
 	Binds string `json:"binds,omitempty"`
 
 	// Uses cites the Go symbol behind the class: the standard library type a
@@ -113,7 +113,7 @@ func GenerateAreas(rt *runner.Runtime, srcRoot string, owners Owners) (string, e
 	return render(funcs, classes), nil
 }
 
-// Reflect is Generate without the source scan, and so without its comments.
+// Reflect is Generate without the source scan or the comments the scan reads.
 func Reflect(rt *runner.Runtime) ([]Func, []Class) {
 	return build(rt, emptySources())
 }
@@ -134,7 +134,7 @@ func build(rt *runner.Runtime, src *sources) ([]Func, []Class) {
 }
 
 // buildFunc merges the scanned source entry for name with the reflected
-// signature of the registered Go function. Source carries parameter names and
+// signature of the registered Go function. Source holds parameter names and
 // comments; reflection remains authoritative for returns because it can map a
 // concrete Go type back to the PHP class registered for it.
 func buildFunc(name string, fn any, src *sources, classTypes map[reflect.Type]string) Func {
@@ -197,8 +197,8 @@ func buildClass(names []string, ctor any, src *sources, classTypes map[reflect.T
 	} else if pkg, decl := ctorDecl(ctor, src); decl != nil {
 		// A class registered under a computed name (the SPL exception loop)
 		// has no literal site to scan; the constructor's declaration, found
-		// through its runtime symbol name, carries the signature, and the
-		// type declaration documents the class better than a "NewX returns"
+		// through its runtime symbol name, holds the signature. The type
+		// declaration documents the class better than a "NewX returns"
 		// constructor comment does.
 		out.Package = pkg
 		out.Params, _ = signature(decl.Type)
@@ -312,7 +312,7 @@ func constructorResultType(ctor any) (reflect.Type, bool) {
 
 // ctorDecl resolves a constructor value to its scanned declaration through
 // the symbol name the Go runtime holds for it. Function literals resolve to
-// no declaration: their synthesised names (Register.func1) have none.
+// no declaration: no source declares a synthesised name like Register.func1.
 func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	fn := goruntime.FuncForPC(reflect.ValueOf(ctor).Pointer())
 	if fn == nil {

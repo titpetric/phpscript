@@ -38,13 +38,7 @@ func AcceptsHTML(accept string) bool {
 
 // WantsErrorPage reports whether a request is a browser navigation, the only
 // kind of request a site's HTML error page answers. A HEAD request is never
-// one: there is no body to render a page into.
-//
-// A URL prefix cannot answer this, because an API and a website share one URL
-// space and one catch-all handler; the request answers it itself. Sec-Fetch-Dest
-// is decisive when a browser sends it: fetch() and XHR send "empty", an image
-// "image", a stylesheet "style", and only a navigation "document". A client that
-// sends none falls to its Accept header, which has to name HTML explicitly.
+// one. Sec-Fetch-Dest decides it, and a client that sends none falls to Accept.
 func WantsErrorPage(r *http.Request) bool {
 	if r.Method == http.MethodHead {
 		return false
@@ -57,20 +51,18 @@ func WantsErrorPage(r *http.Request) bool {
 	return AcceptsHTML(r.Header.Get("Accept"))
 }
 
-// statusCoder is the part of a PHP exception that carries a code:
+// statusCoder is the part of a PHP exception that holds a code:
 // `throw new Exception("Not found", 404)`. Both stdlib.Exception and
-// runner.RuntimeException have GetCode, and this file spells the interface
+// runner.RuntimeException have GetCode. This file spells the interface
 // structurally because stdlib imports runner and not the other way around.
 type statusCoder interface{ GetCode() int }
 
 // StatusFor resolves the HTTP status a finished script ends on, given whatever
 // error it returned. Zero means nothing chose one and the host's default stands.
 //
-// An uncaught exception is the interesting case. Its code is the script's own
-// number, which need not be a status at all and StatusFor takes only a code in
-// the 4xx and 5xx range as one; anything else is an application code and the
-// request failed with a 500. exit() and die() are not failures: a script that
-// ended early still answers with the status it staged, as it does in PHP.
+// Only an exception code in the 4xx or 5xx range counts as a status; anything
+// else is an application code and the request failed with a 500. exit() and
+// die() are not failures: the script answers with the status it staged.
 func (c Context) StatusFor(err error) int {
 	if err == nil {
 		return c.ResponseStatus()
@@ -92,14 +84,9 @@ func (c Context) Answered(body []byte) bool {
 	return len(body) > 0 || c.response.Get("Content-Type") != ""
 }
 
-// WriteResponse flushes one response: the headers the script staged with
-// header(), the status, and the body it produced. No byte reaches the
-// ResponseWriter before this and a host can look at a finished
-// response and answer with something else instead.
-//
-// A status of zero writes none, leaving net/http its 200. So does a status
-// net/http will not send: it panics on anything outside 100 to 999, and
-// http_response_code() takes whatever number a script passes.
+// WriteResponse flushes one response: the staged headers, the status and the
+// body. A status of zero writes none, leaving net/http its 200. So does one
+// outside 100 to 999, which net/http panics on.
 func (c Context) WriteResponse(w http.ResponseWriter, status int, body []byte) {
 	for name, values := range c.response {
 		w.Header()[name] = values
@@ -111,8 +98,6 @@ func (c Context) WriteResponse(w http.ResponseWriter, status int, body []byte) {
 }
 
 // SetDefaultHeader stages a header only if the script did not set one itself.
-// A host applies a default through it, such as PHP's text/html content type,
-// without overriding what the script said.
 func (c Context) SetDefaultHeader(name, value string) {
 	if c.response.Get(name) == "" {
 		c.response.Set(name, value)
@@ -126,7 +111,7 @@ func (c Context) Header(header string, opts ...any) {
 	name, value, ok := strings.Cut(header, ":")
 	if !ok {
 		// A status line, "HTTP/1.0 404 Not Found", is the other thing header()
-		// takes. It has no name:value shape, and what it carries is the status.
+		// takes. It has no name:value shape; the status is the number in it.
 		if code, ok := parseStatusLine(header); ok {
 			*c.status = code
 		}
@@ -179,14 +164,12 @@ func parseStatusLine(header string) (int, bool) {
 
 // HTTPResponseCode implements PHP http_response_code([$response_code]).
 //
-// With no argument it reports the status this response will carry, and with
+// With no argument it reports the status this response will send, and with
 // one it stages that status and reports the one it replaced.
 //
 // PHP answers false while nothing has set a status, and true for the first one
-// set, having no previous number to return. On
-// a web SAPI neither happens: a request starts out answering 200. sapi is the
-// SAPI name the runtime runs under, and only the command line, or a host that
-// named no SAPI at all, starts without a status.
+// set. On a web SAPI neither happens: a request starts out answering 200, and
+// only the command line, or a host that named no SAPI, starts without one.
 func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 	previous := c.ResponseStatus()
 	if previous == 0 && sapi != "" && sapi != "cli" {

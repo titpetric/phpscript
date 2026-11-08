@@ -35,7 +35,7 @@ The constructor throws an exception when the connection name is not registered o
 
 ## Connections an application owns
 
-Connection names normally come from the environment the host started with, which is right when the operator owns the list. An application that keeps its connections in a table owns the list itself, and `putenv` will not do: it writes to the script environment, and the host builds the provider once, before the first request, from its own environment.
+Connection names normally come from the environment the host started with, which is right when the operator owns the list. An application that keeps its connections in a table owns the list itself, and `putenv` will not do: it writes to the script environment. The host builds the provider once, before the first request, from the host environment.
 
 `Database::register()` adds one:
 
@@ -156,7 +156,7 @@ $migrate->run();
 
 The constructor takes the same connection name as `new Database("app")`, which is `PLATFORM_DB_APP` in the environment. Omitting it selects the connection named `default`. `run()` also records the run under that name as its project and two applications sharing one database keep separate records of what they applied.
 
-Before `app`, the constructor tries the connection `app:migrate`. A deployment that registers one points migrations at a user allowed to alter tables while the application queries through a user that is not, and the script names neither. An environment variable name holds no colon and `PLATFORM_DB_APP:MIGRATE` will not define `app:migrate`; `Database::register("app:migrate", $dsn)` registers it. Whichever of the two answers, the project stays `app`.
+Before `app`, the constructor tries the connection `app:migrate`. A deployment that registers one points migrations at a user allowed to alter tables while the application queries through a user that is not. The script names neither user. An environment variable name holds no colon and `PLATFORM_DB_APP:MIGRATE` will not define `app:migrate`; `Database::register("app:migrate", $dsn)` registers it. Whichever of the two answers, the project stays `app`.
 
 `load()` accepts a glob relative to the runtime working directory, selecting the migration files in the application filesystem. `run()` applies them and records what it applied in a `migrations` table and later server starts skip the statements that already ran.
 
@@ -190,9 +190,9 @@ $db->query("create table if not exists users (id integer primary key, name text)
 $db->query("delete from users where id = ?", 10);
 ```
 
-A `?` is the placeholder whatever the driver is. phpscript rebinds a statement that carries arguments to the style the driver reads and the same PHP runs on sqlite, mysql and postgres, which numbers its placeholders `$1`, `$2`. A statement with no arguments passes through unchanged: rebinding scans and does not parse and a `?` inside a string literal is not a placeholder.
+A `?` is the placeholder whatever the driver is. phpscript rebinds a statement with arguments to the style the driver reads and the same PHP runs on sqlite, mysql and postgres, which numbers its placeholders `$1`, `$2`. A statement with no arguments passes through unchanged: rebinding scans and does not parse and a `?` inside a string literal is not a placeholder.
 
-**A single value that is an array binds by name, not by position.** phpscript takes a single argument that is an array or a map as a set of named parameters for a `:name` query. `insert()` and friends build on that. A statement that binds exactly one value, and that value is an array, becomes a named query and fails somewhere else:
+**A single value that is an array binds by name, not by position.** phpscript takes a single argument that is an array or a map as a set of named parameters for a `:name` query. `insert()` and friends build on that. A statement that binds exactly one value, where that value is an array, becomes a named query and fails somewhere else:
 
 ```php
 // Refused: one argument, and it is an array.
@@ -257,9 +257,9 @@ $db->close();
 
 ## Dates and times
 
-A date column is the one place a Go value crosses into PHP with no conversion written for it: the driver scans it into a `time.Time`, and that is the same value [stdlib/ps/time](../design.md#dates-and-times) returns to a script. One rule follows from it:
+A date column is the one place a Go value crosses into PHP with no conversion written for it: the driver scans it into a `time.Time`. That is the same value [stdlib/ps/time](../design.md#dates-and-times) returns to a script. One rule follows from it:
 
-**store the offset.** Prefer the column type that carries one, and write RFC 3339 (`2026-08-26T14:48:00+02:00`) wherever the column is text. `json_encode` already emits RFC 3339 for a `Time` and one spelling covers a database column, a JSON payload and a Go binding, and the layout has a name: `$t->format(TIME_RFC3339)`.
+**store the offset.** Prefer the column type that stores one, and write RFC 3339 (`2026-08-26T14:48:00+02:00`) wherever the column is text. `json_encode` already emits RFC 3339 for a `Time` and one spelling covers a database column, a JSON payload and a Go binding. The layout has a name: `$t->format(TIME_RFC3339)`.
 
 ### Column types, per dialect
 
@@ -275,7 +275,7 @@ Measured against the drivers this runtime ships, writing `2026-08-26T14:48:00Z` 
 | sqlite   | `TIMESTAMP`/`DATETIME` | the stored text                 | `Time`, offset read from that text | ✅ |
 | any      | `TEXT`/`VARCHAR`       | see below                       | a plain string                     | ❌ |
 
-A `TIMESTAMPTZ` and a mysql `TIMESTAMP` both store an instant and both round trip one. The rows marked ⚠️ store a wall clock instead: they round trip correctly only while every writer and reader agrees on one zone, and they have no way to name that zone. The rows marked ❌ are not date columns at all; the driver has no reason to parse them and a script gets the text back.
+A `TIMESTAMPTZ` and a mysql `TIMESTAMP` both store an instant and both round trip one. The rows marked ⚠️ store a wall clock instead: they round trip correctly only while every writer and reader agrees on one zone, which the column type cannot name. The rows marked ❌ are not date columns at all; the driver has no reason to parse them and a script gets the text back.
 
 sqlite has no date type. What makes a column a date there is its **declared** type: the driver scans a `TIMESTAMP` or `DATETIME` column into a `Time` but not a `TEXT` column, and the text stored in the column decides the zone. `2026-08-26T14:48:00+02:00` keeps the offset; the driver reads `2026-08-26 14:48:00` as UTC whatever it meant.
 
@@ -307,13 +307,13 @@ A `Time` is exempt from the named-binding rule under [Execute queries](#execute-
 $db->query("insert into events (at) values (?)", $t);
 ```
 
-That needs pdo v0.2.4 or later. An earlier pdo reads a lone `Time` as a bag of named parameters, and the statement reaches the server with its `?` unbound.
+That needs pdo v0.2.4 or later. An earlier pdo reads a lone `Time` as a bag of named parameters. The statement reaches the server with its `?` unbound.
 
 ## Tracing
 
-Database operations automatically contribute database spans to the trace of the request that ran them. A query span measures the call and carries the SQL statement, the transaction depth and any error; a transaction is one span from `begin()` to `commit()` or `rollback()`. See [Telemetry](../telemetry.md).
+Database operations automatically contribute database spans to the trace of the request that ran them. A query span measures the call and records the SQL statement, the transaction depth and any error; a transaction is one span from `begin()` to `commit()` or `rollback()`. See [Telemetry](../telemetry.md).
 
-A span also carries what the statement is. `/* userGet */ select * from user` records `query_type` as `select` and `query_comment` as `userGet`, and the comment stays in the statement that reaches the server and `SHOW PROCESSLIST` shows the same tag. The tracer records a statement a read-only client refused the same way, with the refusal as its error; the statement never reaches the query log.
+A span also records what the statement is. `/* userGet */ select * from user` records `query_type` as `select` and `query_comment` as `userGet`. The comment stays in the statement that reaches the server and `SHOW PROCESSLIST` shows the same tag. The tracer records a statement a read-only client refused the same way, with the refusal as its error; the statement never reaches the query log.
 
 ## API summary
 

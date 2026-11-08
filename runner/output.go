@@ -13,8 +13,7 @@ import (
 // of it, and pushes the buffers a script reads back.
 
 // PushOutput redirects script output to w until the matching PopOutput. Pushes
-// nest: the innermost writer receives the output and a captured region can
-// itself capture.
+// nest: the innermost writer receives the output.
 func (rt *Runtime) PushOutput(w io.Writer) {
 	if w == nil {
 		// Every push has to leave something to pop. Dropping the level instead
@@ -26,8 +25,7 @@ func (rt *Runtime) PushOutput(w io.Writer) {
 }
 
 // PopOutput ends the innermost redirection, reporting whether one is active.
-// Output resumes going to the enclosing writer and nested
-// captures compose.
+// Output resumes going to the enclosing writer.
 func (rt *Runtime) PopOutput() bool {
 	if len(rt.outStack) == 0 {
 		return false

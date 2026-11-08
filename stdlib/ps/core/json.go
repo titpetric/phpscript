@@ -35,14 +35,14 @@ func registerJSON(rt *runner.Runtime) {
 	// `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
 	// string of it existing first, and an encoder over php://output writes the
 	// response as the script builds it. Both take the io.Reader or io.Writer
-	// they wrap and any handle fopen() returns works, and so do STDIN and
+	// they wrap and any handle fopen() returns works, as do STDIN and
 	// STDOUT.
 	rt.RegisterConstructor("JSON\\Encoder", NewJSONEncoder)
 	rt.RegisterConstructor("JSON\\Decoder", NewJSONDecoder)
 }
 
 // phpJSONEncode encodes value. It takes $flags and ignores it, the way
-// json_decode accepts $depth and $flags and a port carrying
+// json_decode accepts $depth and $flags and a port passing
 // JSON_UNESCAPED_SLASHES runs: the runtime defines no JSON_* constant, the
 // argument arrives as null, and the flag selects no option. The encoding is not
 // configurable by design; see docs/design.md, "JSON".
@@ -257,8 +257,8 @@ func NewJSONEncoder(stream io.Writer) (*JSONEncoder, error) {
 
 // encode writes $value to the stream as JSON, followed by a newline.
 //
-// The newline is Go's, not php's: an Encoder writes a stream of values, and the
-// newline is what separates one from the next. A single value followed by a
+// The newline is Go's, not php's: an Encoder writes a stream of values; the
+// newline separates one from the next. A single value followed by a
 // newline is still valid JSON to any reader.
 func (e *JSONEncoder) Encode(value any) error {
 	if e.enc != nil {
@@ -276,9 +276,8 @@ func (e *JSONEncoder) Encode(value any) error {
 	return err
 }
 
-// SetIndent is json.Encoder.SetIndent: the encoder breaks each value across
-// lines, $indent per level under $prefix, and two empty strings go back to one
-// line per value.
+// SetIndent is json.Encoder.SetIndent: $indent per level under $prefix, and
+// two empty strings go back to one line per value.
 func (e *JSONEncoder) SetIndent(prefix, indent string) {
 	if e.enc == nil {
 		e.enc = json.NewEncoder(e.stream)
@@ -294,10 +293,8 @@ type JSONDecoder struct {
 
 // NewJSONDecoder returns a decoder reading from $stream.
 //
-// UseNumber is on, as in json_decode(): without it Go reads every number as a
-// float, and the 7 in a document would come back as 7.0. With it a whole
-// number is an int and only a fractional one is a float, as php
-// answers and what a row written back out has to preserve.
+// UseNumber is on, as in json_decode(): a whole number comes back an int and
+// only a fractional one a float, the way php answers.
 func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	if stream == nil {
 		return nil, errNilStream("JSON\\Decoder", "reader")
@@ -317,9 +314,8 @@ func (d *JSONDecoder) More() bool {
 	return d.dec.More()
 }
 
-// errNilStream phrases the one refusal both constructors make. A stream is not
-// optional: fopen() answers false for a file it cannot open, and false is not a
-// stream.
+// errNilStream phrases the one refusal both constructors make: fopen() answers
+// false for a file it cannot open, and false is not a stream.
 func errNilStream(class, kind string) error {
 	return &jsonStreamError{class: class, kind: kind}
 }

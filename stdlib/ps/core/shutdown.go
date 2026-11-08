@@ -19,7 +19,7 @@ func RegisterShutdown(rt *runner.Runtime) {
 	// including after exit or an execution error, in registration order.
 	rt.RegisterFunc("register_shutdown_function", func(callback any) error {
 		// The runtime's own verdict and no reflect.Kind check: a PHP
-		// closure is a value carrying its declaration, not a bare func, and
+		// closure is a value holding its declaration, not a bare func, and
 		// no other spelling of a callable is a func either.
 		resolved, ok := rt.Callable(callback)
 		if !ok {

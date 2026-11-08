@@ -11,7 +11,7 @@ import (
 )
 
 // TestRatio covers the form both coverage columns take. The header says what
-// the column counts and the cell carries the counts and the percent they come
+// the column counts and the cell holds the counts and the percent they come
 // to, and the percent rounds to whole: 1 of 2 reads 50%, where truncation
 // would read 49%.
 func TestRatio(t *testing.T) {
@@ -54,7 +54,7 @@ func TestPercentOf(t *testing.T) {
 }
 
 // TestFolderCoverColumns covers what a folder with nothing to measure prints.
-// Its fixtures loaded no PHP file of their own and both columns answer with the
+// Its fixtures loaded no PHP file and both columns answer with the
 // dash: a zero percent there would drag the run's reading down for no finding.
 func TestFolderCoverColumns(t *testing.T) {
 	t.Parallel()
@@ -173,9 +173,9 @@ func TestFolderTableSplitsEngineDurations(t *testing.T) {
 	}
 }
 
-// TestWriteFolderTableWithCoverage covers the two columns --cover adds, and
-// that a folder with nothing measured keeps its row: the run reports every
-// folder the arguments resolved to, measured or not.
+// TestWriteFolderTableWithCoverage covers the two columns --cover adds. A
+// folder with nothing measured keeps its row: the run reports every folder
+// the arguments resolved to, measured or not.
 func TestWriteFolderTableWithCoverage(t *testing.T) {
 	t.Parallel()
 	measured := folderCover{Dir: "arrays", FilesCovered: 4, FilesTotal: 50, LinesCovered: 1532, LinesTotal: 8000}

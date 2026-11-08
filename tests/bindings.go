@@ -98,8 +98,8 @@ type registrar interface {
 func registerBindings(rt registrar) {
 	// --- list shapes -------------------------------------------------------
 	//
-	// Same data, four representations. bind_list_array is what stdlib used to
-	// do everywhere; bind_list_strings is the cheap end of the scale.
+	// Same data, four representations. bind_list_array is the expensive end of
+	// the scale; bind_list_strings is the cheap end.
 
 	rt.RegisterFunc("bind_list_array", func() *model.Array {
 		out := model.NewArray()
@@ -173,9 +173,9 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_map", func() map[string]any {
 		return map[string]any{"id": int64(1), "name": "alpha"}
 	})
-	// A list a binding keyed by position and never packed into a slice. It
-	// is the shape that keeps PHP's numbering through an unset, because a map
-	// holds the hole a slice cannot.
+	// A list a binding keyed by position and never packed into a slice. The
+	// shape keeps PHP's numbering through an unset, because a map holds the
+	// hole a slice cannot.
 	rt.RegisterFunc("bind_list_keyed", func() map[int]string {
 		keyed := make(map[int]string, len(bindingWords))
 		for i, w := range bindingWords {
@@ -187,9 +187,9 @@ func registerBindings(rt registrar) {
 	// --- struct shapes -----------------------------------------------------
 	//
 	// A struct pointer is the cheapest possible object: one allocation, no
-	// property map. Returning a value (not a pointer) costs one boxing
-	// allocation, and the copy makes field writes silently useless and prefer
-	// pointers for anything PHP might assign to.
+	// property map. Returning a value costs one boxing allocation. The copy
+	// makes field writes silently useless. Return a pointer for anything PHP
+	// might assign to.
 
 	rt.RegisterFunc("bind_record", func() *BindingRecord {
 		return &BindingRecord{ID: 1, Name: "alpha"}
@@ -269,8 +269,8 @@ func registerBindings(rt registrar) {
 		return fn(s)
 	})
 	// bind_callback is the mapper shape, as regexp.Regexp's
-	// ReplaceAllStringFunc declares it: the one a binding reaches for first and
-	// the one coerceArgOn could not fill at all.
+	// ReplaceAllStringFunc declares it: the one a binding declares most often
+	// and the one coerceArgOn could not fill at all.
 	rt.RegisterFunc("bind_callback", func(s string, fn func(string) string) string {
 		return fn(s)
 	})

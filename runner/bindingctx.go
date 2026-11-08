@@ -8,13 +8,13 @@ import (
 )
 
 // bindingCtx is the context one binding call receives: the calling frame, the
-// script environment and the source location, carried as fields of one value
+// script environment and the source location, stored as fields of one value
 // in place of four context.WithValue layers. It embeds the parent and
 // deadlines, cancellation and every other value pass through.
 //
 // The runtime builds one per call and never pools or reuses it. A binding may
-// hold the context past the call - a database driver watching Done() on a
-// goroutine of its own does - and a reused value would rebind the parent a
+// hold the context past the call - a database driver watching Done() on its
+// own goroutine does - and a reused value would rebind the parent a
 // first holder still reads.
 type bindingCtx struct {
 	context.Context
@@ -25,8 +25,8 @@ type bindingCtx struct {
 	line     int
 
 	// session is the runtime's own context when the embedded parent is the
-	// request's: the active span and the request record Context.Register
-	// seeded live on the session chain, while the parent carries the values,
+	// request's: the session chain holds the active span and the request
+	// record Context.Register seeded, while the parent holds the values,
 	// the deadline and the cancellation of the request in flight. Nil when
 	// the parent is the session context already.
 	session context.Context
@@ -106,7 +106,7 @@ func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 
 // fillSource records the file and the line spans started from the context
 // attribute to. The line belongs to the runtime and to no scope: the parser
-// compiles __LINE__ to a literal and no frame carries it, and writing it into
+// compiles __LINE__ to a literal and no frame holds it, and writing it into
 // one per statement for a read back here costs a map write on every statement
 // executed. fillSource resolves it here and records nothing, for the reason
 // currentStmt states.

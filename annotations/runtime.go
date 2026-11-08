@@ -17,9 +17,9 @@ type RuntimeFunc func(*runner.Runtime)
 // executes in, under the "cli" sapi. A routed endpoint takes a pooled runtime
 // from its handler instead; see handler.buildRuntime.
 //
-// The register hooks run once the standard library sits on the runtime, before the
-// caller's RuntimeFunc options and an option can always wrap what came before
-// it, a runtime context value in particular.
+// The register hooks run once the runtime holds the standard library, ahead of
+// the caller's RuntimeFunc options and an option can always wrap what came
+// before it, a runtime context value in particular.
 func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi string, register ...RuntimeFunc) *runner.Runtime {
 	options := c.runnerOptions
 	options.RootFS = root

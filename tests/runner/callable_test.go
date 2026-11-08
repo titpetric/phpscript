@@ -61,7 +61,7 @@ func TestFirstClassCallableResolution(t *testing.T) {
 		{
 			// An unqualified name inside a namespace resolves there first and then
 			// globally, the fallback a call takes. A namespaced file may only
-			// declare, and this case takes the callable inside a function.
+			// declare. This case takes the callable inside a function.
 			name:  "a namespaced name falls back to the global function",
 			src:   "<?php\nnamespace App;\n\nfunction pick() { $f = strtoupper(...); echo $f(\"ab\"); }\n",
 			want:  "AB",

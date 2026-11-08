@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestVersion covers the defaults a build with no ldflags carries. "unknown" is
+// TestVersion covers the defaults a build with no ldflags keeps. "unknown" is
 // not a placeholder here: the version command prints the commit, the commit
 // time and the branch only when each says something else and a `go build` with
 // no VCS information prints the version line alone, with no three lines

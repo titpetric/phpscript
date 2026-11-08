@@ -18,8 +18,8 @@ import (
 //
 // A file marks a suite root: the directory whose fixtures resolve their
 // prelude, their connections and their hooks through it. The run's own is
-// whatever -f named or the nearest one above the working directory, and it
-// alone may set the keys that describe a whole run.
+// whatever -f named or the nearest one above the working directory. It alone
+// may set the keys that describe a whole run.
 type suites struct {
 	// run is the suite the invocation itself is under, or nil. Its directory
 	// is not necessarily below the working directory and suites holds it
@@ -28,7 +28,7 @@ type suites struct {
 	run *tests.Suite
 
 	// found are the files discovered below the argument paths, sorted by
-	// directory so setup runs an outer suite before one nested inside it.
+	// directory so setup runs an outer suite before a nested one.
 	found []*tests.Suite
 }
 
@@ -141,7 +141,7 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 // one at or above the working directory.
 //
 // The walk climbs upwards because that is where an application root sits
-// relative to the tests it holds. A repository whose fixtures live in tests/
+// relative to the tests it holds. A repository keeping its fixtures in tests/
 // writes one file at its root, and every fixture below inherits it without the
 // tree repeating it per folder.
 func runSuite(base config.Config) (*tests.Suite, error) {
@@ -192,7 +192,7 @@ func walkRoot(p string) (string, bool, error) {
 //
 // --include still wins over what a suite named, and speaks from the
 // invocation root and not from a suite: an operator typed it about this run,
-// and the file it names sits in the invocation directory.
+// and the file it names is in the invocation directory.
 func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {
 		suite := found.resolve(fx.Path)
@@ -212,7 +212,7 @@ func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 //
 // Only -v reports it. A hook writes whatever its migrations and its seed print,
 // and without -v the run answers with a folder table that a schema's log lines
-// would sit in the middle of. The error the run ends with reports a failure
+// would land in the middle of. The error the run ends with reports a failure
 // either way.
 func hookOutput(opts Options) io.Writer {
 	if opts.Verbose && !opts.JSON && !opts.coverReport() {

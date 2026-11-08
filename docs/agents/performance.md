@@ -27,7 +27,7 @@ Where the five stand, six segments of 3s per route at concurrency 1, four worker
 | `vanilla-nginx`   | 373.0           | 378.0           | 381.0          | 2525           |
 | `vanilla-apache`  | 472.0           | 474.0           | 489.0          | 2017           |
 
-Rows compare inside one table and not across two. `scripts/bench-http.sh` and `scripts/benchmark.php` answer a few percent apart on the same configuration, because a server's lifetime under one differs from its lifetime under the other in what else it served, and a figure carried from one table into another comes from a run that did not produce the row beside it.
+Rows compare inside one table and not across two. `scripts/bench-http.sh` and `scripts/benchmark.php` answer a few percent apart on the same configuration, because a server's lifetime under one differs from its lifetime under the other in what else it served, and a figure copied from one table into another comes from a run that did not produce the row beside it.
 
 Two things drive them, and both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through one load generator and reports a latency distribution and a request rate per route; `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, and reports `allocs/op`. There is still no fixture and no venom suite over either.
 
@@ -52,15 +52,15 @@ Path B is already structurally right - nothing re-parses, nothing re-registers -
 
 ## The harness
 
-`scripts/bench-http.sh` is the sweep and `wrk --latency` is the generator inside it. `hey` loses the job on its own output: it prints every latency as four decimal places of a second, coarser than any handler here answers in and every percentile it reports comes back as the same number. wrk prints no 95th percentile, reporting 50, 75, 90 and 99 and the sweep collects the 90th in its place.
+`scripts/bench-http.sh` is the sweep and `wrk --latency` is the generator it drives. `hey` loses the job on its own output: it prints every latency as four decimal places of a second, coarser than any handler here answers in and every percentile it reports comes back as the same number. wrk prints no 95th percentile, reporting 50, 75, 90 and 99 and the sweep collects the 90th in its place.
 
 A latency column end to end is never finer than the generator, and no latency column prices a per-request allocation at all. `BenchmarkTestServerRoute` is the other half of the harness for that reason: it drives the same router through `httptest` with the socket left out and `ns/op`, `B/op` and `allocs/op` come off the same request path at a resolution the sweep does not have. The sweep is what says the socket and the wire did not undo it.
 
 Concurrency 1 for the delta, as the contract's single-threaded rule requires. A second table at concurrency 4 for queueing behaviour, never as the headline.
 
-A segment is one wrk run and a route gets six of them, because the contract's drift guard needs two ends to compare: one long run reports one distribution with no way to tell when inside it the box is busy.
+A segment is one wrk run and a route gets six of them, because the contract's drift guard needs two ends to compare: one long run reports one distribution with no way to tell when during that run the box is busy.
 
-`testdata/goserver` is the floor column. The file carries `//go:build ignore` and it runs as `go run testdata/goserver/main.go`. Read it as the floor, not as a target to reach: a VM is the whole of what the comparison measures.
+`testdata/goserver` is the floor column. The file holds `//go:build ignore` and it runs as `go run testdata/goserver/main.go`. Read it as the floor, not as a target to reach: a VM is the whole of what the comparison measures.
 
 `BENCH_TARGETS` selects the sides, and the default pair is the one needing no docker:
 
@@ -70,9 +70,9 @@ BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/ben
 
 One table per side, because two of them are different execution models and `bridge` and `service` are the pair. The table header names the model and what each number describes travels with it. The sweep brings every side up and down itself, including the compose stacks.
 
-`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php` and the web server is a column of the table and no part of the stack held fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default and every side answers the same number of requests at once. opcache is on with `validate_timestamps` off, Slim caches its routes, and the autoloader is `--classmap-authoritative`, because an application served without those measures the compiler. The JIT is off, which is php's own default and what `VANILLA_JIT` leaves it at; the README prices all three of its modes and the buffer each one fills. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
+`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php` and the web server is a column of the table and no part of the stack held fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default and every side answers the same number of requests at once. opcache is on with `validate_timestamps` off, Slim caches its routes and the autoloader is `--classmap-authoritative`, because an application served without those measures the compiler. The JIT is off, which is php's own default and what `VANILLA_JIT` leaves it at; the README prices all three of its modes and the buffer each one fills. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
 
-Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements in it are not interchangeable and the note column says which is which: a host process reports its own RSS, where phpscript and the twin each answer every request on one process whose workers are threads inside it, and the container reports a cgroup counting apache's parent and every child it forked. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` is what prices a request.
+Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements in it are not interchangeable and the note column says which is which: a host process reports its own RSS, where phpscript and the twin each answer every request on one process whose workers are its threads. The container reports a cgroup counting apache's parent and every child it forked. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` is what prices a request.
 
 Routes in, and why:
 
@@ -107,7 +107,7 @@ Three rows are off the worklist and stay here so nobody re-proposes them: the `a
 | `runner/runner.go`           | `execOne` writes every echo through `io.WriteString`, which clones the string to `[]byte` whenever the writer underneath has no `WriteString`                          | The `answerTracker` forwards `Write` only and it hides the `io.StringWriter` that `net/http`'s response writer implements and every echo pays one clone. Forwarding `WriteString` through the tracker removes it; the harness trap below applies |
 | `runner/context.go`          | `Context.Register` seeds the superglobals per request: the `mapmap` layers, the scratch arrays, the scope entries                                                      | `$_GET`, `$_SERVER` and the rest, decoded lazily but registered eagerly. It dominates `BenchmarkRequestCycle`'s profile where the testserver path, which decodes none of them, pays only the registration                                        |
 | `stdlib/ps/core/json.go`     | `JSON\Encoder::encode` builds a `json.Encoder` and a `jsonObject` wrapper per array it walks                                                                           | Streaming a PHP array to the socket with `encoding/json` semantics. Both wrappers have request lifetime                                                                                                                                          |
-| `runner/pool.go`             | A `poolRun` and a `make(chan struct{})` per request                                                                                                                    | The handshake that lets the submitting goroutine wait for the worker. [../allocation-performance.md](../allocation-performance.md) refuses recycling and carries the reasoning                                                                   |
+| `runner/pool.go`             | A `poolRun` and a `make(chan struct{})` per request                                                                                                                    | The handshake that lets the submitting goroutine wait for the worker. [../allocation-performance.md](../allocation-performance.md) refuses recycling and records the reasoning                                                                   |
 | `runner/runtime_deadline.go` | `EnterRequest` allocates the restore closure over the three fields it saves                                                                                            | Per-request client tracking, undone when the request leaves                                                                                                                                                                                      |
 | `runner/callable.go`         | A statics map on every closure `Invoke`                                                                                                                                | Two goroutines running one declaration are two calls and they cannot share one statics map. `testserver.php` registers bound methods and takes `invokeMethod` instead, which does not pay this - a middleware wrapper puts it straight back      |
 
@@ -138,13 +138,13 @@ Which of the ninety-four answers which question. The commands are in [collect-go
 | What the function table costs per `Eval`                          | `BenchmarkScriptEnvFullStdlib` against `BenchmarkScriptEnvMinimal`                                                        |
 | What a binding's return shape costs                               | The constructor, call and script families in `tests/bindings_test.go`                                                     |
 
-An engine comparison means nothing unless `flatstack.Supports` gates the program. Without the gate a benchmark that falls back records the interpreter's result and its cost under the flatstack name. [../flatstack.md](../flatstack.md) carries the gate idiom and argues the atomic fallback it protects.
+An engine comparison means nothing unless `flatstack.Supports` gates the program. Without the gate a benchmark that falls back records the interpreter's result and its cost under the flatstack name. [../flatstack.md](../flatstack.md) holds the gate idiom and argues the atomic fallback it protects.
 
 ## The two benchmark jobs
 
 `atkins bench` used to run every benchmark pinned to one core with `-count 3`. That is the pinned half only, with no exclusion and its numbers for `BenchmarkLookup`, `BenchmarkLookupHandler` and `BenchmarkFlatstackParallelHostBridge` described a single goroutine.
 
-The two jobs the contract defines are now `atkins bench:pinned` and `atkins bench:parallel`, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. Neither is in the default pipeline, for the reason the comment above them states: a sweep costs minutes of pinned CPU and answers a performance question. The load sweep has no atkins job: `scripts/bench-http.sh <side>` is the whole interface and a job wrapping it would only hide the side.
+The two jobs the contract defines are now `atkins bench:pinned` and `atkins bench:parallel`, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. The default pipeline runs neither job, for the reason the comment above them states: a sweep costs minutes of pinned CPU and answers a performance question. The load sweep has no atkins job: `scripts/bench-http.sh <side>` is the whole interface and a job wrapping it would only hide the side.
 
 ## Techniques
 
@@ -157,9 +157,9 @@ The three tiers are in the contract. What this target invites, by name:
 - Hold the resolved-handler table immutable and shared, which it almost is.
 - Build the statics map on first static, not on every invoke.
 
-`unsafe` over the output buffer goes to the operator before anyone writes it. The failure mode is a response body that aliases a buffer the next request is writing, and the suite does not prove its absence.
+`unsafe` over the output buffer goes to the operator before anyone writes it. The failure mode is a response body that aliases a buffer the next request is writing. The suite does not prove its absence.
 
-Record a technique that lost with its number. `../flatstack.md` is the model: it refuses typed slots on a measurement, and the verdict sits in the document so nobody spends the week again.
+Record a technique that lost with its number. `../flatstack.md` is the model: it refuses typed slots on a measurement, and the document records the verdict so nobody spends the week again.
 
 ## The pull request
 
@@ -169,7 +169,7 @@ The summary statement names the path and the route, because a reader cannot othe
 
 > Optimized the per-request output path by keeping the output stack's backing array between requests, in place of clearing it to nil. This nets a positive change of -X% in latency on `GET /hello` and a delta from X allocs/op to Y allocs/op (-Z%).
 
-The table states the path in its caption and carries the Go floor as a row and the remaining gap is a subtraction the reader can do. Microseconds, not the contract's milliseconds: every route here answers in a fraction of one, and a millisecond column to one decimal is a column of zeroes.
+The table states the path in its caption and keeps the Go floor as a row. The remaining gap is a subtraction the reader can do. Microseconds, not the contract's milliseconds: every route here answers in a fraction of one, and a millisecond column to one decimal is a column of zeroes.
 
 | Route             | p50 us | p99 us | req/s |
 |-------------------|-------:|-------:|------:|
@@ -177,6 +177,6 @@ The table states the path in its caption and carries the Go floor as a row and t
 | `/hello` (before) |        |        |       |
 | `/hello` (now)    |        |        |       |
 
-The allocation table is the second one, in the shape [../allocation-performance.md](../allocation-performance.md) owns, and it carries no Go floor: `testdata/goserver/main.go` is `//go:build ignore` and nothing can import its handlers and the floor lives in the latency table only.
+The allocation table is the second one, in the shape [../allocation-performance.md](../allocation-performance.md) owns. It holds no Go floor: `testdata/goserver/main.go` is `//go:build ignore` and nothing can import its handlers and the floor appears in the latency table only.
 
 The delta is the claim. The absolute number is context.

@@ -32,8 +32,8 @@ type coverageModule struct {
 	globals    *flags.Options
 
 	// roots are the source trees the counted files read from, one per
-	// site. A profile carries columns resolved from the source text, and the
-	// server is what knows where the text is.
+	// site. A profile holds columns resolved from the source text. The server
+	// knows where the text is.
 	roots []fs.FS
 }
 
@@ -97,7 +97,7 @@ func (m *coverageModule) serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // blocks renders the statements the aggregator counted, with the columns a
-// profile carries resolved from the source text.
+// profile holds resolved from the source text.
 func (m *coverageModule) blocks() []coverage.ProfileBlock {
 	return coverage.Columns(m.aggregator.Blocks(), m.source)
 }

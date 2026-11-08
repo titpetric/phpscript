@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// write puts src in a temporary directory and returns the path and each case
-// formats a file of its own and no case can see another one's rewrite.
+// write puts src in a temporary directory and returns the path. Each case
+// formats a separate file and no case sees another one's rewrite.
 func write(t *testing.T, name, src string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
@@ -90,7 +90,7 @@ func TestFileSkipsWhatItCannotParse(t *testing.T) {
 
 // TestFileReportsAMissingPath covers a path that is not there: the read error
 // comes back as it came, with no *SkipError wrapper, because a caller walking
-// a tree has to stop on a read failure and carry on past a refusal.
+// a tree has to stop on a read failure and continue past a refusal.
 func TestFileReportsAMissingPath(t *testing.T) {
 	t.Parallel()
 	changed, err := File(filepath.Join(t.TempDir(), "absent.php"))

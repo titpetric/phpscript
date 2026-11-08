@@ -8,7 +8,7 @@ import (
 
 // RedeclareError is a second declaration of a function name that is already
 // taken. PHP treats it as a fatal error; this runtime has one error path and
-// declareFunc returns it as a catchable RuntimeException, and it reaches a Go
+// declareFunc returns it as a catchable RuntimeException. It reaches a Go
 // host as an error from Run.
 //
 // A named type and no bare error, because the two runtimes have to agree on
@@ -28,13 +28,10 @@ type RedeclareError struct {
 	Builtin bool
 }
 
-// Error writes PHP's fatal-error text for the same condition, with one
-// difference by decision: the paths are the ones the script named, resolved
-// against the root the shims bind to, where PHP prints host paths. A
-// runtime serving scripts out of an fs.FS has no host path to print.
-//
-// A program a host assembled itself carries no file or spans and Error omits
-// the clauses that would name a location and never writes one empty.
+// Error writes PHP's fatal-error text, with one difference: the paths are the
+// ones the script named, where PHP prints host paths. A program a host
+// assembled itself has no file and Error omits the clauses that would name a
+// location.
 func (e *RedeclareError) Error() string {
 	message := fmt.Sprintf("Cannot redeclare function %s()", e.Name)
 	if !e.Builtin {
@@ -81,8 +78,8 @@ func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 }
 
 // declSite reads the source span a program recorded for a statement. A program
-// a host assembled itself carries no spans and the line is simply absent rather
-// than wrong.
+// a host assembled itself has no spans and the line is simply absent, never
+// wrong.
 func declSite(prog *model.Program, stmt model.Stmt, filename string) FuncSite {
 	return FuncSite{File: filename, Line: prog.SourceSpans[stmt].Start}
 }

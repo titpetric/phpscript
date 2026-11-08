@@ -151,7 +151,7 @@ echo "covered";
 	}
 }
 
-// stubDatabase and stubMail stand in for the providers a host configures. Each
+// stubDatabase and stubMail replace the providers a host configures. Each
 // embeds the interface and declares no method: these tests read which value the
 // runtime answers with and never call through it, and implementing Open would
 // put the sql driver in this package's test binary for nothing.
@@ -298,8 +298,8 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 	}
 
 	// SetWorkDir clamps a climb and never refuses it: the path resolves to the
-	// source root and a script that walked up as far as it liked is standing at
-	// the top of the tree the host gave it and never above one.
+	// source root and a script that walked up as far as it liked is at the top
+	// of the tree the host gave it and never above one.
 	if !rt.SetWorkDir("../../..") {
 		t.Fatal("SetWorkDir refused to climb to the root")
 	}
@@ -336,7 +336,7 @@ func TestRuntime_IncludeFile(t *testing.T) {
 	}
 
 	// The runtime writes the record from the source filesystem's root, the
-	// spelling every path a script reads carries.
+	// spelling every path a script reads uses.
 	included := rt.IncludedFiles()
 	if !slices.Contains(included, "/lib/site.php") {
 		t.Errorf("IncludedFiles = %v, want the file among them", included)
@@ -458,9 +458,9 @@ func TestRuntime_Exit(t *testing.T) {
 
 // TestScriptEnvironment covers what getenv() reads. A nil environment is the
 // process one, as a CLI run has it; a host that configured one passes it
-// instead, and a virtual host always does and a site sees the variables it
-// declared and none of the operator's. ScriptEnvironment holds the
-// infrastructure names back either way.
+// instead, and a virtual host always does: a site sees the variables it
+// declared and the operator's process variables stay out. ScriptEnvironment
+// holds the infrastructure names back either way.
 func TestScriptEnvironment(t *testing.T) {
 	configured := ScriptEnvironment([]string{
 		"APP_ENV=production",
@@ -487,7 +487,7 @@ func TestScriptEnvironment(t *testing.T) {
 	}
 
 	// A configured environment is the whole of what a script sees and a
-	// variable the process carries and the host did not declare is absent.
+	// variable the process holds and the host did not declare is absent.
 	t.Setenv("PHPSCRIPT_TEST_ONLY_IN_PROCESS", "1")
 	if _, present := configured["PHPSCRIPT_TEST_ONLY_IN_PROCESS"]; present {
 		t.Error("a process variable reached a configured environment")

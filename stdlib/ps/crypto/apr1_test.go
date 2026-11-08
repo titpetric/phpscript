@@ -5,8 +5,8 @@ import (
 )
 
 // apr1Vectors are openssl's output, the reference for this derivation because
-// php has none: `crypt()` answers "*0" for an `$apr1$` setting. Each row comes
-// from
+// php writes no such hash: `crypt()` answers "*0" for an `$apr1$` setting.
+// Each row comes from
 //
 //	openssl passwd -apr1 -salt <salt> <password>
 //

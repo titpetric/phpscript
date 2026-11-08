@@ -55,8 +55,8 @@ function strlen($s) { return 0; }`)
 }
 
 // TestRedeclareSkipsAGuardedName covers the polyfill idiom: declaring over an
-// absent built-in is what function_exists guards, and the author has written
-// both branches and the check reports neither the duplicate nor the host name.
+// absent built-in is what function_exists guards. The author has written both
+// branches and the check reports neither the duplicate nor the host name.
 func TestRedeclareSkipsAGuardedName(t *testing.T) {
 	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php

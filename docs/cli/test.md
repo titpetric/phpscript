@@ -4,9 +4,9 @@ Discover and run fixtures, both the `.phpt` document and the `_test.php` body wi
 
 It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below are this command's own.
 
-A `phpscript.yml` in the fixture tree supplies the defaults for the run below it and a suite that needs a bootstrap, a connection or a schema carries that, off the command line. See [Test suites](../configuration.md#test-suites) for the block; the paragraphs below name the flag each key defaults.
+A `phpscript.yml` in the fixture tree supplies the defaults for the run below it and a suite that needs a bootstrap, a connection or a schema names it there, off the command line. See [Test suites](../configuration.md#test-suites) for the block; the paragraphs below name the flag each key defaults.
 
-A directory path is not recursive on its own: `./...` walks a tree, and a path that matches no fixture is an error, never a silent pass.
+A directory path alone is not recursive: `./...` walks a tree, and a path that matches no fixture is an error, never a silent pass.
 
 ```bash
 phpscript test tests/fixtures/...
@@ -45,7 +45,7 @@ phpscript test --cache=off tests/fixtures/...
 
 Use `--cover` to measure statement coverage on the phpscript runtime, in the format `go test -coverprofile` writes (`mode: count`; each entry counts how many times its line range ran) with the PHP files as the entries. The profile lists every file `get_included_files` reports and an included file's unexecuted statements appear at count zero. `--coverfile FILE` names the profile (implies `--cover`; the default is `phpscript.cov`), and `--split` also writes each fixture's own coverage next to it as `<fixture>.cov`. Coverage is a property of the interpreter alone: under `--matrix` only the runtime column collects, since flatstack is a performance-oriented backend without coverage support and the `php` column is another process. The benchmark flags `--count` and `--time` do not combine with coverage, because a count is how many times the fixture reached a line, not how many times a benchmark loop replayed it.
 
-With `--cover`, the folder summary carries the two counts that answer different questions. `Files` is how many of the PHP files the folder's fixtures load run at all, which says what the suite has not looked at; `Lines` is how many of the statements in them ran, which says how thoroughly it looked at the rest. A folder's suite that scores 8% of files and 90% of lines tests one corner, and neither number alone would say so. Both columns read `N/M (J%)`. A folder whose fixtures loaded no PHP file of their own has nothing to measure and reports `-`.
+With `--cover`, the folder summary prints the two counts that answer different questions. `Files` is how many of the PHP files the folder's fixtures load run at all, which says what the suite has not looked at; `Lines` is how many of the statements in them ran, which says how thoroughly it looked at the rest. A folder's suite that scores 8% of files and 90% of lines tests one corner, and neither number alone would say so. Both columns read `N/M (J%)`. A folder whose fixtures loaded no separate PHP file has nothing to measure and reports `-`.
 
 ```text
 | Path                    | Fixtures | Passed | Failed | Files      | Lines      |
@@ -65,7 +65,7 @@ tests/fixtures/includes/counter.php           2/2 lines covered 100.0%
 tests/fixtures/includes/modules/functions.php 0/6 lines covered   0.0%
 ```
 
-`--cover` takes a mode. Bare `--cover` means `--cover=line`: write the profile, and under `-v` print the one-line percentage below the tables. That percentage measures the written profile, which counts the `.phpt` entrypoints, and the tables do not; printing both without `-v` would invite a comparison between two numbers answering different questions. `--cover=func` and `--cover=file` still write the profile, but own stdout with a coverage report in the format `go tool cover -func` prints: one row per declared function (methods as `Class::method`, a file's top-level code as `{main}`) or one row per file, each with its statement-weighted percentage, ending in a `total:` row. The report covers the application sources and excludes the `.phpt` fixtures themselves, being the tests. A file or function with no runnable statement (an interface, a class of pure declarations) reports the adjusted 0/0 as 100%: no statement remains uncovered, and the row contributes no statements to the total. A report mode drops the fixture tables so the report pipes clean (failures go to stderr, `-o` still writes the Markdown tables), which also rules out combining one with `--json`.
+`--cover` takes a mode. Bare `--cover` means `--cover=line`: write the profile, and under `-v` print the one-line percentage below the tables. That percentage measures the written profile, which counts the `.phpt` entrypoints. The tables leave them out; printing both without `-v` would invite a comparison between two numbers answering different questions. `--cover=func` and `--cover=file` still write the profile, but own stdout with a coverage report in the format `go tool cover -func` prints: one row per declared function (methods as `Class::method`, a file's top-level code as `{main}`) or one row per file, each with its statement-weighted percentage, ending in a `total:` row. The report covers the application sources and excludes the `.phpt` fixtures themselves, being the tests. A file or function with no runnable statement (an interface, a class of pure declarations) reports the adjusted 0/0 as 100%: no statement remains uncovered, and the row contributes no statements to the total. A report mode drops the fixture tables so the report pipes clean (failures go to stderr, `-o` still writes the Markdown tables), which also rules out combining one with `--json`.
 
 ```bash
 phpscript test --cover tests/fixtures/...

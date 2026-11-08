@@ -459,15 +459,19 @@ func TestArrayZeroValueIsUsable(t *testing.T) {
 	}
 }
 
-func TestToArrayListFastPath(t *testing.T) {
+// TestArray_AppendAll covers the bulk append modelutil.ToArray converts a Go
+// slice through: a list-mode array takes the whole slice in one copy and its
+// next index lands past the last element.
+//
+// A map-mode array has no backing slice to extend and appends one at a time,
+// which keeps the sentinel rule: the first integer key sets the index.
+func TestArray_AppendAll(t *testing.T) {
 	t.Parallel()
 	src := []any{"a", "b", "c"}
-	a := ToArray(src)
+	a := NewArraySize(len(src))
+	a.AppendAll(src)
 	if !a.isList() {
-		t.Fatal("ToArray of a []any should produce a list-mode array")
-	}
-	if a.nextID != 3 {
-		t.Fatalf("nextID = %d, want 3", a.nextID)
+		t.Fatal("AppendAll onto a presized array should leave it in list mode")
 	}
 	want := [][2]any{{int64(0), "a"}, {int64(1), "b"}, {int64(2), "c"}}
 	if got := entries(a); !reflect.DeepEqual(got, want) {
@@ -475,45 +479,42 @@ func TestToArrayListFastPath(t *testing.T) {
 	}
 	a.Append("d")
 	if len(src) != 3 {
-		t.Fatal("ToArray must copy: appending to the Array wrote through to the source slice")
+		t.Fatal("AppendAll must copy: appending to the Array wrote through to the source slice")
 	}
 	a.Set(int64(0), "A")
 	if src[0] != "a" {
-		t.Fatal("ToArray must copy: Set wrote through to the source slice")
+		t.Fatal("AppendAll must copy: Set wrote through to the source slice")
 	}
 
-	m := ToArray(map[string]any{"k": "v"})
-	if m.isList() {
-		t.Fatal("ToArray of a string-keyed map must be map mode")
+	mapped := NewArray()
+	mapped.Set("k", "v")
+	mapped.AppendAll([]any{"x", "y"})
+	if v, ok := mapped.Get(int64(1)); !ok || v != "y" {
+		t.Fatalf("Get(1) = %v, %v; want y, true on a map-mode array", v, ok)
 	}
-	if v, ok := m.Get("k"); !ok || v != "v" {
-		t.Fatalf(`Get("k") = %v, %v`, v, ok)
+
+	empty := NewArray()
+	empty.AppendAll(nil)
+	if empty.Len() != 0 || empty.NextIndex() != noIntKey {
+		t.Fatalf("AppendAll(nil) left Len %d and NextIndex %d, want 0 and the sentinel", empty.Len(), empty.NextIndex())
 	}
 }
 
-func TestRangeValuesAndLenValuesOnBothModes(t *testing.T) {
+// TestArray_NextIndex covers the key the next Append lands on, which
+// modelutil.ToArray reads to tell an append from a keyed write.
+func TestArray_NextIndex(t *testing.T) {
 	t.Parallel()
-	list := NewArray()
-	list.Append("a")
-	list.Append("b")
-
-	mapped := NewArray()
-	mapped.Append("a")
-	mapped.Set("k", "b")
-
-	for name, a := range map[string]*Array{"list": list, "map": mapped} {
-		n, ok := LenValues(a)
-		if !ok || n != 2 {
-			t.Fatalf("%s: LenValues = %d, %v; want 2, true", name, n, ok)
-		}
-		if !IsCollection(a) {
-			t.Fatalf("%s: IsCollection = false", name)
-		}
-		var count int
-		RangeValues(a, func(_, _ any) bool { count++; return true })
-		if count != 2 {
-			t.Fatalf("%s: RangeValues visited %d entries, want 2", name, count)
-		}
+	a := NewArray()
+	if got := a.NextIndex(); got != noIntKey {
+		t.Fatalf("NextIndex() = %d on a fresh array, want the sentinel", got)
+	}
+	a.Append("a")
+	if got := a.NextIndex(); got != 1 {
+		t.Fatalf("NextIndex() = %d after one append, want 1", got)
+	}
+	a.Set(int64(5), "f")
+	if got := a.NextIndex(); got != 6 {
+		t.Fatalf("NextIndex() = %d after setting key 5, want 6", got)
 	}
 }
 

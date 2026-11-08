@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 )
 
-// This file carries a PHP-compatible tokenizer: TokenGetAll / TokenName plus
+// This file holds a PHP-compatible tokenizer: TokenGetAll / TokenName plus
 // the T_* constants. It mirrors PHP's token_get_all closely enough to drive
 // minitpl's compiler (class.minitpl_compiler.php::_split_exp), which relies on
 // T_VARIABLE, T_OBJECT_OPERATOR, is_array() on the elements, the token text at
@@ -18,7 +18,7 @@ import (
 //
 // We reproduce that shape with native Go values: a []any of single-char
 // strings and []any{int64 id, string text, int64 line} triples. The VM reads
-// slices through model.RangeValues / reflection and the result still flows
+// slices through modelutil.RangeValues / reflection and the result still flows
 // straight into transpiled PHP code (foreach, $v[0], $v[1], is_array, count,
 // and element writes such as $v[0] = token_name($v[0])). It does not support
 // `$tokens[] = ...`; no in-tree caller appends to a token list. See
@@ -223,9 +223,7 @@ func TokenName(id int) string {
 }
 
 // TokenIDs returns every token name with the id token_get_all reports for it,
-// the ids a host registers as PHP constants. A script comparing a token
-// against a name it did not get from here would be comparing against nothing,
-// and the table that names the ids is the table that publishes them.
+// the ids a host registers as PHP constants.
 func TokenIDs() map[string]int {
 	out := make(map[string]int, len(tokenNames))
 	for id, name := range tokenNames {
@@ -265,11 +263,11 @@ var boxedChars = func() [utf8.RuneSelf]any {
 	return out
 }()
 
-// The tokenizer carves the [id, text, line] triples out of chunked backing arrays rather
-// than allocated one by one. Chunks start small and double so that a two-line
-// minitpl expression does not pay for a large block, and a whole file amortises
-// the per-token allocation away. Each triple reaches PHP as a 3-element
-// slice with cap == len and a script cannot scribble past its own token.
+// The tokenizer carves the [id, text, line] triples out of chunked backing
+// arrays. Chunks start small and double so that a two-line minitpl expression
+// does not pay for a large block, and a whole file amortises the per-token
+// allocation away. Each triple reaches PHP as a 3-element slice with
+// cap == len and a script cannot scribble past its own token.
 const (
 	tokenChunkMin = 8
 	tokenChunkMax = 64

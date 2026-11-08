@@ -11,6 +11,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -36,7 +37,7 @@ func isObject(value any) bool {
 	if _, ok := value.(*model.Object); ok {
 		return true
 	}
-	if model.IsCollection(value) {
+	if modelutil.IsCollection(value) {
 		return false
 	}
 
@@ -51,8 +52,8 @@ func isObject(value any) bool {
 }
 
 // isFloat backs is_float and is_double. A float is the one scalar this runtime
-// holds in a single Go type and the test is the type assertion: an integer is
-// not a float here any more than in php, and neither is a numeric string.
+// holds in a single Go type and the test is the type assertion: neither an
+// integer nor a numeric string is a float here, as in php.
 func isFloat(value any) bool {
 	if _, ok := value.(float64); ok {
 		return true
@@ -73,11 +74,11 @@ func isInt(value any) bool {
 	return ok && !width.Float
 }
 
-// phpGetType backs gettype. The names it returns are PHP's original ones, and
-// that is the function: "integer" and "double" where the value
-// model and get_debug_type say int and float, "boolean" where they say bool, and
-// NULL alone in capitals. Answering with the modern spellings would pass every
-// eyeball and fail every `gettype($x) === "integer"`.
+// phpGetType backs gettype. The names it returns are PHP's original ones:
+// "integer" and "double" where the value model and get_debug_type say int and
+// float, "boolean" where they say bool, and NULL alone in capitals. Answering
+// with the modern spellings would pass every eyeball and fail every
+// `gettype($x) === "integer"`.
 func phpGetType(value any) string {
 	switch value.(type) {
 	case nil:
@@ -100,7 +101,7 @@ func phpGetType(value any) string {
 		}
 		return "integer"
 	}
-	if model.IsCollection(value) {
+	if modelutil.IsCollection(value) {
 		return "array"
 	}
 	if isObject(value) {
@@ -222,7 +223,7 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("empty", func(value any) bool { return !phpval.Truthy(value) })
 	// A binding's []string is as much a PHP array as an *model.Array is and
 	// is_array() answers for the whole value model, and never one Go type.
-	rt.RegisterFunc("is_array", model.IsCollection)
+	rt.RegisterFunc("is_array", modelutil.IsCollection)
 	// is_int reports whether $value is an integer.
 	rt.RegisterFunc("is_int", isInt)
 	// is_float reports whether $value is a float.
@@ -351,8 +352,8 @@ func phpIntval(num any, base ...any) int64 {
 	if str, ok := num.(string); ok && radix != 10 {
 		return strtolInt(str, radix)
 	}
-	if model.IsCollection(num) {
-		if n, _ := model.LenValues(num); n > 0 {
+	if modelutil.IsCollection(num) {
+		if n, _ := modelutil.LenValues(num); n > 0 {
 			return 1
 		}
 		return 0

@@ -10,11 +10,10 @@ import (
 
 // Options configures a Runtime.
 //
-// Check refuses a value no runtime could run under, which is the trace level
-// and nothing else. Every other field holds a value only Go can give it, or a
-// number where zero means the default; the level is the one key a
-// configuration file spells as a word, and a word that is not a level would
-// otherwise read as the default.
+// Check refuses a value no runtime could run under: the trace level alone.
+// The rest hold a value only Go can set, or a number where zero means the
+// default; the level is the one key a configuration file spells as a word, and
+// a word that is not a level would otherwise read as the default.
 type Options struct {
 	// RootFS is the filesystem used to load PHP entrypoints and includes.
 	RootFS fs.FS `yaml:"-"`
@@ -59,7 +58,7 @@ type Options struct {
 	// It runs once per request, before the entrypoint the request resolved to,
 	// and the entrypoint and everything it includes see what it declared. The
 	// runtime passes over a file that is not there and reports no error: the
-	// name says what to load when the application carries it, and one setting
+	// name says what to load when the application holds it, and one setting
 	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
 
@@ -73,26 +72,26 @@ type Options struct {
 	// edited file, and what the tree parsed to stays resident until then.
 	Precompile bool `yaml:"precompile"`
 
-	// TraceLevel is how much of its own work the interpreter reports to the
-	// observers: off, info or debug, with info the default and the zero value.
+	// TraceLevel is how much interpreter work the observers see: off, `info`
+	// or debug, with `info` the default and the zero value.
 	//
 	// An interpreter reports work a host never would: a frame of PHP is a
 	// span, and a page that calls two hundred methods fills a trace with two
 	// hundred spans of a microsecond each and the request they belong to is
-	// unreadable. info publishes them marked as detail, which hands the
-	// recorder the choice (oida drops a debug span that ran under
+	// unreadable. `info` publishes them marked as detail, leaving the recorder
+	// the choice (oida drops a debug span that ran under
 	// Options.DebugSpanMinDuration), and publishes one span at the end of the
-	// request naming the files it included instead of one span each. debug
-	// publishes everything unmarked, a span per include among it, for a
-	// request being taken apart. off publishes none of it, and what a binding
-	// or a script measured still records.
+	// request naming every file it included. debug publishes everything
+	// unmarked, a span per include among it, for taking one request apart. off
+	// publishes none of it, and what a binding or a script measured still
+	// records.
 	TraceLevel TraceLevel `yaml:"trace_level"`
 
 	// WritablePaths optionally restricts filesystem writes. When empty, normal
 	// OS/user permissions govern a write. Filesystem shims enforce the list.
 	WritablePaths []string `yaml:"writable_paths"`
 
-	// UploadMaxFilesize is the largest file part a request may carry, PHP's
+	// UploadMaxFilesize is the largest file part a request may hold, PHP's
 	// upload_max_filesize. A part over that size reaches the script as
 	// UPLOAD_ERR_INI_SIZE, and nothing stores it. Zero is no limit.
 	UploadMaxFilesize Size `yaml:"upload_max_filesize"`
@@ -121,7 +120,7 @@ type Options struct {
 
 	// Env is the environment scripts read with getenv(). Nil means the
 	// process environment, minus what ScriptEnvironment holds back. A host
-	// that configured an env of its own passes it here, and a virtual host
+	// that configured a separate env passes it here, and a virtual host
 	// always does.
 	Env []string `yaml:"-"`
 
@@ -132,7 +131,7 @@ type Options struct {
 	// TimeLimit is how long one script may run before the runtime stops it, in
 	// seconds, PHP's max_execution_time. Zero is no limit.
 	//
-	// NOT ENFORCED YET. The decoder takes the key and carries it and a
+	// NOT ENFORCED YET. The decoder takes the key and keeps it and a
 	// configuration written today keeps working when enforcement lands and
 	// never fails to parse along the way.
 	TimeLimit int `yaml:"time_limit"`

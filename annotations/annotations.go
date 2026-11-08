@@ -18,7 +18,7 @@
 //   - `// @route: /users/{id}`
 //
 // A file may repeat the tag to register two or more handlers. Where two
-// register the same handler, the last one wins and the logs carry a warning.
+// register the same handler, the last one wins and the logs record a warning.
 //
 // A tag naming no method routes GET and POST to the handler alone. That leaves
 // out requests like HEAD and OPTIONS, which the router answers on its own and
@@ -33,7 +33,7 @@
 //
 // # Startup jobs
 //
-// A file carrying `@startup` runs once, in path order, before the server
+// A file annotated `@startup` runs once, in path order, before the server
 // listens. It executes with the CLI SAPI and it can migrate a schema or warm a
 // cache. An error aborts startup.
 //
@@ -81,7 +81,7 @@ func comment(line string) (string, bool) {
 }
 
 // tag splits a comment into its annotation tag and the fields that follow it.
-// The tag may carry a trailing colon, which is not part of the tag name.
+// The tag may end in a colon, which is not part of the tag name.
 func tag(text string) (string, []string) {
 	fields := strings.Fields(text)
 	if len(fields) == 0 {

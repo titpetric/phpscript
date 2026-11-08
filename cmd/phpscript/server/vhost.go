@@ -18,7 +18,7 @@ import (
 )
 
 // hostMux dispatches a request to the site that answers its Host. One process
-// serves more than one website through it: each site is a router of its own,
+// serves more than one website through it: each site is its own router,
 // built from its own application root and its own configuration, and the Host
 // header is the only thing that selects between them.
 //
@@ -103,8 +103,8 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 		modules = append(modules, siteModules...)
 
 		// Every name the entry lists reaches the same handler. A further
-		// name is another way to spell the site, not another copy of it,
-		// and it shares the site's routes, recorder and connections.
+		// name is another way to spell the site, not another copy of it;
+		// it shares the site's routes, recorder and connections.
 		for _, domain := range host.Domains() {
 			sites[domain] = handler
 		}
@@ -116,7 +116,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 // newVirtualHost builds the router that serves one site and the lifecycle
 // modules the platform starts on its behalf.
 //
-// The site gets a router of its own because it owns its routes, its telemetry
+// The site gets its own router because it owns its routes, its telemetry
 // and its databases. A registration here is invisible on another domain, and
 // the connections its scripts can name are only the ones its own env configured.
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
@@ -190,9 +190,9 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		files.coverage = cover.aggregator
 	}
 
-	// A site's error pages are its own: they live under its document root and
-	// its own handler renders them and nothing a site puts up is reachable
-	// from another domain.
+	// A site's error pages are its own: its document root holds them, its own
+	// handler renders them and nothing a site puts up is reachable from
+	// another domain.
 	if siteConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
@@ -202,9 +202,9 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		}
 	}
 
-	// What this site's @startup jobs bind goes on this site's router, and the
-	// mount is here because this function is the only place holding it: a module
-	// the platform mounts is handed the router of the server, and a site's
+	// What this site's @startup jobs bind goes on this site's router. The
+	// mount is here because this function is the only place holding it: the
+	// platform passes the server's router to a module it mounts, and a site's
 	// routes on that one would answer on every other domain.
 	if err := annotations.NewBindings(annotationOptions...).Mount(ctx, router); err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
@@ -217,7 +217,7 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	precompile(files, name)
 
 	// A site's startup failure is its own. That site's recorder records it
-	// and the server carries on, because the alternative is one tenant's
+	// and the server keeps serving, because the alternative is one tenant's
 	// broken job stopping every other tenant.
 	return router, []LifecycleModule{
 		nonFatal(annotations.NewStartup(root, annotationOptions...), observers),

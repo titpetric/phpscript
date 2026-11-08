@@ -6,7 +6,7 @@ import (
 )
 
 // TestFunc_Signature covers Signature's two forms. A plain name is
-// declarable and the line carries the function keyword. A Class::method name
+// declarable and the line prints the function keyword. A Class::method name
 // is not and the line reads the way a script calls it, and pasting the line
 // into a .php file would be a parse error either way round.
 func TestFunc_Signature(t *testing.T) {
@@ -59,9 +59,9 @@ func TestFunc_Signature(t *testing.T) {
 	}
 }
 
-// TestClass_Signature covers the constructor line of a class stub. It carries
+// TestClass_Signature covers the constructor line of a class stub. It prints
 // no return type: PHP's __construct declares none, and the class it builds is
-// the heading the stub sits under.
+// the heading above the stub.
 func TestClass_Signature(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -196,7 +196,7 @@ func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 		}
 	}
 
-	// The page ends on exactly one newline. The file lives in git and a run
+	// The page ends on exactly one newline. Git tracks the file and a run
 	// that found no change has to write the same bytes.
 	if !strings.HasSuffix(page, "\n") || strings.HasSuffix(page, "\n\n") {
 		t.Errorf("rendered page ends with %q, want one newline", page[max(0, len(page)-8):])

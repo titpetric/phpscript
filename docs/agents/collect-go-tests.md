@@ -20,7 +20,7 @@ The database fixtures read their connection strings from `.env.testing`:
 set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
 
-Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses and bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser and `env: include: .env.testing` works where the shell does not. Leave the file alone.
+Exported, not sourced. `. ./.env.testing` does not work: three of the four values hold an unquoted `&`, the fourth unquoted parentheses, and bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser and `env: include: .env.testing` works where the shell does not. Leave the file alone.
 
 The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression; report it as a missing precondition.
 
@@ -85,9 +85,9 @@ gotestsum tool slowest --jsonfile bench-gotest-after.json
 
 `tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` and `connection_aborted` against the real clock. Report it as excluded, never as the slowest package, or the reading points at a sleep.
 
-`tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/ps/internals` and `stdlib/ps/http` carry real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
+`tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/ps/internals` and `stdlib/ps/http` run real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
 
-Three tests fail when they regress, and none of them skips; a failure in one is a finding:
+Three tests fail when they regress; none of them skips. A failure in one is a finding:
 
 | Test                                       | Where                          | What a failure means                                                                                     |
 |--------------------------------------------|--------------------------------|----------------------------------------------------------------------------------------------------------|

@@ -72,12 +72,12 @@ func TestRunListsClasses(t *testing.T) {
 	}
 }
 
-// TestRunListsClassesAsJSON covers --classes --json: the class the definition
-// is rendered from, for a generator that links each member rather than
-// printing a block of PHP. Both spellings of every symbol are in it, which is
-// what such a generator cannot recover on its own: the Go field name behind a
-// property, the Go method name behind a method, and the Go interface behind
-// the PHP name a script types in a catch clause.
+// TestRunListsClassesAsJSON covers --classes --json: the class it renders the
+// definition from, for a generator that links each member in place of a block
+// of PHP. Both spellings of every symbol are in it, because such a generator
+// cannot derive them alone: the Go field name behind a property, the Go method
+// name behind a method, and the Go interface behind the PHP name a script
+// types in a catch clause.
 func TestRunListsClassesAsJSON(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -114,9 +114,9 @@ func TestRunListsClassesAsJSON(t *testing.T) {
 			t.Errorf("method %q carries no Go name", m.Name)
 		}
 	}
-	// Throwable is the one interface of this module a script names, and the
-	// citation carries both spellings: the PHP one for a catch clause, the Go
-	// one for the contract the binding implements.
+	// Throwable is the one interface of this module a script names. The citation
+	// holds both spellings: the PHP one for a catch clause, the Go one for the
+	// contract the binding implements.
 	if len(exception.Implements) != 1 {
 		t.Fatalf("Exception implements %d interfaces, want Throwable", len(exception.Implements))
 	}
@@ -149,8 +149,8 @@ func TestRunRejectsClassesWithAPI(t *testing.T) {
 // TestNewCommand covers the one flag this command owns. --bindings switches
 // the subject from a tree to the binary and it defaults off: a bare `phpscript
 // list` scans paths. The constructor takes the configuration and the global
-// options because one signature covers all nine commands, and this command
-// reads neither and both arguments are nil here.
+// options because one signature covers all nine commands. This command reads
+// neither; both arguments are nil here.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -211,8 +211,8 @@ func TestRun(t *testing.T) {
 }
 
 // TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer about
-// different things and a caller that named both named one of them by mistake,
-// and the error names which one it drops, never leaving them to guess.
+// different things and a caller that named both named one of them by mistake.
+// The error names which one it drops, never leaving them to guess.
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer

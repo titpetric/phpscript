@@ -5,10 +5,9 @@ import (
 )
 
 // Mount is Register narrowed to a profile: it installs only the binding areas
-// the bitmask names and a name outside them stays undefined in the runtime
-// and never refused, unreachable through a call, a callable or either
-// engine. The extra bindings are the caller's own, and Mount installs them
-// verbatim.
+// the bitmask names and a name from any other area stays undefined in the
+// runtime and never refused, unreachable through a call, a callable or either
+// engine. Mount installs the caller's extra bindings verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
 	registerErrors(rt)

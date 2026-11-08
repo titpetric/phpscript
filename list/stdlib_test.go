@@ -70,8 +70,8 @@ func TestStdlibSignatures(t *testing.T) {
 		}
 	}
 
-	// The runner's by-reference setter fills preg_match's $matches, and it has
-	// no type to publish and the ampersand carries the meaning.
+	// The runner's by-reference setter fills preg_match's $matches. The
+	// parameter publishes no type and the ampersand states the meaning.
 	if got := index["function preg_match"]; !strings.Contains(got, "&$") {
 		t.Errorf("preg_match = %q, want a by-reference parameter", got)
 	}
@@ -80,11 +80,11 @@ func TestStdlibSignatures(t *testing.T) {
 // TestStdlibDefinitions covers the definition the command prints for the class
 // the fidelity target names. `go doc net/http.Client` reads as the type's doc
 // paragraph, then its fields with their docs, then its methods with their
-// signatures and their docs, and this is that in PHP spelling.
+// signatures and their docs. This prints the same shape in PHP spelling.
 //
-// HTTP\Client's bound type holds a *net/http.Client and a timeout of its own
-// and publishes neither, leaving no property section to print, and it satisfies
-// no interface in the set, leaving no implements clause.
+// HTTP\Client's bound type holds a *net/http.Client and its own timeout and
+// publishes neither, leaving no property section to print. It satisfies no
+// interface in the set, leaving no implements clause.
 func TestStdlibDefinitions(t *testing.T) {
 	t.Parallel()
 	got, err := list.StdlibDefinitions(`HTTP\Client`)
@@ -120,14 +120,14 @@ class HTTP\Client
 	}
 }
 
-// TestStdlibDefinitionsProperties covers a class that does carry properties.
+// TestStdlibDefinitionsProperties covers a class that does publish properties.
 // Database holds two, in the order the Go struct declares them, and
 // $is_readonly is the folded spelling: Runtime.structField resolves
 // is_readonly back to IsReadonly through the underscores, and a listing
 // printing isReadonly would name a property no script can read.
 //
 // The client it queries through is not among them: an exported field is a
-// property a script reads, and that one answers with no read-only check. See
+// property a script reads. That one answers with no read-only check. See
 // docs/security.md.
 func TestStdlibDefinitionsProperties(t *testing.T) {
 	t.Parallel()
@@ -156,7 +156,7 @@ func TestStdlibDefinitionsProperties(t *testing.T) {
 	if !strings.Contains(got, "     * IsReadonly restricts the client to statements that only read.") {
 		t.Errorf("$is_readonly carries no docblock:\n%s", got)
 	}
-	// The constructor follows every property, and no declaration carries a
+	// The constructor follows every property, and no declaration prints a
 	// body: the implementation is Go and no PHP a reader could open.
 	if strings.Index(got, "public bool $is_readonly;") > strings.Index(got, "public function __construct") {
 		t.Error("a property prints after the constructor")
@@ -224,7 +224,7 @@ func TestStdlibMarkdownIsATable(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "  |---") {
 		t.Errorf("separator = %q", lines[1])
 	}
-	// Every row carries the same width and the table lines up in a terminal
+	// Every row is the same width and the table lines up in a terminal
 	// as well as in a markdown renderer.
 	for i, line := range lines[1:] {
 		if len(line) != len(lines[0]) {

@@ -143,10 +143,10 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 }
 
 // TestCallable_Invoke covers the cross-runtime call a request answered on a
-// worker of its own makes: the value crosses and the execution does not and
+// separate worker makes: the value crosses and the execution does not and
 // each spelling runs on the runtime passed in.
 //
-// A closure, a bound method and Class::method carry their declaration and run
+// A closure, a bound method and Class::method hold their declaration and run
 // on a runtime that never loaded the source. A name crosses as a name and the
 // runtime running it resolves it against its own function table, and one
 // declaring nothing cannot answer for it. That is the half that lets a host

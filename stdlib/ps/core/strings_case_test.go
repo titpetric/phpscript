@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestASCIICaseFolding covers the two folds this package writes itself rather
-// than taking from strings: php's strtolower and strtoupper fold the ASCII
+// TestASCIICaseFolding covers the two folds this package writes itself in place
+// of the strings package: php's strtolower and strtoupper fold the ASCII
 // range alone and a byte over 0x7f travels unchanged and a UTF-8 sequence
 // survives a round trip through either.
 func TestASCIICaseFolding(t *testing.T) {

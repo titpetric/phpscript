@@ -15,7 +15,7 @@ import (
 // the context-injection check, the panic recovery a binding runs
 // under, the coercion of a script's arguments to the declared parameter
 // types, and the reduction of a reflect Call result to the value a script
-// sees. The pre-bound dispatch it feeds lives in dispatch.go.
+// sees. dispatch.go holds the pre-bound dispatch it feeds.
 
 // contextType is context.Context as a reflect.Type, which detects the callables
 // that declare the runtime context as their first argument for auto-injection.
@@ -25,7 +25,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 var durationType = reflect.TypeOf(time.Duration(0))
 
-// callbackPanic carries the error a PHP callback reported out of the Go frames
+// callbackPanic holds the error a PHP callback reported out of the Go frames
 // between it and the host boundary. A binding declaring func(string) string
 // leaves nowhere to return one and the only way across is a panic; the boundary
 // unwraps this one in place of reporting a host panic and a script that throws
@@ -88,7 +88,7 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 }
 
 // adapt wraps any Go callable in the uniform func(...any) (any, error)
-// signature the evaluation environment carries, which is the one shape the
+// signature the evaluation environment uses, which is the one shape the
 // engine's call closures assert. The wrapper performs PHP-ish argument
 // coercion via reflection so shims keep natural Go signatures.
 func adapt(fn any) func(...any) (any, error) {

@@ -12,7 +12,7 @@ import (
 // This file is Runtime.Eval and its machinery: compiling an expression to the
 // closure engine, the pooled evaluation environments the compiled chains run
 // in, variable resolution, and the per-runtime helpers the environments
-// install. The engine itself lives in runner/expr.
+// install. The engine itself is in runner/expr.
 
 // Eval compiles e to a closure chain, binds the referenced variables from
 // scope by slot, and runs it.
@@ -50,7 +50,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	st.exprs = ce.exprs
 	defer rt.releaseEnv(st)
 
-	// installFunc adds a registered function on demand: an environment carries
+	// installFunc adds a registered function on demand: an environment holds
 	// the PHP-semantic helpers plus whatever the expressions evaluated with it
 	// have called so far, and no closure per entry of the function table. The
 	// installed closures persist across evaluations (see installFunc). An
@@ -65,7 +65,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	}
 
 	// Per-expression values bind by slot into a pooled slice; the base env
-	// carries only the persistent helpers and installed functions.
+	// holds only the persistent helpers and installed functions.
 	vars := st.slots(ce.prog.NumSlots())
 	for id, cl := range ce.closures {
 		slot, ok := ce.closureSlots[id]
@@ -107,8 +107,7 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 // table (PHP constants are visible in every scope, whereas plain variables
 // belong to their frame), then the superglobals. A bare name nothing
 // defines is an error - PHP 8 raises Error there, while an unset variable of
-// the same spelling stays null and the two carry different
-// identifiers.
+// the same spelling stays null and the two hold different identifiers.
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
@@ -204,7 +203,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 }
 
 // buildEnv fills st with the env shared by every evaluation: the PHP-semantic
-// helpers. The engine carries no builtins of its own and a registered function
+// helpers. The engine holds no builtins and a registered function
 // resolves as a bare identifier the engine calls by name, but buildEnv
 // installs *no* such function: installFunc adds the ones an expression
 // actually calls, on demand (see Eval). Eval layers variables and other
@@ -215,8 +214,8 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 // arguments and keeps the runtime func type in sync with the type env (see
 // helpers.go::adapt and Eval).
 //
-// The closures read the scope through st.ref and capture nothing, which is
-// what makes the environment reusable.
+// The closures read the scope through st.ref and capture nothing, which keeps
+// the environment reusable.
 func (rt *Runtime) buildEnv(st *evalEnv) {
 	env := st.env
 	clear(env)
@@ -259,7 +258,7 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 }
 
 // installFunc adds the registered function name to st's environment, unless it
-// already carries one. The closure stays in the environment (releaseEnv strips
+// already holds one. The closure stays in the environment (releaseEnv strips
 // only the per-expression keys) and installFunc wraps a function at most
 // once per environment per function-table generation: buildEnv clears the map
 // whenever the generation moves, the one point at which a name could have been
@@ -275,8 +274,8 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 // Names resolve case-insensitively, as PHP function names do and as helperFunc
 // resolves them.
 //
-// Like buildEnv, the closure reads the scope through st.ref at call time rather
-// than capturing it.
+// Like buildEnv, the closure reads the scope through st.ref at call time and
+// captures nothing.
 func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	if _, ok := st.env[name]; ok {
 		return
@@ -402,9 +401,9 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 				result, err := rt.invokeEntry(entry, args, scope)
 				return result, nameCallError(err, fallback)
 			}
-			// Frame-aware builtins live in the evaluation environment rather
-			// than the function table and the bare-name fast path finds them
-			// but this dispatch would not. Inside a namespaced file every
+			// The evaluation environment holds the frame-aware builtins and
+			// the function table does not. The bare-name fast path finds
+			// them; this dispatch would not. Inside a namespaced file every
 			// global call arrives here and this dispatch resolves them.
 			if v, ok := scopeBuiltin(fallback, scope); ok {
 				return v, nil
@@ -417,7 +416,7 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 	}
 }
 
-// ScopeBuiltins names the builtins the function table does not carry.
+// ScopeBuiltins names the builtins the function table does not hold.
 func ScopeBuiltins() []string {
 	return []string{"func_get_args"}
 }

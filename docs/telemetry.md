@@ -1,8 +1,8 @@
 # Telemetry
 
-`phpscript server` records what it does: every request becomes a trace, and the work inside it becomes spans. Includes, PHP calls, templates, database queries and anything a script measures itself land in the same timeline, served by a front end at `/debug/oida`.
+`phpscript server` records what it does: every request becomes a trace, and the work inside the request becomes spans. Includes, PHP calls, templates, database queries and anything a script measures itself land in the same timeline, served by a front end at `/debug/oida`.
 
-The recorder is [oida](https://github.com/titpetric/oida), and there is one per service: the [platform](https://github.com/titpetric/platform) builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. phpscript registers no recorder next to it. It observes the interpreter onto the traces that one starts and interpreter work appears on the same page as the request that caused it.
+The recorder is [oida](https://github.com/titpetric/oida), one per service: the [platform](https://github.com/titpetric/platform) builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. phpscript registers no recorder next to it. It observes the interpreter onto the traces that one starts and interpreter work appears on the same page as the request that caused it.
 
 phpscript binds oida into `telemetry/`, the only package here that imports it: everything else instruments through `telemetry.StartSpan` and the types bound there and no call site names the provider. That covers the call sites and not the whole dependency, since the platform names oida itself.
 
@@ -12,7 +12,7 @@ The bundled server enables telemetry by default. Set `telemetry.enabled` to `fal
 
 | Path                     | View                                                              |
 |--------------------------|-------------------------------------------------------------------|
-| `/debug/oida`            | The domains this process serves and how much traffic each carries |
+| `/debug/oida`            | The domains this process serves and how much traffic each took    |
 | `/debug/oida/live`       | Traces in flight and completed traces as the recorder writes them |
 | `/debug/oida/traces`     | Retained traces, filterable by host, span kind and status         |
 | `/debug/oida/stats`      | Rolling statistics of the retained traces                         |
@@ -48,23 +48,23 @@ The platform's middleware records the request and starts the trace. The observer
 
 ## Trace level
 
-An interpreter reports work a host never would. A frame of PHP is a span, and a page that calls two hundred methods fills a trace with two hundred spans of a microsecond each, with the request they belong to somewhere under them. `runner.trace_level` is the `log_level` of that instrumentation: how much of its own work the runtime publishes.
+An interpreter reports work a host never would. A frame of PHP is a span, and a page that calls two hundred methods fills a trace with two hundred spans of a microsecond each, with the request they belong to somewhere under them. `runner.trace_level` is the `log_level` of that instrumentation: how much of its work the runtime publishes.
 
 | Level   | What the interpreter publishes                                                                                      |
 |---------|---------------------------------------------------------------------------------------------------------------------|
-| `off`   | Nothing of its own. A binding's span, a `start_span` from PHP and the error span of a failed run are unaffected     |
+| `off`   | Nothing. A binding's span, a `start_span` from PHP and the error span of a failed run still arrive                  |
 | `info`  | A span per frame, marked as detail, and one `includes` span at the end of the request naming the files. The default |
 | `debug` | Everything unmarked, a span per include among it                                                                    |
 
-The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans, so a frame worth reading stays and a microsecond of dispatch does not, and the dropped frame gives its slot in `max_spans_per_trace` back to the work that needs it. Set that minimum to zero and every frame is kept, which is `trace_level: debug` arrived at from the other side.
+The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans. A frame worth reading stays and a microsecond of dispatch does not. The dropped frame returns its slot in `max_spans_per_trace` to the work that needs it. Set `Options.DebugSpanMinDuration` to zero and the recorder keeps every frame, which is `trace_level: debug` arrived at from the other side.
 
 A static call opens no span of its own. Its time stays in the frame that made the call, and a class of static helpers does not add a span per use.
 
-The level is a runner option, so a virtual host sets its own in the `runner` block of its `phpscript.yml`, and a host embedding the runtime sets `runner.Options.TraceLevel`.
+The level is a runner option. A virtual host sets its own in the `runner` block of its `phpscript.yml`, and a host embedding the runtime sets `runner.Options.TraceLevel`.
 
-Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier and a log line carrying it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.
+Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier and a log line that records it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.
 
-Statistics group by routed pattern where one is meaningful and `/hello/Ada` and `/hello/Grace` fall under `GET /hello/{name}`. The PHP file server sits on a catch-all, and the platform drops that pattern and those requests group by path which is the PHP file that ran.
+Statistics group by routed pattern where one is meaningful and `/hello/Ada` and `/hello/Grace` fall under `GET /hello/{name}`. The PHP file server runs under a catch-all pattern. The platform drops that pattern and those requests group by path, which is the PHP file that ran.
 
 ## Spans from PHP
 
@@ -80,7 +80,7 @@ The span is the Go span and its methods are the Go methods spelled the way PHP s
 
 Kinds are `internal` (the default), `http`, `database`, `external`, `template`, `cache` and `queue`. The set is open: an unrecognized string is a valid kind and gets its own color in the timeline.
 
-Spans nest. A span started while an include or a PHP call is running nests below it and the trace carries the shape of the request.
+Spans nest. A span started while an include or a PHP call is running nests below it and the trace records the shape of the request.
 
 Instrumentation is nil safe. A script that calls `start_span` in a CLI run, in a process with telemetry disabled, or in a request the sampler rejected, gets a span whose methods do nothing.
 
@@ -105,13 +105,13 @@ Span names are stable and low cardinality, because a name is an identity: the sp
 
 `query_type` is the keyword the statement starts with, lowercased, and `query_comment` is the text of a `/* */` comment in front of it: a query written as `/* userGet */ SELECT * FROM user ...` records `select` and `userGet`. Both group a trace by the query behind it, which the statement text alone does not. The comment stays in the statement sent to the server and `SHOW PROCESSLIST` and the slow query log show the same tag as the trace does.
 
-`args` carries the values bound to the statement, positional ones as a list and named ones as the map they came from. A placeholder query names no row and the values are the point; they are as sensitive as the columns they filter on, which is a reason to set `Options.Authorize` before exposing the front end. Message bodies and session IDs are the two things never recorded: only the size of a body, and no part of a session ID.
+`args` records the values bound to the statement, positional ones as a list and named ones as the map they came from. A placeholder query names no row and the values are the point; they are as sensitive as the columns they filter on, which is a reason to set `Options.Authorize` before exposing the front end. Message bodies and session IDs are the two things never recorded: only the size of a body, and no part of a session ID.
 
 `server` on a `mail` span is the mail server's configured name. Its hostname is not recorded. The name is what an operator reads the trace against, and the only thing the binding knows: the provider hands out no part of a credential, hostname included. No username or password reaches a mail span.
 
 Expected outcomes are not failures. The recorder marks a `get()` that found no row, a session that is not there, and a request the client cancelled as a miss or an empty result, not as an error, because a recorded error fails the trace and the SLA computed from it. The same rule decides the scoreboard: a page ending in `exit()` ran to completion, and only `exit(1)` and above is an error.
 
-A trace ID is the cheapest correlation there is and the server writes it into the log line of a failed request. The `Request-Id` header and the last path segment of the trace detail page carry the same value.
+A trace ID is the cheapest correlation there is and the server writes it into the log line of a failed request. The `Request-Id` header and the last path segment of the trace detail page hold the same value.
 
 ## Scoreboard states
 
@@ -138,8 +138,8 @@ Go memory statistics are process-wide and concurrent requests include one anothe
 
 ## Access control
 
-The front end is not authenticated, and `phpscript server` has no setting that changes it. oida gates every route it serves, assets included, behind `Options.Authorize`, but that field is a Go function and no value and the configuration file cannot carry it and the bundled server never sets one.
+The front end is not authenticated, and `phpscript server` has no setting that changes it. oida gates every route it serves, assets included, behind `Options.Authorize`. That field takes a Go function and no value: no configuration file can hold one and the bundled server never sets one.
 
-For a service run with `phpscript server`, that leaves three options: keep the listener off a public interface, put a proxy that authenticates in front of `/debug/oida`, or set `telemetry.enabled` to `false`. Traces carry the values bound to database queries and the page is as sensitive as the columns those queries filter on.
+For a service run with `phpscript server`, that leaves three options: keep the listener off a public interface, put a proxy that authenticates in front of `/debug/oida`, or set `telemetry.enabled` to `false`. Traces record the values bound to database queries and the page is as sensitive as the columns those queries filter on.
 
 A Go host that embeds the platform, in place of running the bundled server, sets `Authorize` on the options it hands `platform.New`.

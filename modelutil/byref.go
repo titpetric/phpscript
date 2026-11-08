@@ -1,4 +1,4 @@
-package model
+package modelutil
 
 // byRefArgs lists, per builtin, the argument positions PHP passes by reference.
 // They are output parameters: the binding receives a setter that writes the
@@ -21,8 +21,7 @@ var byRefArgs = map[string]map[int]bool{
 }
 
 // ByRefArg reports whether the argument at index is an output parameter of the
-// named call. Inside a namespaced file the call carries a qualified name and
-// the global name it falls back to, and either may match.
+// named call. Either name may match; a namespaced call falls back to global.
 func ByRefArg(name, fallback string, index int) bool {
 	if refs, ok := byRefArgs[name]; ok {
 		return refs[index]

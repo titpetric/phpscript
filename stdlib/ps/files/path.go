@@ -10,13 +10,12 @@ import (
 
 // registerWorkDir installs the working-directory pair. Unlike the functions
 // below they depend on the root, because the directory they move is a
-// position inside it.
+// position inside the root.
 //
-// The directory is per-runtime state, and a host builds one runtime per
+// The directory is per-runtime state. A host builds one runtime per
 // request and a script that moves it moves state no other request can see.
 // No code calls os.Chdir: every request in flight shares the process working
-// directory with the host itself, and there is no point at which owning it
-// would be correct.
+// directory with the host itself, and owning it would never be correct.
 func registerWorkDir(rt *runner.Runtime) {
 	// chdir changes the working directory relative paths resolve against and
 	// returns whether it could; the directory is this request's own, and a
@@ -25,7 +24,7 @@ func registerWorkDir(rt *runner.Runtime) {
 	// getcwd returns the working directory, written from the source
 	// filesystem's root: "/" for the root itself, "/app" for a directory
 	// below it. PHP answers a host path; a runtime that may serve its scripts
-	// out of an embedded tree has none to answer with.
+	// out of an embedded tree has no host path to answer with.
 	rt.RegisterFunc("getcwd", rt.WorkDirPath)
 }
 

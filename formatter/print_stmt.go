@@ -93,9 +93,9 @@ func (p *printer) printStmt(s model.Stmt) {
 	}
 }
 
-// use renders an import statement. The parser resolves imports while parsing,
-// and the statement is inert, but dropping it would rewrite a file into one
-// that states none of its dependencies.
+// use renders an import statement. The parser resolves imports while parsing.
+// The statement is inert; dropping it would rewrite a file into one that
+// states none of its dependencies.
 func (p *printer) use(n *model.Use) string {
 	// A go import carries its path, one per statement. See goimport.go.
 	if len(n.Imports) == 1 && n.Imports[0].Package != "" {

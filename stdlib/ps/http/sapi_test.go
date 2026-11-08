@@ -42,7 +42,7 @@ func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string, bind
 }
 
 // TestGetAllHeadersReadsTheRequest covers the three spellings of one function.
-// Ported code reaches for getallheaders, get_all_headers or
+// Ported code calls getallheaders, get_all_headers or
 // apache_request_headers depending on its target server and
 // all three answer the same array.
 func TestGetAllHeadersReadsTheRequest(t *testing.T) {
@@ -93,7 +93,7 @@ var_export(setrawcookie("session", "abc"));
 
 // TestHeaderStagesTheResponse covers the two shapes header() takes. A
 // "Name: value" pair stages a header, and a status line such as
-// "HTTP/1.0 404 Not Found" carries a status with no name and no value and it
+// "HTTP/1.0 404 Not Found" holds a status with no name and no value and it
 // stages the status it names.
 func TestHeaderStagesTheResponse(t *testing.T) {
 	t.Parallel()
@@ -115,7 +115,7 @@ header("HTTP/1.1 418 I am a teapot");
 	if got := response.Values("X-Count"); len(got) != 1 || got[0] != "2" {
 		t.Errorf("X-Count = %v, want [2]", got)
 	}
-	// $replace false appends and the response carries Set-Cookie twice.
+	// $replace false appends and the response holds Set-Cookie twice.
 	if got := response.Values("X-Trace"); len(got) != 2 {
 		t.Errorf("X-Trace = %v, want two values", got)
 	}
@@ -126,7 +126,7 @@ header("HTTP/1.1 418 I am a teapot");
 
 // TestHTTPResponseCode covers PHP's two answers. Called with a status it stages
 // it and returns the one it replaced; called with none it reports the status
-// the response will carry and a template can branch on it.
+// the response will send and a template can branch on it.
 //
 // On a web SAPI a request starts out answering 200 and there is always a
 // previous number to return.
@@ -148,8 +148,8 @@ echo " " . http_response_code();
 
 // TestHTTPResponseCodeOffTheWeb covers the two answers php reserves for a run
 // that has chosen no status: false while nothing has staged one, and true for
-// the first one, there being no previous number to report. The command line is
-// where that happens, and so is a Go host that named no SAPI.
+// the first one, there being no previous number to report. That happens on the
+// command line and on a Go host that named no SAPI.
 func TestHTTPResponseCodeOffTheWeb(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()
@@ -166,7 +166,7 @@ var_dump(http_response_code());
 
 // TestSetCookie covers the header both the positional and the array call stage.
 // The value is url-encoded as PHP's setcookie() encodes it and a space is a
-// plus, and an expiry of 0 carries no Expires attribute: the cookie dies with
+// plus, and an expiry of 0 stages no Expires attribute: the cookie dies with
 // the browser session.
 func TestSetCookie(t *testing.T) {
 	t.Parallel()
@@ -217,7 +217,7 @@ func TestSetCookie(t *testing.T) {
 		})
 	}
 
-	// An expiry of 0 carries no Expires attribute at all.
+	// An expiry of 0 stages no Expires attribute at all.
 	request := runner.NewContext()
 	runRequest(t, request, `<?php setcookie("session", "abc", 0);`)
 	if staged := request.ResponseHeaders().Get("Set-Cookie"); strings.Contains(staged, "Expires") {
@@ -226,7 +226,7 @@ func TestSetCookie(t *testing.T) {
 }
 
 // TestSetCookieOptionsFromBinding covers the options bag another binding
-// built: the array form is a collection whatever shape holds it, and a map
+// built: the array form is a collection whatever shape holds it. A map
 // reaches the header the way the array a literal writes does. The keys fold,
 // as php's do: it takes "Expires" for the option it refuses "bogus" for.
 func TestSetCookieOptionsFromBinding(t *testing.T) {
@@ -255,7 +255,7 @@ func TestSetCookieOptionsFromBinding(t *testing.T) {
 }
 
 // TestSetRawCookie covers the spelling that writes the value as it stands. A
-// value carrying a space or a semicolon is the caller's to handle and the
+// value with a space or a semicolon is the caller's to handle and the
 // encoder does nothing with it and a script holding a pre-encoded value keeps
 // it byte for byte.
 func TestSetRawCookie(t *testing.T) {

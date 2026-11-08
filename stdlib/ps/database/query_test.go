@@ -5,7 +5,7 @@ import (
 )
 
 // Classification reads the leading text of a statement and the tag a query
-// carries must not change its class. The tag is the reason to look: a
+// holds must not change its class. The tag is the reason to look: a
 // statement in `show processlist` says nothing about the code that issued it.
 func TestParseQuery(t *testing.T) {
 	t.Parallel()
@@ -91,8 +91,8 @@ func TestParseQuery(t *testing.T) {
 		query:   "/* select * from users",
 		notRead: true,
 	}, {
-		// parseQuery classifies only a statement beginning with its keyword,
-		// and it refuses a parenthesized union and never guesses at one.
+		// parseQuery classifies only a statement beginning with its keyword.
+		// It refuses a parenthesized union and never guesses at one.
 		name:    "leading parenthesis",
 		query:   "(select 1) union (select 2)",
 		notRead: true,

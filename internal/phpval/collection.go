@@ -2,6 +2,7 @@ package phpval
 
 import (
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Strings returns a collection's values as strings in order.
@@ -13,19 +14,19 @@ func Strings(a any) ([]string, error) {
 	if parts, ok := a.([]string); ok {
 		return parts, nil
 	}
-	n, _ := model.LenValues(a)
+	n, _ := modelutil.LenValues(a)
 	if n == 0 {
 		return nil, nil
 	}
 	// One captured struct and no two captured variables: each variable a
-	// closure captures by reference is its own heap allocation, and this runs
+	// closure captures by reference is its own heap allocation. This runs
 	// under implode. The field holds the refused value as its concrete type,
 	// and the happy path stores nothing.
 	state := struct {
 		out     []string
 		refused *model.Object
 	}{out: make([]string, 0, n)}
-	model.RangeValues(a, func(_, v any) bool {
+	modelutil.RangeValues(a, func(_, v any) bool {
 		if object, ok := v.(*model.Object); ok {
 			state.refused = object
 			return false
@@ -45,11 +46,11 @@ func Values(a any) []any {
 	if vals, ok := a.([]any); ok {
 		return vals
 	}
-	n, _ := model.LenValues(a)
+	n, _ := modelutil.LenValues(a)
 	if n == 0 {
 		return nil
 	}
 	out := make([]any, 0, n)
-	model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
+	modelutil.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
 	return out
 }

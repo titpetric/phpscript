@@ -29,7 +29,7 @@ echo strtr("hello", "abc", "x"), "\n";`)
 // TestStrrpos covers the offset argument, which means two different things by
 // its sign. A positive offset skips that many leading bytes and the search
 // runs over the rest. A negative one caps where the match may start, counted
-// back from the end, and the result is still a position in the whole string:
+// back from the end. The result is still a position in the whole string:
 // -5 over "hello world" finds the "o" at 4 and not the one at 7.
 //
 // A needle that does not occur is false and never -1, because a caller
@@ -108,11 +108,11 @@ var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
 
 // TestPlatformVersion covers the version this runtime reports, which is a
 // decision and not a measurement: the fixtures follow that version's
-// semantics, and a library reads the number when it picks which language
+// semantics. A library reads the number when it picks which language
 // features it may use. The three spellings have to agree, because a library
 // gates on whichever one it learned.
 //
-// The php binary the fixture matrix runs beside carries its own version and
+// The php binary the fixture matrix runs beside reports its own version and
 // this test states the value and settles nothing by running php.
 func TestPlatformVersion(t *testing.T) {
 	t.Parallel()
@@ -127,7 +127,7 @@ var_dump(phpversion(), zend_version());`)
 	}
 }
 
-// TestPlatformOS covers PHP_OS and PHP_OS_FAMILY, which carry php's spelling
+// TestPlatformOS covers PHP_OS and PHP_OS_FAMILY, which hold php's spelling
 // of the host and not Go's: php reads the uname system name and linux is
 // "Linux". The family is the coarser grouping a script branches on, and the
 // two agree on every platform this runs on except the BSDs and Solaris.

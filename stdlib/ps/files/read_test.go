@@ -11,7 +11,7 @@ import (
 )
 
 // sourceTree is the read-only application an embedded or in-memory host ships.
-// No part of it sits on disk and a read that answers from it proves the read
+// No part of it exists on disk and a read that answers from it proves the read
 // used the fs.FS and never the host filesystem underneath.
 func sourceTree() fstest.MapFS {
 	return fstest.MapFS{
@@ -54,8 +54,8 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 // TestGlobIsJailedToTheSourceFilesystem pins where "/" points: the source
 // filesystem's root and never the host's and an absolute pattern names something
 // inside the tree serving the script and there is no spelling that
-// reaches past it; php would list whatever the host holds at that path, and
-// that divergence is the point. The runtime cleans a pattern that climbs
+// reaches past it; php would list whatever the host holds at that path. That
+// divergence is the point. The runtime cleans a pattern that climbs
 // against the root, the rule every path a script passes this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 	t.Parallel()

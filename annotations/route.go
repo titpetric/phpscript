@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Route serves the @route endpoints of a PHP source tree as a
@@ -60,7 +60,7 @@ func (r *Route) Register(registrar Registrar) error {
 			// matches every request to the segment and exports nothing, which
 			// is a live route that answers wrongly. `phpscript lint` reports
 			// the same paths with a file and a line.
-			if _, err := model.ParseRoutePath(route.Path); err != nil {
+			if _, err := modelutil.ParseRoutePath(route.Path); err != nil {
 				warnings = append(warnings, fmt.Sprintf("%s in %s; route not registered", err, file))
 				continue
 			}

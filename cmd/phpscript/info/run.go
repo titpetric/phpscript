@@ -26,11 +26,8 @@ type Options struct {
 	Verbose bool
 }
 
-// NewCommand creates a new `info` command. The verbosity dial is the shared
-// -v: here it lists every bound function, class and method under the summary.
-// The configuration is what every command constructor takes and one
-// signature covers them all. This command reads it through globals, which
-// main fills from the configuration before it builds any command.
+// NewCommand returns the `info` command. The shared -v lists every bound
+// function, class and method under the summary.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "info",

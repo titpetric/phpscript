@@ -43,8 +43,8 @@ func TestRuneOffsetsByteOffset(t *testing.T) {
 					t.Errorf("byteOffset(%d) = %d, want %d", i, got, want)
 				}
 			}
-			// A rune index past the end is the end of the subject, which is
-			// what the end of a match on the last rune converts to.
+			// A rune index past the end is the end of the subject: the end of
+			// a match on the last rune converts to it.
 			if got := offsets.byteOffset(len(test.want) + 5); got != len(test.subject) {
 				t.Errorf("byteOffset past end = %d, want %d", got, len(test.subject))
 			}
@@ -72,8 +72,8 @@ func TestRuneOffsetsASCIIKeepsNoTable(t *testing.T) {
 // TestFindIndexReportsByteOffsets covers the conversion where it matters: the
 // backtracking engine reports rune indexes, and a script reading
 // PREG_OFFSET_CAPTURE has to see the byte offsets PHP reports. The lookahead
-// forces the pattern onto that engine; the plain one stays on RE2, and the two
-// have to agree.
+// forces the pattern onto that engine; the plain one stays on RE2. Both
+// engines have to agree.
 func TestFindIndexReportsByteOffsets(t *testing.T) {
 	t.Parallel()
 	const subject = "\xc3\xa4bc" // "äbc": b starts at byte 2, rune 1

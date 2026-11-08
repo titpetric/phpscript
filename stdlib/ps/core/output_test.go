@@ -10,7 +10,7 @@ import (
 // var_export(1.0) writing "1" would read back as an int.
 //
 // A nested array breaks after the arrow and indents two and the inner "array ("
-// sits on its own line under the key.
+// starts a new line under the key.
 func TestVarExport(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -50,7 +50,7 @@ echo "[", $source, "]";`)
 	}
 }
 
-// TestVarDump covers the annotation var_dump carries: the type, the element
+// TestVarDump covers the annotation var_dump writes: the type, the element
 // count of a composite, and the length of a string in bytes. A two-byte é
 // makes string(6) out of five characters and a script sees the encoding it
 // actually holds.
@@ -73,8 +73,8 @@ var_dump([1 => "a", "k" => [true]]);`)
 // level of nesting with the entries four past the parenthesis, and the blank
 // line php leaves after a nested array.
 //
-// A bare scalar has no lines of its own, and the float carries precision=14
-// digits where var_dump passes the round-tripping ones and 0.1+0.2 prints 0.3
+// A bare scalar writes no lines and the float prints at precision=14 where
+// var_dump passes the round-tripping digits and 0.1+0.2 prints 0.3
 // here and 0.30000000000000004 there.
 func TestPrintR(t *testing.T) {
 	t.Parallel()

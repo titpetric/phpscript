@@ -17,8 +17,8 @@ import (
 //
 // titpetric/exp/cmd/indexer, whose layout this borrows, loads bootstrap from a
 // CDN for the same page. A directory listing that fetches a third party asset
-// tells that third party what a visitor is browsing, and renders unstyled on a
-// machine with no route out and this one fetches nothing. There is nowhere to
+// tells that third party which directory a visitor opened, and renders unstyled
+// on a machine with no route out; this one fetches nothing. There is nowhere to
 // serve a separate asset from either: the document root belongs to the site.
 const autoindexStyle = `
 body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #222; }
@@ -34,8 +34,8 @@ a:hover { text-decoration: underline; }
 .thumbs img { width: 100%; height: 9rem; object-fit: contain; background: #f4f4f4; border-radius: 3px; }
 `
 
-// imageExtensions are the files a listing renders in place of naming. The set is
-// what a browser renders on its own; anything else is a download.
+// imageExtensions are the files a listing renders in place of naming. A
+// browser renders the set inline; anything else is a download.
 var imageExtensions = map[string]bool{
 	".avif": true,
 	".gif":  true,
@@ -46,14 +46,14 @@ var imageExtensions = map[string]bool{
 	".webp": true,
 }
 
-// serveAutoindex answers a directory with a listing of what is in it, and
-// reports whether it did. A site that did not turn autoindex on gets a false
-// answer and its 404, the state of a directory without an index page
+// serveAutoindex answers a directory with a listing of its contents, and
+// reports whether it wrote one. A site that did not turn autoindex on gets a
+// false answer and its 404, the state of a directory without an index page
 // when listings are off.
 //
 // dir names the directory relative to the document root, "." for the root
 // itself. Every entry links relative to the request's own path and that path
-// has to carry a trailing slash; ServeHTTP redirects first.
+// has to end in a trailing slash; ServeHTTP redirects first.
 func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir string) bool {
 	if !h.autoindex {
 		return false
@@ -135,7 +135,7 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 }
 
 // writeAutoindexRow writes one entry as a table row. An entry whose Info call
-// fails still gets a row: the entry exists, and a size is not why anyone came.
+// fails still gets a row: the entry exists and nobody came for its size.
 func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	name, href := escapeEntry(entry)
 
@@ -156,7 +156,7 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 
 // escapeEntry returns the entry's name as text in the page and as the target of
 // a link to it, both escaped for where they go. A directory's name and its link
-// both carry a trailing slash and following it lands on that directory's own
+// both end in a trailing slash and following it lands on the directory's own
 // listing and not on the redirect to it.
 //
 // The two escapings differ and the page needs both: URL escaping keeps a

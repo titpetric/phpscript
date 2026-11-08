@@ -114,7 +114,7 @@ echo $session->get();        // the signed-in user's primary key
 $session->destroy();         // log out: the stored session is deleted, the cookie expires
 ```
 
-`login()` reports whether the credential held, and a wrong password is `false` and no error. `start($id)` is the other way in, for an application that identifies its visitor by some other means. `get()` answers the stored id, `valid()` whether the request carries a live session, and `destroy()` ends it.
+`login()` reports whether the credential held, and a wrong password is `false` and no error. `start($id)` is the other way in, for an application that identifies its visitor by some other means. `get()` answers the stored id, `valid()` whether the request has a live session, and `destroy()` ends it.
 
 Either half is replaceable, by constructor argument or by setter:
 
@@ -129,7 +129,7 @@ $other->set_storage($session_store);
 $other->set_auth($user_store);
 ```
 
-`Session\Storage\Disk($path)` keeps a file per session under a directory inside the application root; with no path it uses one of the application's own below the host's temporary directory, which survives a reload. `Session\Storage\Memory` lives as long as the runtime, and a server forks one per worker and it belongs to a CLI run or a test; a served site takes the disk one. A disk storage the runtime cannot create falls back to memory with a warning naming the path, and every session span carries the backend that answered.
+`Session\Storage\Disk($path)` keeps a file per session under a directory inside the application root; with no path it uses one of the application's own below the host's temporary directory, which survives a reload. `Session\Storage\Memory` lives as long as the runtime, and a server forks one per worker and it belongs to a CLI run or a test; a served site takes the disk one. A disk storage the runtime cannot create falls back to memory with a warning naming the path, and every session span names the backend that answered.
 
 ### `Auth\Storage\PasswordFile`
 
@@ -152,11 +152,11 @@ foreach ($users->users() as $row) {
 }
 ```
 
-`authenticate()` answers a record or `null`, and a wrong password, an unknown name and a name in the wrong case are the same `null`. A record carries two things: `get_id()`, a ULID computed from the username, and its string form, which is the username - so `echo $user` and a `string` parameter both read the name with nothing spelled at the call site.
+`authenticate()` answers a record or `null`, and a wrong password, an unknown name and a name in the wrong case are the same `null`. A record answers two things: `get_id()`, a ULID computed from the username, and its string form, which is the username - so `echo $user` and a `string` parameter both read the name with nothing spelled at the call site.
 
-The key follows from the name and sits in no column and the file is a table other tables can reference: removing an account takes its row and leaves the rest, and adding the same name back answers the same key. `exists()` reports whether there is a file to read at all and a default store does not fail a tree that has no accounts, and `users()` is the file as a listing of keys and names.
+The key follows from the name, which no column stores. The file is a table other tables can reference: removing an account takes its row and leaves the rest, and adding the same name back answers the same key. `exists()` reports whether there is a file to read at all and a default store does not fail a tree that has no accounts, and `users()` is the file as a listing of keys and names.
 
-No hash reaches a script, by construction: the store holds a path, every call reads the file, and no method returns a stored value. The formats a line may carry, the ones the parse refuses, and what each costs an attacker are in [security.md](../../security.md#the-user-database).
+No hash reaches a script, by construction: the store holds a path, every call reads the file, and no method returns a stored value. The formats a line may use, the ones the parse refuses, and what each costs an attacker are in [security.md](../../security.md#the-user-database).
 
 ## Function keyword aliases
 
@@ -213,9 +213,9 @@ Embedding hosts opt into runtime services separately:
 - `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterArea`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
-- `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector that opens its pools. Name resolution and the rule that a script cannot read a credential sit above the seam and neither changes.
+- `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector that opens its pools. Name resolution and the rule that a script cannot read a credential stay as they are.
 - `mail.NewMemory(names...)` is a provider that queues messages in memory and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name.
-- `rt.UseNamespace("Runtime\\Go")` installs a namespace binding area, the install a script triggers by writing `use Runtime\Go`. An area registered this way stays off `stdlib.Register`'s surface: `function_exists`, `get_defined_functions` and the generated reference carry none of its names until an import installs them.
+- `rt.UseNamespace("Runtime\\Go")` installs a namespace binding area, the install a script triggers by writing `use Runtime\Go`. An area registered this way stays off `stdlib.Register`'s surface: `function_exists`, `get_defined_functions` and the generated reference report none of its names until an import installs them.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
 Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterArea(name, Register)` under the area its folder maps to (see [Runtime areas](runtime-areas.md)), and `stdlib/imports.go` blank-imports them. A host needing a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.

@@ -6,6 +6,6 @@ ignorecase: true
 nonword: true
 tokens:
   - ',\s*(?:highlighting|underscoring|demonstrating|showcasing|illustrating|emphasi[sz]ing|reflecting|cementing|reinforcing)\s+(?:the|that|how|its|a|an)\b'
-  - ',\s*making it (?:the|a|an|one of)\b'
-  - ',\s*which speaks to\b'
-  - ',\s*a testament to\b'
+  - ',\s*making\s+it\s+(?:the|a|an|one\s+of)\b'
+  - ',\s*which\s+speaks\s+to\b'
+  - ',\s*a\s+testament\s+to\b'

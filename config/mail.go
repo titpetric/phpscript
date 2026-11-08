@@ -8,7 +8,7 @@ import (
 )
 
 // flatMailKeys are the settings of one server. One of them directly under mail
-// means the file wrote the single unnamed block phpscript carried before the
+// means the file wrote the single unnamed block phpscript read before the
 // key became a map of named servers.
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
@@ -18,16 +18,11 @@ var flatMailKeys = []string{"host", "port", "username", "password", "from", "ins
 //
 // The credentials stay here: a script cannot spell a host or a password or
 // read one back. A site declaring a mail block gets the servers it
-// named and none of the operator's, which docs/configuration.md records.
+// named and not the operator's, which docs/configuration.md records.
 type Mail map[string]mail.Config
 
-// Check checks that mail can leave through every configured server and a
-// credential the operator got wrong fails the command and not the first
-// delivery. A @schedule job discovering it at three in the morning is the
-// failure mode worth avoiding.
-//
-// The walk runs in name order and the server it names does not depend on map
-// iteration.
+// Check reports a configured server mail cannot leave through, walking the
+// names in sorted order and not in map order.
 func (m Mail) Check(filename string) error {
 	names := make([]string, 0, len(m))
 	for name := range m {

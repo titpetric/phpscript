@@ -164,7 +164,7 @@ func TestStaticProp(t *testing.T) {
 
 // TestStaticVarBag covers the persistent storage of one `static $x` statement.
 // Named functions and methods share one bag per statement on the Runtime; a
-// closure frame carries its own table and each closure value counts on its own.
+// closure frame keeps its own table and each closure value counts separately.
 // The second return reports whether the bag already held values, and keeps an
 // initializer from running twice.
 func TestStaticVarBag(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 )
 
 // recordingRegistrar is a router that records every registration. A
-// Registrar is all Route needs to publish its endpoints and this stands for a
-// host router without implementing one.
+// Registrar is all Route needs to publish its endpoints and this takes a host
+// router's place without implementing one.
 type recordingRegistrar struct {
 	handled  []string
 	handlers map[string]http.Handler

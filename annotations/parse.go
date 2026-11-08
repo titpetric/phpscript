@@ -37,7 +37,7 @@ func ParseRoutes(src []byte) []model.RouteAnnotation {
 	return routes
 }
 
-// HasStartup reports whether src carries an @startup comment, marking a file
+// HasStartup reports whether src holds an @startup comment, marking a file
 // the server executes once before it listens. `phpscript list` uses it to show
 // startup files alongside routed ones.
 func HasStartup(src []byte) bool {

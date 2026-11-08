@@ -9,7 +9,7 @@ phpscript server
 phpscript server ./my-app
 ```
 
-The server serves CSS, JavaScript, images, and other non-PHP files directly from `public/`. PHP files in `public/` are executable by filename, and a request that names a directory resolves to its `index.php`, or to its `index.html` when there is no `index.php`: `/` is `public/index.php` or `public/index.html`, and `/docs/` is `public/docs/index.php` or `public/docs/index.html`. A directory with neither is a 404 unless the configuration sets `autoindex: true`, which answers it with a generated listing instead. Files outside `public/` are never directly exposed. See [Serving static files](../use-cases/static-files.md).
+The server serves CSS, JavaScript, images, and other non-PHP files directly from `public/`. PHP files in `public/` are executable by filename, and a request that names a directory resolves to its `index.php`, or to its `index.html` when there is no `index.php`: `/` is `public/index.php` or `public/index.html`, and `/docs/` is `public/docs/index.php` or `public/docs/index.html`. A directory with no `index.php` and no `index.html` is a 404 unless the configuration sets `autoindex: true`, which answers it with a generated listing instead. Files outside `public/` are never directly exposed. See [Serving static files](../use-cases/static-files.md).
 
 A file in `public/` named after a status answers for it: `public/404.php` answers a visitor following a dead link, and `public/503.php` answers a `throw new Exception("...", 503)`. Writing the file is all there is to it, and a site with no such file answers the bare status. Programs are not sent one: a `fetch()`, an API client and curl get the plain status, as does any endpoint that wrote a body or declared a `Content-Type`. A page answering for a request that matched nothing gets that request whole, `$_POST` and `$_FILES` included and `404.php` can dispatch a site's own routes. See [Error pages](../use-cases/error-handling.md#error-pages).
 
@@ -109,7 +109,7 @@ The server refuses a configuration it cannot use before tearing anything down, a
 ERROR reload refused, still serving error="reload refused: virtualhost \"c.example.com\": root: stat /srv/c: no such file or directory"
 ```
 
-That check is the same one `-t` runs and `-t` passing is a good predictor that a reload will apply. `-t` is still worth running first: it reports to the terminal, and a signal has no way to answer back.
+That check is the same one `-t` runs and `-t` passing is a good predictor that a reload will apply. `-t` is still worth running first: it reports to the terminal. A signal answers nothing back.
 
 The server reads these settings once and a reload cannot change them: `server.addr`, `server.quiet`, `server.modules`, `server.pid_file` and the operator's `telemetry` block. A reload that changes one of them logs which, and keeps the value it started with. Those need a restart.
 

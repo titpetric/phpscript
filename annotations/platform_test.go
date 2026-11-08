@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestModule covers the embedded module every annotation module carries: it
+// TestModule covers the zero module every annotation module embeds: it
 // answers the lifecycle the module leaves alone, and reports the name
 // Options.Modules filters on.
 func TestModule(t *testing.T) {
@@ -26,8 +26,8 @@ func TestModule(t *testing.T) {
 }
 
 // TestRouter covers what this package needs of a Router: a handler reaches it
-// under a method and a rewritten path. The registrar is the adapter, and it
-// writes to a recording router here.
+// under a method and a rewritten path. The registrar is the adapter. It writes
+// to a recording router here.
 func TestRouter(t *testing.T) {
 	t.Parallel()
 	recorder := &recordingRouter{}

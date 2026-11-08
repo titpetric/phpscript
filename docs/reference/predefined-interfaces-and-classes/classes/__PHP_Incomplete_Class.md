@@ -6,7 +6,7 @@
 
 Object produced by `unserialize()` for a class that is not defined, or that is not listed in the `allowed_classes` option.
 
-The object carries a `__PHP_Incomplete_Class_Name` property naming the class PHP could not build. Since PHP 7.2.0, `is_object()` answers true for one.
+The object holds a `__PHP_Incomplete_Class_Name` property naming the class PHP could not build. Since PHP 7.2.0, `is_object()` answers true for one.
 
 ## Class synopsis
 

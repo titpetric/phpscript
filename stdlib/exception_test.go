@@ -10,8 +10,8 @@ import (
 
 // TestException covers the one Go type behind every PHP throwable. Class
 // records the name the script constructed and get_class() can answer it and a
-// catch clause can filter on it, and no two of them stand in a subclass
-// relation: phpscript has no inheritance. The constructor returns a pointer,
+// catch clause can filter on it, and no subclass relation joins two of them:
+// phpscript has no inheritance. The constructor returns a pointer,
 // and the instance a script holds is addressable and `$e->message = "..."`
 // writes to it; the nil error is what keeps `new Exception` from throwing
 // where a script constructs one.
@@ -35,7 +35,7 @@ func TestException(t *testing.T) {
 }
 
 // TestException_ThrowableClass covers the name a catch clause filters on. An
-// exception carrying no class is PHP's base Exception and a value built as a
+// exception naming no class is PHP's base Exception and a value built as a
 // zero struct is still catchable; the SPL and Error class names are the same
 // Go type with a different name recorded and each answers its own.
 func TestException_ThrowableClass(t *testing.T) {
@@ -105,7 +105,7 @@ func TestException_GetMessage(t *testing.T) {
 }
 
 // TestException_Error covers the error interface. A thrown exception reaching a
-// Go caller is an ordinary error carrying the message alone and a host wraps it
+// Go caller is an ordinary error holding the message alone and a host wraps it
 // with %w and errors.As finds it again: the class the script named is on the
 // value and never in the text.
 func TestException_Error(t *testing.T) {

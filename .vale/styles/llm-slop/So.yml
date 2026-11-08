@@ -1,9 +1,19 @@
 ---
 extends: existence
-message: "'%s' joins a padded consequence. Use ' and'."
+message: "'%s' welds a consequence onto a finished sentence. End the first."
 level: error
 ignorecase: true
 nonword: true
 tokens:
+  # A comma and a connective, carrying a second clause the first sentence
+  # had already finished without. The fix is the full stop, or a
+  # subordinating clause that earns its place: "because", "once", "until".
+  #
+  # Never the swap. Trading ", so" for ", and" leaves the weld and moves
+  # the join one word over, which is what RunOnClause flags; both rules
+  # read the same fault and ask for the same thing.
+  #
+  # "so that" is subordinating and stays: it names a purpose, not a
+  # consequence bolted on.
   - ',\s+so\s+(?:[^t]|t[^h]|th[^a]|tha[^t])'
   - ',\s+so\s*$'

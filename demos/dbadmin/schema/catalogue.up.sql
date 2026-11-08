@@ -1,8 +1,8 @@
 -- catalogue holds the demo records the admin console starts with.
 --
--- This file is append only. Statements already applied are recorded by
--- index in the migrations table, so add new statements at the end and
--- never edit or remove the ones above them.
+-- This file is append only. The migrations table records every applied
+-- statement by index. Add a new statement at the end and never edit or remove
+-- the ones above it.
 
 CREATE TABLE catalogue (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,

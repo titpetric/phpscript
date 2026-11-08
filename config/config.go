@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultRuntimeConfig is the `config/config.yml` compiled into the binary.
-// Every default lives in that file and nowhere else and the decoder reads a
+// Every default is in that file and nowhere else and the decoder reads a
 // file passed with -f on top of this one and that file only has to name what
 // it changes.
 //
@@ -52,13 +52,6 @@ type Config struct {
 }
 
 // PlatformOptions returns the platform options `phpscript server` runs under.
-//
-// There is one recorder and the platform owns it: given these options the
-// platform builds the tracer, wraps every module in the tracing middleware and
-// mounts the debug front end under Telemetry.Path. phpscript registers no
-// recorder of its own, and observes the interpreter onto the trace that
-// middleware started and interpreter spans show up on the same front end as
-// the request behind them.
 func (c Config) PlatformOptions() (*PlatformOptions, error) {
 	options, err := c.Telemetry.Resolved()
 	if err != nil {
@@ -127,10 +120,8 @@ type Routes struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// New returns the default configuration: the `config/config.yml` the build
-// compiled into the binary. Defaults live in that file and nowhere else and
-// the decoder reads a file passed with -f on top of it and that file only has
-// to name what it changes.
+// New returns the default configuration, the `config/config.yml` the build
+// compiled into the binary.
 func New() Config {
 	var result Config
 	if err := Unmarshal(DefaultRuntimeConfig, &result); err != nil {
@@ -139,10 +130,7 @@ func New() Config {
 	return result
 }
 
-// NewTestConfig returns the default configuration with the parts a test has no
-// use for turned off: a port picked by the kernel, no lifecycle logging, and no
-// recorder and parallel tests neither collide on a port nor record into each
-// other.
+// NewTestConfig returns New with a kernel-picked port, no logging and no recorder.
 func NewTestConfig() Config {
 	result := New()
 	result.Server.Addr = "127.0.0.1:0"

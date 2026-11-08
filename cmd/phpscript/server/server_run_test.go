@@ -37,11 +37,11 @@ echo "hello " . $_REQUEST["name"];
 }
 
 // TestNewCommand covers what the constructor closes over. The configuration
-// arrives as a pointer so one signature covers all nine commands, and the
-// server reads it and a nil pointer resolves to the zero configuration before
-// the Run closure captures it. The command declares no flags of its own: the
-// listen address and the document root come from the configuration file, and
-// the rest are the shared flags.
+// arrives as a pointer so one signature covers all nine commands. The server
+// reads it and a nil pointer resolves to the zero configuration before the Run
+// closure captures it. The command declares no flags: the listen address and
+// the document root come from the configuration file; the rest are the shared
+// flags.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, &flags.Options{})
@@ -286,7 +286,7 @@ func newTracedHandler(root fstest.MapFS) (http.Handler, error) {
 	return handler, err
 }
 
-// newTracedServer stands in for the platform: it builds the recorder, wires the
+// newTracedServer replaces the platform: it builds the recorder, wires the
 // middleware and the front end the platform would wire, and passes the observer
 // the tracer that recorder owns.
 func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error) {

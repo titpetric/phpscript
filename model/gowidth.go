@@ -1,18 +1,18 @@
 package model
 
 import (
-	"math"
+	"fmt"
 )
 
 // A typed go value is a value a script holds under one of go's sized numeric
 // types: `int8(300)` is an int8 holding 44 and not php's int holding 44, and
 // var_dump reads it back as `int8(44)`. php's own int, float, string and bool
-// carry no such type, and neither do `int`, `int64` and `float64`, which name
-// the widths php already has.
+// hold no such type, and `int`, `int64` and `float64` hold none either: they
+// name the widths php already has.
 //
 // The type travels with the value: through an array, a go slice, a binding
 // and a return. Arithmetic keeps it and wraps at the width, as go's does and
-// php's has no notion of; the operators read GoWidth to compute at one. See
+// php's has no notion of; modelutil reads GoWidth to compute at one. See
 // docs/reference/extensions/go-runtime.md.
 
 // GoWidth is the shape of a typed go numeric: the spelling a script wrote, the
@@ -24,18 +24,9 @@ type GoWidth struct {
 	Float  bool
 }
 
-// Zero is the value of the width holding no value, the one a slice of it
-// reads back before anything writes to it.
-func (w GoWidth) Zero() any {
-	if w.Float {
-		return w.Narrow(float64(0))
-	}
-	return w.Narrow(int64(0))
-}
-
 // goWidths is every sized numeric a conversion returns, by the name a script
-// writes. `rune` and `byte` are go's own aliases and carry the width they
-// alias: go prints a rune as int32, and so does this.
+// writes. `rune` and `byte` are go's own aliases and take the width they
+// alias: go prints a rune as int32. So does this.
 var goWidths = map[string]GoWidth{
 	"int8":    {Name: "int8", Bits: 8, Signed: true},
 	"int16":   {Name: "int16", Bits: 16, Signed: true},
@@ -50,15 +41,14 @@ var goWidths = map[string]GoWidth{
 	"float32": {Name: "float32", Bits: 32, Float: true},
 }
 
-// GoWidthNamed returns the width a go type name carries, if it carries one.
+// GoWidthNamed returns the width goWidths holds for a go type name.
 func GoWidthNamed(name string) (GoWidth, bool) {
 	w, ok := goWidths[name]
 	return w, ok
 }
 
-// GoWidthOf returns the width a value carries. php's int, float, string and
-// bool carry none, and neither does int64: php's int is 64 bits wide and
-// `int64(5)` is php's 5.
+// GoWidthOf returns the width a value holds. php's int, float, string, bool
+// and int64 hold none: php's int is 64 bits wide and `int64(5)` is php's 5.
 func GoWidthOf(v any) (GoWidth, bool) {
 	switch v.(type) {
 	case int8:
@@ -83,99 +73,27 @@ func GoWidthOf(v any) (GoWidth, bool) {
 	return GoWidth{}, false
 }
 
-// GoWiden reads a typed numeric as php reads a number: an integer width
-// answers an int64, a float width a float64, and an unsigned value above
-// PHP_INT_MAX answers a float64, which is the only php number that holds it.
-func GoWiden(v any) (any, bool) {
-	switch x := v.(type) {
-	case int8:
-		return int64(x), true
-	case int16:
-		return int64(x), true
-	case int32:
-		return int64(x), true
-	case uint:
-		return widenUnsigned(uint64(x)), true
-	case uint8:
-		return int64(x), true
-	case uint16:
-		return int64(x), true
-	case uint32:
-		return int64(x), true
-	case uint64:
-		return widenUnsigned(x), true
-	case float32:
-		return float64(x), true
+// Valid reports a width naming a spelling and a size go declares, and an error
+// for a zero value or one a caller assembled by hand.
+func (w GoWidth) Valid() error {
+	known, ok := goWidths[w.Name]
+	if !ok {
+		return fmt.Errorf("go width %q names no go numeric type", w.Name)
 	}
-	return nil, false
+	if known != w {
+		return fmt.Errorf("go width %q declares %d bits, signed %v, float %v; go declares %d, %v, %v",
+			w.Name, w.Bits, w.Signed, w.Float, known.Bits, known.Signed, known.Float)
+	}
+	return nil
 }
 
-// GoInt reads a typed integer value as the 64 bits it holds, the bits an
-// operation at its width computes over. An unsigned value past PHP_INT_MAX
-// keeps its bits here, where GoWiden reaches the float php would hold it in.
-func GoInt(v any) (int64, bool) {
-	switch x := v.(type) {
-	case int8:
-		return int64(x), true
-	case int16:
-		return int64(x), true
-	case int32:
-		return int64(x), true
-	case uint:
-		return int64(x), true
-	case uint8:
-		return int64(x), true
-	case uint16:
-		return int64(x), true
-	case uint32:
-		return int64(x), true
-	case uint64:
-		return int64(x), true
-	}
-	return 0, false
-}
-
-// GoClipInt reads a typed integer as php's int, clipping an unsigned value
-// past PHP_INT_MAX at PHP_INT_MAX: go's conversion answers -1 there and the
-// float php holds it in reduces to 0.
-func GoClipInt(v any) (int64, bool) {
-	w, typed := GoWidthOf(v)
-	if !typed || w.Float {
-		return 0, false
-	}
-	bits, _ := GoInt(v)
-	if !w.Signed && bits < 0 {
-		return math.MaxInt64, true
-	}
-	return bits, true
-}
-
-// GoUint is GoInt over unsigned bits, the domain an unsigned width computes in.
-func GoUint(v any) (uint64, bool) {
-	n, ok := GoInt(v)
-	return uint64(n), ok
-}
-
-// GoStep applies ++ or -- at a typed value's width, and reports whether the
-// value carried one. The step wraps where go's does: int8(127) steps up to
-// int8(-128), where php's int reaches a float at its own limit.
-func GoStep(v any, delta int64) (any, bool) {
-	w, typed := GoWidthOf(v)
-	if !typed {
-		return nil, false
-	}
+// Zero is the value of the width holding no value, the one a slice of it
+// reads back before anything writes to it.
+func (w GoWidth) Zero() any {
 	if w.Float {
-		return w.Narrow(toFloat(v) + float64(delta)), true
+		return w.Narrow(float64(0))
 	}
-	return w.Narrow(toInt(v) + delta), true
-}
-
-// widenUnsigned reads an unsigned value as the php number that holds it.
-func widenUnsigned(u uint64) any {
-	if u > math.MaxInt64 {
-		return float64(u)
-	}
-	return int64(u)
+	return w.Narrow(int64(0))
 }
 
 // Narrow builds the value of the width out of a php number, wrapping as go's
@@ -183,7 +101,7 @@ func widenUnsigned(u uint64) any {
 // uint8(-1) is 255.
 //
 // An integer width takes an integer. A float reduces to one through
-// phpval.Int, where php's own float-to-int reduction lives, and this package
+// phpval.Int, where php's own float-to-int reduction lives. This package
 // holds no second copy of it.
 func (w GoWidth) Narrow(v any) any {
 	if w.Float {
@@ -215,8 +133,8 @@ func (w GoWidth) Narrow(v any) any {
 	return uint64(n)
 }
 
-// toInt reads the integer behind a php integer or a typed value, for a
-// conversion that has already reduced the value to one.
+// The bits, and not the php number: narrowing uint64(-1) to a uint8 reads the
+// low byte of 18446744073709551615, which the float php holds it in rounds off.
 func toInt(v any) int64 {
 	switch x := v.(type) {
 	case int64:
@@ -228,15 +146,26 @@ func toInt(v any) int64 {
 			return 1
 		}
 		return 0
-	}
-	// The bits, and not the php number: narrowing uint64(-1) to a uint8 reads
-	// the low byte of 18446744073709551615, where the float php holds that
-	// value in has no low byte left.
-	if bits, ok := GoInt(v); ok {
-		return bits
-	}
-	if widened, ok := GoWiden(v); ok {
-		return toInt(widened)
+	case int8:
+		return int64(x)
+	case int16:
+		return int64(x)
+	case int32:
+		return int64(x)
+	case uint:
+		return int64(x)
+	case uint8:
+		return int64(x)
+	case uint16:
+		return int64(x)
+	case uint32:
+		return int64(x)
+	case uint64:
+		return int64(x)
+	case float32:
+		return int64(float64(x))
+	case float64:
+		return int64(x)
 	}
 	return 0
 }
@@ -246,13 +175,28 @@ func toFloat(v any) float64 {
 	switch x := v.(type) {
 	case float64:
 		return x
+	case float32:
+		return float64(x)
 	case int64:
 		return float64(x)
 	case int:
 		return float64(x)
-	}
-	if widened, ok := GoWiden(v); ok {
-		return toFloat(widened)
+	case int8:
+		return float64(x)
+	case int16:
+		return float64(x)
+	case int32:
+		return float64(x)
+	case uint:
+		return float64(x)
+	case uint8:
+		return float64(x)
+	case uint16:
+		return float64(x)
+	case uint32:
+		return float64(x)
+	case uint64:
+		return float64(x)
 	}
 	return 0
 }

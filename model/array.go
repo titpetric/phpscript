@@ -32,8 +32,8 @@ type Array struct {
 // the index reads it correctly without a special case.
 //
 // List mode does not use it. There nextID is len(list) by construction, and an
-// array in list mode has held every integer key from 0 up and promote carries
-// the sentinel in only when it promotes an empty list.
+// array in list mode has held every integer key from 0 up and promote keeps
+// the sentinel only when it promotes an empty list.
 const noIntKey = math.MinInt64
 
 // NewArray returns an empty ordered array.
@@ -41,10 +41,8 @@ func NewArray() *Array {
 	return &Array{nextID: noIntKey}
 }
 
-// NewArraySize returns an empty ordered array with room for n entries. Building
-// an array of known size through it avoids the backing slice's growth
-// reallocations (a 5-entry array grows 1->2->4->8), which is most of what an
-// *Array costs while it stays in list mode.
+// NewArraySize returns an empty ordered array with room for n entries. The
+// presize drops the backing slice's growth reallocations in list mode.
 func NewArraySize(n int) *Array {
 	if n <= 0 {
 		return NewArray()
@@ -52,11 +50,7 @@ func NewArraySize(n int) *Array {
 	return &Array{list: make([]any, 0, n), nextID: noIntKey}
 }
 
-// Reset empties the array while keeping its storage and a per-request
-// container (a superglobal, argv) refills into the buckets and slices the
-// previous request grew, and reallocates none of them. A reset map-mode array
-// stays in map mode with zero entries, which is observably the same as
-// fresh; the cleared slices hold no stale references.
+// Reset empties the array, keeping the storage the next request refills into.
 func (a *Array) Reset() {
 	clear(a.list)
 	a.list = a.list[:0]
@@ -145,6 +139,30 @@ func (a *Array) Append(val any) {
 	a.Set(a.nextID, val)
 }
 
+// NextIndex is the integer key the next Append lands on.
+func (a *Array) NextIndex() int64 {
+	return a.nextID
+}
+
+// AppendAll adds every item at the next integer index, in one copy where the
+// array is still a list.
+//
+// A Go slice is already a list and the fast path pays one allocation for the
+// whole copy where Append per element pays one per growth step.
+func (a *Array) AppendAll(items []any) {
+	if len(items) == 0 {
+		return
+	}
+	if !a.isList() {
+		for _, item := range items {
+			a.Append(item)
+		}
+		return
+	}
+	a.list = append(a.list, items...)
+	a.nextID = int64(len(a.list))
+}
+
 // Get returns the value for key and whether it existed.
 func (a *Array) Get(key any) (any, bool) {
 	if a.isList() {
@@ -187,13 +205,8 @@ func (a *Array) Delete(key any) {
 }
 
 // Pop removes the last entry and returns its key and value, PHP's array_pop.
-//
-// It lives here and not in the shim because of the append index, which is
-// the one piece of state a caller cannot reach. PHP decrements it only when the
-// removed key is the one it would hand out next and popping 9 from
-// [5 => a, 9 => c] leaves the next append at 9, while popping 5 from
-// [5 => a, 9 => c] leaves it at 10. Rebuilding the array from its entries
-// cannot express that, because it loses the counter.
+// The append index drops only when the removed key is the one it would hand
+// out next: popping 9 from [5 => a, 9 => c] leaves the next append at 9.
 func (a *Array) Pop() (any, any, bool) {
 	if a.Len() == 0 {
 		return nil, nil, false
@@ -297,44 +310,10 @@ func (a *Array) ReplaceInt64List(vals []int64) {
 	}
 }
 
-// Clear removes all entries and resets list indexing, returning the array to
-// list mode.
+// Clear removes all entries and returns the array to list mode at index 0.
 func (a *Array) Clear() {
 	a.list = nil
 	a.keys = nil
 	a.values = nil
 	a.nextID = 0
-}
-
-// ToArray returns v as an *Array, converting a native collection if needed and
-// passing an existing *Array through untouched. Use it at the point where PHP
-// semantics genuinely require an array (mutation, `$a[] = v`), not to normalise
-// arguments, since RangeValues reads every shape without allocating.
-func ToArray(v any) *Array {
-	if arr, ok := v.(*Array); ok && arr != nil {
-		return arr
-	}
-	// A Go slice is already a list: its elements go straight into a list-mode
-	// Array (one allocation for the copy) and pays no Set per element.
-	if items, ok := v.([]any); ok {
-		out := NewArraySize(len(items))
-		out.list = append(out.list, items...)
-		// An empty slice held no integer key and it keeps the sentinel
-		// NewArraySize set, and claims no next index of 0.
-		if len(items) > 0 {
-			out.nextID = int64(len(items))
-		}
-		return out
-	}
-	n, _ := LenValues(v)
-	out := NewArraySize(n)
-	RangeValues(v, func(key, val any) bool {
-		if i, ok := key.(int64); ok && i == out.nextID {
-			out.Append(val)
-		} else {
-			out.Set(key, val)
-		}
-		return true
-	})
-	return out
 }

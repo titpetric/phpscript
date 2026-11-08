@@ -14,9 +14,9 @@ import (
 // importing this package is what puts password hashing, the CSPRNG, the
 // message digests and the id generators into a binary, and stdlib.Register is
 // what puts them on a runtime. An installer left out of init() leaves its
-// names undefined while every other name still resolves, and this test spells
-// one name per installer. This test binary imports only this package and the contributed
-// set is this package's alone.
+// names undefined while every other name still resolves. This test spells one
+// name per installer. This test binary imports only this package and the
+// contributed set is this package's alone.
 func TestInitContributesEveryInstaller(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

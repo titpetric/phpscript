@@ -221,7 +221,7 @@ func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
 
 // TestSource covers the contract the read-only half of a MapMap must meet.
 // Each of the three implementations answers Get, Len and Range, and a MapMap
-// built over any of them reads through to it and one source type stands in for
+// built over any of them reads through to it and one source type replaces
 // another and the layer over it stays put.
 func TestSource(t *testing.T) {
 	t.Parallel()
@@ -302,7 +302,7 @@ func TestMapSource_Range(t *testing.T) {
 	}
 }
 
-// TestValueSource_Get covers the source a superglobal carrying nested data
+// TestValueSource_Get covers the source a superglobal holding nested data
 // reads through. The values are already PHP values and `a[]=1&a[]=2` decoded
 // to an array under one name comes back as that array; a map of strings
 // cannot hold one.
@@ -338,7 +338,7 @@ func TestValueSource_Len(t *testing.T) {
 }
 
 // TestValueSource_Range covers the walk over PHP values: every name once,
-// carrying the value the source stores, which the walk never flattens to a
+// with the value the source stores, which the walk never flattens to a
 // string.
 func TestValueSource_Range(t *testing.T) {
 	t.Parallel()
@@ -413,7 +413,7 @@ func TestRequestSource_Len(t *testing.T) {
 // de-duplication between the halves: the derived names first, then the
 // headers, then the extras that are not among either. The walk passes over a
 // name Extra holds where it would otherwise derive one and that name arrives
-// once, carrying the value Extra holds.
+// once, with the value Extra holds.
 func TestRequestSource_Range(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)

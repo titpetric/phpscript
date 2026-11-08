@@ -46,8 +46,8 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 			files[field] = append(files[field], upload)
 		}
 	}
-	// net/http spills the parts it could not hold in memory into temporary
-	// files of its own. saveUpload has copied every one of them by now and the
+	// net/http spills the parts it could not hold in memory into its own
+	// temporary files. saveUpload has copied every one of them by now and the
 	// originals go before the handler has a chance to forget about them.
 	_ = r.MultipartForm.RemoveAll()
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// phpThrowable stands in for the binding-side exception value, which knows the
-// PHP class a script constructed it as.
+// phpThrowable is a test double for the binding-side exception value, which
+// names the PHP class a script constructed it as.
 type phpThrowable struct {
 	class string
 	msg   string
@@ -131,8 +131,8 @@ func TestNoInheritanceAtRuntime(t *testing.T) {
 		}
 	}
 
-	// A class declaring `extends RuntimeException` is its own class and nothing
-	// else, to a catch clause and to instanceof alike.
+	// A class declaring `extends RuntimeException` is only its own class, to a
+	// catch clause and to instanceof alike.
 	thrown := newObjectError(model.NewObject(&model.Class{Name: "NotFound"}))
 	if matchCatchType("RuntimeException", thrown) {
 		t.Error("catch (RuntimeException) took a NotFound: `extends` must confer nothing")

@@ -36,7 +36,7 @@ func TestMemory_Configured(t *testing.T) {
 }
 
 // TestMemory_Send covers queueing in place of delivering. A queued message
-// carries its target server's name and a test reads back which server a script
+// holds its target server's name and a test reads back which server a script
 // selected. This provider refuses a name it does not hold the way a real
 // delivery refuses it and a test still exercises the error a script reads.
 func TestMemory_Send(t *testing.T) {
@@ -70,8 +70,8 @@ func TestMemory_Send(t *testing.T) {
 }
 
 // TestMemory_SendMessage covers queueing a whole message: the queue holds the
-// HTML part and the Reply-To as sent, an empty server is the "default" one, and
-// this provider refuses a name it does not hold the way a real delivery does.
+// HTML part and the Reply-To as sent, an empty server is the "default" one.
+// This provider refuses a name it does not hold the way a real delivery does.
 func TestMemory_SendMessage(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")

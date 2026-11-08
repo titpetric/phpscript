@@ -7,7 +7,7 @@ import (
 )
 
 // TestDefaultConfigServerBlock pins what `config/config.yml` starts the platform
-// with, including the service name every trace carries.
+// with, including the service name every trace records.
 func TestDefaultConfigServerBlock(t *testing.T) {
 	t.Parallel()
 	result := config.New()
@@ -86,7 +86,7 @@ func TestServer(t *testing.T) {
 }
 
 // TestServer_Options covers the platform options the block describes. The
-// block carries no recorder: Config.PlatformOptions adds one and a caller
+// block names no recorder: Config.PlatformOptions adds one and a caller
 // reading the block alone starts a server that records nothing.
 func TestServer_Options(t *testing.T) {
 	t.Parallel()

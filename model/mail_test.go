@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestMailProvider covers the promise the interface's shape carries: no
+// TestMailProvider covers the promise the interface's shape makes: no
 // method here answers a credential. Every method answers an error alone and a host
 // reads the host name, the username and the password inside Send, uses them for
 // the one delivery and drops them; a getter would put them on the runtime,

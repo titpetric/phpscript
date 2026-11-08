@@ -50,8 +50,8 @@ var_dump(mb_strpos("héllo", "h"), mb_strpos("héllo", "é"), mb_strrpos("héllo
 }
 
 // TestMultibyteStrSplit covers the chunking, which is in characters: a
-// multibyte character is never cut in half and the last chunk is short rather
-// than the first being wrong.
+// multibyte character is never cut in half and the last chunk is the short
+// one.
 func TestMultibyteStrSplit(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

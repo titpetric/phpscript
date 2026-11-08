@@ -7,7 +7,7 @@ import (
 
 // fieldComments reads the doc comment of every named field of a struct type
 // declaration, keyed by the Go field name. A type that is no struct, and a
-// struct whose fields carry no comment, both answer nil.
+// struct whose fields hold no comment, both answer nil.
 //
 // The leading comment is the only one it reads. A note trailing on the
 // declaration line annotates the value and documents no member, and net/http's

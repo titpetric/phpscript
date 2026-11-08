@@ -3,7 +3,7 @@
 | PHP language-reference feature           | Status                | Notes                                                                                                                                                      |
 |------------------------------------------|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `null`, `bool`, `int`, `float`, `string` | Compatibility         | Scalar values are dynamically typed.                                                                                                                       |
-| Arrays                                   | Partial compatibility | One runtime array type carries ordered list and associative-array behavior.                                                                                |
+| Arrays                                   | Partial compatibility | One runtime array type implements ordered list and associative-array behavior.                                                                             |
 | Objects                                  | Partial compatibility | The runtime supports phpscript and Go-backed objects.                                                                                                      |
 | Callable values                          | Partial compatibility | Supported APIs invoke closures, function names, and bound methods.                                                                                         |
 | Type declarations                        | Parsed, not enforced  | Parameter, return, property, union and `mixed` declarations parse; the linter reads them and the runtime ignores them. Intersection types are unavailable. |
@@ -11,7 +11,7 @@
 
 Values are dynamically typed. The runtime performs PHP-like truthiness and numeric/string coercion for its supported operators, but does not cover PHP's conversion rules in full.
 
-A file that imported `Runtime\Go` holds one type php has none of: a [typed value](../extensions/go-runtime.md#typed-values), a number under one of go's sized widths. `int8(300)` answers an int8 holding 44, arithmetic over it wraps at the width, and `var_dump` names the width.
+A file that imported `Runtime\Go` holds one type php has no spelling for: a [typed value](../extensions/go-runtime.md#typed-values), a number under one of go's sized widths. `int8(300)` answers an int8 holding 44, arithmetic over it wraps at the width, and `var_dump` names the width.
 
 ## Scalar types
 
@@ -60,7 +60,7 @@ echo "call {$user->label()}\n";
 
 The braces close on the brace that matches and a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A `$` that starts no name is literal text, `\$` is a dollar, and a single-quoted literal never interpolates. The runtime converts each embedded expression to a string the way `.` converts it and an interpolated literal and the matching concatenation produce the same string.
 
-`${name}` and `${name[$k]}` read as `$name` and `$name[$k]`. `${expression}` does not: in PHP it names the variable whose name the expression returns, which needs `$$name`, and that spelling is a decision against. PHP deprecated both spellings in 8.2 and removes them in 9 and `{$name}` is the form that keeps working.
+`${name}` and `${name[$k]}` read as `$name` and `$name[$k]`. `${expression}` does not: in PHP it names the variable whose name the expression returns, which needs `$$name`. That spelling is a decision against. PHP deprecated both spellings in 8.2 and removes them in 9 and `{$name}` is the form that keeps working.
 
 ## Arrays
 

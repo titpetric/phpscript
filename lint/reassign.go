@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // lintTypeReassign reports a variable whose first literal assignment fixed a
@@ -48,7 +49,7 @@ func (w *reassignWalker) scope(stmts []model.Stmt) {
 		if !ok {
 			return
 		}
-		v, ok := model.UnwrapParenthesized(idx.Base).(*model.Var)
+		v, ok := modelutil.UnwrapParenthesized(idx.Base).(*model.Var)
 		if !ok || types[v.Name] != "string" {
 			return
 		}
@@ -148,11 +149,11 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 	if n.Op != "" && n.Op != "=" {
 		return
 	}
-	target, ok := model.UnwrapParenthesized(n.Target).(*model.Var)
+	target, ok := modelutil.UnwrapParenthesized(n.Target).(*model.Var)
 	if !ok {
 		return
 	}
-	class := literalClass(model.UnwrapParenthesized(n.Value))
+	class := literalClass(modelutil.UnwrapParenthesized(n.Value))
 	if class == "" {
 		return
 	}
@@ -176,7 +177,7 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 
 // literalClass names the type a literal spells, "" for anything that is not
 // a literal. null fixes no type: PHP initialises with null and assigns the
-// real value later, and the rule stays quiet about that.
+// real value later. The rule stays quiet about that.
 func literalClass(e model.Expr) string {
 	switch v := e.(type) {
 	case *model.Interp:
@@ -196,7 +197,7 @@ func literalClass(e model.Expr) string {
 		}
 	case *model.Unary:
 		if !v.Postfix && (v.Op == "-" || v.Op == "+") {
-			switch literalClass(model.UnwrapParenthesized(v.X)) {
+			switch literalClass(modelutil.UnwrapParenthesized(v.X)) {
 			case "int":
 				return "int"
 			case "float":

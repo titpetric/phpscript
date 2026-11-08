@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -99,7 +99,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 }
 
 // The observer classifies a statement by the keyword it starts with and records
-// the tag it carries beside it: a trace groups by a query's purpose, which the
+// the tag it holds beside it: a trace groups by a query's purpose, which the
 // statement text alone does not answer.
 func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	t.Parallel()
@@ -193,7 +193,7 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 	}
 }
 
-// A refused statement never reaches the query log and the span carrying the
+// A refused statement never reaches the query log and the span measuring the
 // call records the refusal. Otherwise a wrong refusal leaves nothing behind
 // to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
@@ -246,15 +246,15 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 		"name": "catalogue",
 	}})
 
-	if !model.IsCollection(rows) {
+	if !modelutil.IsCollection(rows) {
 		t.Fatalf("rows are not array-like: %#v", rows)
 	}
-	if n, _ := model.LenValues(rows); n != 1 {
+	if n, _ := modelutil.LenValues(rows); n != 1 {
 		t.Fatalf("rows length = %d", n)
 	}
 
 	var row any
-	model.RangeValues(rows, func(key, value any) bool {
+	modelutil.RangeValues(rows, func(key, value any) bool {
 		if key != int64(0) {
 			t.Fatalf("row key = %#v", key)
 		}
@@ -263,7 +263,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	})
 
 	columns := map[string]any{}
-	model.RangeValues(row, func(key, value any) bool {
+	modelutil.RangeValues(row, func(key, value any) bool {
 		columns[key.(string)] = value
 		return true
 	})
@@ -281,7 +281,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 
 // TestDatabase_SetID covers the name a constructed client records under. The
 // runtime passes the receiving PHP variable, and every span the client opens
-// carries it and a trace tells two clients in one request apart.
+// names it and a trace tells two clients in one request apart.
 func TestDatabase_SetID(t *testing.T) {
 	t.Parallel()
 	database := &Database{}
@@ -299,8 +299,8 @@ func TestDatabase_SetID(t *testing.T) {
 }
 
 // TestDatabase_Connect covers pinning the client to one connection out of the
-// pool. A temporary table and a session variable both live on a connection and
-// a script that creates one reserves the connection first; the reads that
+// pool. A temporary table and a session variable both belong to a connection
+// and a script that creates one reserves the connection first; the reads that
 // follow run on it.
 func TestDatabase_Connect(t *testing.T) {
 	t.Parallel()
@@ -358,7 +358,7 @@ func TestDatabase_Begin(t *testing.T) {
 
 // TestDatabase_Commit covers the committed outcome: the row survives the
 // transaction, and Commit renames the span Begin opened for the outcome and
-// ends it and one span carries the whole transaction.
+// ends it and one span measures the whole transaction.
 func TestDatabase_Commit(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -392,7 +392,7 @@ func TestDatabase_Commit(t *testing.T) {
 }
 
 // TestDatabase_Rollback covers the discarded outcome: the row never lands, and
-// the span Begin opened carries the rollback as its name and a trace says which
+// the span Begin opened takes the rollback as its name and a trace says which
 // way a transaction ended without a second span to pair with it.
 func TestDatabase_Rollback(t *testing.T) {
 	t.Parallel()
@@ -424,7 +424,7 @@ func TestDatabase_Rollback(t *testing.T) {
 }
 
 // TestDatabase_InsertID covers the key the server generated for the last
-// insert. That key is the one part of an INSERT the statement does not carry,
+// insert. That key is the one part of an INSERT the statement does not name,
 // and a script writing a row with an autoincrement key reads the new id here.
 func TestDatabase_InsertID(t *testing.T) {
 	t.Parallel()
@@ -461,8 +461,8 @@ func TestDatabase_RowsAffected(t *testing.T) {
 	}
 }
 
-// newRecordedTrace returns a context carrying a recording trace, and the trace
-// itself and a test reads back the spans a call left on it.
+// newRecordedTrace returns a context holding a recording trace and the trace
+// itself. A test reads back the spans a call left on it.
 func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 	t.Helper()
 

@@ -33,15 +33,9 @@ type PasswordFile struct {
 	path string
 }
 
-// NewPasswordFileRoot is the Auth\Storage\PasswordFile constructor a rooted
-// host registers.
-//
-// The path resolves against the root through the runtime's own rule and it
-// names the file file_get_contents would and cannot climb out. This type
-// performs no write and writable_paths does not apply.
-//
-// A file that is not there is no error - Exists answers that - and this
-// constructor refuses an unreadable one, ahead of the login it would break.
+// NewPasswordFileRoot returns the store Auth\Storage\PasswordFile constructs,
+// with the path resolved against the root and unable to climb out. A file that
+// is not there is no error; the constructor refuses an unreadable one.
 func NewPasswordFileRoot(rt *runner.Runtime, dir string, paths ...string) (*PasswordFile, error) {
 	name := DefaultPasswordFile
 	if len(paths) > 0 && paths[0] != "" {
@@ -55,15 +49,10 @@ func NewPasswordFileRoot(rt *runner.Runtime, dir string, paths ...string) (*Pass
 	return store, nil
 }
 
-// DefaultPasswordFileRoot is the user store `new Session\Manager` takes when
-// the script names none. It holds the path NewPasswordFileRoot would and
-// skips the validating parse: a manager constructs on every request, most
-// requests never call login(), and the first Authenticate or Users call
-// reads the file and refuses a bad line with the message naming it.
-//
-// What stays eager is the refusal of a file that is there and does not open,
-// and of a directory in its place: both name a tree an operator has to fix,
-// at the cost of one open against a parse.
+// DefaultPasswordFileRoot returns the user store `new Session\Manager` takes
+// when the script names none. It skips the validating parse, which the first
+// Authenticate or Users call performs, and refuses only an unopenable file or
+// a directory in its place.
 func DefaultPasswordFileRoot(rt *runner.Runtime, dir string) (*PasswordFile, error) {
 	store := &PasswordFile{path: files.HostPath(rt, dir, DefaultPasswordFile)}
 
@@ -102,11 +91,9 @@ func NewPasswordFile(path string) (*PasswordFile, error) {
 
 // Authenticate reports the user $key names when $secret is theirs.
 //
-// A missing user and a wrong password are one answer and nothing a caller can
-// see distinguishes them. What does distinguish them is time: a key the file
-// does not carry costs no derivation, and one it carries costs whatever that
-// line's format does. Closing that gap belongs to rate limiting, which bounds
-// what any timing is worth; see docs/reference/extensions/hashing.md.
+// A missing user and a wrong password are one answer, separable by time alone:
+// a key the file does not hold costs no derivation. Rate limiting bounds what
+// that is worth, see docs/reference/extensions/hashing.md.
 func (p *PasswordFile) Authenticate(ctx context.Context, key, secret string) (User, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -149,9 +136,9 @@ func (p *PasswordFile) Exists() (bool, error) {
 
 // Users is every record in the file, ordered by username.
 //
-// It carries no hash and a script may hold it: everything above here sees a
+// It holds no hash and a script may keep it: everything above here sees a
 // table of two columns, and the third column never leaves this package. A
-// caller writes the rows into a table of its own and rebuilds it when the file
+// caller writes the rows into its own table and rebuilds it when the file
 // changes.
 func (p *PasswordFile) Users(ctx context.Context) ([]User, error) {
 	if err := ctx.Err(); err != nil {
@@ -206,8 +193,8 @@ func (p *PasswordFile) read() (map[string]string, error) {
 	for line := 1; scanner.Scan(); line++ {
 		text := scanner.Text()
 		// An editor that writes a byte order mark puts it ahead of the first
-		// username, TrimSpace leaves it there, and that account then matches
-		// no password a login types. The refusal names what silence would hide.
+		// username and TrimSpace leaves it there. That account then matches no
+		// password a login types. The refusal names what silence would hide.
 		if line == 1 && strings.HasPrefix(text, "\ufeff") {
 			return nil, errors.New("line 1: a utf-8 byte order mark precedes the first username; save the file without one")
 		}
@@ -243,7 +230,7 @@ func (p *PasswordFile) read() (map[string]string, error) {
 // The key follows from the name and two spellings of one name are two
 // users with two keys and two sets of rows. The rule is lowercase, and not a
 // folded comparison: folding at the comparison would leave the key depending
-// on whichever spelling the file carries first.
+// on whichever spelling the file holds first.
 func validName(name string) error {
 	switch {
 	case name == "":

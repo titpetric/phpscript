@@ -1,4 +1,8 @@
-package model
+package modelutil
+
+import (
+	"github.com/titpetric/phpscript/model"
+)
 
 // This file holds the two pieces of PHP's value semantics that a by-value
 // `foreach` needs: what copying an array means, and whether a loop body would
@@ -15,11 +19,10 @@ package model
 // through the loop variable. AssignsTo answers that, once per loop and not
 // once per iteration, and the flatstack compiler asks it once per program.
 
-// CopyValue returns a value with PHP's assignment semantics applied: it copies
-// an array and its nested arrays, which are values, and returns anything else
-// unchanged. An object is a handle in PHP as well, and so is a Go collection.
+// CopyValue returns a value with PHP's assignment semantics applied: a deep
+// copy of an array, anything else unchanged. An object is a handle in PHP too.
 func CopyValue(v any) any {
-	array, ok := v.(*Array)
+	array, ok := v.(*model.Array)
 	if !ok {
 		return v
 	}
@@ -27,11 +30,11 @@ func CopyValue(v any) any {
 }
 
 // CopyArray returns an independent copy of a, with nested arrays copied too.
-func CopyArray(a *Array) *Array {
+func CopyArray(a *model.Array) *model.Array {
 	if a == nil {
 		return nil
 	}
-	out := NewArraySize(a.Len())
+	out := model.NewArraySize(a.Len())
 	a.Range(func(key, val any) bool {
 		out.Set(key, CopyValue(val))
 		return true
@@ -39,10 +42,9 @@ func CopyArray(a *Array) *Array {
 	return out
 }
 
-// AssignsTo reports whether any statement in body writes through target's
-// root name, matching that name and no exact shape: a write to `$v["k"]`
-// reaches inside the value and a by-value loop must have copied it.
-func AssignsTo(target Expr, body []Stmt) bool {
+// AssignsTo reports whether any statement in body writes through target's root
+// name. A write to `$v["k"]` matches `$v`: it reaches inside the value.
+func AssignsTo(target model.Expr, body []model.Stmt) bool {
 	root := RootName(target)
 	if root == "" {
 		// A target with no name to root on matches nothing and treat it as a
@@ -54,17 +56,17 @@ func AssignsTo(target Expr, body []Stmt) bool {
 
 // RootName returns the variable name at the root of an lvalue: `$v`, `$v["k"]`
 // and `$v->p->q` all root at "v". It returns "" for anything else.
-func RootName(e Expr) string {
+func RootName(e model.Expr) string {
 	for {
 		switch n := UnwrapParenthesized(e).(type) {
-		case *Var:
+		case *model.Var:
 			if n.Const {
 				return ""
 			}
 			return n.Name
-		case *Index:
+		case *model.Index:
 			e = n.Base
-		case *PropAccess:
+		case *model.PropAccess:
 			e = n.Base
 		default:
 			return ""
@@ -72,7 +74,7 @@ func RootName(e Expr) string {
 	}
 }
 
-func stmtsAssignTo(stmts []Stmt, root string) bool {
+func stmtsAssignTo(stmts []model.Stmt, root string) bool {
 	for _, s := range stmts {
 		if stmtAssignsTo(s, root) {
 			return true
@@ -81,26 +83,26 @@ func stmtsAssignTo(stmts []Stmt, root string) bool {
 	return false
 }
 
-func stmtAssignsTo(s Stmt, root string) bool {
+func stmtAssignsTo(s model.Stmt, root string) bool {
 	switch n := s.(type) {
-	case *Assign:
+	case *model.Assign:
 		return RootName(n.Target) == root || listAssignsTo(n.Target, root) || exprAssignsTo(n.Value, root)
-	case *ExprStmt:
+	case *model.ExprStmt:
 		return exprAssignsTo(n.X, root)
-	case *Echo:
+	case *model.Echo:
 		return exprsAssignTo(n.Args, root)
-	case *If:
+	case *model.If:
 		return exprAssignsTo(n.Cond, root) || stmtsAssignTo(n.Then, root) || stmtsAssignTo(n.Else, root)
-	case *For:
+	case *model.For:
 		return stmtAssignsTo(n.Init, root) || exprAssignsTo(n.Cond, root) ||
 			stmtAssignsTo(n.Post, root) || stmtsAssignTo(n.Body, root)
-	case *Foreach:
+	case *model.Foreach:
 		// A nested loop that binds the same name rebinds it on every iteration,
 		// which the enclosing loop counts as a write.
 		return RootName(n.ValTarget) == root || RootName(n.KeyTarget) == root ||
 			n.ValVar == root || n.KeyVar == root ||
 			exprAssignsTo(n.Source, root) || stmtsAssignTo(n.Body, root)
-	case *Switch:
+	case *model.Switch:
 		if exprAssignsTo(n.Cond, root) || stmtsAssignTo(n.Default, root) {
 			return true
 		}
@@ -109,7 +111,7 @@ func stmtAssignsTo(s Stmt, root string) bool {
 				return true
 			}
 		}
-	case *Try:
+	case *model.Try:
 		if stmtsAssignTo(n.Body, root) || stmtsAssignTo(n.Finally, root) {
 			return true
 		}
@@ -118,26 +120,26 @@ func stmtAssignsTo(s Stmt, root string) bool {
 				return true
 			}
 		}
-	case *Return:
+	case *model.Return:
 		return exprAssignsTo(n.Value, root)
-	case *Throw:
+	case *model.Throw:
 		return exprAssignsTo(n.X, root)
-	case *Unset:
+	case *model.Unset:
 		for _, t := range n.Targets {
 			if RootName(t) == root {
 				return true
 			}
 		}
-	case *Include:
-		// An included file is not visible here, and it shares this scope.
+	case *model.Include:
+		// An included file is not visible here. It shares this scope.
 		return true
 	}
 	return false
 }
 
 // listAssignsTo reports whether a list() destructuring target names root.
-func listAssignsTo(target Expr, root string) bool {
-	list, ok := UnwrapParenthesized(target).(*ListExpr)
+func listAssignsTo(target model.Expr, root string) bool {
+	list, ok := UnwrapParenthesized(target).(*model.ListExpr)
 	if !ok {
 		return false
 	}
@@ -149,7 +151,7 @@ func listAssignsTo(target Expr, root string) bool {
 	return false
 }
 
-func exprsAssignTo(xs []Expr, root string) bool {
+func exprsAssignTo(xs []model.Expr, root string) bool {
 	for _, x := range xs {
 		if exprAssignsTo(x, root) {
 			return true
@@ -158,67 +160,67 @@ func exprsAssignTo(xs []Expr, root string) bool {
 	return false
 }
 
-func exprAssignsTo(e Expr, root string) bool {
+func exprAssignsTo(e model.Expr, root string) bool {
 	switch n := e.(type) {
 	case nil:
 		return false
-	case *AssignExpr:
+	case *model.AssignExpr:
 		return RootName(n.Target) == root || listAssignsTo(n.Target, root) || exprAssignsTo(n.Value, root)
-	case *Unary:
+	case *model.Unary:
 		// `$v++` and `--$v` write; every other unary only reads.
 		if (n.Op == "++" || n.Op == "--") && RootName(n.X) == root {
 			return true
 		}
 		return exprAssignsTo(n.X, root)
-	case *Parenthesized:
+	case *model.Parenthesized:
 		return exprAssignsTo(n.X, root)
-	case *Binary:
+	case *model.Binary:
 		return exprAssignsTo(n.Left, root) || exprAssignsTo(n.Right, root)
-	case *Interp:
+	case *model.Interp:
 		return exprsAssignTo(n.Parts, root)
-	case *Coalesce:
+	case *model.Coalesce:
 		return exprAssignsTo(n.Left, root) || exprAssignsTo(n.Right, root)
-	case *Ternary:
+	case *model.Ternary:
 		return exprAssignsTo(n.Cond, root) || exprAssignsTo(n.Then, root) || exprAssignsTo(n.Else, root)
-	case *Cast:
+	case *model.Cast:
 		return exprAssignsTo(n.X, root)
-	case *Index:
+	case *model.Index:
 		return exprAssignsTo(n.Base, root) || exprAssignsTo(n.Index, root)
-	case *PropAccess:
+	case *model.PropAccess:
 		return exprAssignsTo(n.Base, root) || exprAssignsTo(n.NameExpr, root)
-	case *MethodCall:
+	case *model.MethodCall:
 		return exprAssignsTo(n.Base, root) || exprsAssignTo(n.Args, root)
-	case *Call:
+	case *model.Call:
 		// A shim with an output parameter writes back into the frame, and the
 		// by-reference table is not visible from here.
 		return exprsAssignTo(n.Args, root) || callWritesBack(n, root)
-	case *StaticCall:
+	case *model.StaticCall:
 		return exprsAssignTo(n.Args, root)
-	case *Invoke:
+	case *model.Invoke:
 		return exprAssignsTo(n.Callee, root) || exprsAssignTo(n.Args, root)
-	case *New:
+	case *model.New:
 		return exprsAssignTo(n.Args, root)
-	case *ArrayLit:
+	case *model.ArrayLit:
 		for _, it := range n.Items {
 			if exprAssignsTo(it.Key, root) || exprAssignsTo(it.Val, root) {
 				return true
 			}
 		}
-	case *ListExpr:
+	case *model.ListExpr:
 		return exprsAssignTo(n.Elems, root)
-	case *Closure:
+	case *model.Closure:
 		// A closure captures by value and its body cannot write to this frame.
 		return false
-	case *Include:
+	case *model.Include:
 		return true
 	}
 	return false
 }
 
 // callWritesBack reports whether a call passes root to an output parameter.
-func callWritesBack(n *Call, root string) bool {
+func callWritesBack(n *model.Call, root string) bool {
 	for _, arg := range n.Args {
-		if v, ok := UnwrapParenthesized(arg).(*Var); ok && !v.Const && v.Name == root {
+		if v, ok := UnwrapParenthesized(arg).(*model.Var); ok && !v.Const && v.Name == root {
 			return true
 		}
 	}

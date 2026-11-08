@@ -37,12 +37,12 @@ import (
 )
 
 func main() {
-	// A <binary>-<tool> name carries its command, and a coverage build needs
-	// GOCOVERDIR before the process starts: both are settled up front.
+	// A <binary>-<tool> name holds its command, and a coverage build needs
+	// GOCOVERDIR before the process starts. Both resolve up front.
 	os.Args = toolchain.CommandArgs(os.Args)
 	toolchain.CoverRelaunch()
 	// An external <binary>-<tool> on PATH takes the line before anything else
-	// parses it, so its flags are its own.
+	// parses it, which leaves its flags to it.
 	if code, ok := runTool(os.Args, os.Getenv("PATH")); ok {
 		os.Exit(code)
 	}
@@ -63,8 +63,8 @@ func start() error {
 	// builds one: -w moves the process, and the read of the configuration file
 	// starts from where it lands.
 	//
-	// What follows the script is the script's own, and this sets it aside
-	// first and neither -f nor a flag of run comes out of it.
+	// What follows the script is the script's own. This sets it aside first
+	// and neither -f nor a flag of run comes out of it.
 	head, scriptArgs := flags.Split(os.Args[1:], isCommand)
 	globals, args, err := flags.Pre(head)
 	if err != nil {
@@ -151,7 +151,7 @@ func testConfig(globals *flags.Options, args []string) error {
 	return server.Check(globals.ConfigFile, root, os.Stdout, os.Stderr)
 }
 
-// commands is every command this binary carries. Every constructor takes the
+// commands is every command this binary holds. Every constructor takes the
 // configuration and the global options and the table names them, with no
 // closure per command closing over what it happens to need. A function and a
 // test can bind the same table the binary runs.
@@ -206,9 +206,9 @@ func decorate(appConfig *config.Config, globals *flags.Options, command registra
 	}
 }
 
-// wantsHelp reports whether the arguments name the whole document and not
-// than for a command. A help flag after a command name is that command's, and
-// the library answers it.
+// wantsHelp reports whether the arguments name help ahead of a command. A help
+// flag after a command name belongs to that command, which the library
+// answers.
 func wantsHelp(args []string) bool {
 	for _, arg := range args {
 		switch arg {
@@ -270,7 +270,7 @@ func runTool(argv []string, path string) (int, bool) {
 }
 
 // withTools lists the discovered tools among the commands. A tool replaces the
-// built-in of its name and the rest are appended.
+// built-in of its name and withTools appends the rest.
 func withTools(base []registration, binary string, tools []toolchain.Tool) []registration {
 	out := append([]registration{}, base...)
 	for _, tool := range tools {

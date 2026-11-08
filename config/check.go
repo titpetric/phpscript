@@ -7,9 +7,9 @@ import (
 // Check reports whatever would stop a server from starting under this
 // configuration, checking nothing that would start one.
 //
-// filename names the file in errors from blocks that carry no name of their
-// own. root is the application root a single-root server would serve, and the
-// check refuses it beside a virtual host list, which names its own.
+// filename names the file in errors from unnamed blocks. root is the
+// application root a single-root server would serve. The check refuses it
+// beside a virtual host list, which names its own.
 func (c Config) Check(filename, root string) error {
 	if err := c.Test.Check(filename); err != nil {
 		return err

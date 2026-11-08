@@ -44,7 +44,7 @@ type Holder struct {
 	}
 }
 
-// TestFieldCommentsNoStruct covers the declarations that carry no field: a
+// TestFieldCommentsNoStruct covers the declarations that hold no field: a
 // named scalar, and a struct whose fields document nothing. Both answer nil, and
 // a listing over them prints no docblock.
 func TestFieldCommentsNoStruct(t *testing.T) {
@@ -58,8 +58,8 @@ func TestFieldCommentsNoStruct(t *testing.T) {
 }
 
 // TestImportPath covers the key the doc index holds an entry under. A reflected
-// type reports an import path and the scan walks directories, and the two have
-// to agree or every lookup misses.
+// type reports an import path and the scan walks directories. The two have to
+// agree or every lookup misses.
 func TestImportPath(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{

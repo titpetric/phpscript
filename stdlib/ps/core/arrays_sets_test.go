@@ -8,7 +8,7 @@ import (
 )
 
 // setArray builds an array from alternating keys and values and a case table
-// reads as the PHP literal it stands for.
+// reads as the PHP literal it names.
 func setArray(pairs ...any) *model.Array {
 	out := model.NewArray()
 	for i := 0; i+1 < len(pairs); i += 2 {
@@ -95,7 +95,7 @@ func TestFilterByValue(t *testing.T) {
 
 // TestFilterByKey covers array_diff_key and array_intersect_key. Keys run
 // through phpval.Key first and the integer 1 of an array meets the string "1" a
-// binding's map[string]any carries as one key. Neither one reads a value or
+// binding's map[string]any holds as one key. Neither one reads a value or
 // compares one.
 func TestFilterByKey(t *testing.T) {
 	t.Parallel()
@@ -139,8 +139,8 @@ func TestWanted(t *testing.T) {
 
 // TestEdgeKey covers array_key_first and array_key_last, which read an edge
 // without an internal pointer. PHP's older spelling is reset() plus key(),
-// which moves the pointer the read comes off; this runtime has none and an
-// empty array answers null.
+// which moves the pointer the read comes off; this runtime keeps no such
+// pointer and an empty array answers null.
 func TestEdgeKey(t *testing.T) {
 	t.Parallel()
 	sparse := setArray(int64(7), "a", "name", "b", int64(2), "c")

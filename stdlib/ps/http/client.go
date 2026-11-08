@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -47,9 +47,9 @@ type Client struct {
 func NewClient(ctx context.Context, options any) (*Client, error) {
 	config := clientConfig{Timeout: DefaultTimeout, FollowRedirects: true}
 
-	if model.IsCollection(options) {
+	if modelutil.IsCollection(options) {
 		var err error
-		model.RangeValues(options, func(key, value any) bool {
+		modelutil.RangeValues(options, func(key, value any) bool {
 			switch strings.ToLower(toString(key)) {
 			case "timeout":
 				config.Timeout = toDuration(value)
@@ -143,14 +143,14 @@ func (c *Client) Post(ctx context.Context, url string, body ...string) (*Respons
 }
 
 // Parallel sends every request in $requests at once and returns the responses
-// under the same keys and the call takes as long as the slowest request rather
-// than the sum. $requests is an array of HTTP\Request keyed by a name the
-// script chooses, each bounded by the client's timeout.
+// under the same keys. The call takes as long as the slowest request.
+// $requests is an array of HTTP\Request keyed by a name the script chooses,
+// each bounded by the client's timeout.
 //
 // One request failing does not fail the others and does not throw: that
-// response reports $response->ok() as false and $response->err() as the reason,
-// and a script sees every outcome. A throw means the argument is no array of
-// requests.
+// response reports $response->ok() as false and $response->err() as the
+// reason. A script sees every outcome. A throw means the argument is no
+// array of requests.
 func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Response, error) {
 	pending, err := toRequestMap(requests)
 	if err != nil {
@@ -191,7 +191,7 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 }
 
 // send performs one request against the client's configuration. Send and
-// Parallel share it and a batched request carries the same configuration as a
+// Parallel share it: a batched request runs under the same configuration as a
 // single one.
 func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	prepared, err := c.prepare(ctx, request)
@@ -230,9 +230,9 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 }
 
 // prepare resolves a request against the client's base URL and default
-// headers. It clones and mutates nothing and two clients can send the same
-// request value, and so Parallel does not write to a request another goroutine
-// is reading.
+// headers. It clones and mutates nothing. Two clients can send the same
+// request value. Parallel never writes to a request another goroutine is
+// reading.
 func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {
 	prepared := request.Clone(ctx)
 
@@ -266,13 +266,13 @@ func toRequestMap(requests any) (map[string]*nethttp.Request, error) {
 		return value, nil
 	}
 
-	if !model.IsCollection(requests) {
+	if !modelutil.IsCollection(requests) {
 		return nil, fmt.Errorf("HTTP\\Client: parallel expects an array of HTTP\\Request, got %T", requests)
 	}
 
 	out := map[string]*nethttp.Request{}
 	var err error
-	model.RangeValues(requests, func(key, value any) bool {
+	modelutil.RangeValues(requests, func(key, value any) bool {
 		request, ok := value.(*nethttp.Request)
 		if !ok {
 			err = fmt.Errorf("HTTP\\Client: parallel: %q is %T, want an HTTP\\Request", toString(key), value)

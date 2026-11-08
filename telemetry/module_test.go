@@ -11,7 +11,7 @@ import (
 	chi "github.com/go-chi/chi/v5"
 )
 
-// newTestModule stands in for the host: it builds the recorder the platform
+// newTestModule takes the host's place: it builds the recorder the platform
 // would build and passes the module its tracer.
 func newTestModule(t *testing.T) *Module {
 	t.Helper()

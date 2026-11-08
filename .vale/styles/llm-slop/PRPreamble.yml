@@ -5,9 +5,9 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\bthis (?:PR|pull request|patch|changeset)\b'
-  - '\bin this (?:PR|pull request|change|commit)\b'
-  - '\bthe (?:goal|purpose|aim) of this\b'
-  - '\bthis (?:change|commit) (?:adds|introduces|implements|provides)\b'
-  - '\bat a high level\b'
+  - '\bthis\s+(?:PR|pull\s+request|patch|changeset)\b'
+  - '\bin\s+this\s+(?:PR|pull\s+request|change|commit)\b'
+  - '\bthe\s+(?:goal|purpose|aim)\s+of\s+this\b'
+  - '\bthis\s+(?:change|commit)\s+(?:adds|introduces|implements|provides)\b'
+  - '\bat\s+a\s+high\s+level\b'
   - '\bTL;?DR\b'

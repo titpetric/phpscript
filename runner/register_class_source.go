@@ -7,8 +7,8 @@ import (
 )
 
 // classSource is PHP source a host ships as standard-library classes, declared
-// ahead of the registered loaders the first time autoload asks for one of them,
-// so a script that never names one pays for none. file is the name the source
+// ahead of the registered loaders on autoload's first lookup of one of them. A
+// script that never names one pays for none. file is the name the source
 // reports and first is the class whose presence says the source is already in.
 type classSource struct {
 	file    string
@@ -17,7 +17,7 @@ type classSource struct {
 	classes map[string]bool
 }
 
-// RegisterClassSource declares source when autoload first asks for a class in it.
+// RegisterClassSource declares source on autoload's first lookup of a class in it.
 func (rt *Runtime) RegisterClassSource(file, source string, classes ...string) {
 	if len(classes) == 0 {
 		return

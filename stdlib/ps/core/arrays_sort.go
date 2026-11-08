@@ -8,6 +8,7 @@ import (
 	"github.com/titpetric/phpscript/internal/arrayi64"
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -19,8 +20,8 @@ func init() {
 // registerArraySort adds the half of PHP's sort family that keeps the
 // key-to-value association: ksort/krsort order by key, asort/arsort by value,
 // uasort/uksort by a script comparator. The other half (sort, rsort, usort)
-// lives in arrays.go and throws the keys away and they can share
-// sortValues and these cannot.
+// is in arrays.go and throws the keys away, which lets it share sortValues.
+// These six cannot.
 func registerArraySort(rt *runner.Runtime) {
 	// ksort sorts $array in place by key ascending with PHP's default
 	// comparison, keeping each key attached to its value.
@@ -209,12 +210,12 @@ func sortValues(a any, less func(x, y any) bool) bool {
 
 // edgeValue is reset and end: the first or last value of the array, false when
 // it holds none. PHP defines both through the internal pointer, which the array
-// model here does not carry; every practical call reads them for the value, and
-// this answers with that.
+// model here omits. Every practical call reads them for the value; edgeValue
+// returns that value.
 func edgeValue(array any, first bool) any {
 	var out any = false
 	found := false
-	model.RangeValues(array, func(_, v any) bool {
+	modelutil.RangeValues(array, func(_, v any) bool {
 		out = v
 		found = true
 		return !first

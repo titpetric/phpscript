@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -21,7 +21,7 @@ type Database struct {
 
 	// IsReadonly restricts the client to statements that only read. The flag
 	// belongs to the client and not the connection: PHP reads and writes it as
-	// `$db->is_readonly`, and it lives as long as the client does, which for a
+	// `$db->is_readonly`. It lasts as long as the client does, which for a
 	// served request is the request.
 	//
 	// It refuses insert(), replace() and update() outright, and refuses any
@@ -33,11 +33,11 @@ type Database struct {
 	// The restriction is a boundary for the code holding this client, and no
 	// sandbox around the script: the script that set it can unset it. A
 	// connection that must not write belongs to a database user without the
-	// grant to, and this marks the code that must not write.
+	// grant to. This flag marks the code that must not write.
 	IsReadonly bool
 
-	// transaction is the span opened by Begin and ended by Commit or Rollback,
-	// and a transaction reads as one region and not three markers.
+	// transaction is the span Begin opens and Commit or Rollback ends. One
+	// region in the trace reads as a transaction; three markers do not.
 	transaction *telemetry.Span
 }
 
@@ -117,12 +117,9 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 
 // Get returns the first result row, or false when the query matches no rows.
 //
-// A row is a native map: foreach walks it, $row["col"] indexes it,
-// $row["extra"] = 1 writes to it and unset($row["col"]) takes a column out of
-// it. A map carries no column order and
-// `foreach ($row as $column => $value)` visits columns in arbitrary order;
-// a script that needs a stable order names its columns in the SELECT and
-// indexes them.
+// A row is a native map: foreach walks it, $row["col"] indexes it and
+// unset($row["col"]) takes a column out. A map holds no column order; a script
+// that needs one names its columns in the SELECT and indexes them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
 	// Rows reach PHP as the bridge produced them, a map[string]any per row and
 	// a []map[string]any per result set, with no copy into a
@@ -156,7 +153,7 @@ func (b *Database) GetAll(ctx context.Context, query string, args ...any) (any, 
 	}
 	value, err := b.bridge.GetAll(ctx, query, args...)
 	if err == nil {
-		if rows, ok := model.LenValues(value); ok {
+		if rows, ok := modelutil.LenValues(value); ok {
 			recordRows(ctx, rows)
 		}
 	}
@@ -176,8 +173,7 @@ func (b *Database) Close(ctx context.Context) (any, error) {
 }
 
 // Begin starts a transaction and opens the span measuring it. The span stays
-// open until Commit or Rollback and a transaction is one region in the trace
-// and no open marker and close marker to pair up.
+// open until Commit or Rollback ends it.
 func (b *Database) Begin(ctx context.Context) (any, error) {
 	if b.transaction == nil {
 		b.transaction = b.span(ctx, "Begin")
@@ -262,13 +258,13 @@ func queryArgs(args any) (any, bool) {
 		}
 		return values, true
 	}
-	if n, ok := model.LenValues(args); ok && n == 0 {
+	if n, ok := modelutil.LenValues(args); ok && n == 0 {
 		return nil, false
 	}
 	return args, true
 }
 
-// recordRows records how much a read returned on the span carrying it. The row
+// recordRows records how much a read returned on the span measuring it. The row
 // count is the other half of a query: a statement that took 40ms says something
 // different when it returned 3 rows than when it returned 30,000.
 func recordRows(ctx context.Context, rows int) {
@@ -276,7 +272,7 @@ func recordRows(ctx context.Context, rows int) {
 }
 
 // databaseSpan returns the span measuring the call in progress, or nil when
-// the run carries no instrumentation. Every span method is nil safe and
+// the run has no instrumentation. Every span method is nil safe and
 // callers do not check.
 func databaseSpan(ctx context.Context) *telemetry.Span {
 	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
@@ -285,7 +281,7 @@ func databaseSpan(ctx context.Context) *telemetry.Span {
 
 // refuseWrite reports the error a read-only client returns for a CRUD helper.
 // The CRUD helpers classify themselves: insert(), replace() and update() write
-// by definition, and it refuses them before anything builds a statement.
+// by definition. refuseWrite drops them before anything builds a statement.
 func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 	if !b.IsReadonly {
 		return nil
@@ -332,7 +328,7 @@ func (b *Database) span(ctx context.Context, method string) *telemetry.Span {
 	return telemetry.StartSpan(ctx, b.name(method), telemetry.KindDatabase)
 }
 
-// withSpan starts a database span and returns a context carrying it for the
+// withSpan starts a database span and returns a context holding it for the
 // query log observer, together with the closer that ends it.
 func (b *Database) withSpan(ctx context.Context, method string) (context.Context, func()) {
 	span := b.span(ctx, method)

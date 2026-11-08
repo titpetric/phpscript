@@ -29,7 +29,7 @@ func (r *Response) OK() bool { return r.err == "" && r.status >= 200 && r.status
 // Err returns why the request failed, which only parallel() reports.
 func (r *Response) Err() string { return r.err }
 
-// Body returns the response body as a string.
+// Body returns the body the client read in full, and "" for a failed request.
 func (r *Response) Body() string { return r.body }
 
 // Header returns the named response header, matched without case.

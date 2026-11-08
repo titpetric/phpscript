@@ -27,14 +27,13 @@ func NewStartup(root fs.FS, options ...Option) *Startup {
 	}
 }
 
-// Start executes every PHP file carrying an @startup annotation and reports
-// what failed.
+// Start executes every PHP file annotated @startup and reports what failed.
 //
 // One job failing does not stop the others: the tree's jobs are independent,
 // and the returned error joins every failure and a caller learns of each one
 // and not the first alone. Whether a failure is fatal is the caller's
 // decision, not this module's; a server hosting many sites records it and
-// carries on, where a single site server may well not.
+// continues, where a single site server may well not.
 func (s *Startup) Start(ctx context.Context) error {
 	var failures []error
 	err := scanner{root: s.root, excluded: s.config.excludedDirs}.walk(func(file string, src []byte) error {

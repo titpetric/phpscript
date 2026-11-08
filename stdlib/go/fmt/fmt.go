@@ -7,12 +7,12 @@ package fmt
 import (
 	gofmt "fmt"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
 // Namespace is the area the import installs.
-const Namespace = model.GoNamespace + `\Fmt`
+const Namespace = modelutil.GoNamespace + `\Fmt`
 
 // Set is what the package binds. The printing functions stay out: a script
 // writes its output with echo, and `fmt.Println` would write past the output

@@ -9,7 +9,7 @@ import (
 // resolveSQLiteDSN anchors a relative sqlite file path to root and a DSN
 // written in a site's own configuration names a file under that site's tree
 // and never under the directory the server process runs in.
-// Memory databases, absolute paths and file: URIs carry no such intent and
+// Memory databases, absolute paths and file: URIs name no such intent and
 // pass through unchanged, as does everything when there is no root to anchor
 // to, as a CLI run has.
 func resolveSQLiteDSN(root, dsn string) string {
@@ -91,6 +91,6 @@ func scriptSQLitePath(dsn string) (path string, outside bool) {
 		return "", false
 	}
 	// resolveSQLiteDSN passes a file: URI to the driver verbatim and resolves
-	// no path of its own; the URI names the path it carries.
+	// no path; the URI already names it.
 	return path, filepath.IsAbs(path) || strings.HasPrefix(path, "file:")
 }

@@ -101,7 +101,7 @@ func TestWriteReport(t *testing.T) {
 	}
 }
 
-// TestSortRows pins the order a report carries its rows in.
+// TestSortRows pins the order a report lists its rows in.
 func TestSortRows(t *testing.T) {
 	t.Parallel()
 	rows := []coverage.Row{
@@ -121,7 +121,7 @@ func TestSortRows(t *testing.T) {
 	}
 }
 
-// TestSortProfile pins the order a profile carries its blocks in.
+// TestSortProfile pins the order a profile lists its blocks in.
 func TestSortProfile(t *testing.T) {
 	t.Parallel()
 	blocks := []coverage.ProfileBlock{

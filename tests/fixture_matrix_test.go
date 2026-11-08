@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestFixtureRunners covers the three states a runner opt-out carries. The
+// TestFixtureRunners covers the three states a runner opt-out holds. The
 // fields are pointers so an absent one is distinguishable from a false one: a
 // fixture declaring nothing about a runner runs on it. The default runtime has
 // no field at all, because it defines the expected output the other two

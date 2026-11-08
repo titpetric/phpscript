@@ -3,7 +3,7 @@ package phpval
 import (
 	"math"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Increment applies PHP's ++ operator: numbers and numeric strings step by
@@ -11,7 +11,7 @@ import (
 // becomes int 1, and a non-numeric string takes the Perl-style alphanumeric
 // increment. A boolean stays put, as does any type PHP only warns about.
 func Increment(v any) any {
-	if next, typed := model.GoStep(v, 1); typed {
+	if next, typed := modelutil.GoStep(v, 1); typed {
 		return next
 	}
 	if num, ok := phpNumeric(v); ok {
@@ -38,7 +38,7 @@ func Increment(v any) any {
 // empty string, which PHP reads as 0 and returns int -1 for. It leaves null
 // and booleans alone too.
 func Decrement(v any) any {
-	if next, typed := model.GoStep(v, -1); typed {
+	if next, typed := modelutil.GoStep(v, -1); typed {
 		return next
 	}
 	if num, ok := phpNumeric(v); ok {
@@ -71,10 +71,10 @@ func StringNumber(s string) (any, bool) {
 }
 
 // incrementString is PHP's increment_string: the last character steps
-// within its class (a-z, A-Z, 0-9), z, Z and 9 wrap and carry left. It drops
-// a carry that reaches a character outside the three classes; one that runs
-// off the start of the string prepends a, A or 1 by the class of the first
-// character. The empty string increments to "1".
+// within its class (a-z, A-Z, 0-9), z, Z and 9 wrap and overflow left. It
+// drops an overflow that reaches a character outside the three classes; one
+// that runs off the start of the string prepends a, A or 1 by the class of
+// the first character. The empty string increments to "1".
 func incrementString(s string) string {
 	if s == "" {
 		return "1"

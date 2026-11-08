@@ -52,7 +52,7 @@ func (e *TimeLimitError) Error() string {
 	}
 	// php's wording, down to the singular, for a whole number of seconds, which
 	// is every limit set_time_limit can express. A handler's limit is the only
-	// one that can be finer, and that one says the duration.
+	// one that can be finer. That one says the duration.
 	if e.Limit%time.Second == 0 {
 		seconds := int64(e.Limit / time.Second)
 		if seconds == 1 {
@@ -113,7 +113,7 @@ type TypeError struct {
 // ThrowableClass names the PHP class, implementing Throwable.
 func (e *TypeError) ThrowableClass() string { return "TypeError" }
 
-// Error renders the message PHP's TypeError carries for the same call.
+// Error returns the message PHP's TypeError reports for the same call.
 func (e *TypeError) Error() string {
 	name := e.Name
 	if name == "" {

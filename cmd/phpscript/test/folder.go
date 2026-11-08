@@ -31,7 +31,7 @@ type folderCover struct {
 }
 
 // files renders the file column: "4/50 (8%)". The header says what the column
-// counts and the cell carries the counts alone.
+// counts and the cell holds the counts alone.
 func (f folderCover) files() string {
 	if f.FilesTotal == 0 {
 		return noCoverage
@@ -52,10 +52,9 @@ func ratio(covered, total int) string {
 	return fmt.Sprintf("%d/%d (%d%%)", covered, total, percentOf(covered, total))
 }
 
-// noCoverage is what a folder reports with nothing to measure: its fixtures
-// load no PHP file of their own. A percentage there would be an
-// answer to a question nobody asked, and a zero would drag the run's reading
-// down for no finding.
+// noCoverage is the reading of a folder with nothing to measure: its fixtures
+// load no PHP file at all. A percentage there would answer a question nobody
+// asked; a zero would drag the run's reading down for no finding.
 const noCoverage = "-"
 
 // percentOf rounds a ratio to whole percent.
@@ -97,13 +96,13 @@ type folderSummary struct {
 	cover *folderCover
 }
 
-// writeFolderTable prints one row per folder resolved from the arguments, which
-// is what a run without -v answers with in place of a table per fixture. The
-// columns follow what the run measured: with --cover the two coverage columns
-// the issue names, without it the counts that exist.
+// writeFolderTable prints one row per folder resolved from the arguments. A
+// run without -v prints this in place of a table per fixture. The columns
+// follow what the run measured: with --cover the two coverage columns the
+// issue names, without it the counts that exist.
 func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool) {
 	headers := []string{"Path", "Fixtures", "Passed", "Failed"}
-	// A matrix run carries a duration per engine, and the folder rows split
+	// A matrix run records a duration per engine, and the folder rows split
 	// theirs into a column per runner beside the wall-clock one.
 	var engines []engineDuration
 	if len(rows) > 0 {
@@ -161,7 +160,7 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 // report -v adds: the accounting the folder row summarises one level down,
 // and the one place an unvisited file appears by name.
 //
-// A folder whose fixtures loaded no PHP file of their own has no section: a
+// A folder whose fixtures loaded no PHP file has no section: a
 // heading over nothing reads as a folder that scored zero.
 func writeFolderFileReport(w io.Writer, covers []folderCover) {
 	for _, cover := range covers {
@@ -231,7 +230,7 @@ func writeTerminalGrid(w io.Writer, headers []string, values [][]string, widths 
 }
 
 // fixtureCoverage is one fixture's own statement coverage, which the fixture
-// tables carry as a column under --cover. The reading covers the PHP the
+// tables show as a column under --cover. The reading covers the PHP the
 // fixture loaded and not the .phpt itself: the entrypoint runs by definition
 // and would report every fixture at or near 100%.
 func fixtureCoverage(fx *tests.Fixture) string {

@@ -19,7 +19,7 @@ func registerUploads(rt *runner.Runtime, r root) {
 	// is_uploaded_file reports whether $filename is a file the current request uploaded.
 	rt.RegisterFunc("is_uploaded_file", func(filename string) bool { return isUpload(filename) })
 	// move_uploaded_file moves uploaded file $from to $to; a $from this
-	// request did not upload returns false, and it refuses a $to outside
+	// request did not upload returns false. It refuses a $to outside
 	// writable_paths.
 	rt.RegisterFunc("move_uploaded_file", func(from, to string) (bool, error) {
 		if !isUpload(from) {
@@ -36,7 +36,7 @@ func registerUploads(rt *runner.Runtime, r root) {
 			return false, nil
 		}
 		// The temporary copy is private to the process that wrote it and the
-		// stored file gets a mode of its own: the configured upload_file_mode,
+		// stored file gets its own mode: the configured upload_file_mode,
 		// or 0644, the mode PHP's own umask lands on by default.
 		_ = os.Chmod(dst, rt.UploadFileMode().Mode())
 		return true, nil

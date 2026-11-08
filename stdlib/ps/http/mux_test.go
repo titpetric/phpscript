@@ -152,7 +152,7 @@ define("MUX", $mux);
 `)
 
 	// No Runtime.OnError here. Installing one means "report the
-	// error and carry on from the next statement" for every PHP error and the
+	// error and resume at the next statement" for every PHP error and the
 	// throw would never reach the handler wrapper and the mux would answer 200
 	// with an empty body. That is the runtime's contract, not this binding's,
 	// and the doc on Handle says so.
@@ -195,8 +195,8 @@ define("MUX", $mux);
 }
 
 // TestMuxHandlerSeesItsOwnConnection is what EnterRequest is for: a client
-// that leaves mid-request is the one the handler asks about, and the handler
-// gets to decide what to do about it.
+// that leaves mid-request is the one the handler asks about. The handler
+// decides what to do about it.
 //
 // What it found out comes back through a binding and not through echo: a
 // handler's output goes to the response, and the point of this one is that
@@ -258,8 +258,8 @@ define("MUX", $mux);
 
 	// Waited for and never read straight off: the handler set ignore on the
 	// disconnect and the handler runs on after ServeHTTP has stopped waiting
-	// for it. That is what ignore_user_abort does, and it means the
-	// report lands a moment after the request is over.
+	// for it. That is what ignore_user_abort does. The report lands a moment
+	// after the request is over.
 	select {
 	case got := <-reported:
 		if got != "noticed and stopped" {
@@ -546,7 +546,7 @@ func formRequest(target, body string) *nethttp.Request {
 	return request
 }
 
-// TestTwoMuxesShareOneRuntimeSafely is the defect a per-Mux mutex carries: a
+// TestTwoMuxesShareOneRuntimeSafely names the defect in a per-Mux mutex: a
 // lock held as a field of Mux lets handlers on two muxes interpret on one
 // Runtime at the same time and takes the process down with a concurrent map
 // write.
@@ -745,8 +745,8 @@ define("MUX", $mux);
 // TestMuxTakesABoundMethod is the shape testdata/phpscript-http-bridge/server.php uses: the
 // handlers are methods and mount() registers each as $this->fnName, with no
 // property and no constructor between them. The receiver comes along the way a
-// closure's captured $this does, and the mux answers every request against
-// that one object.
+// closure's captured $this does. The mux answers every request against that
+// one object.
 func TestMuxTakesABoundMethod(t *testing.T) {
 	t.Parallel()
 	_, handler := serveScript(t, `<?php
@@ -911,8 +911,8 @@ $mux->handle("GET /hello", ` + test.handler + `);
 }
 
 // TestMuxRefusesAHandlerBehindMiddleware pins where a broken handler behind
-// Use is reported: at registration, as it is without one. A middleware returns
-// a closure that is callable whatever it holds, so resolving the wrapper alone
+// Use fails: at registration, the same as without one. A middleware returns a
+// closure that is callable whatever it holds. Resolving the wrapper alone
 // would take the handler and refuse it on the first request that arrives.
 func TestMuxRefusesAHandlerBehindMiddleware(t *testing.T) {
 	t.Parallel()
@@ -998,8 +998,8 @@ define("MUX", $mux);
 	}
 }
 
-// A handler answers on a runtime of its own and every call it makes has to run
-// on that runtime. A callable the script built before the server started is a
+// A handler answers on its own runtime and every call it makes has to run on
+// that runtime. A callable the script built before the server started is a
 // value like any other - it crosses into a worker as a capture, or a handler
 // reads it off a shared object - and calling one there must not reach back into
 // the runtime that built it: runner/fork.go leaves that runtime unguarded, and
@@ -1121,7 +1121,7 @@ func groupHandler(t *testing.T) nethttp.Handler {
 	return handler
 }
 
-// TestMux_Use pins that a middleware wraps what is registered after it.
+// TestMux_Use pins that a middleware wraps every handler registered after it.
 func TestMux_Use(t *testing.T) {
 	t.Parallel()
 	response := httptest.NewRecorder()
@@ -1148,7 +1148,7 @@ func TestMux_Group(t *testing.T) {
 }
 
 // TestMux_Mounted pins the mux a host mounts: its routes, plain and grouped,
-// go to the host's mount with the middleware applied, and the mux keeps none.
+// go to the host's mount with the middleware applied. The mux keeps none.
 func TestMux_Mounted(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

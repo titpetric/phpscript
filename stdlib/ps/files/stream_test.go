@@ -10,7 +10,7 @@ import (
 // TestPHPInputCLIReadsStdin pins the SAPI split: the cli SAPI maps php://input
 // onto stdin, a live stream a script drains once, where a request answers with
 // the buffered body on every open. This registers an empty request context,
-// as the CLI runner does, and that context must not shadow stdin.
+// as the CLI runner does. That context must not shadow stdin.
 func TestPHPInputCLIReadsStdin(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{SAPI: "cli", Stdin: strings.NewReader("piped body")}

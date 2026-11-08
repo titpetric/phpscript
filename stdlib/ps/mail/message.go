@@ -24,7 +24,7 @@ type Message struct {
 	ReplyTo   string
 }
 
-// buildMessage renders the RFC 5322 message. From carries the configured
+// buildMessage renders the RFC 5322 message. From holds the configured
 // display name ("Name <user@host>"), the envelope sender is the bare address.
 //
 // A message with no HTML is the text/plain message mail() has always sent,

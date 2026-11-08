@@ -115,7 +115,7 @@ The supported error model and values supplied by the runtime or request host.
   - [Reading the phpscript column](predefined-interfaces-and-classes/reserved-interfaces.md#reading-the-phpscript-column)
   - [Interfaces that use extends](predefined-interfaces-and-classes/reserved-interfaces.md#interfaces-that-use-extends)
   - [See also](predefined-interfaces-and-classes/reserved-interfaces.md#see-also)
-- [The Traversable interface](predefined-interfaces-and-classes/classes/Traversable.md) - The base interface foreach detects, and which no class declares on its own.
+- [The Traversable interface](predefined-interfaces-and-classes/classes/Traversable.md) - The base interface foreach detects, and which no class declares directly.
   - [Introduction](predefined-interfaces-and-classes/classes/Traversable.md#introduction)
   - [Interface synopsis](predefined-interfaces-and-classes/classes/Traversable.md#interface-synopsis)
   - [Status](predefined-interfaces-and-classes/classes/Traversable.md#status)
@@ -166,7 +166,7 @@ The supported error model and values supplied by the runtime or request host.
   - [Introduction](predefined-interfaces-and-classes/classes/stdClass.md#introduction)
   - [Class synopsis](predefined-interfaces-and-classes/classes/stdClass.md#class-synopsis)
   - [Status](predefined-interfaces-and-classes/classes/stdClass.md#status)
-- [The Generator class](predefined-interfaces-and-classes/classes/Generator.md) - What a function containing `yield` returns, and why there is no coroutine model.
+- [The Generator class](predefined-interfaces-and-classes/classes/Generator.md) - The class a generator function returns, and why phpscript has no coroutine model.
   - [Introduction](predefined-interfaces-and-classes/classes/Generator.md#introduction)
   - [Class synopsis](predefined-interfaces-and-classes/classes/Generator.md#class-synopsis)
   - [Methods](predefined-interfaces-and-classes/classes/Generator.md#methods)
@@ -176,7 +176,7 @@ The supported error model and values supplied by the runtime or request host.
   - [Class synopsis](predefined-interfaces-and-classes/classes/Fiber.md#class-synopsis)
   - [Methods](predefined-interfaces-and-classes/classes/Fiber.md#methods)
   - [Status](predefined-interfaces-and-classes/classes/Fiber.md#status)
-- [The WeakReference class](predefined-interfaces-and-classes/classes/WeakReference.md) - A reference that does not keep its object alive, and why refcounts do not carry over.
+- [The WeakReference class](predefined-interfaces-and-classes/classes/WeakReference.md) - A reference that does not keep its object alive, and why refcounts do not apply here.
   - [Introduction](predefined-interfaces-and-classes/classes/WeakReference.md#introduction)
   - [Class synopsis](predefined-interfaces-and-classes/classes/WeakReference.md#class-synopsis)
   - [Methods](predefined-interfaces-and-classes/classes/WeakReference.md#methods)
@@ -268,7 +268,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [What width buys](extensions/hashing.md#what-width-buys)
   - [Published collisions against md5 and sha1](extensions/hashing.md#published-collisions-against-md5-and-sha1)
   - [crc16 and crc64 do not exist here, or in php](extensions/hashing.md#crc16-and-crc64-do-not-exist-here-or-in-php)
-  - [What this build does not carry](extensions/hashing.md#what-this-build-does-not-carry)
+  - [What this build does not register](extensions/hashing.md#what-this-build-does-not-register)
   - [Why a password needs a cost parameter](extensions/hashing.md#why-a-password-needs-a-cost-parameter)
   - [What a derivation costs](extensions/hashing.md#what-a-derivation-costs)
     - [How many logins that is](extensions/hashing.md#how-many-logins-that-is)

@@ -33,8 +33,8 @@ func TestCoverDir(t *testing.T) {
 
 func TestBuiltWithCover(t *testing.T) {
 	t.Parallel()
-	// go test builds the test binary without -cover unless -cover is given;
-	// either answer is valid, and the call must not panic.
+	// go test builds the test binary without -cover unless the command line
+	// names it; either answer is valid, and the call must not panic.
 	_ = BuiltWithCover()
 }
 

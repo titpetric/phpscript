@@ -1,5 +1,5 @@
 // Package span exposes telemetry spans to PHP as the start_span() binding and
-// a script can measure a region of its own work next to the spans the
+// a script can measure its own region of work next to the spans the
 // interpreter records for it.
 //
 // The span is the telemetry span, not a copy of it: methods on the returned

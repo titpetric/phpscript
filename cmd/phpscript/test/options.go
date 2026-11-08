@@ -32,15 +32,15 @@ type Options struct {
 	// the fixture tree over this one in turn.
 	Config config.Config
 
-	// typed reports whether the command line carries a flag, and so decides
-	// between it and the value a configuration file supplies. It stays nil
-	// for an Options a test assembles, where no command line exists.
+	// typed reports whether the command line names a flag, deciding between
+	// it and the value a configuration file supplies. It stays nil for an
+	// Options a test assembles, where no command line exists.
 	typed func(string) bool
 }
 
-// fromConfig fills the run-wide options a test block may also carry, where the
+// fromConfig fills the run-wide options a test block may also set, where the
 // command line did not name one. The flag wins: a configuration describes a
-// tree, and a flag is what an operator typed about this run of it.
+// tree; a flag is what an operator typed about this run of it.
 func (o *Options) fromConfig(test config.Test) {
 	if !o.given("parallel") && test.Parallel > 0 {
 		o.Parallel = test.Parallel
@@ -53,7 +53,7 @@ func (o *Options) fromConfig(test config.Test) {
 	}
 }
 
-// given reports whether the command line carries the named flag.
+// given reports whether the command line names the flag.
 func (o Options) given(name string) bool {
 	return o.typed != nil && o.typed(name)
 }
@@ -90,8 +90,8 @@ func (o Options) runners() []tests.Runner {
 // for a hit the worker's own cache already has.
 const (
 	// CacheOff builds caches per fixture run and drops the runtime
-	// after it. A parse from one run stays invisible to the next, and a run
-	// pays the parsing its own includes cost - and drops what it held when it
+	// after it. A parse from one run stays invisible to the next. A run pays
+	// the parsing its own includes cost - and drops what it held when it
 	// ends, with no state kept for the length of the suite.
 	CacheOff = "off"
 	// CacheWorker keeps one set per worker, reused by the fixtures that

@@ -102,7 +102,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring Those credentials were not accepted
+          - result.systemout ShouldContainSubstring Credentials rejected
       # The same answer for a name no line of the file carries, so the response
       # does not say which accounts are real.
       - type: exec
@@ -110,7 +110,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring Those credentials were not accepted
+          - result.systemout ShouldContainSubstring Credentials rejected
       # The username is compared as written: the file carries lowercase names
       # and the primary key is computed from them.
       - type: exec
@@ -118,7 +118,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring Those credentials were not accepted
+          - result.systemout ShouldContainSubstring Credentials rejected
       # A refused login leaves no session behind.
       - type: exec
         script: curl -sS -i -w '\nSTATUS %{http_code}\n' {{.host}}/
@@ -135,7 +135,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 403
-          - result.systemout ShouldContainSubstring did not carry the sign-in form
+          - result.systemout ShouldContainSubstring CSRF token mismatch
           - 'result.systemout ShouldNotContainSubstring Set-Cookie: session'
       # A token field whose cookie half is absent fails the same way: the pair
       # has to agree, not merely exist.
@@ -146,7 +146,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 403
-          - result.systemout ShouldContainSubstring did not carry the sign-in form
+          - result.systemout ShouldContainSubstring CSRF token mismatch
 
   - name: repeated refusals hit the sign-in rate limit
     steps:
@@ -299,7 +299,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring No rows found.
+          - result.systemout ShouldContainSubstring No rows
 
   - name: structure reports columns and the create statement
     steps:
@@ -331,7 +331,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring 3 row(s) returned
+          - result.systemout ShouldContainSubstring 3 row(s)
           - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: sql console runs a query from the url
@@ -341,7 +341,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring 1 row(s) returned
+          - result.systemout ShouldContainSubstring 1 row(s)
           - result.systemout ShouldContainSubstring total
 
   - name: sql console executes a posted query
@@ -351,7 +351,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
-          - result.systemout ShouldContainSubstring 1 row(s) returned
+          - result.systemout ShouldContainSubstring 1 row(s)
           - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: create table form offers the dialect presets
@@ -430,7 +430,7 @@ testcases:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
           - result.systemout ShouldNotContainSubstring Venom probe
-          - result.systemout ShouldContainSubstring No rows found.
+          - result.systemout ShouldContainSubstring No rows
 
   - name: a table can be dropped after confirmation
     steps:
@@ -448,7 +448,7 @@ testcases:
         script: curl -sS -b .venom-jar -d "confirmation=wrong" -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/drop
         assertions:
           - result.code ShouldEqual 0
-          - result.systemout ShouldContainSubstring Confirmation did not match the table name.
+          - result.systemout ShouldContainSubstring Confirmation mismatch
       - type: exec
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue
         assertions:
@@ -462,12 +462,12 @@ testcases:
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/nope
         assertions:
           - result.code ShouldEqual 0
-          - result.systemout ShouldContainSubstring Table not found.
+          - result.systemout ShouldContainSubstring Table not found
       - type: exec
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/bad-name
         assertions:
           - result.code ShouldEqual 0
-          - result.systemout ShouldContainSubstring Invalid table name.
+          - result.systemout ShouldContainSubstring Invalid table name
 
   - name: static assets are served from the web root
     steps:
@@ -582,7 +582,7 @@ testcases:
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 403
-          - result.systemout ShouldContainSubstring did not carry the sign-out form
+          - result.systemout ShouldContainSubstring CSRF token mismatch
       # The session survived the refused post.
       - type: exec
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/

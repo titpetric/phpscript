@@ -5,10 +5,8 @@ import (
 	"os"
 )
 
-// Overlay reads filename over base and returns the configuration it describes
-// with the keys the file itself named and a caller can tell a key the file set
-// from one it inherited. A missing file is an error, with no fall back to
-// base; forbidden names the keys it may not set and owned says who does.
+// Overlay reads filename over base and returns the keys the file itself named.
+// A missing file is an error, with no fall back to base.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {

@@ -51,7 +51,7 @@ func argon2Hash(password string, p params) (string, error) {
 }
 
 // argon2Verify recomputes the tag from the parameters and salt the stored hash
-// carries. An unreadable hash returns false.
+// holds. An unreadable hash returns false.
 func argon2Verify(password, hash string) bool {
 	p, salt, want, err := argon2Decode(hash)
 	if err != nil {

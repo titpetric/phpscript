@@ -6,6 +6,7 @@ import (
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // A typed go value keeps its type through an operation and wraps at its width,
@@ -24,7 +25,7 @@ import (
 // caller keeps php's own arithmetic, overflow to float included.
 
 // goArith applies an arithmetic operator at a typed value's width, and reports
-// whether the operands carried one.
+// whether the operands have one.
 func goArith(op string, a, b any) (any, bool, error) {
 	w, typed, err := goOperandWidth(op, a, b)
 	if !typed || err != nil {
@@ -73,7 +74,7 @@ func goBitwise(op string, a, b any) (any, bool, error) {
 }
 
 // goOperandWidth reads the width an operation answers in, and reports whether
-// either operand carried one at all.
+// either operand has one at all.
 func goOperandWidth(op string, a, b any) (model.GoWidth, bool, error) {
 	left, leftTyped := model.GoWidthOf(a)
 	right, rightTyped := model.GoWidthOf(b)
@@ -95,7 +96,7 @@ func goOperandWidth(op string, a, b any) (model.GoWidth, bool, error) {
 // value answers its own, and one of php's numbers converts the way go reads an
 // untyped constant.
 func goOperandInt(v any) int64 {
-	if bits, ok := model.GoInt(v); ok {
+	if bits, ok := modelutil.GoInt(v); ok {
 		return bits
 	}
 	return phpval.Int(v)
@@ -234,7 +235,7 @@ func goNegate(v any) (any, bool) {
 }
 
 // goBitNot inverts the bits at the operand's width: ~uint8(0) is uint8(255).
-// A float width carries no bits and php's own cast answers for it.
+// A float width has no bits and php's own cast answers for it.
 func goBitNot(v any) (any, bool) {
 	w, typed := model.GoWidthOf(v)
 	if !typed || w.Float {

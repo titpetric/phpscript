@@ -17,7 +17,7 @@ package runner
 // SPL name is one Go type and reflection would answer "Exception" for an
 // InvalidArgumentException. The method is also the predicate separating a PHP
 // throwable from an error a Go binding returned, which a Go type name cannot
-// do: it would take a driver type called Error for PHP's Error class, and the
+// do: it would take a driver type called Error for PHP's Error class. The
 // error would fall out of the `catch (Exception $e)` a script wrote.
 type Throwable interface {
 	error

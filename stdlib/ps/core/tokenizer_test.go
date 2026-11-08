@@ -15,8 +15,8 @@ import (
 // A script branches on a token by name, and a name that is not a constant reads
 // as null and comparing a token against null is a branch that never runs. The
 // binding registers every id the tokenizer can emit for that reason, and not
-// the handful one caller happened to need. They are constants and no globals,
-// and they resolve inside a function or a method too.
+// the handful one caller happened to need. They are constants and no globals.
+// They resolve inside a function or a method too.
 func TestTokenizerConstants(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

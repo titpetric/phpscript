@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // The go runtime is the one binding area a file opts into. `use Runtime\Go`
@@ -12,7 +13,7 @@ import (
 // binding and no name php resolves, and the call prints as the source wrote
 // it, which keeps the formatter round-tripping.
 //
-// The binding is per file, as every `use` is, and it wins over the enclosing
+// The binding is per file, as every `use` is. It wins over the enclosing
 // namespace: a file that imported go's `make` meant go's, the way php reads an
 // imported name against one it would otherwise resolve. It binds the spelling
 // go uses and no other, where php folds a function's case: a file that writes
@@ -25,14 +26,14 @@ import (
 // useGo records the import of the go runtime, the one import the parser reads
 // for itself. A leading separator and the namespace's case are php's to ignore.
 func (p *parser) useGo(name string) {
-	if strings.EqualFold(strings.Trim(name, "\\"), model.GoNamespace) {
+	if strings.EqualFold(strings.Trim(name, "\\"), modelutil.GoNamespace) {
 		p.goRuntime = true
 	}
 }
 
 // goBound reports whether a bare name is a go builtin this file's imports bind.
 func (p *parser) goBound(name string) bool {
-	return p.goRuntime && model.GoBuiltin(name)
+	return p.goRuntime && modelutil.GoBuiltin(name)
 }
 
 // atGoSlice reports whether the tokens at a type position open a `[]T` type: a
@@ -95,7 +96,7 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	}
 	name, absolute, err := p.parseQualifiedName(true)
 	if err != nil {
-		return nil, fmt.Errorf("line %d: %s: %w", p.cur().line, model.GoNamespace+`\make`, err)
+		return nil, fmt.Errorf("line %d: %s: %w", p.cur().line, modelutil.GoNamespace+`\make`, err)
 	}
 	// `make([]http.Request, 2)` takes the type an import enumerated, where the
 	// element is the type and not the package. See goimport.go.
@@ -103,7 +104,7 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 		return p.newStringLit(dims+full, dims+source), nil
 	}
 	qualified := name
-	if !model.GoType(name) {
+	if !modelutil.GoType(name) {
 		qualified = p.qualify(name, absolute)
 	}
 	return p.newStringLit(dims+qualified, dims+name), nil
@@ -120,19 +121,19 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 // A folded value prints as the literal it became, which is the spelling the
 // printer already picks for a number: it prints `0x10` as 16.
 func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
-	if len(args) != 1 || !model.GoType(name) {
+	if len(args) != 1 || !modelutil.GoType(name) {
 		return nil, false
 	}
 	value, ok := goLitValue(args[0])
 	if !ok {
 		return nil, false
 	}
-	folded, ok := model.GoFold(name, value)
+	folded, ok := modelutil.GoFold(name, value)
 	if !ok {
 		return nil, false
 	}
 	// A conversion that changed nothing keeps the node, and with it the source
-	// spelling a string literal carries.
+	// spelling a string literal holds.
 	if lit, isLit := args[0].(*model.Lit); isLit && folded == lit.Value {
 		return lit, true
 	}
@@ -143,14 +144,14 @@ func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
 // literal: `-1` is a unary minus over 1, go folds the sign into the constant,
 // and a conversion of a literal reads both the same way.
 func goLitValue(arg model.Expr) (any, bool) {
-	switch n := model.UnwrapParenthesized(arg).(type) {
+	switch n := modelutil.UnwrapParenthesized(arg).(type) {
 	case *model.Lit:
 		return n.Value, true
 	case *model.Unary:
 		if n.Op != "-" || n.Postfix {
 			return nil, false
 		}
-		lit, ok := model.UnwrapParenthesized(n.X).(*model.Lit)
+		lit, ok := modelutil.UnwrapParenthesized(n.X).(*model.Lit)
 		if !ok {
 			return nil, false
 		}

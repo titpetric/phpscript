@@ -33,12 +33,12 @@ func BenchmarkDispatchFast(b *testing.B) {
 }
 
 // BenchmarkDispatchReflect calls one it does not. str_repeat is
-// func(string, int64) string, which is not among the shapes, and the call goes
-// through reflectInvoker and reflect.Value.Call.
+// func(string, int64) string, which is not among the shapes, and
+// reflectInvoker dispatches the call through reflect.Value.Call.
 //
 // The pair is what a new shape in fastInvoker is worth. 163 of the 314
 // registered functions take the reflect path, across 126 distinct signatures,
-// and each function decides on its own, without a sweep.
+// and each function decides separately, without a sweep.
 func BenchmarkDispatchReflect(b *testing.B) {
 	benchCalls(b, `str_repeat("a", 3);`)
 }
@@ -50,14 +50,13 @@ func BenchmarkDispatchBaseline(b *testing.B) {
 
 // BenchmarkDispatchSprintf prices one of the string family's most called
 // names. sprintf is func(string, ...any) (string, error): the error-returning
-// spelling of a shape fastInvoker already lists without the error, and the
+// spelling of a shape fastInvoker already lists without the error. The
 // figure moves with only which invoker the registration built.
 //
 // It exists because the shape of a binding's return is not a local decision.
-// Adding an error return is a correctness change that reads as one line, and
-// it decides the dispatch path for every call to that
-// name afterwards. This benchmark is what prices sprintf, and the move lands
-// measured.
+// Adding an error return is a correctness change that reads as one line. It
+// decides the dispatch path for every call to that name afterwards. This
+// benchmark is what prices sprintf. The move lands measured.
 func BenchmarkDispatchSprintf(b *testing.B) {
 	benchCalls(b, `sprintf("%s-%d", "a", 3);`)
 }

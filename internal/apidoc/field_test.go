@@ -20,7 +20,7 @@ type fieldHolder struct {
 
 type fieldBridge struct{}
 
-// TestField covers the two spellings a property carries: the Go field name
+// TestField covers the two spellings a property holds: the Go field name
 // keying the doc index, and the snake_case name a script writes.
 func TestField(t *testing.T) {
 	t.Parallel()
@@ -66,7 +66,7 @@ func TestReflectFieldsKeepsDeclarationOrder(t *testing.T) {
 	}
 }
 
-// TestReflectFieldsNoStruct covers the types that carry no property: a named
+// TestReflectFieldsNoStruct covers the types that publish no property: a named
 // scalar a constructor returns, which Time\Duration is, and a struct declaring
 // every field unexported, which HTTP\Client's bound type does.
 func TestReflectFieldsNoStruct(t *testing.T) {
@@ -80,7 +80,7 @@ func TestReflectFieldsNoStruct(t *testing.T) {
 }
 
 // fieldOpaque is the shape HTTP\Client's bound type takes: it holds a standard
-// library client and a setting of its own, and publishes neither.
+// library client and a timeout, and publishes neither.
 type fieldOpaque struct {
 	client  *http.Client
 	timeout time.Duration

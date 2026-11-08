@@ -21,7 +21,7 @@ import (
 // request, visible in every scope and writing the variable itself rebinds the
 // global, the way PHP lets a script replace $_POST wholesale, and clears any
 // scope-local shadow so reads keep resolving through the global. Every other
-// name belongs to the scope. The superglobal set lives in phpval.AutoGlobals,
+// name belongs to the scope. The superglobal set is phpval.AutoGlobals,
 // whose claim check is a byte compare and no map probe: this runs on
 // every assignment.
 func (rt *Runtime) setVar(scope *Scope, name string, val any) {
@@ -45,12 +45,12 @@ type Runtime struct {
 	userFns    map[string]struct{}
 	// funcSites records the site of each user function declaration and a
 	// second one can name the first the way PHP's fatal error does. userFns
-	// alone cannot: a set holds no site, and the message is the useful half.
+	// alone cannot: a set holds no site. The message is the useful half.
 	funcSites map[string]FuncSite
 	// hoisted records the programs Run already hoisted, by node identity and
-	// re-running a compiled program on the same runtime is idempotent instead
-	// of a redeclaration error. Only the top-level Run entry consults it: an
-	// include re-declaring a function is a real PHP error and keeps being one.
+	// re-running a compiled program on the same runtime is idempotent and
+	// raises no redeclaration error. Only the top-level Run entry consults it:
+	// an include re-declaring a function is a real PHP error and keeps being one.
 	//
 	// The value is the filename it hoists under, and Fork
 	// replays onto a sibling so it declares the same symbols.
@@ -174,7 +174,7 @@ type Runtime struct {
 	frozenEnv map[string]string
 	envShared bool
 
-	// resets run inside resetExecution and a binding keeping state of its own
+	// resets run inside resetExecution and a binding keeping separate state
 	// beside the runtime (the ob_* buffer stack) drops it when the runtime is
 	// reset between programs. See OnReset.
 	resets []func()
@@ -212,8 +212,8 @@ type Runtime struct {
 	// funcStatics holds the live bindings of function-level `static $x`
 	// declarations, one bag per StaticVar statement. The statement node's
 	// address is the function identity: the parser builds the AST once, and
-	// each `static` statement sits in exactly one function body. Closures do
-	// not use this table: each closure value carries its own bag on
+	// each `static` statement belongs to exactly one function body. Closures do
+	// not use this table: each closure value holds its own bag on
 	// closureEnv, which is PHP's per-instance static semantics.
 	funcStatics map[*model.StaticVar]map[string]any
 
@@ -249,7 +249,7 @@ type Runtime struct {
 	// goFields caches struct field resolution per (struct type, spelled
 	// name), for the same reason goMethods exists: fieldByNameFold walks the
 	// field set through two FieldByNameFunc closures on every property read
-	// otherwise, and a handler reads $r->method per request. The cache holds
+	// otherwise. A handler reads $r->method per request. The cache holds
 	// misses too.
 	goFields map[goMethodKey]goFieldInfo
 
@@ -268,7 +268,7 @@ type Runtime struct {
 	coverage *coverage.Collector
 
 	// preludeDone records that the runtime included Options.Include and it
-	// installs the declarations that file carries once and redeclares none.
+	// installs the declarations that file holds once and redeclares none.
 	// A runtime serves one request and this is once per request; ResetSession
 	// clears it with everything else a reused runtime drops between them.
 	preludeDone bool
@@ -296,10 +296,9 @@ type Runtime struct {
 // every Eval used to.
 const maxFreeEnvs = 16
 
-// envSizeHint presizes an evaluation environment's map. The size it presizes to
-// is what an environment holds:
-// since installFunc adds registered functions on demand, an environment carries
-// the ~16 PHP-semantic helpers, the functions its expressions actually call, and
+// envSizeHint presizes an evaluation environment's map to what an environment
+// holds: since installFunc adds registered functions on demand, that is the
+// ~16 PHP-semantic helpers, the functions its expressions actually call, and
 // a handful of layered per-expression keys. The hint only has to avoid the first
 // few rehashes; an environment that outgrows it grows once and is then reused.
 const envSizeHint = 48
@@ -356,14 +355,15 @@ func (rt *Runtime) Output() io.Writer {
 	return rt.out
 }
 
-// emptyStdin is the input stream a runtime with no stdin of its own reads:
+// emptyStdin is the input stream a runtime with no stdin reads:
 // no bytes, from any offset.
 //
 // One value, shared by every runtime and every reset, because it holds no state
-// to share. A strings.Reader over "" carries a read offset, which makes it a
-// value per use; this carries no state, and a zero-size value costs no allocation
-// to put in an interface. The two readers of Runtime.Stdin - STDIN in
-// stdlib/ps/core and php://input in stdlib/ps/files - take it as an io.Reader and ask
+// to share. A strings.Reader over "" holds a read offset, which makes it a
+// value per use; this one holds no state, and a zero-size value costs no
+// allocation to put in an interface. The two readers of Runtime.Stdin - STDIN
+// in stdlib/ps/core and php://input in stdlib/ps/files - take it as an
+// io.Reader and ask
 // no more of it.
 type emptyStdin struct{}
 
@@ -447,9 +447,7 @@ const InfrastructurePrefix = "PLATFORM_"
 // ScriptEnvironment returns the environment scripts read with getenv().
 //
 // A nil environment means the process environment, as a CLI run has it. A host
-// that configured one passes it instead, and a virtual host always does and
-// that a site sees the variables it declared and none of the rest the
-// operator's process happens to carry. Either way ScriptEnvironment drops the
+// that configured one passes it instead. Either way ScriptEnvironment drops the
 // infrastructure variables.
 func ScriptEnvironment(environment []string) map[string]string {
 	if environment == nil {
@@ -466,18 +464,14 @@ func ScriptEnvironment(environment []string) map[string]string {
 	return env
 }
 
-// NewFlatStack returns a Runtime that executes supported programs through the
-// flat bytecode backend and atomically falls back to the interpreter otherwise.
-// Most callers should use flatstack.New, which preserves runner's public API.
+// NewFlatStack returns a Runtime that runs through the flat bytecode backend.
 func NewFlatStack(w io.Writer, opts Options) *Runtime {
 	rt := New(w, opts)
 	rt.flat = true
 	return rt
 }
 
-// FreezeStdlib snapshots constants and the environment after the host
-// registers its bindings and ResetSession can drop what a script defined
-// without losing what the host configured.
+// FreezeStdlib snapshots constants and the environment after host registration.
 func (rt *Runtime) FreezeStdlib() {
 	rt.frozenConsts = rt.constants
 	rt.constsShared = true
@@ -485,9 +479,8 @@ func (rt *Runtime) FreezeStdlib() {
 	rt.envShared = true
 }
 
-// ResetSession prepares the runtime to execute another program: new output and
-// stdin, empty globals and user declarations. Host functions, constructors and
-// the expression/bytecode caches stay.
+// ResetSession prepares the runtime for another program: new output and stdin,
+// empty globals and user declarations. Host functions and the caches stay.
 func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	rt.resetExecution(out, stdin)
 	// The closures a hoist installed have to come out of the function table
@@ -572,14 +565,7 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	rt.resetLimits()
 }
 
-// Reset returns the runtime to the state a new one is in and a pool can hand
-// the same value to the next program, with no second one built.
-//
-// Reset is ResetSession plus what outlives a session: the parse caches and the
-// two maps keyed by AST node, which ResetSession keeps because a --count loop
-// runs one program and the keys are the same nodes each time. Across two
-// programs they hold the previous tree alive. Reset clears the maps and never
-// replaces them and the next program starts on the buckets they grew.
+// Reset is ResetSession plus the parse caches and the maps keyed by AST node.
 func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.ResetSession(out, stdin)
 	clear(rt.compiled)
@@ -589,7 +575,7 @@ func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	// The tree a lookup indexed went with the include cache and the next one
 	// parses it again, and resolves against nothing otherwise.
 	rt.lookupScanned = false
-	// The index is version-guarded and would rebuild on its own, but it holds a
+	// The index is version-guarded and would rebuild itself, but it holds a
 	// program pointer per symbol, which is the tree Reset exists to let go of.
 	rt.symbols = nil
 }
@@ -692,11 +678,8 @@ func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 
 // SetWorkDir moves the working directory and reports whether it could. A
 // relative path resolves against the current one and an absolute path against
-// the source root, and neither climbs out of it.
-//
-// The directory is per-runtime state and a script moving it moves nothing
-// another request sees and os.Chdir is never called. SetWorkDir returns false
-// for a path naming no directory, as php documents.
+// the source root, and neither climbs out of it. The directory is per-runtime
+// state and os.Chdir is never called. A path naming no directory returns false.
 func (rt *Runtime) SetWorkDir(dir string) bool {
 	target := rt.resolveFSPath(dir)
 	if target == "" {

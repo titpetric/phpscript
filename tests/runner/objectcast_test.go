@@ -25,7 +25,7 @@ func runSource(t *testing.T, source string) string {
 }
 
 // A value a host binding produced is an object already. The `(object)` cast has
-// to return it unchanged, with no fold into a stdClass carrying a `scalar`
+// to return it unchanged, with no fold into a stdClass holding a `scalar`
 // property, as the collection test and the scalar branch both did. Exception
 // is the binding every runtime has.
 func TestObjectCastKeepsHostObjects(t *testing.T) {

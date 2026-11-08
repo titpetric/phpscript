@@ -5,8 +5,8 @@ import (
 )
 
 // TestVarDumpObject covers the visibility annotation, which is the one part of
-// a dump that reads the class and not the value: a private property carries
-// the declaring class, a protected one does not, and a public one carries
+// a dump that reads the class and not the value: a private property names
+// the declaring class, a protected one does not, and a public one has
 // no annotation.
 func TestVarDumpObject(t *testing.T) {
 	t.Parallel()

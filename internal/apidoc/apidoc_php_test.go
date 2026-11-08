@@ -156,8 +156,8 @@ func TestClass_Describe(t *testing.T) {
 	}
 }
 
-// TestClassDescribeWithoutGodoc covers a class the index carries no comment
-// for. The citation stands alone and the renderer invents no sentence around
+// TestClassDescribeWithoutGodoc covers a class the index holds no comment
+// for. The citation prints alone and the renderer invents no sentence around
 // it.
 func TestClassDescribeWithoutGodoc(t *testing.T) {
 	t.Parallel()
@@ -168,7 +168,7 @@ func TestClassDescribeWithoutGodoc(t *testing.T) {
 	}
 }
 
-// TestClassImplementsClause covers the clause the class header carries. A
+// TestClassImplementsClause covers the clause the class header prints. A
 // bound type satisfying none of the interface set prints no clause: no
 // placeholder and no prose about the absence.
 func TestClassImplementsClause(t *testing.T) {
@@ -203,7 +203,7 @@ func TestClass_Rename(t *testing.T) {
 	}
 }
 
-// TestWriteDocblock covers the docblock form. A blank godoc line carries no
+// TestWriteDocblock covers the docblock form. A blank godoc line prints no
 // trailing space, which a formatter would strip and a diff would then report.
 func TestWriteDocblock(t *testing.T) {
 	t.Parallel()

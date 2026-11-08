@@ -28,7 +28,7 @@ sites/
         └── db.php
 ```
 
-`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing has to say so. `blog` already calls that directory `web`, and the setting exists for that case.
+`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing has to say so. `blog` already calls that directory `web`. The setting exists for that case.
 
 ## 2. The operator's configuration
 
@@ -50,13 +50,13 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry and a site that configures no database of its own inherits nothing. The sites' scripts also read `env` with `getenv()` and leaving it empty keeps the operator's own environment out of them.
+Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would mount on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults hold and a site that configures no database inherits nothing. The sites' scripts also read `env` with `getenv()` and leaving it empty keeps the operator's own environment out of them.
 
 ## 3. Each site's configuration
 
 Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml` and it only names what it changes.
 
-`shop/phpscript.yml` takes route scanning and the runner limits as they come, and names a tracer and a database of its own:
+`shop/phpscript.yml` takes route scanning and the runner limits as they come, and names its own tracer and database:
 
 ```yaml
 routes:
@@ -91,7 +91,7 @@ Both sites mount a dashboard on `/debug/oida`. That is not a collision: each mou
 
 ## 4. The sites
 
-The files are what they would be if each site ran in a server of its own. `shop/public/index.php`:
+The files are what they would be if each site ran in its own server. `shop/public/index.php`:
 
 ```php
 <?php echo "shop";
@@ -133,7 +133,7 @@ header("Content-Type: application/json");
 echo json_encode(array("posts" => array()));
 ```
 
-Both sites carry the same `db.php`, `shop/public/db.php` and `blog/web/db.php` and the database boundary is visible later:
+Both sites hold the same `db.php`, `shop/public/db.php` and `blog/web/db.php` and the database boundary is visible later:
 
 ```php
 <?php
@@ -157,9 +157,9 @@ shop: schema ready
 Server listening on 127.0.0.1:8080 http://127.0.0.1:8080
 ```
 
-`@startup` and `@schedule` run per site, and the modules they run as carry the domain and `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
+`@startup` and `@schedule` run per site, and the modules they run as name the domain and `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
 
-A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server carries on serving every site including the one whose job failed. The rest of that site's jobs still run.
+A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server goes on serving every site including the one whose job failed. The rest of that site's jobs still run.
 
 Requests select a site by `Host`:
 
@@ -194,7 +194,7 @@ curl -H 'Host: shop.example.com' http://127.0.0.1:8080/
 
 ## 6. What one domain cannot reach on the other
 
-Each site gets a router of its own, and that is where the boundaries come from.
+Each site gets its own router; every boundary below follows from it.
 
 **Routes.** Shop's router registers `/hello/{name}` and the blog does not have it, and `/feed` is not shop's:
 
@@ -236,7 +236,7 @@ curl -i -H 'Host: other.example.com' http://127.0.0.1:8080/
 
 ## 7. What the sites may not do
 
-The listen address belongs to the operator, and a site holds no sites of its own. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
+The listen address belongs to the operator and a site declares no sites. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
 
 ```text
 virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the operator, not by the site

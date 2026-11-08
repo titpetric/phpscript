@@ -11,7 +11,7 @@ import (
 // does and a float step never accumulates rounding error across the range.
 //
 // The result is a presized []any: a range is a dense list by construction and
-// there is no key information for an *model.Array to carry (rule 4).
+// there is no key information for an *model.Array to hold (rule 4).
 func phpRange(start, end any, step ...any) []any {
 	var by any = int64(1)
 	if len(step) > 0 && step[0] != nil {

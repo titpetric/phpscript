@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // Registrar binds a handler to an HTTP method and path, the one type a
@@ -25,7 +26,7 @@ func (r serveMuxRegistrar) Handle(method string, path string, handler http.Handl
 	}
 	// ServeMux panics on a pattern it cannot parse and an unrendered
 	// {id:[0-9]+} takes the process down at registration.
-	r.ServeMux.Handle(method+" "+model.RenderRoutePath(path, model.RouteServeMux), handler)
+	r.ServeMux.Handle(method+" "+modelutil.RenderRoutePath(path, model.RouteServeMux), handler)
 }
 
 // platformRegistrar registers routes on a platform router.
@@ -34,5 +35,5 @@ type platformRegistrar struct {
 }
 
 func (r platformRegistrar) Handle(method string, path string, handler http.Handler) {
-	r.Router.Method(method, model.RenderRoutePath(path, model.RouteChi), handler)
+	r.Router.Method(method, modelutil.RenderRoutePath(path, model.RouteChi), handler)
 }

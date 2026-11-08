@@ -27,8 +27,8 @@ const (
 
 // token is a single lexical unit with source position for diagnostics.
 //
-// raw carries a value for string literals alone. val holds the decoded value, which is
-// what the runtime needs, but the decoding is lossy: it cannot tell `'$a'`
+// raw holds a value for string literals alone. val holds the decoded value the
+// runtime needs, but the decoding is lossy: it cannot tell `'$a'`
 // from `"\$a"`, and re-encoding the value picks one spelling for both. The
 // formatter rewrites files in place and it prints the literal from raw, which
 // is a slice of the source and costs no allocation.
@@ -108,10 +108,10 @@ const bytesPerToken = 4
 //
 // The slice is the largest single allocation the parser makes - a token is five
 // fields and a source file produces one per four bytes, and the whole slice
-// turns to garbage once the AST stands: model cannot hold a token, and the
-// type stays unexported to
-// it, and every read through p.toks[i] copies the struct and aliases nothing
-// the array. So the same backing array serves every parse in the process.
+// turns to garbage once the AST stands. model cannot hold a token, the type
+// stays unexported to it, and every read through p.toks[i] copies the struct
+// and aliases nothing in the array. The same backing array serves every parse
+// in the process.
 //
 // It holds *[]token and not []token because putting a slice in an
 // interface allocates the header; a pointer to one does not.
@@ -324,8 +324,8 @@ func scanNumber(src string, pos int) (end int, isFloat bool) {
 	for p < len(src) && (isDecDigit(src[p]) || src[p] == '_') {
 		p++
 	}
-	// PHP reads a trailing dot as part of the number ("1." is a float), which
-	// is why a concatenation after an integer needs the space PHP requires.
+	// PHP reads a trailing dot as part of the number ("1." is a float): a
+	// concatenation after an integer needs the space PHP requires.
 	if p < len(src) && src[p] == '.' {
 		isFloat = true
 		p++
@@ -342,7 +342,7 @@ func scanNumber(src string, pos int) (end int, isFloat bool) {
 			for q < len(src) && (isDecDigit(src[q]) || src[q] == '_') {
 				q++
 			}
-			// An exponent makes the literal a float on its own: 1e3 is a
+			// An exponent alone makes the literal a float: 1e3 is a
 			// float in PHP even though it has no fractional part.
 			p, isFloat = q, true
 		}
@@ -435,8 +435,8 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 // writes its value to b, and returns how many bytes follow the backslash.
 //
 // The two quote styles have different rules, as they do in PHP. A single-quoted
-// literal recognises only `\\` and `\'`; every other backslash stands for
-// itself and `'C:\path'` and a single-quoted regex work. A
+// literal recognises only `\\` and `\'`; every other backslash is literal
+// and `'C:\path'` and a single-quoted regex work. A
 // double-quoted literal recognises the C-style escapes plus the numeric forms
 // (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.

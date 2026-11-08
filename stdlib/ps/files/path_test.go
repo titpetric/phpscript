@@ -39,8 +39,8 @@ func runWorkdir(t *testing.T, src string) string {
 }
 
 // TestGetcwdIsWrittenFromTheSourceRoot pins the spelling php cannot match: the
-// source filesystem sits at "/" and a script starts there and names every path
-// it reads from there.
+// source filesystem's root is "/" and a script starts there and names every
+// path it reads from there.
 func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -81,7 +81,7 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 }
 
 // TestChdirRefusesWhatIsNotADirectory pins the false return. PHP warns and
-// answers false; there is no warning channel here and the return value carries all
+// answers false; there is no warning channel here and false is the whole
 // report and the working directory has to stay put.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 	t.Parallel()

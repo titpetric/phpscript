@@ -56,10 +56,10 @@ var_dump($doc["whole"] === 400);`)
 	}
 }
 
-// TestYAMLDecodeRefusesWhatItCannotRead pins the divergence this binding
-// carries: invalid input raises an error where php's yaml_decode answers null.
+// TestYAMLDecodeRefusesWhatItCannotRead pins this binding's divergence:
+// invalid input raises an error where php's yaml_decode answers null.
 // A settings file that does not parse is a configuration the caller has to know
-// about, and a null reads as an empty document.
+// about. A null reads as an empty document.
 func TestYAMLDecodeRefusesWhatItCannotRead(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -94,8 +94,8 @@ echo yaml_encode("plain");`)
 }
 
 // TestYAMLRoundTrip covers the pair together, the path a script storing a
-// value and reading it back does. The encoder keeps no JSON conversion of its
-// own: json_encode builds an ordered object that only the JSON marshaller
+// value and reading it back does. The encoder borrows no JSON conversion:
+// json_encode builds an ordered object that only the JSON marshaller
 // knows how to write, and handing one to the YAML marshaller produced an empty
 // document.
 func TestYAMLRoundTrip(t *testing.T) {

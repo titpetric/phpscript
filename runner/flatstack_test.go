@@ -206,7 +206,7 @@ func TestFlatHostEcho(t *testing.T) {
 }
 
 // TestFlatHostSetProperty covers writing an object property the way the
-// interpreter writes one: a PHP object carries the value in its property map,
+// interpreter writes one: a PHP object stores the value in its property map,
 // and a Go binding assigns the struct field the name resolves to and
 // `$db->is_readonly = true` sets IsReadonly.
 func TestFlatHostSetProperty(t *testing.T) {

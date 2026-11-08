@@ -1,15 +1,17 @@
-package model
+package modelutil
 
 import (
 	"maps"
 	"slices"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // This file is the go runtime's name tables: the namespace a script imports to
 // bind go's builtins, the names that import binds, and the conversion a
 // builtin type name applies. The parser reads them to bind a name and fold a
-// literal while it parses, the bindings read them to register and to convert,
-// and this file spells the list once.
+// literal while it parses, the bindings read them to register and to convert.
+// This file spells the list once.
 
 // GoNamespace is the namespace a script imports to bind go's builtins.
 const GoNamespace = `Runtime\Go`
@@ -40,7 +42,7 @@ var goBuiltins = map[string]struct{}{
 //
 // A pair this table will not decide reports false and reaches the binding,
 // which reduces the value through phpval first. A string becoming a number has
-// one definition, phpval holds it, and this package cannot import phpval.
+// one definition and phpval holds it. This package cannot import phpval.
 var goTypes = map[string]func(any) (any, bool){
 	"any":     func(v any) (any, bool) { return v, true },
 	"bool":    goBool,
@@ -63,10 +65,10 @@ var goTypes = map[string]func(any) (any, bool){
 
 // goNarrow is the conversion of a sized type: it answers the value of that
 // width, typed, which keeps the type a script wrote on the value it holds.
-// `int`, `int64` and `float64` have no entry here: they name the widths php
-// carries, and `int64(5)` is php's 5.
+// `int`, `int64` and `float64` have no entry here: they name php's own
+// widths, and `int64(5)` is php's 5.
 func goNarrow(name string) func(any) (any, bool) {
-	w, ok := GoWidthNamed(name)
+	w, ok := model.GoWidthNamed(name)
 	if !ok {
 		return func(any) (any, bool) { return nil, false }
 	}

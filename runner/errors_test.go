@@ -90,7 +90,7 @@ func TestArgumentCountError(t *testing.T) {
 	}
 }
 
-// TestTypeError covers the message PHP's TypeError carries. The message names
+// TestTypeError covers the message PHP's TypeError reports. The message names
 // the parameter by position and not by name, because a Go binding's parameter
 // names are not recoverable through reflect.
 func TestTypeError(t *testing.T) {

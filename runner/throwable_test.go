@@ -21,7 +21,7 @@ func TestThrowable(t *testing.T) {
 }
 
 // TestThrowableClassOf covers routing a catch clause. A value naming its class
-// reports the name, an error from a Go binding reports no class, and so does a
+// reports the name, an error from a Go binding reports no class, as does a
 // throwable whose name is blank: matchCatchType reads the false and lets any
 // clause take the error, the contract every host binding relies on.
 func TestThrowableClassOf(t *testing.T) {

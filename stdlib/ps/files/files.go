@@ -1,7 +1,7 @@
-// Package files carries the filesystem shims phpscript exposes to PHP: path
+// Package files holds the filesystem shims phpscript exposes to PHP: path
 // helpers, reads, writes, streams, and the uploaded-file functions that go with
 // $_FILES. They sit here and not in stdlib because they are the one part of
-// the standard library bound to a directory on the host, and because a host
+// the standard library bound to a directory on the host and because a host
 // that runs untrusted scripts may leave them out.
 //
 // Go's fs.FS only reads and writes (fopen/fwrite/mkdir) use the os package
@@ -30,11 +30,7 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the filesystem shims rooted at dir, replacing whatever
-// root stands before it and a host calls it after stdlib.Register
-// (stdlib.RegisterFS does exactly that).
-//
-// The boundary every path resolves against, and what writable_paths adds to it,
-// is docs/security.md, "The filesystem boundary".
+// root stands before it; docs/security.md argues the boundary.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 	r.writable = WritableRoots(dir, rt.WritablePaths())
@@ -53,7 +49,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 
 // root is the directory RegisterRoot bound the shims to, and the runtime they
 // resolve reads through. Every binding that takes a path from PHP resolves
-// through it and the mapping from script path to host path lives in one place.
+// through it and the mapping from script path to host path stays in one place.
 type root struct {
 	rt  *runner.Runtime
 	dir string
@@ -70,8 +66,8 @@ type root struct {
 // answer in and the shape most concatenated paths take; anything else is
 // relative to the working directory chdir() moved. The source filesystem is
 // what a script can address and "/" is its root and never the host's: there is
-// no spelling for a host path outside it, and a runtime serving an embedded
-// tree could not honour one anyway.
+// no spelling for a host path outside the root, and a runtime serving an
+// embedded tree could not honour one anyway.
 func (r root) resolve(p string) string {
 	rel, _ := r.fsPath(p)
 	return filepath.Join(r.dir, filepath.FromSlash(rel))
@@ -79,7 +75,7 @@ func (r root) resolve(p string) string {
 
 // fsPath maps a path a script supplied onto the source filesystem, which every
 // host roots at the same directory RegisterRoot bound the shims to. It names
-// the same file resolve does, in the other spelling, and the two are not
+// the same file resolve does, in the other spelling. The two are not
 // interchangeable: resolve answers with a host path joined onto r.dir, while an
 // fs.FS takes a slash path relative to its own root and rejects anything else,
 // r.dir included. Passing resolve's answer to an fs.FS is how a read silently
@@ -88,8 +84,7 @@ func (r root) resolve(p string) string {
 // The runtime states the rule, in resolveFSPath, because an include follows
 // the same one: a path written from "/" names the root, anything else is
 // relative to the working directory, and resolveFSPath cleans both against the
-// root so "a/../../etc/passwd" becomes "etc/passwd" inside it and stays
-// within the root.
+// root so "a/../../etc/passwd" becomes "etc/passwd" and never climbs out.
 //
 // The second return is false only for an empty path, which names nothing.
 func (r root) fsPath(p string) (string, bool) {
@@ -162,7 +157,7 @@ func (r root) globSpelling(pattern string, matches []string) []string {
 // resolveWrite is resolve for a path a script is about to write. A path
 // outside writable_paths is an error and no false return: a refused
 // write is a mistake in the script or an attempt to escape its allowance, and
-// both are worth stopping at and the script never carries on believing
+// both are worth stopping at and the script never continues believing
 // the write happened. The runtime promotes the error to a catchable exception,
 // and a script written for the refusal can try/catch it.
 //
@@ -200,9 +195,8 @@ func Within(name, dir string) bool {
 	return strings.HasPrefix(name, strings.TrimSuffix(dir, string(filepath.Separator))+string(filepath.Separator))
 }
 
-// HostPath maps a path a script supplied onto the host filesystem beneath dir,
-// through the runtime's own rule and one rule serves every binding. An empty
-// path names nothing and answers empty.
+// HostPath maps a path a script supplied onto the host filesystem beneath dir.
+// An empty path names nothing and answers empty.
 func HostPath(rt *runner.Runtime, dir, p string) string {
 	if p == "" {
 		return ""
@@ -211,13 +205,11 @@ func HostPath(rt *runner.Runtime, dir, p string) string {
 }
 
 // WritableRoots resolves the configured writable_paths against the shims' root
-// directory. An entry is a path inside the project and uploads is the project's
-// uploads directory and public/uploads is the one below the document root.
+// directory. An entry is a path inside the project, uploads naming the
+// project's uploads directory.
 //
 // An absolute entry survives verbatim and then matches no file: resolve clamps
-// the path it compares against into dir and a script's /srv/shared resolves to
-// dir + /srv/shared, which is not inside /srv/shared. There is no way to grant
-// a write outside the root, and an absolute entry is not it.
+// what it compares into dir. No entry grants a write outside the root.
 func WritableRoots(dir string, paths []string) []string {
 	if len(paths) == 0 {
 		return nil

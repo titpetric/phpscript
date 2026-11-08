@@ -21,8 +21,8 @@ import (
 // second answer to "which file is that", which a sandbox cannot have.
 func registerStat(rt *runner.Runtime, r root) {
 	// is_file reports whether $filename names an ordinary file, in the source
-	// filesystem or on the host; a directory is not one, and neither is a
-	// path that does not exist.
+	// filesystem or on the host; a directory is not one and a missing path is
+	// not one.
 	rt.RegisterFunc("is_file", func(filename string) bool {
 		info, ok := r.stat(filename)
 		return ok && info.Mode().IsRegular()
@@ -36,8 +36,8 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// is_readable reports whether a script can open $filename for reading,
 	// which here is whether it exists: a path inside the root is readable by
-	// the process that is asking, and the source filesystem carries no
-	// permissions of its own.
+	// the process that is asking, and the source filesystem holds no
+	// permission bits.
 	rt.RegisterFunc("is_readable", func(filename string) bool {
 		_, ok := r.stat(filename)
 		return ok
@@ -90,8 +90,8 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// realpath returns $path written from the root, with . and .. resolved,
 	// or false when nothing is there; php answers a host path, and a runtime
-	// that may serve its scripts out of an embedded tree has none to answer
-	// with and this answers the spelling getcwd() and __DIR__ use.
+	// that may serve its scripts out of an embedded tree has no host path to
+	// answer with and this answers the spelling getcwd() and __DIR__ use.
 	rt.RegisterFunc("realpath", func(path string) any {
 		if _, ok := r.stat(path); !ok {
 			return false
@@ -122,7 +122,7 @@ func registerStat(rt *runner.Runtime, r root) {
 	})
 
 	// pathinfo returns the parts of $path as an array of dirname, basename,
-	// extension and filename; a path with no dot carries no extension key,
+	// extension and filename; a path with no dot returns no extension key,
 	// which php leaves out and never empties. It never touches
 	// the filesystem and it answers about a path that does not exist.
 	rt.RegisterFunc("pathinfo", func(path string) *model.Array {

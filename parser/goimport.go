@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // `import "net/http"` is the go runtime's second import, and the overlay the
@@ -32,7 +33,7 @@ func (p *parser) atGoImport() bool {
 func (p *parser) parseGoImport() (model.Stmt, error) {
 	line := p.next().line // import
 	path := p.next().val
-	area, alias, ok := model.GoImportArea(path)
+	area, alias, ok := modelutil.GoImportArea(path)
 	if !ok {
 		return nil, fmt.Errorf("line %d: import: %q is no go package path", line, path)
 	}

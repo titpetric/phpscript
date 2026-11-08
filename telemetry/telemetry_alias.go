@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/oida/storage"
 )
 
-// The recorded data and the recorder both live in oida. These aliases spell
+// oida defines the recorded data and the recorder. These aliases spell
 // them the way the rest of phpscript spells its own types and instrumenting a
 // package needs this import alone.
 type (
@@ -75,13 +75,13 @@ const (
 )
 
 // The names a host and a script agree on: where the platform mounts the front
-// end, what carries a trace identifier, and the label a trace with no request
-// behind it takes.
+// end, the header that sends a trace identifier and the label a trace with no
+// request behind it takes.
 const (
 	// DefaultPath is the mount path of the debug front end.
 	DefaultPath = oida.DefaultPath
 
-	// RequestIDHeader carries the trace identifier on the request and the
+	// RequestIDHeader sends the trace identifier on the request and the
 	// response.
 	RequestIDHeader = oida.RequestIDHeader
 
@@ -114,8 +114,7 @@ func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
 }
 
-// Start records a span in the trace carried by ctx and returns a context
-// carrying it and spans started from that context nest below this one.
+// Start records a span in the trace ctx holds and returns a context holding it.
 func Start(ctx context.Context, name string, kind ...Kind) (context.Context, *Span) {
 	ctx, span := oida.Start(ctx, name, kind...)
 	return ctx, withSource(ctx, span)

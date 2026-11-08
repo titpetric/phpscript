@@ -16,8 +16,8 @@ import (
 
 // This file turns a path into a running program: parsing an entrypoint,
 // resolving and evaluating an include, the autoload queue a missing class
-// walks, and the path rules every spelling resolves through. The statement
-// interpreter the loaded program runs on lives in runner.go.
+// walks, and the path rules every spelling resolves through. runner.go holds
+// the statement interpreter the loaded program runs on.
 
 // IncludeFunc resolves an include/require path to a parsed program. Wiring this
 // from the host keeps the runner free of file-system and parser dependencies.
@@ -54,10 +54,9 @@ func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 // LoadFile reads and parses a PHP file from the runtime source FS.
 //
 // Options.Precompile makes the include cache answer for entrypoints as well as
-// for includes: the runtime parses the file once for the life of the process,
-// and each request reads back the bytecode and the compiled expressions keyed by
-// that AST and builds neither again. Without it every load reads and parses the
-// file again, as a CLI run and an unconfigured host do.
+// for includes: the runtime parses the file once per process and each request
+// reads back the bytecode and the compiled expressions keyed by that AST.
+// Without it every load reads and parses the file again.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
 	rt.UpdateStatus(telemetry.StateReading)
@@ -102,7 +101,7 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 // the entrypoint and everything it includes see what it declared.
 //
 // runPrelude skips a file that is not there: the option names what to load
-// when the application carries it and one configuration covers a tree where
+// when the application holds it and one configuration covers a tree where
 // the bootstrap file it names does not exist yet.
 func (rt *Runtime) runPrelude() error {
 	if rt.preludeDone || rt.opts.Include == "" || rt.opts.RootFS == nil {
@@ -149,10 +148,10 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 		return true, nil
 	}
 
-	// A span per include is the debug level's. Every other level reports the
+	// A span per include is the debug level's. The other levels report the
 	// files as one span at the end of the request, because an application that
 	// autoloads a class per file includes dozens of them and each is a name
-	// and a microsecond rather than a region of a request worth reading.
+	// and a microsecond, a span too small to read.
 	if rt.opts.TraceLevel.Debug() {
 		kind := telemetry.KindInternal
 		if strings.EqualFold(filepath.Ext(path), ".tpl") {
@@ -343,7 +342,7 @@ func cleanFSPath(p string) string {
 }
 
 // clampFSPath cleans p against the root: the clean collapses a ".." that would
-// climb above the root and "a/../../etc/passwd" names etc/passwd inside it.
+// climb above the root and "a/../../etc/passwd" names etc/passwd under root.
 // Cleaning happens against "/" first, which does the collapsing; path.Clean on
 // its own keeps a leading "..".
 func clampFSPath(p string) string {
@@ -355,8 +354,8 @@ func clampFSPath(p string) string {
 }
 
 // rootPath spells an fs.FS path the way a script reads it. The source
-// filesystem sits at "/" and a name below it starts from there, and that is
-// what __FILE__, __DIR__ and getcwd() answer with.
+// filesystem is "/" and a name below it starts from there. __FILE__, __DIR__
+// and getcwd() answer with that spelling.
 //
 // The point of the leading slash is that resolveFSPath leaves it alone: a path
 // written from the root names one file whatever the working directory is, the

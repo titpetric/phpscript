@@ -7,11 +7,11 @@ body:
       value: |
         A gap is something PHP has and this runtime does not, or a concern no
         current API covers. Check docs/design.md first: a row in the "Won't
-        implement" table is a decision, not a gap. Consider the PHP ecosystem
-        before proposing the classic API: some functions are deprecated or
-        superseded, and the honest binding may be a different name. The
-        implementation lands with a .phpt fixture; write the expected section
-        from what php prints, not from what the new code prints.
+        build" table is a decision. Read what modern PHP does before
+        proposing the classic API. PHP deprecates and supersedes functions;
+        the binding worth having may name something else. The implementation
+        lands with a .phpt fixture; write the expected section from what php
+        prints, not from what the new code prints.
   - type: textarea
     id: missing
     attributes:
@@ -30,14 +30,14 @@ body:
     id: proposal
     attributes:
       label: Change proposal
-      description: The API to add, with signatures. When PHP's own API is deprecated or poorly shaped, say what to bind instead and why.
+      description: The API to add, with signatures. When PHP deprecates its own API or shapes it poorly, say what to bind and why.
     validations:
       required: true
   - type: textarea
-    id: ecosystem
+    id: prior-art
     attributes:
-      label: Ecosystem considerations
-      description: What modern PHP does, what is deprecated, what other runtimes chose. Alternatives that were considered and discarded belong here.
+      label: Prior art
+      description: What modern PHP does, what PHP deprecates, what other runtimes chose. Name the alternatives you discarded and why.
     validations:
       required: false
   - type: textarea

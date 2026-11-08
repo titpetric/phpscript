@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Generic empty class with no methods and no properties of its own.
+Generic empty class with no methods and no declared properties.
 
 An object takes this class when no other class names one: `new stdClass`, a cast with `(object)`, and in PHP the object shape returned by `json_decode()` and by database fetch methods. `stdClass` is not a universal base class.
 

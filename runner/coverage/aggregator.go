@@ -120,8 +120,7 @@ func (a *Aggregator) Functions() []FuncSpan {
 	return funcs
 }
 
-// Empty reports whether the aggregator holds no counts yet. A server that
-// served no PHP writes no profile at all, not even an empty one.
+// Empty reports whether the aggregator holds no counts yet.
 func (a *Aggregator) Empty() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()

@@ -6,8 +6,8 @@ import (
 )
 
 // TestPregQuoteEscapes covers preg_quote(): every PCRE metacharacter comes
-// back escaped, and so does a delimiter the call names and the result sits
-// inside a pattern written with that delimiter.
+// back escaped, as does a delimiter the call names. The result goes inside a
+// pattern written with that delimiter.
 func TestPregQuoteEscapes(t *testing.T) {
 	t.Parallel()
 	if got := phpPregQuote("a.b*c"); got != `a\.b\*c` {

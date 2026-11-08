@@ -15,8 +15,8 @@ type MailProvider interface {
 	// it can. The Mail constructor calls it and `new Mail` refuses a server
 	// nobody configured, ahead of the first send some hours later.
 	//
-	// A provider fixes its servers at construction and registers none later,
-	// and this verdict and the resolution Send makes for itself read the same
+	// A provider fixes its servers at construction and registers none later.
+	// This verdict and the resolution Send makes for itself read the same
 	// set.
 	Configured(name string) error
 

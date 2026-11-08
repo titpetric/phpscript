@@ -30,9 +30,9 @@ type Record struct {
 // memStorage is an in-memory Storage implementation.
 //
 // The map is bare: `new Storage` builds one per call, a runtime serves one
-// goroutine, and no two of them share anything here and there is no lock and
-// none of these methods is safe to call concurrently. core.SharedMemory is
-// the binding for state two runtimes reach; see docs/testing.md.
+// goroutine, and no two of them share anything here. There is no lock and
+// these methods are unsafe to call concurrently. core.SharedMemory is the
+// binding for state two runtimes reach; see docs/testing.md.
 type memStorage struct {
 	data   map[string]string
 	tenant string
@@ -71,9 +71,10 @@ func (s *memStorage) Tenant() string { return s.tenant }
 // coerceArgOn had to wrap through reflect.MakeFunc.
 //
 // Keep is one of two because there are two declared shapes to cover and one
-// signature cannot be both. Neither is on the Storage interface: the constructor
-// returns the concrete value and PHP reaches every exported method on it, which
-// is the rule bindings.md states about registration not being an allowlist.
+// signature cannot be both. Keep and Walk are off the Storage interface: the
+// constructor returns the concrete value and PHP reaches every exported method
+// on it, which is the rule bindings.md states about registration not being an
+// allowlist.
 func (s *memStorage) Keep(keep func(key, value string) bool) []Record {
 	out := make([]Record, 0, len(s.data))
 	for _, key := range s.sortedKeys() {

@@ -41,7 +41,7 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 	span.End()
 
 	// The trace holds the span the work opened and nothing besides: log output is
-	// not a span, and the values a message carried are not attributes.
+	// not a span, and the values a message logged are not attributes.
 	spans := trace.Clone().Spans[1:]
 	if len(spans) != 1 {
 		t.Fatalf("spans = %+v", spans)

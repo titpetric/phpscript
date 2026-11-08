@@ -9,7 +9,7 @@ type ArithmeticError struct {
 	Message string
 }
 
-// Error renders the message PHP carries on the same operation.
+// Error returns the message PHP reports on the same operation.
 func (e *ArithmeticError) Error() string { return e.Message }
 
 // ThrowableClass names the PHP class, implementing Throwable.
@@ -23,7 +23,7 @@ type DivisionByZeroError struct {
 	Message string
 }
 
-// Error renders the message PHP carries for the same operation.
+// Error returns the message PHP reports for the same operation.
 func (e *DivisionByZeroError) Error() string { return e.Message }
 
 // ThrowableClass names the PHP class, implementing Throwable.

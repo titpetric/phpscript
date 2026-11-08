@@ -81,7 +81,7 @@ func (s *Server) Listen() (string, error) {
 		routed.usePool(runner.NewPool(s.rt, s.workers, s.queue, nil))
 	}
 	// Held locally as well as on the struct: shutdown() takes the fields back
-	// to nil as soon as the script calls it, and this goroutine outlives that.
+	// to nil as soon as the script calls it. This goroutine outlives that.
 	server := &nethttp.Server{Handler: s.handler}
 	stopped := make(chan struct{})
 	s.server, s.stopped = server, stopped
@@ -101,9 +101,8 @@ func (s *Server) Wait() {
 
 // Shutdown is http.Server.Shutdown with a second of grace, then Close.
 //
-// It returns no value and throws no error: a script writes it into a
-// register_shutdown_function callback, which runs when the script has already
-// ended and has nowhere to put a failure. Calling it twice, or without having
+// It returns no value and throws no error: a register_shutdown_function
+// callback has nowhere to put one. Calling it twice, or without having
 // listened, is not an error either.
 func (s *Server) Shutdown() {
 	server, stopped := s.take()

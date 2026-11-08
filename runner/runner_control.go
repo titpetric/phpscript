@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 )
 
 // This file executes the compound statements: the loops, try/catch/finally
-// with the clause matching both engines share, and switch. The statement
-// dispatcher that reaches them lives in runner.go.
+// with the clause matching both engines share, and switch. runner.go holds the
+// statement dispatcher that reaches them.
 
 func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error) {
 	src, err := rt.Eval(n.Source, scope)
@@ -41,7 +42,7 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	if n.ByRef {
 		writable, _ = src.(*model.Array)
 	}
-	copyValue := !n.ByRef && model.AssignsTo(valTarget, n.Body)
+	copyValue := !n.ByRef && modelutil.AssignsTo(valTarget, n.Body)
 
 	// iter runs the loop body for one (key, value) pair, returning whether to
 	// continue iterating. It records any error / non-normal flow in the
@@ -53,7 +54,7 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 			}
 		}
 		if copyValue {
-			v = model.CopyValue(v)
+			v = modelutil.CopyValue(v)
 		}
 		if err = rt.assignTo(valTarget, v, scope); err != nil {
 			return false
@@ -100,11 +101,11 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		// Native Go collections (e.g. a []Record returned by a forwarded
 		// method) are iterable too: slices/arrays by integer index, maps by
 		// key. The walk is model's, where a []byte reads as the string it
-		// carries and iterates zero times, as a string does.
+		// holds and iterates zero times, as a string does.
 		//
-		// A source no shape above matched iterates zero times too, which is
-		// what PHP's foreach over a non-array does: it warns and continues.
-		model.RangeValues(src, iter)
+		// A source no shape above matched iterates zero times too, as PHP's
+		// foreach over a non-array does: it warns and continues.
+		modelutil.RangeValues(src, iter)
 	}
 
 	if err != nil {
@@ -187,7 +188,7 @@ func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error
 // travel as an error here only because that is how the interpreter unwinds and
 // the try has to recognise the sentinel and get out of the way. A catch that
 // could swallow an exit would turn `header("Location: ...") ; exit();` inside a
-// try into a page that carries on running past a staged redirect.
+// try into a page that keeps running past a staged redirect.
 func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	val, fl, err := rt.exec(n.Body, scope)
 	if _, exiting := IsExit(err); exiting {
@@ -195,8 +196,8 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 		return val, fl, err
 	}
 	// Running out of time, or losing the client, is not a condition the script
-	// gets to handle and carry on from: there is no more time to carry on with,
-	// and the next statement would raise it again. Cleanup goes in a
+	// gets to handle and resume from: the clock has run out, and the next
+	// statement would raise it again. Cleanup goes in a
 	// register_shutdown_function callback, which runs with the clock off.
 	var limit *TimeLimitError
 	if errors.As(err, &limit) {
@@ -247,7 +248,7 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 //     error reaches the catch a script already wrote around the call.
 //   - Exception takes any class whose name does not end in "Error", and Error
 //     takes any class whose name does. That suffix is the whole of the split
-//     between a fault in the program and a condition it raised, and it agrees
+//     between a fault in the program and a condition it raised. It agrees
 //     with PHP for every built-in name: ErrorException is an Exception,
 //     AssertionError and TypeError are Errors.
 //   - any other name matches the class case-insensitively.

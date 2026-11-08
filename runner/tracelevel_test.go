@@ -43,9 +43,9 @@ func TestTraceLevel(t *testing.T) {
 	}
 }
 
-// TestTraceLevel_Check covers the refusal, which is what keeps a misspelled
-// level from reading as the default: Options.Check is the whole of what a
-// runner block is checked for, and the server checks it before it starts.
+// TestTraceLevel_Check covers the refusal that keeps a misspelled level from
+// reading as the default: Options.Check is the whole check over a runner
+// block. The server runs it before it starts.
 func TestTraceLevel_Check(t *testing.T) {
 	t.Parallel()
 	err := Options{TraceLevel: "verbose"}.Check()

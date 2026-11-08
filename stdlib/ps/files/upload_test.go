@@ -15,7 +15,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// uploadRequest builds a POST carrying one file part, the body a browser sends
+// uploadRequest builds a POST holding one file part, the body a browser sends
 // for a form with a file input.
 func uploadRequest(t *testing.T, field, filename, content string) *http.Request {
 	t.Helper()
@@ -105,7 +105,7 @@ func TestMoveUploadedFileMode(t *testing.T) {
 }
 
 // TestMoveUploadedFileUnwritable covers a move that cannot finish. PHP reports
-// it as a false return alone, and the upload has to survive it: the
+// it as a false return alone. The upload has to survive it: the
 // request still lists it, and the handler still has to be able to remove it.
 func TestMoveUploadedFileUnwritable(t *testing.T) {
 	t.Parallel()

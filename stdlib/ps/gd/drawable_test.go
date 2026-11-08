@@ -8,7 +8,7 @@ import (
 
 // TestFillRect covers the uniform fill imagefilledrectangle and
 // imagecreatetruecolor both go through: the named rectangle takes the colour
-// and fillRect leaves the pixel outside it alone.
+// and fillRect leaves the pixel outside the rectangle alone.
 func TestFillRect(t *testing.T) {
 	t.Parallel()
 	m := image.NewRGBA(image.Rect(0, 0, 3, 3))

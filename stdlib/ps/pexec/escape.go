@@ -14,7 +14,7 @@ func registerEscape(rt *runner.Runtime) {
 	rt.RegisterFunc("escapeshellarg", phpEscapeshellarg)
 	// escapeshellcmd returns $command with the shell metacharacters in it
 	// backslash-escaped, leaving quotes that come in pairs alone;
-	// escapeshellarg is the one to reach for, since this leaves a quoted
+	// escapeshellarg is the one to call, since this leaves a quoted
 	// argument's own contents live.
 	rt.RegisterFunc("escapeshellcmd", phpEscapeshellcmd)
 }

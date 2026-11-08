@@ -19,8 +19,8 @@ Closing prose.
 `
 
 // TestRenderMarkdown pins that a redirected --help is the document unchanged.
-// Round-tripping it through the table renderer would re-pad every cell
-// and rewrite the alignment markers, which is a diff in a file nobody edited.
+// The table renderer would re-pad every cell and rewrite the alignment
+// markers, which is a diff in a file nobody edited.
 func TestRenderMarkdown(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -113,7 +113,7 @@ func TestFS(t *testing.T) {
 }
 
 // TestWrite covers the whole document: the commands, the shared flags once, and
-// a section per command carrying its own flags and its examples.
+// a section per command holding the flags it defines and its examples.
 func TestWrite(t *testing.T) {
 	t.Parallel()
 	shared := helpdocs.NewFlagSet("phpscript")
@@ -147,7 +147,7 @@ func TestWrite(t *testing.T) {
 			t.Errorf("help is missing %q:\n%s", want, got)
 		}
 	}
-	// A command's own flags are its own: the help prints the shared set once.
+	// The help prints the shared set once for the whole document.
 	if strings.Count(got, "Measure statement coverage") != 1 {
 		t.Errorf("the shared flags are repeated per command:\n%s", got)
 	}

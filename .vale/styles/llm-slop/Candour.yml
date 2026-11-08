@@ -5,11 +5,11 @@ level: error
 ignorecase: true
 nonword: true
 tokens:
-  - '\band yes,\b'
-  - '\bI (?:will|have to) admit\b'
-  - '\bto be (?:honest|fair|clear)\b'
-  - '\bfull disclosure\b'
-  - '\bthis is not a rant\b'
-  - '\bI want to be explicit\b'
+  - '\band\s+yes,\b'
+  - '\bI\s+(?:will|have\s+to)\s+admit\b'
+  - '\bto\s+be\s+(?:honest|fair|clear)\b'
+  - '\bfull\s+disclosure\b'
+  - '\bthis\s+is\s+not\s+a\s+rant\b'
+  - '\bI\s+want\s+to\s+be\s+explicit\b'
   - '\bhonestly,\b'
   - '\bfrankly,\b'

@@ -200,8 +200,8 @@ func TestTokenIDs(t *testing.T) {
 	}
 
 	// Every published name reads back as itself and the pair is an inverse.
-	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon, and it
-	// is the name a script has to compare against.
+	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon and the
+	// name a script has to compare against.
 	for _, name := range []string{"T_VARIABLE", "T_STRING", "T_INLINE_HTML", "T_PAAMAYIM_NEKUDOTAYIM"} {
 		id, known := ids[name]
 		if !known {

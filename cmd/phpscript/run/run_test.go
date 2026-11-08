@@ -13,10 +13,10 @@ import (
 )
 
 // TestNewCommand covers what the constructor closes over. The configuration
-// arrives as a pointer so one signature covers all nine commands, and this one
+// arrives as a pointer so one signature covers all nine commands. This one
 // reads it and a nil pointer has to resolve to the zero configuration before
-// the Run closure captures it. The command declares no flags of its own: a run
-// takes a script path and the shared flags.
+// the Run closure captures it. The command declares no flags: a run takes a
+// script path and the shared flags.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, &flags.Options{})
@@ -36,7 +36,7 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestRun covers one generation of the loop: runOnce reads the script, builds
-// the runtime around it, and the output reaches os.Stdout. The run returns
+// the runtime around it and writes the output to os.Stdout. The run returns
 // once the script ends, because nothing sent SIGHUP and no reload is pending.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()

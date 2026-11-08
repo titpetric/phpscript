@@ -67,8 +67,8 @@ func TestStorage(t *testing.T) {
 
 // TestStorage_Keep covers the predicate shape a host declares in Go's own
 // terms. coerceArgOn wraps a PHP closure into func(key, value string) bool
-// through reflect.MakeFunc, and the method reads two strings and a bool and
-// knows nothing about the VM.
+// through reflect.MakeFunc. The method reads two strings and a bool and knows
+// nothing about the VM.
 func TestStorage_Keep(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
 
@@ -85,7 +85,7 @@ func TestStorage_Keep(t *testing.T) {
 
 // TestStorage_Walk covers the uniform func(...any) (any, error) shape, whose
 // error slot is where a callback reports a failure without a panic. A failing
-// visit stops the walk, and a caller reads one error and not one per key.
+// visit stops the walk. A caller reads one error and not one per key.
 func TestStorage_Walk(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
 

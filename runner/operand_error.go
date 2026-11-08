@@ -12,7 +12,7 @@ type OperandError struct {
 	Message string
 }
 
-// Error renders the message php carries for the same pair of operands.
+// Error returns the message php reports for the same pair of operands.
 func (e *OperandError) Error() string { return e.Message }
 
 // ThrowableClass names the PHP class, implementing Throwable.

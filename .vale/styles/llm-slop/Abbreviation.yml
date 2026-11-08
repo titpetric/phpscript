@@ -16,7 +16,7 @@ swap:
   '\brepo\b': repository
   '\brepos\b': repositories
   '\bperf\b': performance
-  '\bdocs dir\b': the docs directory
+  '\bdocs\s+dir\b': the docs directory
   '\bimpl\b': implementation
   '\be\.g\.\b': for example
   '\bi\.e\.\b': that is

@@ -13,15 +13,15 @@ import (
 // shaPrefix is what `htpasswd -s` writes: the literal {SHA} and the base64 of
 // one sha1 of the password. No salt and no cost parameter and a stolen file
 // costs a wordlist lookup per row. This build reads it because deployments
-// carry such files; docs/security.md prices it against the rest.
+// still hold such files; docs/security.md prices it against the rest.
 const shaPrefix = "{SHA}"
 
 // verify reports whether secret produced stored, dispatching on the shape of
 // the stored value the way password_verify does.
 //
 // A value no format claims answers false, with no error. A file this package
-// parsed carries none, because the parse refuses such a line where it sits;
-// the fallthrough keeps a store built another way from authenticating anyone.
+// parsed holds no such line, because the parse refuses one; the fallthrough
+// keeps a store built another way from authenticating anyone.
 func verify(secret, stored string) bool {
 	switch {
 	case isSHA(stored):

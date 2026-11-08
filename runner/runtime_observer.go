@@ -79,8 +79,8 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	if rt.entrypoint != "" {
 		return
 	}
-	// rootPath writes the entrypoint from the source filesystem's root, which
-	// is how a script reads every path: __DIR__ . "/x" names one file wherever
+	// rootPath writes the entrypoint from the source filesystem's root, the
+	// way a script reads every path: __DIR__ . "/x" names one file wherever
 	// chdir has moved the working directory, and a span, a coverage key and a
 	// redeclaration message all spell the same file the same way.
 	rt.entrypoint = rootPath(filename)
@@ -91,11 +91,11 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	}
 }
 
-// traceIncludes publishes what a request included as one span, which is the
-// info level's whole account of its includes: the list at the end instead of a
-// span per file. The debug level publishes the spans instead, and off neither.
+// traceIncludes publishes what a request included as one span, the `info`
+// level's whole account of its includes: one list at the end and no span per
+// file. The debug level publishes the spans instead, and off neither.
 //
-// The span measures nothing. It is the inventory of the run, the files
+// The span measures nothing. It holds the inventory of the run, the files
 // get_included_files() answers with, recorded where a reader of the trace
 // looks for them.
 func (rt *Runtime) traceIncludes() {

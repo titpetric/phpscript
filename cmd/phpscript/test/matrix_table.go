@@ -201,8 +201,8 @@ func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.D
 		table.ColorHeader, passed, failed, total, formatEngineSplit(engines, duration), table.ColorReset)
 }
 
-// detailWidth is the width of the runner columns merged into one cell, which
-// is what a continuation row prints its failure detail in.
+// detailWidth is the width of the runner columns merged into one cell, where a
+// continuation row prints its failure detail.
 func (t *terminalMatrix) detailWidth() int {
 	width := 0
 	for _, w := range t.widths[1:] {
@@ -276,7 +276,7 @@ func (t *markdownMatrix) writeRow(row matrixRow) {
 		return
 	}
 	// Markdown has no fixed width to wrap into and a reason only breaks where
-	// it already carries a newline.
+	// it already holds a newline.
 	for _, cell := range row.Cells {
 		if cell.Status != matrixFail || cell.Reason == "" {
 			continue

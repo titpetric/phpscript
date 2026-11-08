@@ -13,7 +13,7 @@ import (
 // arrives before the program runs.
 //
 // The check skips a name the source guards with function_exists, the
-// polyfill idiom: declaring over an absent built-in is what it does, and the
+// polyfill idiom: declaring over an absent built-in is what it does. The
 // author has already written both branches.
 //
 // Declarations at any nesting count. The runtime only honours the ones written

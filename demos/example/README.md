@@ -25,4 +25,4 @@ Then open the address printed by the server (normally `http://localhost:8080`). 
 cd tests && atkins test
 ```
 
-The suite leaves the database as it found it: each case that adds a bookmark extracts the new id and deletes it again, and the suite runs as often as you like.
+The suite leaves the database as it found it: each case that adds a bookmark extracts the new id and deletes it again. Run it as often as you like.

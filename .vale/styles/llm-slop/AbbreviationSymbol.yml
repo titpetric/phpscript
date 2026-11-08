@@ -2,13 +2,13 @@
 # package, config/config.yml, $config, config(), the info command, the /info
 # route, impl, perf, repo.
 #
-# A backtick, a slash, a dollar or a double quote before the word exempts it. A
-# slash makes the word a path or a route, `stdlib/ps/info` and `/info`; a dollar
-# makes it a PHP variable, `$config`; a double quote makes it a string, which
-# is the one spelling a `//go:embed` directive can carry. Citing a symbol in
-# backticks works in markdown, in a Go doc comment and in a PHP comment alike,
-# and a package clause takes it too: `// Package `config` defines ...` passes
-# both this rule and splint's godoc/format.
+# A backtick, a slash, a dollar or a quote before the word exempts it. A slash
+# makes the word a path or a route, `stdlib/ps/info` and `/info`; a dollar makes
+# it a PHP variable, `$config`; either quote makes it a string, the one spelling
+# a `//go:embed` directive takes and the one a shell script hands to grep.
+# Citing a symbol in backticks works in markdown, in a Go doc comment and in a
+# PHP comment alike, and a package clause takes it too: `// Package `config`
+# defines ...` passes both this rule and splint's godoc/format.
 #
 # vale's TokenIgnores only reaches markup formats, and a source file arrives as
 # comments extracted to plain text, so the guard lives in the pattern:
@@ -23,4 +23,4 @@ message: "Write %s out, or cite the symbol in backticks."
 level: error
 ignorecase: false
 raw:
-  - '[^`/$"]\b(config|configs|info|impl|perf|repo|repos)\b'
+  - '[^`/$"'']\b(config|configs|info|impl|perf|repo|repos)\b'

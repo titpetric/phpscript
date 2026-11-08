@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -13,13 +14,13 @@ import (
 func Register(rt *runner.Runtime) {
 	// Every shape counts, through the collection helpers.
 	rt.RegisterFunc("count_any", func(value any) int64 {
-		n, _ := model.LenValues(value)
+		n, _ := modelutil.LenValues(value)
 		return int64(n)
 	})
 	// The options bag reads by key, whatever built it.
 	rt.RegisterFunc("read_options", func(value any) string {
 		found := ""
-		model.RangeValues(value, func(key, val any) bool {
+		modelutil.RangeValues(value, func(key, val any) bool {
 			if fmt.Sprint(key) == "path" {
 				found = fmt.Sprint(val)
 			}
@@ -73,7 +74,7 @@ func NewBag() *Bag {
 
 // Add counts any collection a script passes.
 func (b *Bag) Add(value any) int64 {
-	n, _ := model.LenValues(value)
+	n, _ := modelutil.LenValues(value)
 	b.len += n
 	return int64(b.len)
 }
