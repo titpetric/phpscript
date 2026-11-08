@@ -10,6 +10,8 @@ phpscript list ./src/...    # PHP files in ./src and its subdirectories
 phpscript list index.php    # A specific PHP file
 ```
 
+A `/...` sweep leaves out `.git`, `vendor` and `testdata`, wherever they sit under the path: composer's install tree is somebody else's code, and `testdata` holds input a test feeds a tool, php a parser refuses among it. `phpscript list testdata/...` still lists the directory named outright, as `go test` reads one. The commands that expand a path of PHP files read it this way: `list`, `lint`, `fmt` and `info`. `phpscript test` collects `.phpt` suites through a walk of its own, which skips `vendor` alone.
+
 The Route column names the entry point a file declares: a `METHOD /path` annotation, `@startup` for a file the server runs before it listens, or `@schedule ...` for a clock or interval job. Files that are only included by others have neither.
 
 `--bindings` reports on the binary in place of a tree: the functions, classes, methods and constants this build registers, as a script would type them. It takes no path arguments.

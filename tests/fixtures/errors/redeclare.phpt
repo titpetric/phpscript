@@ -10,19 +10,21 @@ description: >
   the binding. PHP reports the same condition as a compile-time fatal error that
   no catch can reach, which is why only phpscript defines the expected output.
   The support files are included rather than written inline because a
-  declaration in this file would be hoisted before the try around it runs.
+  declaration in this file would be hoisted before the try around it runs, and
+  they sit under testdata because a `phpscript lint` sweep reports a
+  redeclaration and this one is the point of the fixture.
 ---
 <?php
 
 try {
-    include "redeclared_function.php";
+    include "testdata/redeclared_function.php";
     echo "no error;";
 } catch (Exception $e) {
     echo get_class($e), ": ", $e->getMessage(), ";";
 }
 
 try {
-    include "redeclared_binding.php";
+    include "testdata/redeclared_binding.php";
     echo "no error;";
 } catch (Exception $e) {
     echo get_class($e), ": ", $e->getMessage(), ";";
@@ -34,4 +36,4 @@ echo strlen("abc"), ";";
 echo "still running\n";
 ?>
 ---
-Exception: Cannot redeclare function widget() (previously declared in /redeclared_function.php:3) in /redeclared_function.php on line 4;Exception: Cannot redeclare function strlen() in /redeclared_binding.php on line 3;widget declared;first;3;still running
+Exception: Cannot redeclare function widget() (previously declared in /testdata/redeclared_function.php:3) in /testdata/redeclared_function.php on line 4;Exception: Cannot redeclare function strlen() in /testdata/redeclared_binding.php on line 3;widget declared;first;3;still running

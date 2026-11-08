@@ -63,7 +63,7 @@ func expandOne(path string) ([]string, error) {
 	}
 
 	if recursive {
-		return walkRecursive(path)
+		return walkRecursive(filepath.Clean(path))
 	}
 	return listDir(path)
 }
@@ -95,7 +95,13 @@ func walkRecursive(dir string) ([]string, error) {
 		if d.IsDir() {
 			// vendor/ is composer's install tree: third-party sources, not the
 			// application's own files, and listing them buries the project.
-			if d.Name() == ".git" || d.Name() == "vendor" {
+			// testdata/ is input a test feeds a tool, php a parser refuses
+			// among it; `go test` reads the directory the same way. The path
+			// named outright is still listed, hence the root exemption.
+			if p == dir {
+				return nil
+			}
+			if d.Name() == ".git" || d.Name() == "vendor" || d.Name() == "testdata" {
 				return filepath.SkipDir
 			}
 			return nil
