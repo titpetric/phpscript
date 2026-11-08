@@ -2,7 +2,6 @@ package files
 
 import (
 	"io"
-	"os"
 
 	"github.com/titpetric/phpscript/runner"
 )
@@ -81,28 +80,12 @@ func registerStreamReads(rt *runner.Runtime) {
 		return string(line)
 	})
 
-	// feof reports whether $stream is at its end. A buffer keeps php's rule,
-	// turning true on the read that came back empty, where a file compares the
-	// position of the handle against its length; php://input and php://output
-	// are not seekable and answer false and a script draining the request body
-	// should read it with stream_get_contents.
+	// feof reports whether $stream is at its end: the read that ran out of
+	// bytes, never the position, which is php's own rule and holds for a file,
+	// a buffer and the request body alike. A handle the host bound itself
+	// carries no flag and reads as open, php's answer for a write handle.
 	rt.RegisterFunc("feof", func(stream any) bool {
-		if r, ok := stream.(interface{ AtEOF() bool }); ok {
-			return r.AtEOF()
-		}
-		f, ok := stream.(*os.File)
-		if !ok || f == nil {
-			return false
-		}
-		pos, err := f.Seek(0, io.SeekCurrent)
-		if err != nil {
-			return false
-		}
-		info, err := f.Stat()
-		if err != nil {
-			return false
-		}
-		return pos >= info.Size()
+		return atEOF(stream)
 	})
 
 	// fseek moves $stream to $offset, counted from the start of the handle,

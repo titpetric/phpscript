@@ -73,7 +73,8 @@ type memoryStream struct {
 }
 
 // Read copies the bytes at the position and reports io.EOF for a read that
-// finds none, the read that makes feof answer true.
+// finds none. A read short of its buffer raises the end, as a read past the
+// last byte does: both are reads php answers feof for.
 func (m *memoryStream) Read(p []byte) (int, error) {
 	if m.closed {
 		return 0, errStreamClosed
@@ -84,6 +85,9 @@ func (m *memoryStream) Read(p []byte) (int, error) {
 	}
 	n := copy(p, m.buf[m.pos:])
 	m.pos += int64(n)
+	if n < len(p) {
+		m.eof = true
+	}
 	return n, nil
 }
 
@@ -135,8 +139,8 @@ func (m *memoryStream) Seek(offset int64, whence int) (int64, error) {
 	return next, nil
 }
 
-// AtEOF reports php's own end of file: the read that came back empty sets it,
-// where a seek clears the flag and the position alone says nothing.
+// AtEOF reports php's own end of file: the read that ran out of bytes raises
+// the flag, a seek lowers the flag.
 func (m *memoryStream) AtEOF() bool { return m.eof }
 
 // Close drops the buffer and answers for fclose. A later call reports the

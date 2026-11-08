@@ -1997,11 +1997,10 @@ function fclose(mixed $f): bool
 
 ```php
 /**
- * feof reports whether $stream is at its end. A buffer keeps php's rule,
- * turning true on the read that came back empty, where a file compares the
- * position of the handle against its length; php://input and php://output
- * are not seekable and answer false and a script draining the request body
- * should read it with stream_get_contents.
+ * feof reports whether $stream is at its end: the read that ran out of
+ * bytes, never the position, which is php's own rule and holds for a file,
+ * a buffer and the request body alike. A handle the host bound itself
+ * carries no flag and reads as open, php's answer for a write handle.
  */
 function feof(mixed $stream): bool
 ```

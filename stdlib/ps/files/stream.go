@@ -48,7 +48,7 @@ func registerStreams(rt *runner.Runtime, r root) {
 				return false, err
 			}
 		}
-		f, err := openMode(name, mode)
+		f, err := openFile(name, mode)
 		if err != nil {
 			return false, nil
 		}
