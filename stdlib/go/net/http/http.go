@@ -1,6 +1,6 @@
 // Package http binds go's HTTP client and the names around it as the
 // Runtime\Go\Net\HTTP area. A script reaches them with `import "net/http";`
-// and calls `http.Get($url)`; the default runtime carries none of these names.
+// and calls `http.Get($url)`; the default runtime defines none of these names.
 //
 // The area reaches any address the host can route to, as `HTTP\Client` does.
 // The server half stays out: a php handler answers through `HTTP\Server`,
@@ -19,7 +19,7 @@ const Namespace = modelutil.GoNamespace + `\Net\HTTP`
 
 // Set is what the package binds. The signatures reach `http.Request`,
 // `http.Response`, `http.Header` and `http.Cookie`, which the area enumerates
-// as classes of its own.
+// as classes.
 var Set = bindings.For("net/http").
 	// Runtime\Go\Net\HTTP\Get issues a GET to $url and returns the response.
 	Bind("Get", gohttp.Get).
@@ -55,8 +55,8 @@ var Set = bindings.For("net/http").
 	Bind("StatusInternalServerError", gohttp.StatusInternalServerError).
 	Bind("StatusBadGateway", gohttp.StatusBadGateway).
 	Bind("StatusServiceUnavailable", gohttp.StatusServiceUnavailable).
-	// `new http.Client` is what sends a request the script built, with a
-	// timeout of its own. No bound signature names the type.
+	// `new http.Client` sends a request the script built, under a timeout the
+	// script sets. No bound signature names the type.
 	Type(gohttp.Client{})
 
 func init() {

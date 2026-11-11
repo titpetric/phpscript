@@ -743,7 +743,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			var popErr error
 			if inst.a != 0 {
 				// An assignment resolved its target before the value, php's
-				// order, and the value sits over the container and the key.
+				// order: the value is on top, the container and key below.
 				if value, popErr = st.pop(); popErr != nil {
 					return popErr
 				}
@@ -1607,7 +1607,7 @@ func fastBinary(class int, left, right any) (any, bool) {
 	case binDiv:
 		if y == 0 {
 			// A zero divisor is the host's: php throws DivisionByZeroError
-			// there, and this path answers values alone.
+			// there. This path answers values alone.
 			return nil, false
 		}
 		return phpval.DivInt(x, y), true

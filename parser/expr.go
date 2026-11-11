@@ -55,8 +55,8 @@ func logicalLevel(t token) int {
 }
 
 // parseLogical folds `or`, `xor` and `and` onto left, each left associative.
-// They bind looser than assignment, so `$ok = f() or die()` assigns first and
-// then tests the call. Only the levels from min up are taken.
+// They bind looser than assignment: `$ok = f() or die()` assigns first and
+// then tests the call. The fold reads the levels from min up.
 func (p *parser) parseLogical(left model.Expr, min int) (model.Expr, error) {
 	for {
 		level := logicalLevel(p.cur())
@@ -108,8 +108,8 @@ func (p *parser) parseAssign() (model.Expr, error) {
 	return left, nil
 }
 
-// assignExpr builds the assignment of op. `$a ??= b` assigns `$a ?? b`, and b
-// is read only while $a is unset or null; both engines resolve the target's
+// assignExpr builds the assignment of op. `$a ??= b` assigns `$a ?? b`, which
+// reads b only while $a is unset or null; both engines resolve the target's
 // base and key once. An append target, `$a[] ??= b`, is a parse error.
 func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line int) (model.Expr, error) {
 	if op != "??=" {
@@ -131,8 +131,8 @@ func isLValue(e model.Expr) bool {
 	return false
 }
 
-// parseCoalesce parses `a ?? b`. It is right associative, so `a ?? b ?? c` is
-// `a ?? (b ?? c)`, and binds tighter than the ternary and looser than `||`.
+// parseCoalesce parses `a ?? b`, right associative: `a ?? b ?? c` reads as
+// `a ?? (b ?? c)`, tighter than the ternary and looser than `||`.
 func (p *parser) parseCoalesce() (model.Expr, error) {
 	left, err := p.parseBinary(1)
 	if err != nil {

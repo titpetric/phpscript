@@ -31,7 +31,7 @@ func SetAreaMembers(source func() map[string][]string) {
 }
 
 // areaFunc resolves a name written through its area to the global name it
-// stands for, and reports whether the area defines or replaces it.
+// denotes, and reports whether the area defines or replaces it.
 func areaFunc(name string) (string, bool) {
 	if !underArea(name) {
 		return "", false
@@ -64,7 +64,7 @@ func areaFunc(name string) (string, bool) {
 	return fn, true
 }
 
-// areaClasses answers which registered class an area-qualified name stands for,
+// areaClasses answers which registered class an area-qualified name denotes,
 // keyed by the folded alias. A host sets the source once; stdlib covers every
 // area it mounts.
 var areaClasses struct {
@@ -108,7 +108,7 @@ func AreaName(area, class string) string {
 	return area + `\` + strings.TrimPrefix(name, leaf+`\`)
 }
 
-// nameRoot is the namespace every area sits under, which a class name repeats.
+// nameRoot is the namespace every area nests below, which a class name repeats.
 const nameRoot = `Runtime\`
 
 // areaClass resolves a class name written through its area to the name it

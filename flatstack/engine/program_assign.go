@@ -162,7 +162,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 		c.emit(instruction{op: opStore, a: c.slot(target.Name), b: boolInt(keep), name: operator, extra: constructorID})
 	case *model.StaticProp:
 		// The operator travels through the constant pool: name and extra
-		// already carry the class and the property.
+		// already hold the class and the property.
 		class, err := c.resolveClass(target.Class)
 		if err != nil {
 			return err
@@ -183,7 +183,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 }
 
 // coalesceAssignment compiles `$a ??= b`: the target's value stays on the
-// stack when it holds something, and the store runs over the right side alone.
+// stack when it holds something; the store runs over the right side alone.
 func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
 	switch node := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:
@@ -264,7 +264,7 @@ func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, ke
 
 // assignExprValue compiles an assignment used as a value. A plain store pushes
 // what it wrote; a compound operator resolves inside the host, which reports
-// no result, and the target is read again through the slots that held it.
+// no result. The slots that held the target read it again.
 func (c *compiler) assignExprValue(node *model.AssignExpr, path string) error {
 	if node.Op == "" || node.Op == "=" {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)

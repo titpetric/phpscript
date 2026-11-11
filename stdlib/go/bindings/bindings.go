@@ -1,5 +1,5 @@
 // Package bindings installs a go package as the area a script imports it by.
-// A binding package names what it binds, one entry per name, and this package
+// A binding package names what it binds, one entry per name. This package
 // resolves the area, registers the names on the runtime that imported them and
 // enumerates the types the signatures reach.
 //

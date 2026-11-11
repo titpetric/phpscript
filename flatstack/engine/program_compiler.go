@@ -100,8 +100,8 @@ func (c *compiler) constant(value any) int {
 
 // methodName pushes the method a first-class callable names: the literal when the
 // syntax spells it, the expression when the `$obj->$m(...)` spelling holds it in
-// a value. The two call opcodes carry it in their own fields instead, which is
-// why this is only the callable form's.
+// a value. The two call opcodes hold it in their own fields instead; this path
+// serves the callable form alone.
 func (c *compiler) methodName(name string, expr model.Expr, path string) error {
 	if expr == nil {
 		c.emit(instruction{op: opPushConst, a: c.constant(name)})
@@ -228,8 +228,8 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		}
 		// Returning leaves every enclosing loop at once and each by-reference
 		// foreach on the way out writes its loop variable back first. The
-		// return value is already on the stack and each write-back is stack
-		// balanced and it stays on top.
+		// value to return is on the stack already, and every write-back is
+		// stack balanced, which keeps it on top.
 		for i := len(c.loops) - 1; i >= 0; i-- {
 			if c.loops[i].writeBack == nil {
 				continue
@@ -608,8 +608,8 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 		return unsupported(path, "compact() with no names")
 	}
 
-	// A function static lives in a bag and no slot and a name that
-	// resolves to one has nothing for either form to read.
+	// A function static is in a bag and no slot. A name that resolves to one
+	// has nothing for either form to read.
 	for _, argument := range node.Args {
 		if literal, ok := modelutil.UnwrapParenthesized(argument).(*model.Lit); ok {
 			if name, isString := literal.Value.(string); isString {
@@ -769,8 +769,8 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	c.emit(instruction{op: opJump, target: nextPC})
 
 	// `break` leaves the loop, and needs its own write-back because it skips
-	// the one above. A by-value loop has none and its breaks jump straight to
-	// the close and this block emits nothing.
+	// the one above. A by-value loop writes no variable back: its breaks jump
+	// straight to the close and this block emits nothing.
 	breakPC := len(c.program.code)
 	if writeBack != nil {
 		if err := writeBack(); err != nil {
@@ -859,7 +859,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opUnary, name: node.Op})
 	case *model.Coalesce:
-		// Left stays on the stack when it is set; a null is dropped for Right.
+		// Left stays on the stack when it holds a value; a null makes way for
+		// Right.
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}
@@ -905,7 +906,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		// an empty list. runner.ScopeBuiltins names it and no other package does.
 		//
 		// The first-class form above reads no frame and is not refused: the
-		// host resolves the name through the function table, which carries no
+		// host resolves the name through the function table, which holds no
 		// scope builtin and both engines report the same undefined function.
 		if callNames(node, "func_get_args") {
 			return unsupported(path, "func_get_args()")
@@ -941,8 +942,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opCall, a: len(node.Args), name: node.Name, extra: node.Fallback})
 	case *model.New:
-		// An anonymous class declares itself at the point of construction, and
-		// the bytecode carries a class name and no declaration. Rejecting it
+		// An anonymous class declares itself at the point of construction.
+		// The bytecode holds a class name and no declaration. Rejecting it
 		// here delegates the whole program to the interpreter, which is
 		// fallback every unsupported node takes; see docs/flatstack.md.
 		if node.Decl != nil {
@@ -1102,7 +1103,7 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 		}
 		def.captures = append(def.captures, c.slot(use.Name))
 	}
-	// A closure written in a method carries `$this` away with it, and a
+	// A closure written in a method takes `$this` with it, and a
 	// `static function` declares that it does not. The interpreter drops the
 	// class with the receiver and `self::` in a static closure resolves the
 	// same way on both backends.
@@ -1263,7 +1264,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 // The statement is only supported in a named function or method: at top level
 // there is no function lifetime to persist across, and in a closure the bag
 // counts per closure value, which is interpreter state the flat frame does
-// not carry.
+// not hold.
 func (c *compiler) staticVar(node *model.StaticVar, path string) error {
 	if c.statics == nil || c.inClosure {
 		return unsupported(path, "statement *model.StaticVar outside a named function")

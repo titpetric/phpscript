@@ -81,9 +81,9 @@ func registerStreamReads(rt *runner.Runtime) {
 	})
 
 	// feof reports whether $stream is at its end: the read that ran out of
-	// bytes, never the position, which is php's own rule and holds for a file,
-	// a buffer and the request body alike. A handle the host bound itself
-	// carries no flag and reads as open, php's answer for a write handle.
+	// bytes, never the position, php's own rule for a file, a buffer and the
+	// request body alike. A handle the host bound itself holds no flag and
+	// reads as open, php's answer for a write handle.
 	rt.RegisterFunc("feof", func(stream any) bool {
 		return atEOF(stream)
 	})

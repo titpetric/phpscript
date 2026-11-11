@@ -13,8 +13,8 @@ func TestRun(t *testing.T) {
 	Run(t, "none", []Case{{Src: `echo 1 + 1;`, Want: "2"}})
 }
 
-// TestRunAreas covers the runtime a test states: the default carries the
-// standard library, and Runtime\None leaves only the language, so a binding is
+// TestRunAreas covers the runtime a test states: the default installs the
+// standard library, Runtime\None leaves the language alone. A binding reads as
 // an undefined function there.
 func TestRunAreas(t *testing.T) {
 	cases := []Case{{Src: `echo 1 + 2, strlen("abc");`, Want: "33"}}

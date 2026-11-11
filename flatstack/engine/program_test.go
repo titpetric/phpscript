@@ -135,9 +135,9 @@ func TestHost(t *testing.T) {
 }
 
 // TestCoalesceCompiles covers `??` on the bytecode engine: a left side that
-// is set is the value and the right side never runs, and a null left side
-// drops to the right. The engine owns the null test and no value semantics,
-// so Echo sees the two values themselves and the host sees no operator.
+// holds a value answers it, the right side never runs, and a null left side
+// drops to the right. The engine owns the null test and no value semantics.
+// Echo sees the two values themselves and the host sees no operator.
 func TestCoalesceCompiles(t *testing.T) {
 	t.Parallel()
 	host := &semanticHost{}
@@ -157,9 +157,9 @@ func TestCoalesceCompiles(t *testing.T) {
 	}
 }
 
-// TestCoalesceAssignEmitsOneCall covers the `??=` target: the key and the
-// receiver are stored in a hidden slot, which the read and the store load
-// back, so `$a[k()] ??= 1` compiles one call and php counts one.
+// TestCoalesceAssignEmitsOneCall covers the `??=` target: a hidden slot holds
+// the key and the receiver, which the read and the store load back. `$a[k()]
+// ??= 1` compiles one call and php counts one.
 func TestCoalesceAssignEmitsOneCall(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{`<?php $a[k()] ??= 1;`, `<?php k()->p ??= 1;`} {

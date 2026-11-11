@@ -7,7 +7,7 @@ import (
 )
 
 // TestOwned covers the first area to define a name owning it, one table per
-// kind, so a name two areas define belongs to the one that installs first.
+// kind. A name two areas define belongs to the one that installs first.
 func TestOwned(t *testing.T) {
 	owned := Owners([]AreaInfo{
 		{Name: `Runtime\PS\A`, Delta: runner.Delta{Funcs: []string{"f"}, Classes: []string{"C"}, Constants: []string{"K"}}},

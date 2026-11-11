@@ -27,7 +27,7 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterFunc(name("Dir"), func(p string) string { return gopath.Dir(p) })
 	// Runtime\Go\Path\Ext returns the file name extension of $p, with its dot.
 	rt.RegisterFunc(name("Ext"), func(p string) string { return gopath.Ext(p) })
-	// Runtime\Go\Path\Clean returns the shortest path name equivalent to $p.
+	// Runtime\Go\Path\Clean returns the shortest path name that names $p.
 	rt.RegisterFunc(name("Clean"), func(p string) string { return gopath.Clean(p) })
 	// Runtime\Go\Path\IsAbs reports whether $p is absolute.
 	rt.RegisterFunc(name("IsAbs"), func(p string) bool { return gopath.IsAbs(p) })

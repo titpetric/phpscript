@@ -11,10 +11,10 @@ import (
 
 // An opt-in binding area installs on the statement that names it, `use
 // Runtime\Go\Strings;` or `import "strings";`, and the name check runs no
-// statement: the registry in names.go carries the default surface alone, where
-// every call and class under an area reads as undefined. The check asks the
+// statement: the registry in names.go holds the default surface alone, where
+// every call and class under an area reads as undefined. The check reads the
 // area's own runtime instead, one per area and per process, and a file that
-// imports nothing asks none of them.
+// imports nothing reads none of them.
 
 var areaRuntimes = struct {
 	sync.Mutex

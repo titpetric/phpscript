@@ -10,12 +10,12 @@ import (
 // the bound signatures already imply. The walk collects them; a type no
 // signature mentions binds under no name.
 //
-// The technique is gozero's, which discovers the types of its own bindings the
+// The technique is gozero's, which discovers the types behind its bindings the
 // same way (github.com/titpetric/gozero, docs/types.md).
 
 // discoverDepth bounds the walk. A bound function is one level, a result the
-// next, the struct behind a result pointer the next, and that struct's fields
-// and methods the one after: six reaches `http.Cookie` from `http.Get`, which
+// next, the struct behind a result pointer the next, its fields and methods
+// the one after: six reaches `http.Cookie` from `http.Get`, which
 // answers it through a method of the response. Past it the walk pulls in the
 // transitive closure of the standard library for no gain.
 const discoverDepth = 6

@@ -87,7 +87,7 @@ func helperIndex(base, idx any) any {
 		i, numeric := stringOffset(idx)
 		if !numeric {
 			// php refuses a key that spells no integer on a string, where an
-			// array takes it as a name. No byte sits at one.
+			// array takes it as a name. No byte answers to one.
 			return nil
 		}
 		if i < 0 {
@@ -96,8 +96,8 @@ func helperIndex(base, idx any) any {
 		if i < 0 || i >= int64(len(text)) {
 			// `isset`, `empty` and `??` read this value, and a byte the string
 			// does not hold answers for all three. php answers the empty
-			// string here and raises a warning, and the read is a defect
-			// either way.
+			// string here and raises a warning. The read is a defect either
+			// way.
 			return nil
 		}
 		return text[i : i+1]

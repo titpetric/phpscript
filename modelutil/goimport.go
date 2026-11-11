@@ -12,8 +12,8 @@ import (
 // register under the name the import resolves to.
 
 // goAreaWords spells the segments an area does not title-case. The areas under
-// `Runtime\Go` carry go's own capitalisation of an acronym, and the mapping
-// answers the name a folder of stdlib/go registers.
+// `Runtime\Go` keep go's own capitalisation of an acronym. The mapping answers
+// the name a folder of stdlib/go registers.
 var goAreaWords = map[string]string{
 	"html": "HTML",
 	"http": "HTTP",

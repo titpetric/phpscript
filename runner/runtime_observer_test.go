@@ -585,9 +585,9 @@ class Database {
 	}
 }
 
-// TestRuntimeObserverStaticCallOpensNoSpan pins that a static call is not
-// measured: a library calls static helpers by the hundred and each one used to
-// add a span that buried the requests and includes the trace is read for.
+// TestRuntimeObserverStaticCallOpensNoSpan pins that a static call opens no
+// span: a library calls static helpers by the hundred and each one used to add
+// a span that buried the requests and includes a reader opens the trace for.
 func TestRuntimeObserverStaticCallOpensNoSpan(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)

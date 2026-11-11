@@ -100,7 +100,7 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 	v := modelutil.UnwrapParenthesized(n.Value)
 	for {
 		// `$a ??= '00'` assigns a Coalesce the parser built (parser.assignExpr)
-		// and the value the names would share sits on the right of it.
+		// and the value the names would share is its right operand.
 		if co, ok := v.(*model.Coalesce); ok && co.Assign {
 			v = modelutil.UnwrapParenthesized(co.Right)
 			continue

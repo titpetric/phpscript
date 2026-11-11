@@ -24,7 +24,7 @@ func annotateNamespaces(funcs []Func, classes []Class, owners Owners) {
 	}
 }
 
-// hasNamespaces reports whether the functions carry the area that defines them.
+// hasNamespaces reports whether the functions name the area that defines them.
 func hasNamespaces(funcs []Func) bool {
 	for _, f := range funcs {
 		if f.Namespace != "" {
@@ -34,8 +34,8 @@ func hasNamespaces(funcs []Func) bool {
 	return false
 }
 
-// areaGroup is the heading an area files under: the first three segments of
-// its namespace, so Runtime\PS\Core\Strings\Compare sits under Runtime\PS\Core.
+// areaGroup is the heading an area files under: the first three segments of its
+// namespace. Runtime\PS\Core\Strings\Compare files under Runtime\PS\Core.
 func areaGroup(namespace string) string {
 	if namespace == "" {
 		return "other"

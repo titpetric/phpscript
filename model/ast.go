@@ -614,9 +614,9 @@ type Ternary struct {
 	Else Expr
 }
 
-// Coalesce is `Left ?? Right`: Left unless it is null or unset, and Right is
-// read only then. Assign marks the node `$a ??= b` lowers to, an assignment
-// whose value is `$a ?? b`, which the formatter prints back as written.
+// Coalesce is `Left ?? Right`: Left unless null or unset, and only then Right.
+// Assign marks the node `$a ??= b` lowers to, an assignment whose value is
+// `$a ?? b`, which the formatter prints back as written.
 type Coalesce struct {
 	Left   Expr
 	Right  Expr

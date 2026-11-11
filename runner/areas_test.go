@@ -7,8 +7,8 @@ import (
 )
 
 // TestRegisterArea covers the area registry: a named area reaches the mask it
-// registered under, a nil installer is dropped, and an empty name is filed under
-// the unnamed area.
+// registered under, the registry drops a nil installer, and an empty name goes
+// to the unnamed area.
 func TestRegisterArea(t *testing.T) {
 	const area Profile = 1 << 61
 	RegisterProfileArea(`Runtime\PS\Test\Named`, area, func(*Runtime) {})
@@ -98,8 +98,8 @@ func TestRuntime_Areas(t *testing.T) {
 	}
 }
 
-// TestCheckAreas covers the validation: a name that matches an area or sits
-// above one passes, and a misspelling is refused with the name in the message.
+// TestCheckAreas covers the validation: a name that matches an area, or names
+// a root above one, passes. A misspelling answers an error naming it.
 func TestCheckAreas(t *testing.T) {
 	RegisterArea(`Runtime\PS\Test\Checked`, func(*Runtime) {})
 	if err := CheckAreas([]string{`Runtime\PS`, `runtime\ps\test\checked`}); err != nil {

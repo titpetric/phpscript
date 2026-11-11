@@ -1,13 +1,13 @@
 # Runtime areas
 
-The runtime's bindings sit in namespaces called areas. An area is a group of functions, classes and constants that one Go installer registers, and its name is a namespace path. Three namespaces hold them:
+The runtime's bindings belong to namespaces called areas. An area is a group of functions, classes and constants that one Go installer registers, under a name that is a namespace path. Three namespaces hold them:
 
 | Namespace      | Holds                                                                    | Installed                      |
 |----------------|--------------------------------------------------------------------------|--------------------------------|
 | `Runtime\PS`   | phpscript's own surface: php's standard library and the extensions       | by default, first              |
 | `Runtime\PX`   | the phpx overlay: the php compatibility work installed over `Runtime\PS` | by default, after `Runtime\PS` |
 | `Runtime\Go`   | a subset of go's standard library, written in php                        | by `use`, per file             |
-| `Runtime\None` | no area: the language and nothing else                                   | when `runner.areas` names it   |
+| `Runtime\None` | no area: the language alone                                              | when `runner.areas` names it   |
 
 `phpscript list --areas` prints the areas of a build with what each defines.
 
@@ -26,7 +26,7 @@ A folder of `stdlib` is an area, and a file of a large folder is a sub-area:
 | `stdlib/px/<folder>` | `Runtime\PX\<Folder>`, the overlay a host adds              |
 | `stdlib/go/<pkg>`    | `Runtime\Go\<Pkg>`, such as `Runtime\Go\Strings`            |
 
-The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdlib/px` holds `Runtime\PX` and `stdlib/go` holds `Runtime\Go`, and a package keeps the import path its area name spells.
+The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdlib/px` holds `Runtime\PX` and `stdlib/go` holds `Runtime\Go`. A package keeps the import path its area name spells.
 
 The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the area of the same name under `Runtime\PS`. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
 
@@ -40,7 +40,7 @@ Every `Runtime\PS` area installs first, in registration order. Every `Runtime\PX
 
 ## Calling a function through its area
 
-An area is a namespace, and a function answers under it as well as under its bare name:
+An area is a namespace. A function answers under it as well as under its bare name:
 
 ```php
 echo \Runtime\PS\Core\Strings\strlen("four");   // 4
@@ -72,7 +72,7 @@ The class table gains no entry. `get_class()`, `get_declared_classes()` and `php
 
 ## Configuring the default runtime
 
-The `runner.areas` key of the configuration names the namespaces the default runtime installs. It is empty by default, which installs every area:
+The `runner.areas` key of the configuration names the namespaces the default runtime installs. The key is empty by default, which installs every area:
 
 ```yaml
 runner:
@@ -80,9 +80,9 @@ runner:
     - Runtime\PS
 ```
 
-That runtime carries `Runtime\PS` and no overlay. A deeper name narrows further: `Runtime\PS\Core\Strings` installs the string functions and no other part of the standard library, which suits a runtime for a template engine that never calls a file function. A host sets `Options.Areas` on `runner.Options` for the same effect.
+That runtime holds `Runtime\PS` and no overlay. A deeper name narrows further: `Runtime\PS\Core\Strings` installs the string functions and no other part of the standard library, which suits a runtime for a template engine that never calls a file function. A host sets `Options.Areas` on `runner.Options` for the same effect.
 
-`Runtime\None` installs no area. The runtime keeps the language and the exception classes and every function is undefined, `function_exists` included. It suits a plugin host whose scripts compute over values the host passes in, and a test that wants to prove a script needs no binding: `gotest.RunAreas(t, name, []string{runner.NamespaceNone}, cases)`. A host that wants bindings back names them (`Runtime\PS\Core\Strings`), and the default, an empty list, is `Runtime\PS`: php's standard library in the global function table.
+`Runtime\None` installs no area. The runtime keeps the language and the exception classes, and no function resolves, `function_exists` included. It suits a plugin host whose scripts compute over values the host passes in, and a test that proves a script needs no binding: `gotest.RunAreas(t, name, []string{runner.NamespaceNone}, cases)`. A host that needs bindings back names them (`Runtime\PS\Core\Strings`), and the default, an empty list, is `Runtime\PS`: php's standard library in the global function table.
 
 A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects profiles, such as `secure` and `exec`, and the two compose.
 
@@ -110,9 +110,9 @@ use Runtime\Go\Strings;
 echo implode("|", Strings\Fields("  a b   c "));   // a|b|c
 ```
 
-The default runtime carries none of these names. The import installs the area on the runtime that runs the file, and `function_exists('Runtime\Go\Strings\Fields')` is false before it.
+The default runtime defines none of these names. The import installs the area on the runtime that runs the file, and `function_exists('Runtime\Go\Strings\Fields')` is false before it.
 
-`Strings\Repeat` throws a `RuntimeException` when the result would pass 256 MiB.
+- `Strings\Repeat` throws a `RuntimeException` when the result would pass 256 MiB.
 
 The mapping continues down go's import paths: `net/http` is `Runtime\Go\Net\HTTP`, `path/filepath` is `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers under its own profile area, as `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
 
@@ -128,7 +128,7 @@ func init() {
 }
 ```
 
-`RegisterArea` takes the name and the installer; `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. Several files may register under one name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
+`RegisterArea` takes the name and the installer; `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. More than one file may register under one name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
 
 An opt-in area registers with `runner.RegisterNamespace(name, installer)`, and names its functions with the full path (`Runtime\Go\Strings\Fields`), which the `use` alias shortens.
 

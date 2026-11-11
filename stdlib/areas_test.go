@@ -9,8 +9,8 @@ import (
 )
 
 // TestAreas covers the introspection of the mounted runtime: every default area
-// is named under Runtime\PS or Runtime\PX, the PS areas come first, a name has one
-// owner, and the opt-in Go area lists apart.
+// answers under Runtime\PS or Runtime\PX, the PS areas come first, a name has
+// one owner, and the opt-in Go area lists apart.
 func TestAreas(t *testing.T) {
 	infos := Areas(All)
 	if len(infos) < 10 {
@@ -59,7 +59,7 @@ func TestAreasSelected(t *testing.T) {
 }
 
 // TestQualifiedAreaCall covers a call written through its area: the area name
-// stands in front of the function and reaches the same binding as the bare name.
+// prefixes the function and reaches the same binding as the bare name.
 func TestQualifiedAreaCall(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})

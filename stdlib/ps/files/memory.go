@@ -41,7 +41,7 @@ func streamBounds(args []any) (length, offset int64) {
 }
 
 // openMemory answers the handle for both schemes. php reads the
-// `temp/maxmemory:1024` argument and refuses a name carrying anything else.
+// `temp/maxmemory:1024` argument and refuses a name with anything else on it.
 func openMemory(_ *runner.Runtime, scheme, mode string) (any, error) {
 	if name, arg, cut := strings.Cut(strings.ToLower(scheme), "/"); cut {
 		if name != "temp" || !strings.HasPrefix(arg, "maxmemory:") {

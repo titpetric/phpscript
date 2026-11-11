@@ -17,10 +17,10 @@ func TestSet(t *testing.T) {
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprintf("%.2f|%t|%q", 1.5, true, "a");`, Want: `1.50|true|"a"`},
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprint("a", 1, 2, "b");`, Want: "a1 2b"},
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprintln("a", "b");`, Want: "a b\n"},
-		// The area answers under its own name as well, as every area does.
+		// The area answers under the php spelling as well, as every area does.
 		{Src: `use Runtime\Go\Fmt; echo Fmt\Sprintf("%d", 7);`, Want: "7"},
-		// The default runtime carries none of it.
-		{Src: `echo function_exists('Runtime\Go\Fmt\Sprintf') ? "carried" : "absent";`, Want: "absent"},
+		// The default runtime defines none of it.
+		{Src: `echo function_exists('Runtime\Go\Fmt\Sprintf') ? "defined" : "absent";`, Want: "absent"},
 	})
 }
 

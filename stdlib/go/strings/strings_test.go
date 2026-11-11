@@ -9,8 +9,8 @@ import (
 	gostrings "github.com/titpetric/phpscript/stdlib/go/strings"
 )
 
-// TestRegister covers the namespace through a script: the import installs it, the
-// names are qualified by the alias, and the Go answers come back as php values.
+// TestRegister covers the namespace through a script: the import installs it,
+// the alias qualifies the names, the Go answers arrive as php values.
 func TestRegister(t *testing.T) {
 	gotest.Run(t, `Runtime\Go\Strings`, []gotest.Case{
 		{Src: `use Runtime\Go\Strings; echo implode("|", Strings\Fields("  a b   c "));`, Want: "a|b|c"},
@@ -25,7 +25,7 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterInstallsOnImportOnly pins that Register adds the names to a runtime and
-// the namespace is registered for the import to find.
+// leaves the namespace in the registry for the import to find.
 func TestRegisterInstallsOnImportOnly(t *testing.T) {
 	rt := runner.New(io.Discard, runner.Options{})
 	gostrings.Register(rt)

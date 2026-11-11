@@ -7,9 +7,9 @@ import (
 )
 
 // TestFileAcceptsNamesAnImportedAreaBinds covers the names an opt-in area
-// brings in: a call and a class under an area the file imports are defined,
-// in the go spelling and in the php one, and the same name under an area no
-// statement names is the finding the check exists for.
+// brings in: a call and a class under an area the file imports resolve, in the
+// go spelling and in the php one, and the same name under an area no statement
+// names is the finding the check exists for.
 func TestFileAcceptsNamesAnImportedAreaBinds(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -57,8 +57,8 @@ func TestFileAcceptsNamesAnImportedAreaBinds(t *testing.T) {
 }
 
 // TestProgramAreasReadsInstallersOnly covers what counts as an area: a php
-// namespace no installer answers for is the registry's business and does not
-// build a runtime of its own.
+// namespace no installer answers for is the registry's business and builds no
+// runtime.
 func TestProgramAreasReadsInstallersOnly(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse("<?php\nuse App\\Models\\User;\nuse Runtime\\Go\\Strings;\n")

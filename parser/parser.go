@@ -273,7 +273,7 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 			return p.parseUse()
 		case "import":
 			// The go runtime's import. A file that bound no go runtime reads
-			// `import` as a name of its own. See goimport.go.
+			// `import` as an ordinary name. See goimport.go.
 			if p.atGoImport() {
 				return p.parseGoImport()
 			}

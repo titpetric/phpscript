@@ -9,10 +9,10 @@ import (
 )
 
 // Wrapper opens the handle fopen("php://<scheme>") answers for a scheme added
-// with RegisterWrapper, so a host adds stdout, stderr or memory without editing
+// with RegisterWrapper: a host adds stdout, stderr or memory without editing
 // fopen. The handle is whatever the stream functions accept: an *os.File, or a
-// value that is an io.Reader, io.Writer or io.Seeker as the call needs. A scheme
-// is matched without regard to case, a later registration wins, and output and
+// value that is an io.Reader, io.Writer or io.Seeker as the call needs. The
+// lookup folds the scheme's case, a later registration wins, and output and
 // input stay the runtime's own. The scheme arrives as the script wrote it,
 // `temp/maxmemory:1024` included; a nil handle refuses the name and fopen
 // answers false, as php's does.
@@ -70,10 +70,10 @@ func writeStream(rt *runner.Runtime, scheme, data string) any {
 	return int64(n)
 }
 
-// openWrapper opens the handle for scheme, and reports whether one is bound. A
-// scheme php spells with an argument, `temp/maxmemory:1024`, resolves on the
-// name ahead of the first slash, and the wrapper reads the argument itself: a
-// nil handle is a name it refused, reported here as no wrapper at all.
+// openWrapper opens the handle for scheme, and reports whether the registry
+// holds a wrapper. A scheme php spells with an argument, `temp/maxmemory:1024`,
+// resolves on the name ahead of the first slash. The wrapper reads the
+// argument; a nil handle refuses the name, reported here as no wrapper.
 func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, err error) {
 	name := strings.ToLower(scheme)
 	wrappers.RLock()

@@ -43,8 +43,8 @@ func TestAssignmentResolvesTheTargetFirst(t *testing.T) {
 }
 
 // TestCompoundAssignExprReadsTheTargetBack covers the value a compound
-// operator answers in expression position: the host reports no result, so the
-// target is read again through the slots that resolved it.
+// operator answers in expression position. The host reports no result. The
+// slots that resolved the target read it again.
 func TestCompoundAssignExprReadsTheTargetBack(t *testing.T) {
 	t.Parallel()
 	program := compileSource(t, `<?php $x = $a[k()] += 1;`)

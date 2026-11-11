@@ -10,7 +10,7 @@ import (
 
 // This file is the direct compiler's node dispatcher: one case per expression
 // shape the runtime evaluates, each compiling to the closure that evaluates
-// it. The operator and interpolation sub-compilers it dispatches to live in
+// it. The operator and interpolation sub-compilers it dispatches to are in
 // direct_operators.go, and the compiler's bindings and call plumbing in
 // compiled.go.
 
@@ -111,8 +111,8 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		// The key and the value closures and no pair closure over them: a pair
 		// closure returns model.ArrayItemValue as an any, which boxes a
 		// four-word struct on the heap for the line below to unbox again. That
-		// is one allocation per entry of every array literal a script writes,
-		// and the compiler builds the two slices here once.
+		// is one allocation per entry of every array literal a script writes.
+		// The compiler builds the two slices here once.
 		keys := make([]closure, len(n.Items))
 		vals := make([]closure, len(n.Items))
 		for i, it := range n.Items {
@@ -297,13 +297,13 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 
 // compileCall mirrors Transpiler.emitCall: by-reference output arguments
 // that are plain variables become __ref setters, namespaced names and calls
-// carrying a global fallback dispatch through __func, and a plain global
-// call resolves its name in the base env, installed by Eval.
+// holding a global fallback dispatch through __func, and a plain global
+// call resolves its name in the base env Eval installs.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
 		// `greet(...)` takes the callable and never calls it and the name
 		// goes in as a value and the fallback with it: resolution is the
-		// runtime's, as for a call, and the result is a Closure.
+		// runtime's, as for a call, answering a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil
 	}
 	args := make([]closure, len(n.Args))
