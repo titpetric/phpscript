@@ -87,7 +87,7 @@ func helperIndex(base, idx any) any {
 		i, numeric := stringOffset(idx)
 		if !numeric {
 			// php refuses a key that spells no integer on a string, where an
-			// array takes it as a name. No byte answers to one.
+			// array takes it as a name. The string holds no byte for one.
 			return nil
 		}
 		if i < 0 {

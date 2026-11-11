@@ -209,7 +209,7 @@ func assignable(e model.Expr) bool {
 }
 
 // execUnset removes each target from the scope, array, property bag or static
-// bag holding it. Unsetting a name nothing set draws no error, and
+// bag holding it. Unsetting a name nothing set is not an error:
 // `unset($map[$key])` runs unconditionally.
 func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 	for _, target := range n.Targets {

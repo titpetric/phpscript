@@ -100,7 +100,7 @@ func (c *compiler) constant(value any) int {
 
 // methodName pushes the method a first-class callable names: the literal when the
 // syntax spells it, the expression when the `$obj->$m(...)` spelling holds it in
-// a value. The two call opcodes hold it in their own fields instead; this path
+// a value. The two call opcodes hold the name in their own fields; this path
 // serves the callable form alone.
 func (c *compiler) methodName(name string, expr model.Expr, path string) error {
 	if expr == nil {
@@ -228,8 +228,8 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		}
 		// Returning leaves every enclosing loop at once and each by-reference
 		// foreach on the way out writes its loop variable back first. The
-		// value to return is on the stack already, and every write-back is
-		// stack balanced, which keeps it on top.
+		// value to return stays on top of the stack, because each write-back
+		// is stack balanced.
 		for i := len(c.loops) - 1; i >= 0; i-- {
 			if c.loops[i].writeBack == nil {
 				continue
@@ -859,8 +859,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opUnary, name: node.Op})
 	case *model.Coalesce:
-		// Left stays on the stack when it holds a value; a null makes way for
-		// Right.
+		// Left stays on the stack when it holds a value; a null pops and Right runs.
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}
@@ -1103,7 +1102,7 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 		}
 		def.captures = append(def.captures, c.slot(use.Name))
 	}
-	// A closure written in a method takes `$this` with it, and a
+	// A closure written in a method keeps `$this` with it, and a
 	// `static function` declares that it does not. The interpreter drops the
 	// class with the receiver and `self::` in a static closure resolves the
 	// same way on both backends.

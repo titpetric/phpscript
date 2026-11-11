@@ -19,8 +19,8 @@ func init() {
 	runner.SetAreaClasses(areaClasses)
 }
 
-// areaMembers names the functions each default area defines or replaces: the
-// table `Runtime\PS\Core\Strings\strlen($s)` resolves the global strlen through.
+// areaMembers names the functions each default area defines or replaces, the
+// table `Runtime\PS\Core\Strings\strlen($s)` resolves the global strlen in.
 func areaMembers() map[string][]string {
 	members := map[string][]string{}
 	for _, info := range Areas(All) {
@@ -49,8 +49,8 @@ func areaClasses() map[string][]string {
 type AreaInfo struct {
 	// Name is the namespace, Runtime\PS\Core\Strings.
 	Name string
-	// OptIn marks an area a script imports with `use`; the default runtime
-	// installs none of them.
+	// OptIn marks an area a script imports with `use`, one the default
+	// runtime leaves out.
 	OptIn bool
 	// Profile is the mask the area mounts under.
 	Profile runner.Profile

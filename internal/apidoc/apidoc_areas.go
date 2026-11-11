@@ -34,8 +34,8 @@ func hasNamespaces(funcs []Func) bool {
 	return false
 }
 
-// areaGroup is the heading an area files under: the first three segments of its
-// namespace. Runtime\PS\Core\Strings\Compare files under Runtime\PS\Core.
+// areaGroup is the heading an area files under: the first three segments of
+// its namespace. Runtime\PS\Core\Strings\Compare files under Runtime\PS\Core.
 func areaGroup(namespace string) string {
 	if namespace == "" {
 		return "other"

@@ -5,9 +5,9 @@ import (
 	"os"
 )
 
-// fileStream is the handle fopen() answers with for a file: an *os.File holding
-// php's end-of-file flag. The position does not decide the flag. php raises it
-// on the read that ran out of bytes, then a seek lowers it.
+// fileStream is the handle fopen() answers with for a file: an *os.File that
+// holds php's end-of-file flag. A position answers for no flag of php's own:
+// php raises it on the read that ran out of bytes, then a seek lowers it.
 type fileStream struct {
 	*os.File
 	regular bool

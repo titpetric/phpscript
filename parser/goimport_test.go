@@ -52,7 +52,7 @@ func TestGoImportStatement(t *testing.T) {
 }
 
 // TestGoImportMember covers the one place a dot is a name: a member of a
-// package the file imported, in each position a name may take.
+// package the file imported, in each position a name takes.
 func TestGoImportMember(t *testing.T) {
 	t.Parallel()
 	src := goImportHeader + "import \"net/http\";\n"
@@ -94,7 +94,7 @@ func TestGoImportMember(t *testing.T) {
 func TestGoImportRefusals(t *testing.T) {
 	t.Parallel()
 	// A file with no go runtime reads `import` as an ordinary name, and the
-	// dot concatenates the operands either side of it.
+	// dot concatenates the two operands.
 	if call, ok := lastExpr(t, "<?php\nimport(\"net/http\");").(*model.Call); !ok || call.Name != "import" {
 		t.Errorf("import is not a call to php's own name: %T", lastExpr(t, "<?php\nimport(\"net/http\");"))
 	}

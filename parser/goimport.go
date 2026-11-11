@@ -13,8 +13,8 @@ import (
 // statement, the dot and the packages stay out of php's grammar.
 //
 // What it binds is an area: the path resolves through modelutil.GoImportArea,
-// the statement is the `use Runtime\Go\Net\HTTP` the runtime already installs.
-// The name is the path's last segment. `http.NewRequest(...)` resolves to
+// the statement is the `use Runtime\Go\Net\HTTP` the runtime already installs,
+// and the path's last segment is the name. `http.NewRequest(...)` resolves to
 // `Runtime\Go\Net\HTTP\NewRequest` while the file parses, the one place a `.`
 // names something and does not concatenate. The file said which names a
 // package holds; the parser reads the pair as one name.
@@ -45,9 +45,9 @@ func (p *parser) parseGoImport() (model.Stmt, error) {
 	return &model.Use{Imports: []model.UseImport{{Path: area, Alias: alias, Package: path}}}, nil
 }
 
-// goPackage returns the area an imported package name denotes. The name is
-// go's. The comparison stays exact where php folds a function's case: a file
-// that wrote `HTTP.NewRequest` meant no package this import bound.
+// goPackage returns the area an imported package name resolves to. The name is
+// go's, compared byte for byte where php folds a function's case: a file that
+// wrote `HTTP.NewRequest` named no package this import bound.
 func (p *parser) goPackage(name string) (string, bool) {
 	area, ok := p.goPkgs[name]
 	return area, ok

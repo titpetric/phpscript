@@ -37,7 +37,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	}
 	if a, ok := e.(*model.AssignExpr); ok {
 		// An assignment used as a value writes storage no closure chain
-		// reaches, then answers the value it stored. See assignValue.
+		// reaches. It answers what it wrote. See assignValue.
 		return rt.assignValue(a.Target, a.Op, a.Value, scope)
 	}
 

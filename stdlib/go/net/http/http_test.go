@@ -14,7 +14,7 @@ import (
 
 // TestSet covers the area through a script: the names the import binds, the
 // constants beside them, and the types the signatures reach, which answer as
-// classes and name their fields.
+// classes and hold their fields.
 func TestSet(t *testing.T) {
 	const header = `use Runtime\Go; import "net/http"; `
 	gotest.Run(t, gohttp.Namespace, []gotest.Case{
@@ -30,8 +30,8 @@ func TestSet(t *testing.T) {
 		{Src: header + `echo len(make([]http.Request, 2));`, Want: "2"},
 		// A url a script cannot parse throws, as the error of a binding does.
 		{Src: header + `try { http.NewRequest("GET", "://", null); } catch (Throwable $e) { echo "threw"; }`, Want: "threw"},
-		// The default runtime defines none of it.
-		{Src: `echo function_exists('Runtime\Go\Net\HTTP\StatusText') ? "defined" : "absent";`, Want: "absent"},
+		// The default runtime installs none of it.
+		{Src: `echo function_exists('Runtime\Go\Net\HTTP\StatusText') ? "carried" : "absent";`, Want: "absent"},
 	})
 }
 

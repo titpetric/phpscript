@@ -171,8 +171,8 @@ func TestPHPArith(t *testing.T) {
 }
 
 // TestPHPArithByZero covers the divisor php refuses: `/` and `%` raise
-// DivisionByZeroError whatever shape the zero arrives in. fdiv() is the float
-// answer a script names outright. This operator answers no float.
+// DivisionByZeroError whatever shape the zero arrives in. fdiv() names the
+// float answer; the operator answers INF for no divisor.
 func TestPHPArithByZero(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

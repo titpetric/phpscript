@@ -183,7 +183,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 }
 
 // coalesceAssignment compiles `$a ??= b`: the target's value stays on the
-// stack when it holds something; the store runs over the right side alone.
+// stack when it holds something. The store then runs over the right side alone.
 func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
 	switch node := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:
@@ -264,7 +264,7 @@ func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, ke
 
 // assignExprValue compiles an assignment used as a value. A plain store pushes
 // what it wrote; a compound operator resolves inside the host, which reports
-// no result. The slots that held the target read it again.
+// no result, and a second read of the target runs through the slots that held it.
 func (c *compiler) assignExprValue(node *model.AssignExpr, path string) error {
 	if node.Op == "" || node.Op == "=" {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)

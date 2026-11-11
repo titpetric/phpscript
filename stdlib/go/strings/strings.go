@@ -1,7 +1,7 @@
 // Package strings binds the day-to-day functions of Go's strings package as
 // the Runtime\Go\Strings namespace. A script imports it with
 // `use Runtime\Go\Strings;` and calls `Strings\Fields($s)`; the default
-// runtime defines none of these names.
+// runtime installs none of these names.
 package strings
 
 import (

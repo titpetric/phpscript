@@ -297,13 +297,13 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 
 // compileCall mirrors Transpiler.emitCall: by-reference output arguments
 // that are plain variables become __ref setters, namespaced names and calls
-// holding a global fallback dispatch through __func, and a plain global
-// call resolves its name in the base env Eval installs.
+// with a global fallback dispatch through __func, and a plain global
+// call resolves its name in the base env, installed by Eval.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
 		// `greet(...)` takes the callable and never calls it and the name
 		// goes in as a value and the fallback with it: resolution is the
-		// runtime's, as for a call, answering a Closure.
+		// runtime's, as for a call. The result is a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil
 	}
 	args := make([]closure, len(n.Args))

@@ -11,9 +11,9 @@ import (
 // Wrapper opens the handle fopen("php://<scheme>") answers for a scheme added
 // with RegisterWrapper: a host adds stdout, stderr or memory without editing
 // fopen. The handle is whatever the stream functions accept: an *os.File, or a
-// value that is an io.Reader, io.Writer or io.Seeker as the call needs. The
-// lookup folds the scheme's case, a later registration wins, and output and
-// input stay the runtime's own. The scheme arrives as the script wrote it,
+// value that is an io.Reader, io.Writer or io.Seeker as the call needs.
+// RegisterWrapper folds the case of a scheme, a later registration wins, and
+// output and input stay the runtime's own. The scheme arrives as the script wrote it,
 // `temp/maxmemory:1024` included; a nil handle refuses the name and fopen
 // answers false, as php's does.
 type Wrapper func(rt *runner.Runtime, scheme, mode string) (any, error)
@@ -71,9 +71,9 @@ func writeStream(rt *runner.Runtime, scheme, data string) any {
 }
 
 // openWrapper opens the handle for scheme, and reports whether the registry
-// holds a wrapper. A scheme php spells with an argument, `temp/maxmemory:1024`,
+// holds one. A scheme php spells with an argument, `temp/maxmemory:1024`,
 // resolves on the name ahead of the first slash. The wrapper reads the
-// argument; a nil handle refuses the name, reported here as no wrapper.
+// argument itself: a nil handle is a name it refused, reported as no wrapper.
 func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, err error) {
 	name := strings.ToLower(scheme)
 	wrappers.RLock()

@@ -20,7 +20,7 @@ echo $resp->StatusCode, " ", io.ReadAll($resp->Body);
 
 One path per statement, quoted, the path go writes. The statement is the go spelling of the `use` of an area: `import "net/http"` installs `Runtime\Go\Net\HTTP` on the runtime that runs the file, and `http.NewRequest` resolves to `Runtime\Go\Net\HTTP\NewRequest` while the file parses. The name a script addresses the package by is the path's last segment.
 
-A file that writes no `use Runtime\Go;` reads `import` as an ordinary name, and the statement, the dot and the packages stay out of php's grammar. php rejects the file either way: keep the import out of source that must also run on php.
+A file that writes no `use Runtime\Go;` reads `import` as a plain name, and the statement, the dot and the packages stay out of php's grammar. php rejects the file either way: keep the import out of source that must also run on php.
 
 ## The dot
 
@@ -45,7 +45,7 @@ The import takes the name for the file that wrote it. A file holding a constant 
 | `new http.Request`        | `Runtime\Go\Net\HTTP\Request`    | a type the area enumerated          |
 | `make([]http.Request, 2)` | `[]Runtime\Go\Net\HTTP\Request`  | the same type, as a slice's element |
 
-The area answers under its own name as well, and `Runtime\Go\Net\HTTP\StatusText(404)` needs no import. `function_exists` reports the resolved name. The dotted spelling belongs to the parser. The runtime answers for the area name alone.
+The area answers under its own name as well: `Runtime\Go\Net\HTTP\StatusText(404)` needs no import. `function_exists` reports the resolved name. The dotted spelling belongs to the parser. The runtime answers for the area name alone.
 
 ## The packages
 
@@ -96,11 +96,11 @@ The folder is the area, as every binding folder is: `stdlib/go/net/http` is `Run
 
 `Bind` names functions. The types a script reaches are the ones those signatures already imply. The set walks them: `http.NewRequest` names `*http.Request`, whose fields name `http.Header` and the url behind it, and whose methods name `*http.Cookie`. Every struct of the package the walk reaches registers as a class of the area, and `new http.Request` and `make([]http.Request, 2)` resolve to one.
 
-The walk stops six levels from a bound signature; past that it pulls in the transitive closure of the standard library for no gain. A struct the walk misses, `http.Client` among them, is one line: `Type(gohttp.Client{})` seeds the walk from the type itself. An interface, a named map and a func type register no class, because `new` would answer a nil of one. The technique is [gozero](https://github.com/titpetric/gozero)'s, which discovers the types behind its bindings the same way.
+The walk stops six levels from a bound signature; past that it pulls in the transitive closure of the standard library for no gain. A struct it does not reach, `http.Client` among them, is one line: `Type(gohttp.Client{})` seeds the walk from the type itself. An interface, a named map and a func type register no class, because `new` would answer a nil of one. The technique is [gozero](https://github.com/titpetric/gozero)'s, which discovers the types behind its bindings the same way.
 
 ### A package this build does not link
 
-A binding binds a package the binary already links. Binding one it does not grows the binary and the dependency surface of every host that embeds the runtime, which is a decision and not a side effect of adding a function. `bindings.Linked` holds the list, read off the released binary's symbols and sanitised; `bindings.For` panics on a path the list omits. Adding a path to the list belongs in the change that binds it, with the reason in the commit.
+A binding binds a package the binary already links. Binding one it does not grows the binary and the dependency surface of every host that embeds the runtime, which is a decision and not a side effect of adding a function. `bindings.Linked` holds the list, read off the released binary's symbols and sanitised; `bindings.For` panics on a path `Linked` does not name. Adding a path to the list belongs in the change that binds it, with the reason in the commit.
 
 ```bash
 go tool nm $(which phpscript) \

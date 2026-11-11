@@ -1,6 +1,6 @@
 // Package json binds go's encoding/json as the Runtime\Go\Encoding\JSON
 // namespace. A script imports it with `use Runtime\Go\Encoding\JSON;` and calls
-// `JSON\Marshal($value)`; the default runtime defines none of these names.
+// `JSON\Marshal($value)`; the default runtime installs none of these names.
 package json
 
 import (

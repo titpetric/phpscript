@@ -743,7 +743,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			var popErr error
 			if inst.a != 0 {
 				// An assignment resolved its target before the value, php's
-				// order: the value is on top, the container and key below.
+				// order, which leaves the value over the container and the key.
 				if value, popErr = st.pop(); popErr != nil {
 					return popErr
 				}

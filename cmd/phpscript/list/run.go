@@ -113,8 +113,8 @@ func writeJSON(out io.Writer, v any) error {
 }
 
 // runAreas prints the binding areas as a markdown table, or as JSON. The
-// namespace arguments narrow the rows; another listing mode beside this one is
-// an error, since each mode answers its own question.
+// namespace arguments narrow the rows; naming another listing mode alongside
+// fails, since each mode answers one question.
 func runAreas(out io.Writer, args []string, mixed, asJSON bool) error {
 	if mixed {
 		return fmt.Errorf("list --areas takes none of --bindings, --classes or --api")

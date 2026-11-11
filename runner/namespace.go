@@ -48,7 +48,7 @@ func RegisterNamespace(name string, installer func(*Runtime)) {
 }
 
 // Namespaces lists the opt-in namespaces by the spelling they registered under,
-// sorted: the areas a script imports and the default runtime installs none of.
+// sorted: the areas a script imports and the default runtime leaves out.
 func Namespaces() []string {
 	namespaces.Lock()
 	defer namespaces.Unlock()

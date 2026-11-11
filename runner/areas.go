@@ -20,7 +20,7 @@ const NamespacePX = `Runtime\PX`
 // a runtime no file imported defines none of these names.
 const NamespaceGo = `Runtime\Go`
 
-// NamespaceNone selects no area at all: the runtime keeps the language and the
+// NamespaceNone selects no area at all: the runtime holds the language and the
 // exception classes, which are not bindings, with the standard library's
 // functions left out. It suits a plugin host whose scripts compute over values
 // the host hands in.
@@ -62,8 +62,8 @@ func AreasFor(profile Profile) []Area {
 	return areas
 }
 
-// SelectAreas keeps the areas below one of the namespaces. An empty list keeps
-// them all: the default runtime installs every area, Runtime\PS first.
+// SelectAreas keeps the areas one of the namespaces prefixes. An empty list
+// keeps them all: the default runtime installs every area, Runtime\PS first.
 // Runtime\None keeps none, whatever else the list names.
 func SelectAreas(areas []Area, namespaces []string) []Area {
 	if len(namespaces) == 0 {
@@ -86,7 +86,7 @@ func SelectAreas(areas []Area, namespaces []string) []Area {
 	return out
 }
 
-// InNamespace reports whether name is the namespace or nests below it, as php compares names.
+// InNamespace reports whether name is the namespace or nests under one, folding case as php does.
 func InNamespace(name, namespace string) bool {
 	name, namespace = foldName(name), foldName(namespace)
 	return name == namespace || strings.HasPrefix(name, namespace+`\`)
@@ -106,12 +106,9 @@ func areaLayer(name string) int {
 // Areas reports the namespaces this runtime installs; empty means all.
 func (rt *Runtime) Areas() []string { return rt.opts.Areas }
 
-// CheckAreas refuses a namespace that names no registered area or opt-in
-// namespace, since a misspelling would select nothing and leave a runtime
-// without bindings. The three roots always pass: a configuration valid in one
-// build stays valid in another, and a root with no linked area below it
-// selects nothing. A deeper name answers against the areas this build linked
-// in.
+// CheckAreas refuses a namespace naming no registered area or opt-in
+// namespace, a misspelling that would leave a runtime without bindings. The
+// three roots pass; a deeper name has to match an area this build linked.
 func CheckAreas(namespaces []string) error {
 	registered := AreasFor(^Profile(0))
 	opt := Namespaces()

@@ -9,8 +9,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/session"
 )
 
-// RegisterFS reroots the filesystem bindings Register installed at dir, which
-// a path from PHP resolves under and cannot climb out of.
+// RegisterFS reroots the filesystem bindings at dir, which no path climbs out of.
 func RegisterFS(rt *runner.Runtime, dir string) {
 	for _, fs := range fsRoots {
 		if fs.exec && rt.Profile()&Exec == 0 {
@@ -37,8 +36,8 @@ var fsRoots = []struct {
 }
 
 // selected reports whether the runtime's areas include the named one: a runtime
-// built with no selection installs every area, and one built with a selection
-// reroots only the bindings of the areas it installed.
+// built with no selection holds every area, and one built with a selection
+// reroots the bindings of the areas it installed alone.
 func selected(rt *runner.Runtime, area string) bool {
 	return len(runner.SelectAreas([]runner.Area{{Name: area}}, rt.Areas())) == 1
 }

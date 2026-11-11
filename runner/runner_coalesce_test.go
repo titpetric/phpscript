@@ -47,8 +47,8 @@ echo $held["k"], "|", $fresh["k"], "|", $t[1], $t[2], "|", $i, "|", side()->p, "
 }
 
 // TestCoalesceAssignLeavesAStringOffsetAlone covers the target php does not
-// write: a byte the string already holds keeps its value. The read runs through
-// helperIndex, where the array path an assignment takes writes.
+// write: a byte the string already holds keeps its value. The read runs
+// through helperIndex, where an assignment runs the array path.
 func TestCoalesceAssignLeavesAStringOffsetAlone(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

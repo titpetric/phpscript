@@ -1,6 +1,6 @@
 // Package fmt binds the formatting calls of go's fmt under the Runtime\Go\Fmt
 // area. A script reaches them with `import "fmt";` and calls
-// `fmt.Sprintf($format, $args)`; the default runtime defines none of these
+// `fmt.Sprintf($format, $args)`; the default runtime installs none of these
 // names.
 package fmt
 

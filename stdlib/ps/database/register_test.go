@@ -122,7 +122,7 @@ func connectionsOf(t *testing.T, rt *runner.Runtime) []string {
 }
 
 // TestConnect covers the exported connect the Database constructor and the
-// Runtime\Go\Database\SQL area share: connect refuses a name nobody registered.
+// Runtime\Go\Database\SQL area share: it refuses a name nobody registered.
 func TestConnect(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{Database: New(nil)})

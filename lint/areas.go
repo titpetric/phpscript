@@ -13,8 +13,8 @@ import (
 // Runtime\Go\Strings;` or `import "strings";`, and the name check runs no
 // statement: the registry in names.go holds the default surface alone, where
 // every call and class under an area reads as undefined. The check reads the
-// area's own runtime instead, one per area and per process, and a file that
-// imports nothing reads none of them.
+// area's own runtime, one per area and per process. A file that imports
+// nothing builds none of them.
 
 var areaRuntimes = struct {
 	sync.Mutex

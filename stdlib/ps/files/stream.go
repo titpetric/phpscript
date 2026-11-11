@@ -33,8 +33,8 @@ func registerStreams(rt *runner.Runtime, r root) {
 			}
 			// A scheme no wrapper answers for is false, PHP's answer for
 			// a stream it cannot open: resolving the name would invent a
-			// file called php:/filter instead. memory and temp register
-			// as wrappers too; see memory.go.
+			// file called php:/filter instead. memory and temp are
+			// separate wrappers; see memory.go.
 			return false, nil
 		}
 		name, isUpload := r.uploadPath(filename)

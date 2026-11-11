@@ -117,9 +117,9 @@ func TestCoalesceAndWordOperatorPrecedence(t *testing.T) {
 }
 
 // TestCoalesceAssignLowersToAssignment covers `??=`: an assignment whose value
-// is a Coalesce marked Assign. The runtime needs no `??=` operator: a target
-// holding a call takes the same shape, and both engines resolve it once. An
-// append slot is a parse error here, as php reads none.
+// is a Coalesce marked Assign, which leaves the runtime one operator fewer. A
+// target holding a call takes the same shape; both engines resolve it once.
+// The parser refuses an append slot, a target php cannot read either.
 func TestCoalesceAssignLowersToAssignment(t *testing.T) {
 	t.Parallel()
 	if _, err := Parse("<?php $a[] ??= 5;"); err == nil {
