@@ -114,8 +114,8 @@ The default runtime installs none of these names. The import installs the area o
 
 `Strings\Repeat` throws a `RuntimeException` when the result would pass `repeatLimit`:
 
-| constant      | value      | message                             |
-|---------------|------------|-------------------------------------|
+| constant      | value       | message                            |
+|---------------|-------------|------------------------------------|
 | `repeatLimit` | `256 << 20` | `strings: Repeat output too large` |
 
 The mapping continues down go's import paths: `net/http` is `Runtime\Go\Net\HTTP`, `path/filepath` is `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers under its own profile area, as `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
