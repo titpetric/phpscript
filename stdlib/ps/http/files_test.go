@@ -140,8 +140,11 @@ define("MUX", $mux);`)
 	} {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, httptest.NewRequest(nethttp.MethodGet, path, nil))
-		if w.Code == nethttp.StatusOK && strings.Contains(w.Body.String(), "root:") {
-			t.Errorf("%s answered the host's file: %q", path, w.Body.String())
+		// net/http's mux cleans the path and redirects. The route never runs
+		// and the status reports it, where a body check passes on a host that
+		// holds no such file. TestClampAbsorbsAClimb drives the binding.
+		if w.Code == nethttp.StatusOK {
+			t.Errorf("%s answered 200: %q", path, w.Body.String())
 		}
 	}
 }
@@ -179,6 +182,96 @@ define("MUX", $mux);`)
 				t.Errorf("body %q, want %q", w.Body.String(), tc.want)
 			}
 		})
+	}
+}
+
+// TestRegisterGoNames covers the same three names in the Go runtime, which an
+// `import "net/http"` reaches by the spelling go uses. FileServer answers as a
+// function there and as a class in Runtime\PS\HTTP, because that is what each
+// language spells.
+func TestRegisterGoNames(t *testing.T) {
+	t.Parallel()
+	_, handler := serveScriptIn(t, tree(t), `<?php
+use Runtime\Go;
+import "net/http";
+
+$mux = new HTTP\Mux();
+
+$mux->handle("GET /one/{name...}", function ($w, $r) {
+	http.ServeFile($w, $r, "public/" . $r->path_value("name"));
+});
+$mux->handle("GET /tree/", http.StripPrefix("/tree/", http.FileServer("public")));
+
+define("MUX", $mux);`)
+
+	for _, tc := range []struct {
+		name   string
+		path   string
+		status int
+		want   string
+	}{
+		{"ServeFile", "/one/hello.txt", nethttp.StatusOK, "hello\n"},
+		{"FileServer under StripPrefix", "/tree/hello.txt", nethttp.StatusOK, "hello\n"},
+		{"a subtree below the mount", "/tree/deep/page.txt", nethttp.StatusOK, "deep\n"},
+		{"a name no file answers", "/one/nope.txt", nethttp.StatusNotFound, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequest(nethttp.MethodGet, tc.path, nil))
+			if w.Code != tc.status {
+				t.Fatalf("status %d, want %d (body %q)", w.Code, tc.status, w.Body.String())
+			}
+			if tc.want != "" && w.Body.String() != tc.want {
+				t.Errorf("body %q, want %q", w.Body.String(), tc.want)
+			}
+		})
+	}
+}
+
+// TestClampAbsorbsAClimb pins the boundary both spellings answer behind: a
+// path climbing out of the source filesystem resolves back into it.
+//
+// The handler passes the path as a literal, because that is where a climb
+// reaches the binding. net/http's mux cleans a request path before it routes
+// and a "/.." in a URL never arrives at a handler. A value the script built
+// from a query, a header or a literal arrives whole.
+func TestClampAbsorbsAClimb(t *testing.T) {
+	t.Parallel()
+	root := tree(t)
+	if err := os.WriteFile(filepath.Join(root, "inside.txt"), []byte("inside\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, handler := serveScriptIn(t, root, `<?php
+use Runtime\Go;
+import "net/http";
+
+$mux = new HTTP\Mux();
+
+// The climb resolves to inside.txt of the source tree, never to the host's.
+$mux->handle("GET /ps", function ($w, $r) {
+	HTTP\ServeFile($w, $r, "../../../inside.txt");
+});
+$mux->handle("GET /go", function ($w, $r) {
+	http.ServeFile($w, $r, "public/../../../../inside.txt");
+});
+$mux->handle("GET /host", function ($w, $r) {
+	HTTP\ServeFile($w, $r, "../../../etc/passwd");
+});
+
+define("MUX", $mux);`)
+
+	for _, path := range []string{"/ps", "/go"} {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(nethttp.MethodGet, path, nil))
+		if w.Code != nethttp.StatusOK || w.Body.String() != "inside\n" {
+			t.Errorf("%s answered %d %q, want 200 and the file of the tree", path, w.Code, w.Body.String())
+		}
+	}
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(nethttp.MethodGet, "/host", nil))
+	if w.Code != nethttp.StatusNotFound {
+		t.Errorf("a climb to the host's passwd answered %d %q, want 404", w.Code, w.Body.String())
 	}
 }
 
