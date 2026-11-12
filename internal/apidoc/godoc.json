@@ -118,6 +118,14 @@
         "options"
       ]
     },
+    "HTTP\\FileServer": {
+      "comment": [
+        "HTTP\\FileServer is the handler that answers with the file under $dir the request path names, which $mux-\u003ehandle takes in place of a callable."
+      ],
+      "params": [
+        "string"
+      ]
+    },
     "HTTP\\Mux": {
       "comment": [
         "HTTP\\Mux routes requests to the PHP functions that answer them. The mux is",
@@ -722,7 +730,9 @@
             "$handler is a callable: a closure, a method read off its receiver as",
             "$this-\u003efnName, or the name of a declared function. The mux calls it with the",
             "response writer and the request, what it echoes reaches the response, and a",
-            "throw becomes a 500. docs/use-cases/http-server.md is the contract."
+            "throw becomes a 500. A Go handler another binding returned, HTTP\\FileServer's",
+            "among them, registers unchanged and answers no PHP at all.",
+            "docs/use-cases/http-server.md is the contract."
           ],
           "params": [
             "pattern",
