@@ -10,6 +10,11 @@ vendor
 *.cov
 /bin
 
+# What the release scripts write: the note of each tag, the binaries built from
+# it and the detached worktree they were built in. The note is published to the
+# release and read back from there, never committed.
+/build
+
 # Coverage profiles, both Go and PHP, written here by the test job and by a
 # server started with --cover. The directory is committed empty because the
 # compose stack bind mounts it into the container.

@@ -237,8 +237,31 @@ tasks:
   publish:
     desc: "Publish the release: the binaries, the generated documents, the image"
     cmds:
+      - task: release:notes
+      - task: release:binaries
       - task: release:publish
       - task: release:docs
+
+  # The shared release skill builds through docker and names one tag. These two
+  # read git: every tag with no release, built from its own source with go
+  # build alone. scripts/release.sh --help states the flags.
+  release:notes:
+    desc: "Write build/release-notes/<tag>.md for every tag, the summary from claude"
+    passthru: true
+    cmds:
+      - ./scripts/update-changelog.sh
+
+  release:binaries:
+    desc: "Build and verify the static binaries of every tag with no release"
+    passthru: true
+    cmds:
+      - ./scripts/release.sh --build-only
+
+  release:missing:
+    desc: "Build and publish every tag with no GitHub release, binaries and notes"
+    passthru: true
+    cmds:
+      - ./scripts/release.sh
 
   release:docs:
     desc: "Attach the generated documents to the GitHub release for the newest tag"
