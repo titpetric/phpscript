@@ -11,6 +11,10 @@ import (
 // Aborted.
 func Register(rt *runner.Runtime) {
 	Set.Register(rt)
+	// The three file-serving names resolve through stdlib/ps/http, which clamps
+	// a path to the source filesystem. net/http's own ServeFile reads the host
+	// filesystem, and no binding of this runtime does.
+	pshttp.RegisterGoNames(rt, Namespace)
 	// Runtime\Go\Net\HTTP\ServeMux routes requests to PHP callables with net/http's patterns.
 	rt.RegisterConstructor(Namespace+`\ServeMux`, func() *pshttp.Mux { return pshttp.NewMux(rt) })
 	// Runtime\Go\Net\HTTP\Mux is ServeMux under the name phpscript spells it.
