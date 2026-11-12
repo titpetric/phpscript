@@ -58,10 +58,15 @@ func NewMountedMux(rt *runner.Runtime, mount func(pattern string, handler nethtt
 // $handler is a callable: a closure, a method read from its receiver, spelled
 // `$this->fnName`, or the name of a declared function. The mux calls it with the
 // response writer and the request. Its echo reaches the response. A throw
-// becomes a 500. docs/use-cases/http-server.md is the contract.
+// becomes a 500. A Go handler another binding returned, HTTP\FileServer's among
+// them, registers unchanged and answers no PHP at all.
+// docs/use-cases/http-server.md is the contract.
 func (m *Mux) Handle(pattern string, handler any) error {
 	if pattern == "" {
 		return fmt.Errorf("HTTP\\Mux::handle: pattern is required")
+	}
+	if given, ok := handler.(nethttp.Handler); ok {
+		return m.handleGo(pattern, given)
 	}
 	// Resolved here: a handler that cannot run on another runtime is an error
 	// where the script writes the route, ahead of a 500 on the first request.
@@ -90,13 +95,24 @@ func (m *Mux) Handle(pattern string, handler any) error {
 		}
 		m.root.answer(callable, w, r)
 	})
+	return m.register(pattern, serve)
+}
+
+func (m *Mux) handleGo(pattern string, handler nethttp.Handler) error {
+	if len(m.middleware) > 0 {
+		return fmt.Errorf("HTTP\\Mux::handle: %q: a Go handler takes no PHP middleware", pattern)
+	}
+	return m.register(pattern, handler)
+}
+
+func (m *Mux) register(pattern string, handler nethttp.Handler) error {
 	if m.root.mount != nil {
-		if err := m.root.mount(pattern, serve); err != nil {
+		if err := m.root.mount(pattern, handler); err != nil {
 			return fmt.Errorf("HTTP\\Mux::handle: %w", err)
 		}
 		return nil
 	}
-	m.root.mux.Handle(pattern, serve)
+	m.root.mux.Handle(pattern, handler)
 	return nil
 }
 
