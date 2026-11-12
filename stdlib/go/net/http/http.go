@@ -11,7 +11,9 @@ import (
 	gohttp "net/http"
 
 	"github.com/titpetric/phpscript/modelutil"
+	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
+	pshttp "github.com/titpetric/phpscript/stdlib/ps/http"
 )
 
 // Namespace is the area the import installs.
@@ -60,5 +62,11 @@ var Set = bindings.For("net/http").
 	Type(gohttp.Client{})
 
 func init() {
-	Set.Install()
+	// The three file-serving names resolve through stdlib/ps/http, which
+	// clamps a path to the source filesystem. net/http's own ServeFile reads
+	// the host filesystem, and no binding of this runtime does.
+	runner.RegisterNamespace(Namespace, func(rt *runner.Runtime) {
+		Set.Register(rt)
+		pshttp.RegisterGoNames(rt, Namespace)
+	})
 }

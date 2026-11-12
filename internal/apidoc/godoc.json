@@ -123,7 +123,7 @@
         "HTTP\\FileServer is the handler that answers with the file under $dir the request path names, which $mux-\u003ehandle takes in place of a callable."
       ],
       "params": [
-        "dir"
+        "string"
       ]
     },
     "HTTP\\Mux": {

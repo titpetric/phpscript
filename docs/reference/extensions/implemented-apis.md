@@ -2437,12 +2437,12 @@ function imagetypes(): int
 
 ```php
 // HTTP\ServeFile answers $r with the file at $path, writing the content type, the byte range and the conditional headers net/http writes for one file.
-function HTTP\ServeFile(mixed $w, mixed $r, string $path): void
+function HTTP\ServeFile(mixed $value1, mixed $value2, string $string): void
 ```
 
 ```php
 // HTTP\StripPrefix answers through $handler with $prefix cut off the request path, which a file server registered on a subtree needs.
-function HTTP\StripPrefix(string $prefix, mixed $handler): mixed
+function HTTP\StripPrefix(string $string, mixed $value): object
 ```
 
 #### Runtime\PS\HTTP\SAPI
@@ -2912,7 +2912,7 @@ Area `Runtime\PS\HTTP\Files`.
 // HTTP\FileServer is the handler that answers with the file under $dir the request path names, which $mux->handle takes in place of a callable.
 class HTTP\FileServer
 {
-    public function __construct(string $dir) {}
+    public function __construct(string $string) {}
 }
 ```
 
