@@ -2433,6 +2433,18 @@ function imagetypes(): int
 
 ### Runtime\PS\HTTP
 
+#### Runtime\PS\HTTP\Files
+
+```php
+// HTTP\ServeFile answers $r with the file at $path, writing the content type, the byte range and the conditional headers net/http writes for one file.
+function HTTP\ServeFile(mixed $w, mixed $r, string $path): void
+```
+
+```php
+// HTTP\StripPrefix answers through $handler with $prefix cut off the request path, which a file server registered on a subtree needs.
+function HTTP\StripPrefix(string $prefix, mixed $handler): mixed
+```
+
 #### Runtime\PS\HTTP\SAPI
 
 ```php
@@ -2890,6 +2902,20 @@ class HTTP\Client
 }
 ```
 
+### `HTTP\FileServer`
+
+Registered from `stdlib/ps/http`.
+
+Area `Runtime\PS\HTTP\Files`.
+
+```php
+// HTTP\FileServer is the handler that answers with the file under $dir the request path names, which $mux->handle takes in place of a callable.
+class HTTP\FileServer
+{
+    public function __construct(string $dir) {}
+}
+```
+
 ### `HTTP\Mux`
 
 Registered from `stdlib/ps/http`.
@@ -2921,7 +2947,9 @@ class HTTP\Mux
      * $handler is a callable: a closure, a method read off its receiver as
      * $this->fnName, or the name of a declared function. The mux calls it with the
      * response writer and the request, what it echoes reaches the response, and a
-     * throw becomes a 500. docs/use-cases/http-server.md is the contract.
+     * throw becomes a 500. A Go handler another binding returned, HTTP\FileServer's
+     * among them, registers unchanged and answers no PHP at all.
+     * docs/use-cases/http-server.md is the contract.
      */
     public function handle(string $pattern, mixed $handler): void {}
 

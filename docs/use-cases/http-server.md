@@ -92,6 +92,28 @@ echo "this reaches the response too\n";
 
 A handler that throws is one request's problem: the runtime reports it to its error sink and answers with a 500 if nothing has gone out yet, and the server goes on.
 
+## Serving files
+
+`HTTP\ServeFile($w, $r, $path)` answers one request with one file, writing the content type, the byte range and the conditional headers `net/http` writes for a file:
+
+```php
+$mux->handle("GET /files/{name...}", function ($w, $r) {
+    HTTP\ServeFile($w, $r, "public/" . $r->path_value("name"));
+});
+```
+
+A whole subtree needs no PHP handler. `new HTTP\FileServer($dir)` is a `net/http` handler, `$mux->handle` registers one in place of a callable, and `HTTP\StripPrefix($prefix, $handler)` cuts the mount off the path the way `net/http` does:
+
+```php
+$mux->handle("GET /assets/", HTTP\StripPrefix("/assets/", new HTTP\FileServer("public")));
+```
+
+That route runs no PHP per request and takes no worker: the mux registers the Go handler itself and that handler answers. The mux refuses a Go handler under a `use` middleware, on the line the route is on, because `use` calls a middleware with the handler and no script can call a Go value.
+
+A path resolves against the source filesystem the script itself reads, and a name climbing out of the root resolves back under the root: `../../etc/passwd` names a file of the tree or no file at all. The tree is the script's own: a `FileServer` over the root publishes the sources under it, and the directory to name is the one holding what the server is for. `Runtime\PS\HTTP\Files` is the area, and a host that selects areas leaves it out to register no file serving at all.
+
+`FileServer` lists a directory holding no `index.html`, as `net/http` does.
+
 ## Groups and middleware
 
 `$mux->use($middleware)` wraps the handlers registered after it, and `$mux->group($fn)` calls `$fn` with a mux that shares the routes of the one it came from and starts with its middleware. A `use` inside the group applies to the group alone, which isolates a module's routes from the rest of the router. A middleware takes the next handler and returns the handler that wraps it, the shape `chi` has:
