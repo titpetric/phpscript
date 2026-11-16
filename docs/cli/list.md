@@ -31,6 +31,14 @@ phpscript list --areas 'Runtime\PX'     # The overlay
 phpscript list --areas --json           # As data
 ```
 
+`--runtime` selects the namespace the listing reports, and defaults to `runner.runtime` from the configuration. `--runtime=go` reports `Runtime\Go` alone: the builtins, the classes and constants, and every package area an import can reach. The throwable classes still answer, because the language throws under either runtime.
+
+```bash
+phpscript list --bindings --runtime=go          # The go surface
+phpscript list --areas --runtime=go             # Runtime\Go and its packages
+phpscript -f phpscript.yml list --bindings      # The runtime the file configures
+```
+
 `--classes` answers about a class what `go doc` answers about a Go type, in PHP spelling: the class docblock, then the properties the bound Go type holds, then the constructor and the method declarations. Every declaration ends at the `;` with no body, because the implementation is Go and no PHP a reader could open. With no arguments it prints every class a script can construct; with arguments it prints those, under the spelling on the command line.
 
 ```bash

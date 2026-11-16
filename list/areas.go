@@ -18,10 +18,15 @@ type AreaRow struct {
 	Replaces  []string `json:"replaces,omitempty"`
 }
 
-// Areas lists the binding areas in install order, narrowed to the namespaces named.
-func Areas(namespaces ...string) []AreaRow {
+// Areas lists the binding areas in install order, narrowed to the runtime and
+// the namespaces named.
+func Areas(options runner.Options, namespaces ...string) []AreaRow {
+	selected := options.SelectedAreas()
 	rows := []AreaRow{}
 	for _, info := range stdlib.Areas(stdlib.All) {
+		if len(selected) > 0 && !inAny(info.Name, selected) {
+			continue
+		}
 		if len(namespaces) > 0 && !inAny(info.Name, namespaces) {
 			continue
 		}

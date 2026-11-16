@@ -11,6 +11,7 @@ import (
 
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 	"github.com/titpetric/phpscript/internal/apidoc"
+	"github.com/titpetric/phpscript/runner"
 )
 
 // TestRunListsPaths covers the default behaviour: a markdown table of the PHP
@@ -268,25 +269,43 @@ func TestRunAPIJSON(t *testing.T) {
 	}
 }
 
+// TestRunRuntimeGo covers --runtime=go: the go names and no php function.
+func TestRunRuntimeGo(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	if err := runRuntime(&out, runner.Options{Runtime: runner.RuntimeGo}, nil, true, false, false, false); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{`Runtime\Go\make`, `Runtime\Go\Strings\ToUpper`, `Runtime\Go\Net\HTTP\ServeMux`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output does not contain %q", want)
+		}
+	}
+	if strings.Contains(got, "| function | strlen") {
+		t.Error("the go listing holds a php function")
+	}
+}
+
 // TestRunAreas covers --areas: the table names the areas, a namespace
 // argument narrows it, JSON holds the rows, and mixing it with another
 // listing fails.
 func TestRunAreas(t *testing.T) {
 	var out strings.Builder
-	if err := runAreas(&out, []string{`Runtime\PS\Core`}, false, false); err != nil {
+	if err := runAreas(&out, runner.Options{}, []string{`Runtime\PS\Core`}, false, false); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), `Runtime\PS\Core\`) || strings.Contains(out.String(), `Runtime\PS\Files`) {
 		t.Errorf("a Runtime\\PS\\Core filter listed the wrong areas:\n%.300s", out.String())
 	}
 	out.Reset()
-	if err := runAreas(&out, nil, false, true); err != nil {
+	if err := runAreas(&out, runner.Options{}, nil, false, true); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), `"layer": "ps"`) {
 		t.Errorf("JSON misses the layer:\n%.300s", out.String())
 	}
-	if err := runAreas(&out, nil, true, false); err == nil {
+	if err := runAreas(&out, runner.Options{}, nil, true, false); err == nil {
 		t.Error("--areas mixed with --bindings was accepted")
 	}
 }
