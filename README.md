@@ -2,22 +2,23 @@
 
 This is a PHP interpreter written in Go, with a bytecode backend beside it and a built-in HTTP server. It runs a subset of the language and of the standard library - `phpscript list --bindings` prints the bindings this build holds, and `phpscript info` counts them - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it won't build and [the language reference](./docs/reference/README.md) for what it does not run yet.
 
-## One API, five runtimes
+## One API, six runtimes
 
-One set of endpoints written five ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `669f5c9` by `scripts/bench-http.sh`:
+One set of endpoints written six ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `51683835` by `scripts/bench-http.sh`:
 
-| Runtime                                                                                                    | `/hello`               | p90 us | p99 us |
-|------------------------------------------------------------------------------------------------------------|------------------------|--------|--------|
-| [`goserver`](./testdata/goserver/README.md), net/http and no VM, the floor                                 | 26719 req/s, 35 us/req | 41     | 106    |
-| [`phpscript-http-bridge`](./testdata/phpscript-http-bridge/README.md), a PHP program that is the server    | 19441 req/s, 47 us/req | 56     | 161    |
-| [`phpscript-service`](./testdata/phpscript-service/README.md), `@route` endpoints under `phpscript server` | 13089 req/s, 70 us/req | 87     | 291    |
-| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                              | 2525 req/s, 373 us/req | 466    | 725    |
-| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                             | 2017 req/s, 472 us/req | 562    | 801    |
+| Runtime                                                                                                                | `/hello`               | p90 us | p99 us |
+|------------------------------------------------------------------------------------------------------------------------|------------------------|--------|--------|
+| [`goserver`](./testdata/goserver/README.md), net/http and no VM, the floor                                             | 25945 req/s, 35 us/req | 42     | 120    |
+| [`phpscript-http-bridge`](./testdata/phpscript-http-bridge/README.md), a PHP program that is the server                | 19048 req/s, 48 us/req | 58     | 214    |
+| [`phpscript-go-runtime-server`](./testdata/phpscript-go-runtime-server/README.md), the same server under `runtime: go` | 19470 req/s, 47 us/req | 57     | 197    |
+| [`phpscript-service`](./testdata/phpscript-service/README.md), `@route` endpoints under `phpscript server`             | 12271 req/s, 73 us/req | 95     | 340    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                                          | 2424 req/s, 380 us/req | 493    | 970    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                                         | 2025 req/s, 469 us/req | 556    | 809    |
 
-Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge` and `phpscript-service` answer under two different execution models, Path B and Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
+Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
 
 ```sh
-BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
+BENCH_TARGETS="goserver bridge goruntime service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 scripts/benchmark.php
 ```
 
