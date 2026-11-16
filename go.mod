@@ -15,7 +15,7 @@ require (
 	github.com/titpetric/cli v0.7.0
 	github.com/titpetric/oida v0.5.0
 	github.com/titpetric/pdo v0.2.5
-	github.com/titpetric/platform v0.9.1
+	github.com/titpetric/platform v0.9.2
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
 	golang.org/x/term v0.48.0
