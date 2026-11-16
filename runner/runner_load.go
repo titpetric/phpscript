@@ -44,7 +44,7 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 // sees. An empty name is source with no file behind it.
 func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 	rt.UpdateStatus(telemetry.StateReading)
-	program, err := parser.ParseFile(name, src)
+	program, err := parser.ParseFileOptions(name, src, parser.Options{GoRuntime: rt.opts.GoRuntime()})
 	if err != nil {
 		rt.UpdateStatus(telemetry.StateError)
 	}

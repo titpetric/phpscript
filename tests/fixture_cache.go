@@ -202,7 +202,7 @@ func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *ru
 	c := runner.NewIncludeCache()
 	w.include[root] = c
 	for _, tree := range f.precompileFS() {
-		runner.Precompiler{Root: tree, Includes: c, Exprs: expr}.Run()
+		runner.Precompiler{Root: tree, Includes: c, Exprs: expr, GoRuntime: f.runnerOptions().GoRuntime()}.Run()
 	}
 	return c
 }

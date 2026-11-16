@@ -2,12 +2,12 @@
 
 The runtime's bindings answer under namespaces called areas. An area is a group of functions, classes and constants that one Go installer registers, named by a namespace path. Three namespaces hold them:
 
-| Namespace      | Holds                                                                    | Installed                      |
-|----------------|--------------------------------------------------------------------------|--------------------------------|
-| `Runtime\PS`   | phpscript's own surface: php's standard library and the extensions       | by default, first              |
-| `Runtime\PX`   | the phpx overlay: the php compatibility work installed over `Runtime\PS` | by default, after `Runtime\PS` |
-| `Runtime\Go`   | a subset of go's standard library, written in php                        | by `use`, per file             |
-| `Runtime\None` | no area: the language alone, no binding                                  | when `runner.areas` names it   |
+| Namespace      | Holds                                                                    | Installed                                  |
+|----------------|--------------------------------------------------------------------------|--------------------------------------------|
+| `Runtime\PS`   | phpscript's own surface: php's standard library and the extensions       | by default, first                          |
+| `Runtime\PX`   | the phpx overlay: the php compatibility work installed over `Runtime\PS` | by default, after `Runtime\PS`             |
+| `Runtime\Go`   | a subset of go's standard library, written in php                        | by `use` per file, or `runner.runtime: go` |
+| `Runtime\None` | no area: the language alone, no binding                                  | when `runner.areas` names it               |
 
 `phpscript list --areas` prints the areas of a build with what each defines.
 
@@ -86,6 +86,8 @@ That runtime installs `Runtime\PS` and no overlay. A deeper name narrows further
 
 A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects profiles, such as `secure` and `exec`, and the two compose.
 
+`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and every file reads as though it imported the namespace. The configuration refuses a non-empty `runner.areas` beside it. [The Go runtime](go-runtime.md) is the surface.
+
 ## Go's standard library, opt-in
 
 `Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)) and the areas below it map go's import paths:
@@ -96,9 +98,12 @@ A name outside the installed areas stays undefined, and `function_exists` answer
 | `Runtime\Go\Path`          | `path`          | `Base`, `Dir`, `Ext`, `Clean`, `Join`, `Match`                                     |
 | `Runtime\Go\Slices`        | `slices`        | `Contains`, `Index`, `Sort`, `Reverse`, `Max`, `Min`, `Compact`, `Concat`, `Equal` |
 | `Runtime\Go\Maps`          | `maps`          | `Keys`, `Values`, `Clone`, `Copy`, `Equal`, in the order the array keeps           |
-| `Runtime\Go\Fmt`           | `fmt`           | `Sprintf`, `Sprint`, `Sprintln`                                                    |
+| `Runtime\Go\Fmt`           | `fmt`           | `Sprintf`, `Sprint`, `Sprintln`, `Fprintf`                                         |
 | `Runtime\Go\IO`            | `io`            | `ReadAll`, `ReadFull`, over a reader a binding answered with                       |
-| `Runtime\Go\Net\HTTP`      | `net/http`      | `Get`, `Head`, `NewRequest`, `StatusText`, the methods and the status codes        |
+| `Runtime\Go\Net\HTTP`      | `net/http`      | `Get`, `Head`, `NewRequest`, `StatusText`, `ServeMux`, `Server`, `Aborted`         |
+| `Runtime\Go\Os`            | `os`            | `Getenv`, `Stderr`                                                                 |
+| `Runtime\Go\Strconv`       | `strconv`       | `Atoi`, `Itoa`                                                                     |
+| `Runtime\Go\Time`          | `time`          | `Sleep`, with a string duration such as `"100ms"`                                  |
 | `Runtime\Go\Encoding\JSON` | `encoding/json` | `Marshal`, `Unmarshal`, `Valid`                                                    |
 | `Runtime\Go\Database\SQL`  | `database/sql`  | `Open` a connection the host registered, never a DSN from the script               |
 

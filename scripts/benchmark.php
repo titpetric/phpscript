@@ -35,7 +35,7 @@
 // prints no part of them.
 
 $FLAGS = array(
-	"targets" => "goserver,phpscript-http-bridge,phpscript-service,php-vanilla-apache,php-vanilla-nginx",
+	"targets" => "goserver,phpscript-http-bridge,phpscript-go-runtime-server,phpscript-service,php-vanilla-apache,php-vanilla-nginx",
 	"concurrency" => "1,4",
 	"segments" => "6",
 	"duration" => "3s",
@@ -102,6 +102,11 @@ function environments() {
 		"phpscript-http-bridge" => array(
 			"kind" => "logged",
 			"command" => "phpscript run testdata/phpscript-http-bridge/server.php",
+			"pattern" => "|serving on http://([^ ]+) |",
+		),
+		"phpscript-go-runtime-server" => array(
+			"kind" => "logged",
+			"command" => "phpscript -f testdata/phpscript-go-runtime-server/phpscript.yml run testdata/phpscript-go-runtime-server/server.php",
 			"pattern" => "|serving on http://([^ ]+) |",
 		),
 		"phpscript-service" => array(

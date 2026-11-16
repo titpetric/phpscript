@@ -244,6 +244,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Value conversion](extensions/bindings.md#value-conversion)
   - [HTTP binding benchmark](extensions/bindings.md#http-binding-benchmark)
 - [Go runtime](extensions/go-runtime.md) - Writing Go's own values in a script - slices, maps and sized integers - for the code that calls Go bindings.
+  - [The configuration key](extensions/go-runtime.md#the-configuration-key)
   - [Builtins](extensions/go-runtime.md#builtins)
   - [Conversions](extensions/go-runtime.md#conversions)
   - [Typed values](extensions/go-runtime.md#typed-values)

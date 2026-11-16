@@ -24,17 +24,30 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
+// Options configures a parse.
+type Options struct {
+	// GoRuntime reads the source as though it imported Runtime\Go: the go
+	// builtins, the []T type and the import statement. The runner sets it from
+	// runner.runtime.
+	GoRuntime bool
+}
+
 // Parse compiles PHP source into a model.Program.
 func Parse(src string) (*model.Program, error) {
-	return parse(src, "")
+	return ParseFileOptions("", src, Options{})
 }
 
 // ParseFile compiles src as the contents of name.
 func ParseFile(name, src string) (*model.Program, error) {
-	return parse(src, name)
+	return ParseFileOptions(name, src, Options{})
 }
 
-func parse(src, file string) (*model.Program, error) {
+// ParseFileOptions compiles src as the contents of name under opts.
+func ParseFileOptions(name, src string, opts Options) (*model.Program, error) {
+	return parse(src, name, opts)
+}
+
+func parse(src, file string, opts Options) (*model.Program, error) {
 	toks, err := newLexer(src).run()
 	if err != nil {
 		return nil, err
@@ -47,7 +60,11 @@ func parse(src, file string) (*model.Program, error) {
 
 	// One span per statement; statements run around one per sixteen tokens and
 	// the hint saves the map's rehash-and-copy cycle (rule 6).
-	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan, len(toks)/16+8)}
+	p := &parser{
+		toks:      toks,
+		goRuntime: opts.GoRuntime,
+		spans:     make(map[model.Stmt]model.SourceSpan, len(toks)/16+8),
+	}
 	if file != "" {
 		p.file, p.dir = file, path.Dir(file)
 	}

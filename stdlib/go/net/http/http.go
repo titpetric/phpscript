@@ -3,14 +3,16 @@
 // and calls `http.Get($url)`; the default runtime installs none of these names.
 //
 // The area reaches any address the host can route to, as `HTTP\Client` does.
-// The server half stays out: a php handler answers through `HTTP\Server`,
-// which owns the re-entry the runtime needs (docs/use-cases/http-server.md).
+// The server half is `HTTP\Mux` and `HTTP\Server`, which own the re-entry the
+// runtime needs (docs/use-cases/http-server.md) and answer here as ServeMux and
+// Server for a runtime that selected Runtime\Go.
 package http
 
 import (
 	gohttp "net/http"
 
 	"github.com/titpetric/phpscript/modelutil"
+	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
@@ -60,5 +62,5 @@ var Set = bindings.For("net/http").
 	Type(gohttp.Client{})
 
 func init() {
-	Set.Install()
+	runner.RegisterNamespace(Namespace, Register)
 }

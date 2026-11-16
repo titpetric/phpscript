@@ -20,7 +20,7 @@ echo $resp->StatusCode, " ", io.ReadAll($resp->Body);
 
 One path per statement, quoted, the path go writes. The statement is the go spelling of the `use` of an area: `import "net/http"` installs `Runtime\Go\Net\HTTP` on the runtime that runs the file, and `http.NewRequest` resolves to `Runtime\Go\Net\HTTP\NewRequest` while the file parses. The name a script addresses the package by is the path's last segment.
 
-A file that writes no `use Runtime\Go;` reads `import` as a plain name, and the statement, the dot and the packages stay out of php's grammar. php rejects the file either way: keep the import out of source that must also run on php.
+A file that writes no `use Runtime\Go;`, under a runtime not configured with `runner.runtime: go`, reads `import` as a plain name, and the statement, the dot and the packages stay out of php's grammar. php rejects the file either way: keep the import out of source that must also run on php.
 
 ## The dot
 

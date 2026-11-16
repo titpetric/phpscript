@@ -29,7 +29,7 @@ func precompile(files *handler, name string) {
 		return
 	}
 
-	pass := runner.Precompiler{Root: files.root, Includes: files.includeCache}
+	pass := runner.Precompiler{Root: files.root, Includes: files.includeCache, GoRuntime: files.runnerOptions.GoRuntime()}
 	if files.flatstack {
 		// Bytecode for a site running the interpreter is resident memory that
 		// no request executes; only a site that reads it pays the flat compile.

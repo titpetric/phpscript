@@ -6,7 +6,31 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/runner"
 )
+
+// TestRuntime covers the runner key and the words it refuses.
+func TestRuntime(t *testing.T) {
+	t.Parallel()
+	cfg, _, err := config.OverlayBytes(config.New(), "phpscript.yml", []byte("runner:\n  runtime: go\n"), nil, "")
+	if err != nil {
+		t.Fatalf("overlay: %v", err)
+	}
+	if cfg.Runner.Runtime != runner.RuntimeGo {
+		t.Errorf("runtime decoded as %q", cfg.Runner.Runtime)
+	}
+	if err := cfg.Runner.Check(); err != nil {
+		t.Errorf("go runtime: %v", err)
+	}
+
+	cfg, _, err = config.OverlayBytes(config.New(), "phpscript.yml", []byte("runner:\n  runtime: php\n"), nil, "")
+	if err != nil {
+		t.Fatalf("overlay: %v", err)
+	}
+	if err := cfg.Runner.Check(); err == nil {
+		t.Error("an unknown runtime passed the check")
+	}
+}
 
 // TestTelemetry covers the inline decode of the block. The struct embeds the
 // oida options with `yaml:",inline"` and path and driver are at one level in a

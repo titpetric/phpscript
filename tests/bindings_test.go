@@ -1,16 +1,60 @@
 package tests_test
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/tests"
 )
+
+// TestRuntimeGoReplacesStandardLibrary covers the names each mode holds.
+func TestRuntimeGoReplacesStandardLibrary(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{Runtime: runner.RuntimeGo})
+	stdlib.Register(rt)
+	prog, err := rt.Load(`<?php echo "ok";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if rt.FunctionExists("strlen") {
+		t.Error("strlen survived the go runtime")
+	}
+	if !rt.FunctionExists(`Runtime\Go\make`) {
+		t.Error("the go runtime installed no builtins")
+	}
+}
+
+// TestGoRuntimeServerConfig covers the testdata application's configuration
+// and source together.
+func TestGoRuntimeServerConfig(t *testing.T) {
+	dir := filepath.Join("..", "testdata", "phpscript-go-runtime-server")
+	cfg, err := config.Load(filepath.Join(dir, "phpscript.yml"))
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if !cfg.Runner.GoRuntime() {
+		t.Fatalf("runtime is %q", cfg.Runner.Runtime)
+	}
+
+	options := cfg.Runner
+	options.RootFS = os.DirFS(dir)
+	rt := runner.New(io.Discard, options)
+	stdlib.Register(rt)
+	if _, err := rt.LoadFile("server.php"); err != nil {
+		t.Fatalf("parse server: %v", err)
+	}
+}
 
 // newBindingRuntime builds a runtime with the stdlib and the example bindings
 // from bindings.go installed.

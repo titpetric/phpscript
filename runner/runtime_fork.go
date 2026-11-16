@@ -85,6 +85,10 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 		child.prepare = rt.prepare
 		rt.prepare(child)
 	}
+	// The child installs what the parent imported: a worker answers the same names and constants.
+	for area := range rt.imported {
+		child.UseNamespace(area)
+	}
 	child.FreezeStdlib()
 
 	// The autoloaders, the one piece of script state a fork does hold. They

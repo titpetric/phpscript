@@ -23,7 +23,9 @@ var Set = bindings.For("fmt").
 	// Runtime\Go\Fmt\Sprint concatenates $args, with spaces between neighbours that are both not strings.
 	Bind("Sprint", gofmt.Sprint).
 	// Runtime\Go\Fmt\Sprintln concatenates $args with spaces between them and a newline behind.
-	Bind("Sprintln", gofmt.Sprintln)
+	Bind("Sprintln", gofmt.Sprintln).
+	// Runtime\Go\Fmt\Fprintf writes $args under $format to $w, a writer the script names.
+	Bind("Fprintf", gofmt.Fprintf)
 
 func init() {
 	Set.Install()

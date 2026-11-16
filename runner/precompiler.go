@@ -32,6 +32,9 @@ type Precompiler struct {
 	// Workers bounds how many files the pass parses at once. Zero is GOMAXPROCS,
 	// which is the parallelism the machine has for work that is all CPU.
 	Workers int
+
+	// GoRuntime parses every file as though it imported Runtime\Go.
+	GoRuntime bool
 }
 
 // Run parses and compiles the tree, and reports how many files it cached. The
@@ -121,7 +124,7 @@ func (p Precompiler) compile(name string) bool {
 	if err != nil {
 		return false
 	}
-	program, err := parser.ParseFile(rootPath(name), string(src))
+	program, err := parser.ParseFileOptions(rootPath(name), string(src), parser.Options{GoRuntime: p.GoRuntime})
 	if err != nil {
 		return false
 	}

@@ -1,0 +1,6 @@
+# The runtime the server runs under. go replaces Runtime\PS and Runtime\PX
+# with Runtime\Go, and every file reads as though it imported the namespace:
+# the go builtins, the []T type and the import statement.
+runner:
+  runtime: go
+  work_dir: "."

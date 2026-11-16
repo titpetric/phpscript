@@ -49,6 +49,11 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		rt.recordTraceError(err)
 	}()
 	rt.UpdateStatus(telemetry.StateProcessing)
+	// The configured runtime namespace installs here, before the prelude and
+	// before a program statement can reach one of its names.
+	if rt.opts.GoRuntime() {
+		rt.UseNamespace(NamespaceGo)
+	}
 	if err = rt.runPrelude(); err != nil {
 		return err
 	}

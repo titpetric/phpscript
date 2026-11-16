@@ -1,6 +1,6 @@
 # Go runtime
 
-A binding is a Go function, and the values it takes and returns are Go's: a slice, a map, an integer of a stated width. `use Runtime\Go;` writes those values in php source. `make` allocates the slice a binding reads, `uint8($n)` stays a uint8 across an assignment and a return, and `len` counts either side's collection.
+A binding is a Go function, and the values it takes and returns are Go's: a slice, a map, an integer of a stated width. `use Runtime\Go;` writes those values in php source. `make` allocates the slice a binding reads, `uint8($n)` stays a uint8 across an assignment and a return, and `len` counts either side's collection. The configuration key `runner.runtime: go` selects the namespace for the whole runtime, and no file writes the statement.
 
 The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. The import also admits the `[]T` type, which php has no spelling for.
 
@@ -8,7 +8,18 @@ An import is the more specific name, and `min`, `max` and `copy` shadow php's fu
 
 php's own `use Runtime\Go;` imports a name and no function with it: php aliases `Go\make()` onto `Runtime\Go\make()` and leaves a bare `min()` at php's. Binding the bare names is this runtime's addition, on the precedent of php's `use function Acme\min;`, which makes the short name the imported one and leaves `\min` for php's. phpscript reads the plain `use` alone; `use function Runtime\Go\min;` imports nothing here.
 
-The names arrive with the import and no other way. A file that imported none of them resolves `make` and `len` the way php does, `function_exists("make")` reports false, and the [implemented API inventory](implemented-apis.md) covers the surface php defines. An embedding host installs the area with `rt.UseNamespace("Runtime\\Go")`.
+The names arrive with the import, or with `runner.runtime: go` for every file, and no other way. A file that imported none of them, under a runtime configured for php, resolves `make` and `len` the way php does, `function_exists("make")` reports false, and the [implemented API inventory](implemented-apis.md) covers the surface php defines. An embedding host installs the area with `rt.UseNamespace("Runtime\\Go")`.
+
+## The configuration key
+
+`runner.runtime` takes `phpscript` or `go`, with `phpscript` the default. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and parses every file as though it wrote `use Runtime\Go;`: the builtins, the `[]T` type and the [import statement](go-imports.md). Under it, `strlen`, `phpinfo`, `getenv` and the rest of php's surface answer as undefined names. The configuration refuses a non-empty `runner.areas` beside `go`.
+
+```yaml
+runner:
+  runtime: go
+```
+
+The worked example is [`testdata/phpscript-go-runtime-server`](../../../testdata/phpscript-go-runtime-server/README.md).
 
 The `use` binds one statement as well: `import "net/http";` reaches go's own packages, and `http.NewRequest(...)` is a name of the area that binds them. [Go imports](go-imports.md) is that half.
 

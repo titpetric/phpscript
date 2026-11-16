@@ -227,3 +227,23 @@ func importPath(t *testing.T, src string) string {
 	}
 	return use.Imports[0].Path
 }
+
+// TestParseFileOptionsGoRuntime covers a file that writes no use statement.
+func TestParseFileOptionsGoRuntime(t *testing.T) {
+	prog, err := ParseFileOptions("x.php", `<?php import "strings"; echo strings.ToUpper("go");`, Options{GoRuntime: true})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	use, ok := prog.Stmts[0].(*model.Use)
+	if !ok || len(use.Imports) != 1 || use.Imports[0].Package != "strings" {
+		t.Fatalf("no import statement in the parse tree: %#v", prog.Stmts)
+	}
+
+	prog, err = ParseFileOptions("x.php", `<?php import "strings";`, Options{})
+	if err != nil {
+		t.Fatalf("parse without the mode: %v", err)
+	}
+	if _, ok := prog.Stmts[0].(*model.Use); ok {
+		t.Fatal("import parsed as a use statement without the mode")
+	}
+}
