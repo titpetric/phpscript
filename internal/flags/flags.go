@@ -116,10 +116,14 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 			return err
 		}
 		defer stop()
-		if err := run(ctx, args); err != nil {
-			return err
+		runErr := run(ctx, args)
+		// The heap profile lands whatever the command ended with: a server that
+		// stopped on a signal is the run an operator profiles.
+		profileErr := o.writeMemProfile()
+		if runErr != nil {
+			return runErr
 		}
-		return o.writeMemProfile()
+		return profileErr
 	}
 }
 
