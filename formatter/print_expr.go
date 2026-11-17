@@ -236,31 +236,50 @@ const (
 
 // goLit prints a go composite literal the way the source wrote it.
 func (p *printer) goLit(n *model.GoLit) string {
-	var b strings.Builder
+	open, closing := "[", "]"
 	switch {
 	case n.Map && n.KeyType != "":
-		b.WriteString("map[" + n.KeyType + "]" + n.ValType + "{")
+		open, closing = "map["+n.KeyType+"]"+n.ValType+"{", "}"
 	case n.Map:
-		b.WriteString("{")
+		open, closing = "{", "}"
 	case n.ValType != "":
-		b.WriteString(n.ValType + "{")
-	default:
-		b.WriteString("[")
+		open, closing = n.ValType+"{", "}"
 	}
-	closing := "}"
-	if !n.Map && n.ValType == "" {
-		closing = "]"
+	if len(n.Items) == 0 {
+		return open + closing
 	}
+	// Entries render one level in, the position an expanded literal prints
+	// them at, as arrayLit does.
+	p.depth++
+	parts := make([]string, len(n.Items))
+	keyed := false
+	expand := false
 	for i, it := range n.Items {
-		if i > 0 {
-			b.WriteString(", ")
-		}
+		part := p.expr(it.Val)
 		if it.Key != nil {
-			b.WriteString(p.expr(it.Key) + ": ")
+			keyed = true
+			part = p.expr(it.Key) + ": " + part
 		}
-		b.WriteString(p.expr(it.Val))
+		expand = expand || strings.Contains(part, "\n")
+		parts[i] = part
 	}
-	b.WriteString(closing)
+	p.depth--
+	inline := open + strings.Join(parts, ", ") + closing
+	expand = expand ||
+		(keyed && len(n.Items) > arrayLitInlineItems) ||
+		p.depth*tabWidth+len(inline) > arrayLitWidth
+	if !expand {
+		return inline
+	}
+	var b strings.Builder
+	b.WriteString(open + "\n")
+	inner := p.indent() + "\t"
+	for _, part := range parts {
+		b.WriteString(inner)
+		b.WriteString(part)
+		b.WriteString(",\n")
+	}
+	b.WriteString(p.indent() + closing)
 	return b.String()
 }
 

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/titpetric/phpscript/list"
-	"github.com/titpetric/phpscript/parser"
 )
 
 // Paths formats each path argument in place, skipping what it cannot.
@@ -90,7 +89,7 @@ func format(path string, write bool) (bool, error) {
 // it. A printer defect that only shows up on the second pass would otherwise
 // reach the disk on the first.
 func verify(out string) error {
-	if _, err := parser.Parse(out); err != nil {
+	if _, err := parseSource(out); err != nil {
 		return fmt.Errorf("formatted output does not parse: %w", err)
 	}
 	again, err := Source(out)

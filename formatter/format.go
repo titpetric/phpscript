@@ -29,7 +29,7 @@ func Source(src string) (string, error) {
 	if !strings.HasPrefix(src, "<?php") {
 		return src, nil
 	}
-	prog, err := parser.Parse(src)
+	prog, err := parseSource(src)
 	if err != nil {
 		return "", err
 	}
@@ -42,6 +42,20 @@ func Source(src string) (string, error) {
 	}
 	out = strings.ReplaceAll(out, "\r\n", "\n")
 	return strings.ReplaceAll(out, "\r", "\n"), nil
+}
+
+// parseSource reads src as php, and as a go runtime file when php refuses it.
+func parseSource(src string) (*model.Program, error) {
+	prog, err := parser.Parse(src)
+	if err == nil {
+		return prog, nil
+	}
+	// A go runtime file spells what php cannot: `import "net/http";`, a
+	// `{key: value}` map and a `[]T{...}` literal.
+	if goProg, goErr := parser.ParseFileOptions("input.php", src, parser.Options{GoRuntime: true}); goErr == nil {
+		return goProg, nil
+	}
+	return nil, err
 }
 
 // splitShebang separates a leading `#!` interpreter line from the rest of the

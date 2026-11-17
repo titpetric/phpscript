@@ -36,6 +36,20 @@ func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
 	}
 }
 
+// TestGoRuntimeFileFormats covers a file the php parser refuses: one import
+// per line, a braced map and a typed literal, all printed back as written.
+func TestGoRuntimeFileFormats(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n\nimport \"net/http\";\nimport \"fmt\";\n\n$m = {\n\t\"a\": 1,\n\t\"b\": 2,\n\t\"c\": 3,\n};\n$rows = [][]string{[\"a\"]};\necho http.StatusOK;\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("formatting a go runtime file changed it:\n%s\nwant:\n%s", out, in)
+	}
+}
+
 // The go runtime's `&` and `*` print as written, on a read and on an
 // assignment through the pointer.
 func TestGoPointerOperatorsKeepTheirSpelling(t *testing.T) {
