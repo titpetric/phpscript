@@ -31,10 +31,10 @@ func Source(src string) (string, error) {
 	}
 	// A line that opens and closes PHP is template markup: the tag pair, the
 	// code between and the text around them are the page it renders. The
-	// printer rewrites statements. Such a line, and with it the template,
-	// stays as written.
+	// printer rewrites statements. A template's lines keep their contents, and
+	// only the leading indentation moves. See template.go.
 	if hasInlinePHPBlock(src) {
-		return src, nil
+		return alignTemplate(src), nil
 	}
 	prog, err := parseSource(src)
 	if err != nil {

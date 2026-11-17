@@ -70,17 +70,19 @@ func TestInlinePHPBlockIsKept(t *testing.T) {
 	}
 }
 
-// TestTemplateLinesKeepTheirSpelling covers the three-line template: every
-// line opens and closes PHP, and the file formats to itself.
-func TestTemplateLinesKeepTheirSpelling(t *testing.T) {
+// TestTemplateInlineBraceNestsLines covers the three-line template: the
+// `foreach` on the first line nests the line between, and the closing line
+// aligns with the one that opened the brace.
+func TestTemplateInlineBraceNestsLines(t *testing.T) {
 	t.Parallel()
 	in := "<?php foreach ($items as $item) { ?>\n    <li><?php echo $item; ?></li>\n<?php } ?>\n"
+	want := "<?php foreach ($items as $item) { ?>\n\t<li><?php echo $item; ?></li>\n<?php } ?>\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != in {
-		t.Fatalf("template lines changed:\n%q\nwant:\n%q", out, in)
+	if out != want {
+		t.Fatalf("template lines formatted as:\n%q\nwant:\n%q", out, want)
 	}
 }
 

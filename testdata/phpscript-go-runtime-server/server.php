@@ -78,9 +78,9 @@ class Server {
 		ob_start();
 		?>
 		<ul>
-		<?php foreach ($routes as $route) { ?>
-			<li><code><?php echo $route["path"]; ?></code> - <?php echo $route["what"]; ?></li>
-		<?php } ?>
+			<?php foreach ($routes as $route) { ?>
+				<li><code><?php echo $route["path"]; ?></code> - <?php echo $route["what"]; ?></li>
+			<?php } ?>
 		</ul>
 		<?php
 		$table = ob_get_clean();
