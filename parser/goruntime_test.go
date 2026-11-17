@@ -195,6 +195,30 @@ func TestGoRuntimeSliceHint(t *testing.T) {
 	}
 }
 
+// TestGoRuntimeSelectorHint covers the `pkg.Type` hint a file that imported
+// the go runtime writes on a parameter or a return type.
+func TestGoRuntimeSelectorHint(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct{ src, params, returns string }{
+		{"function f(http.Request $r): http.ResponseWriter {}", "http.Request", "http.ResponseWriter"},
+		{"function f([]http.Request $rs): []http.Cookie {}", "[]http.Request", "[]http.Cookie"},
+		{"function f(*http.Request $r): *http.Cookie {}", "*http.Request", "*http.Cookie"},
+		{"function f([]*http.Request $rs) {}", "[]*http.Request", ""},
+	} {
+		fn := mustParse(t, "<?php\nuse Runtime\\Go;\n"+test.src).Stmts[1].(*model.FuncDecl)
+		if fn.Params[0].Type != test.params || fn.ReturnType != test.returns {
+			t.Errorf("%s = %q / %q, want %q / %q", test.src, fn.Params[0].Type, fn.ReturnType, test.params, test.returns)
+		}
+	}
+
+	if _, err := Parse("<?php\nfunction f(http.Request $r) {}"); err == nil {
+		t.Error("a dotted hint parsed in a file that imported nothing")
+	}
+	if _, err := Parse("<?php\nfunction f(*http.Request $r) {}"); err == nil {
+		t.Error("a pointer hint parsed in a file that imported nothing")
+	}
+}
+
 // TestGoRuntimeImportSpellings covers the three ways a file can name the
 // namespace in a `use`, which the parser reads for the binding and the runtime
 // reads for the install.

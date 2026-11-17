@@ -48,7 +48,7 @@ class Server {
 
 	// $this->index is the method read without parentheses, a callable bound to
 	// this object, and handle() registers it.
-	function mount(): \Runtime\Go\Net\HTTP\ServeMux {
+	function mount(): http.ServeMux {
 		$mux = new http.ServeMux;
 
 		// '{$}' anchors the root; a bare 'GET /' is a ServeMux subtree.
@@ -63,7 +63,7 @@ class Server {
 
 	// The route table is one template call: ob_start() captures the echoed
 	// fragment and the page echoes what it returned.
-	function index($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function index(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "text/html; charset=utf-8");
 
 		$routes = array(
@@ -100,7 +100,7 @@ class Server {
 		<?php
 	}
 
-	function hello($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function hello(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "text/plain; charset=utf-8");
 		$name = $r->URL->Query()->Get("name");
 		if ($name === "") {
@@ -109,12 +109,12 @@ class Server {
 		echo "hello " . $name . "\n";
 	}
 
-	function showUser($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function showUser(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array("id" => $r->PathValue("id"), "path" => $r->URL->Path));
 	}
 
-	function echoRequest($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function echoRequest(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array(
 			"method" => $r->Method,
@@ -127,7 +127,7 @@ class Server {
 
 	// The ticks finish either way: the work is the transaction that already
 	// committed, and only the response nobody waits for is dropped.
-	function slow($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function slow(http.ResponseWriter $w, *http.Request $r): void {
 		http.IgnoreUserAbort();
 
 		$ticks = 0;
@@ -148,7 +148,7 @@ class Server {
 		echo "waited " . $ticks . " ticks, still connected\n";
 	}
 
-	function info($w, \Runtime\Go\Net\HTTP\Request $r): void {
+	function info(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array(
 			"sapi" => "go",
