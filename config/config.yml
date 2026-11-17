@@ -1,6 +1,7 @@
 # Includes, limits and trace level for every run. docs/configuration.md#runner names each key.
 runner:
   work_dir: "."
+  runtime: phpscript
   areas: []
   precompile: true
   trace_level: info

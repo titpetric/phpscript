@@ -17,6 +17,7 @@ Two commands read a second file called `phpscript.yml`, discovered by its positi
 ```yaml
 runner:
   work_dir: "."
+  runtime: phpscript
   precompile: true
   trace_level: info
   writable_paths: []
@@ -78,21 +79,24 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 
 `runner` applies to the `run` and `server` commands and to annotated routes created by the bundled server.
 
-| Key                       | Default | Purpose                                                                                                                                        |
-|---------------------------|--------:|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `work_dir`                |     `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
-| `precompile`              |  `true` | Parse and compile the source tree at startup rather than per request. See [Precompilation](#precompilation).                                   |
-| `trace_level`             |  `info` | How much of its work the interpreter reports: `off`, `info` or `debug`. See [Telemetry](./telemetry.md#trace-level).                           |
-| `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
-| `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
-| `upload_max_filesize`     |    `2M` | Largest file part a request may send. `$_FILES` reports a larger part as refused.                                                              |
-| `post_max_size`           |    `8M` | Largest request body the decoder reads. A larger body leaves `$_POST` and `$_FILES` empty.                                                     |
-| `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` sets on a stored upload. Octal, as `chmod()` takes it.                                                             |
-| `max_input_vars`          |  `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The decoder drops the rest. Negative is no limit.                                        |
-| `max_input_nesting_level` |    `64` | Deepest bracket chain a field name may have. The decoder drops a deeper field whole. Negative is no limit.                                     |
-| `memory_limit`            |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
-| `time_limit`              |     `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
-| `concurrency_limit`       |     `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
+| Key                       | Default     | Purpose                                                                                                                                        |
+|---------------------------|------------:|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `work_dir`                |         `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
+| `runtime`                 | `phpscript` | Namespace the runtime installs: `phpscript` installs `areas`, `go` installs `Runtime\Go` alone and reads every file as an import of it.        |
+| `precompile`              |      `true` | Parse and compile the source tree at startup rather than per request. See [Precompilation](#precompilation).                                   |
+| `trace_level`             |      `info` | How much of its work the interpreter reports: `off`, `info` or `debug`. See [Telemetry](./telemetry.md#trace-level).                           |
+| `writable_paths`          |        `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
+| `include`                 |        `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
+| `upload_max_filesize`     |        `2M` | Largest file part a request may send. `$_FILES` reports a larger part as refused.                                                              |
+| `post_max_size`           |        `8M` | Largest request body the decoder reads. A larger body leaves `$_POST` and `$_FILES` empty.                                                     |
+| `upload_file_mode`        |      `0644` | Mode `move_uploaded_file()` sets on a stored upload. Octal, as `chmod()` takes it.                                                             |
+| `max_input_vars`          |      `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The decoder drops the rest. Negative is no limit.                                        |
+| `max_input_nesting_level` |        `64` | Deepest bracket chain a field name may have. The decoder drops a deeper field whole. Negative is no limit.                                     |
+| `memory_limit`            |         `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
+| `time_limit`              |         `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
+| `concurrency_limit`       |         `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
+
+The `runtime` key selects the whole namespace. `phpscript` is the default and installs what `areas` names. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and registers no PHP throwable class: try/catch speaks go's `error`. The parser reads every file as though it wrote `use Runtime\Go;`: go's builtins, `[]T` and `import "pkg"`. The configuration refuses a non-empty `areas` beside `runtime: go`.
 
 ### Precompilation
 

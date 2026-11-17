@@ -41,25 +41,6 @@ type answerTracker struct {
 	callable *runner.Callable
 	request  *nethttp.Request
 	args     [2]any
-
-	// done is the channel the pool signals this run's completion through,
-	// built once per tracker and lent to every run it serves. See Done.
-	done chan struct{}
-}
-
-// Done lends the pool this tracker's completion channel, which makes the
-// tracker a runner.DoneJob and the submit costs no allocation.
-//
-// One buffered slot, emptied by the receive in answer and the next run the
-// tracker serves signals through the same channel. The lending's safety rule
-// is the free list's own: a tracker whose run answer did not see
-// finish never returns here and no channel a worker may still signal through
-// reaches a second request.
-func (a *answerTracker) Done() chan struct{} {
-	if a.done == nil {
-		a.done = make(chan struct{}, 1)
-	}
-	return a.done
 }
 
 // Run answers the request this tracker holds, on the worker's runtime, as the

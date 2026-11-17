@@ -2,6 +2,7 @@ package stdlib
 
 import (
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/ps/compat"
 )
 
 // Mount is Register narrowed to a profile: it installs only the binding areas
@@ -10,8 +11,13 @@ import (
 // engine. Mount installs the caller's extra bindings verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
-	registerErrors(rt)
-	registerExceptions(rt)
+	if rt.GoRuntime() {
+		// The go runtime keeps echo's output buffers; its errors are go's and it names no throwable class.
+		compat.RegisterBuffers(rt)
+	} else {
+		registerErrors(rt)
+		registerExceptions(rt)
+	}
 
 	for _, area := range runner.SelectAreas(runner.AreasFor(profile), rt.Areas()) {
 		area.Install(rt)

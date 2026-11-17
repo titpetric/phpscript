@@ -19,19 +19,21 @@ const GoNamespace = `Runtime\Go`
 // goBuiltins are the names the import binds where a script writes them
 // unqualified. An import is the more specific name: a file that imported the
 // go runtime wrote `min(...)` for go's, and `\min(...)` is php's, the way
-// `\strlen` is php's whatever the file imported. Three of these shadow a php
-// function - copy, min and max - and php's print is no function phpscript
-// registers at all.
+// `\strlen` is php's whatever the file imported. Four of these shadow a php
+// function - copy, getenv, min and max - and php's print is no function
+// phpscript registers at all.
 var goBuiltins = map[string]struct{}{
 	"append":  {},
 	"cap":     {},
 	"clear":   {},
 	"copy":    {},
 	"delete":  {},
+	"getenv":  {},
 	"len":     {},
 	"make":    {},
 	"max":     {},
 	"min":     {},
+	"numcpu":  {},
 	"panic":   {},
 	"print":   {},
 	"println": {},

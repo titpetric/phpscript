@@ -7,6 +7,7 @@ package sql
 
 import (
 	"context"
+	gosql "database/sql"
 
 	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
@@ -26,4 +27,6 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterFunc(Namespace+`\Open`, func(ctx context.Context, name string) (*database.Database, error) {
 		return database.Connect(rt, ctx, name)
 	})
+	// Runtime\Go\Database\SQL\ErrNoRows is the error Scan reports for a query that matched no row.
+	rt.SetConst(Namespace+`\ErrNoRows`, gosql.ErrNoRows)
 }

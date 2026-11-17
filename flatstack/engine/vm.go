@@ -228,11 +228,7 @@ func (st *execState) handle(runErr error) bool {
 		st.refWrites = frame.refWrites
 		st.iterators = frame.iterators
 	}
-	// A catch clause binds the throwable itself, not whatever forwarded
-	// it, and the host matches the declared type against the same value.
-	for errors.Unwrap(runErr) != nil {
-		runErr = errors.Unwrap(runErr)
-	}
+	// The host decides what a clause sees: the throwable itself, or the root cause.
 	var clauses []catchClause
 	if handler.group >= 0 {
 		clauses = st.program.catchGroups[handler.group]

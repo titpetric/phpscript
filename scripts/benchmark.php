@@ -35,7 +35,7 @@
 // prints no part of them.
 
 $FLAGS = array(
-	"targets" => "goserver,phpscript-http-bridge,phpscript-service,php-vanilla-apache,php-vanilla-nginx",
+	"targets" => "goserver,phpscript-http-bridge,phpscript-go-runtime-server,phpscript-service,php-vanilla-apache,php-vanilla-nginx",
 	"concurrency" => "1,4",
 	"segments" => "6",
 	"duration" => "3s",
@@ -90,6 +90,15 @@ function teardown() {
 	}
 }
 
+// vanilla_port reads the port a vanilla profile binds, or the fallback.
+function vanilla_port($name, $fallback) {
+	$port = getenv($name);
+	if ($port === false || $port === "") {
+		return $fallback;
+	}
+	return $port;
+}
+
 // environments describes each test environment: its directory, how it
 // starts, and where its address comes from once it has one.
 function environments() {
@@ -104,6 +113,11 @@ function environments() {
 			"command" => "phpscript run testdata/phpscript-http-bridge/server.php",
 			"pattern" => "|serving on http://([^ ]+) |",
 		),
+		"phpscript-go-runtime-server" => array(
+			"kind" => "logged",
+			"command" => "phpscript -f testdata/phpscript-go-runtime-server/phpscript.yml run testdata/phpscript-go-runtime-server/server.php",
+			"pattern" => "|serving on http://([^ ]+) |",
+		),
 		"phpscript-service" => array(
 			"kind" => "logged",
 			"command" => "phpscript server -f bin/benchmark-service.yml testdata/phpscript-service",
@@ -112,13 +126,13 @@ function environments() {
 		"php-vanilla-apache" => array(
 			"kind" => "compose",
 			"profile" => "apache",
-			"port" => "8098",
+			"port" => vanilla_port("VANILLA_PORT", "8098"),
 			"containers" => "phpscript-php-vanilla-apache",
 		),
 		"php-vanilla-nginx" => array(
 			"kind" => "compose",
 			"profile" => "nginx",
-			"port" => "8099",
+			"port" => vanilla_port("VANILLA_NGINX_PORT", "8099"),
 			"containers" => "phpscript-php-vanilla-nginx phpscript-php-vanilla-fpm",
 		),
 	);
@@ -223,8 +237,8 @@ function micros($token) {
 	return $token + 0;
 }
 
-// segment runs wrk once and reduces its report to the six numbers a row holds,
-// latencies in microseconds.
+// segment runs wrk once and reduces its report to the seven numbers a row
+// holds, latencies in microseconds.
 function segment($url, $threads, $conc, $duration, $lua) {
 	$command = "nice -n -20 wrk --latency -t " . $threads . " -c " . $conc . " --timeout 30s -d " . $duration;
 	if ($lua !== "") {
@@ -237,6 +251,7 @@ function segment($url, $threads, $conc, $duration, $lua) {
 	}
 
 	$row = array(
+		"mean" => 0,
 		"p50" => 0,
 		"p90" => 0,
 		"p99" => 0,
@@ -263,6 +278,10 @@ function segment($url, $threads, $conc, $duration, $lua) {
 		if ($distribution && $fields[0] === "99%") {
 			$row["p99"] = micros($fields[1]);
 			$distribution = false;
+		}
+
+		if ($fields[0] === "Latency") {
+			$row["mean"] = micros($fields[1]);
 		}
 
 		if ($fields[0] === "Requests/sec:") {
@@ -311,6 +330,7 @@ function median($values) {
 // collapse reduces a set of segments to one row: the median of each latency
 // column and of the request rate, and the sum of what went wrong.
 function collapse($segments) {
+	$mean = array();
 	$p50 = array();
 	$p90 = array();
 	$p99 = array();
@@ -318,6 +338,7 @@ function collapse($segments) {
 	$non2xx = 0;
 	$errors = 0;
 	foreach ($segments as $one) {
+		array_push($mean, $one["mean"]);
 		array_push($p50, $one["p50"]);
 		array_push($p90, $one["p90"]);
 		array_push($p99, $one["p99"]);
@@ -327,6 +348,7 @@ function collapse($segments) {
 	}
 
 	return array(
+		"mean" => median($mean),
 		"p50" => median($p50),
 		"p90" => median($p90),
 		"p99" => median($p99),
@@ -387,7 +409,8 @@ function start_logged($environment, $settings, $log) {
 // it. The other environments run at nice -n -20, and a default-priority server
 // on a shared box loses the CPU for milliseconds at a time.
 function start_compose($environment, $settings) {
-	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
+	$ports = "VANILLA_PORT=" . vanilla_port("VANILLA_PORT", "8098") . " VANILLA_NGINX_PORT=" . vanilla_port("VANILLA_NGINX_PORT", "8099");
+	$prefix = $ports . " VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
 	$compose = $prefix . "docker compose -f testdata/php-vanilla/compose.yml --profile " . $environment["profile"];
 
 	// Recorded before the stack comes up, and a profile that half starts is
@@ -497,6 +520,7 @@ foreach (explode(",", $settings["targets"]) as $name) {
 			array_push($perEndpoint, array(
 				$runtime,
 				$route["name"],
+				sprintf("%.1f", $row["mean"]),
 				sprintf("%.1f", $row["p50"]),
 				sprintf("%.1f", $row["p90"]),
 				sprintf("%.1f", $row["p99"]),
@@ -510,6 +534,7 @@ foreach (explode(",", $settings["targets"]) as $name) {
 
 		array_push($perRuntime, array(
 			$runtime,
+			sprintf("%.1f", $summary["mean"]),
 			sprintf("%.1f", $summary["p50"]),
 			sprintf("%.1f", $summary["p90"]),
 			sprintf("%.1f", $summary["p99"]),
@@ -522,5 +547,5 @@ foreach (explode(",", $settings["targets"]) as $name) {
 	teardown();
 }
 
-table("Per endpoint, each row the median of its segments.", array("runtime", "endpoint", "p50 us", "p90 us", "p99 us", "req/s", "non-2xx", "errors"), 2, $perEndpoint);
-table("Per runtime, every segment of every endpoint collapsed by the same rule.", array("runtime", "p50 us", "p90 us", "p99 us", "req/s", "non-2xx", "errors"), 1, $perRuntime);
+table("Per endpoint, each row the median of its segments.", array("runtime", "endpoint", "mean us", "p50 us", "p90 us", "p99 us", "req/s", "non-2xx", "errors"), 2, $perEndpoint);
+table("Per runtime, every segment of every endpoint collapsed by the same rule.", array("runtime", "mean us", "p50 us", "p90 us", "p99 us", "req/s", "non-2xx", "errors"), 1, $perRuntime);

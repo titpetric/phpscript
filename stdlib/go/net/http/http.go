@@ -3,14 +3,16 @@
 // and calls `http.Get($url)`; the default runtime installs none of these names.
 //
 // The area reaches any address the host can route to, as `HTTP\Client` does.
-// The server half stays out: a php handler answers through `HTTP\Server`,
-// which owns the re-entry the runtime needs (docs/use-cases/http-server.md).
+// The server half is `HTTP\Mux` and `HTTP\Server`, which own the re-entry the
+// runtime needs (docs/use-cases/http-server.md) and answer here as ServeMux and
+// Server for a runtime that selected Runtime\Go.
 package http
 
 import (
 	gohttp "net/http"
 
 	"github.com/titpetric/phpscript/modelutil"
+	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
@@ -29,6 +31,10 @@ var Set = bindings.For("net/http").
 	Bind("NewRequest", gohttp.NewRequest).
 	// Runtime\Go\Net\HTTP\StatusText returns the text of status code $code, or the empty string.
 	Bind("StatusText", gohttp.StatusText).
+	// Runtime\Go\Net\HTTP\Error answers $w with status $code and the text of $msg.
+	Bind("Error", gohttp.Error).
+	// Runtime\Go\Net\HTTP\NotFound answers $w with net/http's 404 text.
+	Bind("NotFound", gohttp.NotFound).
 	// Runtime\Go\Net\HTTP\CanonicalHeaderKey returns $s in the canonical spelling of a header name.
 	Bind("CanonicalHeaderKey", gohttp.CanonicalHeaderKey).
 	// Runtime\Go\Net\HTTP\DetectContentType reports the MIME type the first bytes of $data name.
@@ -60,5 +66,5 @@ var Set = bindings.For("net/http").
 	Type(gohttp.Client{})
 
 func init() {
-	Set.Install()
+	runner.RegisterNamespace(Namespace, Register)
 }

@@ -278,7 +278,7 @@ func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 	}
 	defer releaseTokens(toks)
 
-	sub := &parser{toks: toks, namespace: p.namespace, imports: p.imports, goRuntime: p.goRuntime}
+	sub := &parser{toks: toks, namespace: p.namespace, imports: p.imports, goRuntime: p.goRuntime, goMode: p.goMode}
 	e, err := sub.parseExpr()
 	if err != nil {
 		return nil, fmt.Errorf("line %d: string interpolation: %w", line, err)

@@ -49,6 +49,11 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		rt.recordTraceError(err)
 	}()
 	rt.UpdateStatus(telemetry.StateProcessing)
+	// The configured runtime namespace installs here, before the prelude and
+	// before a program statement can reach one of its names.
+	if rt.opts.GoRuntime() {
+		rt.UseNamespace(NamespaceGo)
+	}
 	if err = rt.runPrelude(); err != nil {
 		return err
 	}
@@ -382,19 +387,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		if err != nil {
 			return nil, flowNormal, err
 		}
-		// A built-in throwable is an error already and it propagates as
-		// itself and a catch binds the object a script threw and not a
-		// rendering of it.
-		if thrown, ok := v.(error); ok {
-			return nil, flowNormal, thrown
-		}
-		// An instance of a declared class is not an error and it travels
-		// wrapped. The wrapper holds its declared class, the one a clause
-		// filters on and get_class() reports.
-		if obj, ok := v.(*model.Object); ok {
-			return nil, flowNormal, newObjectError(obj)
-		}
-		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
+		return nil, flowNormal, rt.throwValue(v)
 
 	case *model.Use:
 		// The parser resolves imports. The node exists so the formatter

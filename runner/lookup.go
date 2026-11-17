@@ -261,7 +261,7 @@ func (rt *Runtime) scanTree() {
 	if rt.opts.RootFS == nil || rt.includeCache.Len() > 0 {
 		return
 	}
-	Precompiler{Root: rt.opts.RootFS, Includes: rt.includeCache}.Run()
+	Precompiler{Root: rt.opts.RootFS, Includes: rt.includeCache, GoRuntime: rt.opts.GoRuntime()}.Run()
 }
 
 // matchSymbols returns the declared names symName selects: the ones spelling it

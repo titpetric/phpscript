@@ -112,6 +112,9 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 // an edited file.
 func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
+	if err := options.Check(); err != nil {
+		return err
+	}
 	options.SAPI = "cli"
 	options.RootFS = os.DirFS(root)
 	options.Stdin = os.Stdin

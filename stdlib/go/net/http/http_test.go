@@ -28,6 +28,8 @@ func TestSet(t *testing.T) {
 		{Src: header + `$r = http.NewRequest("GET", "https://example.com/", null); $r->Method = "PUT"; echo $r->Method;`, Want: "PUT"},
 		{Src: header + `$r = new http.Request; var_dump($r->Method);`, Want: "string(0) \"\"\n"},
 		{Src: header + `echo len(make([]http.Request, 2));`, Want: "2"},
+		// The server types route a PHP callable and answer the request.
+		{Src: header + `$mux = new http.ServeMux; $mux->Handle("GET /x", function ($w, $r) {}); echo "mounted";`, Want: "mounted"},
 		// A url a script cannot parse throws, as the error of a binding does.
 		{Src: header + `try { http.NewRequest("GET", "://", null); } catch (Throwable $e) { echo "threw"; }`, Want: "threw"},
 		// The default runtime installs none of it.

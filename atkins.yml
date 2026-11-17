@@ -87,6 +87,7 @@ tasks:
     cmds:
       - go run ./scripts/list-apis --index
       - go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
+      - go run ./scripts/docs-go-imports > docs/reference/extensions/go-imports.md
       - phpscript info
       - cd docs/reference && php README.php > README.md
       - task: mdox:fmt

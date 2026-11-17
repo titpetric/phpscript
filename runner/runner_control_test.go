@@ -85,6 +85,61 @@ func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 	}
 }
 
+// TestMatchCatchGoRuntime covers the go runtime's one catch type.
+func TestMatchCatchGoRuntime(t *testing.T) {
+	t.Parallel()
+	goRT := New(nil, Options{Runtime: RuntimeGo})
+	phpRT := New(nil, Options{})
+	for _, declared := range []string{"", "error", "\\error", "Error"} {
+		for _, err := range []error{errors.New("plain"), &TypeError{Name: "strlen"}, NewRuntimeException("oom", 0)} {
+			if !goRT.matchCatch(declared, err) {
+				t.Errorf("go catch (%s) of %T: got false, want true", declared, err)
+			}
+		}
+	}
+	for _, declared := range []string{"Exception", "TypeError", "Throwable"} {
+		if goRT.matchCatch(declared, errors.New("plain")) {
+			t.Errorf("go catch (%s): got true, want false", declared)
+		}
+	}
+	if !phpRT.matchCatch("Exception", errors.New("plain")) {
+		t.Error("the php runtime stopped taking a non-throwable under any clause")
+	}
+	if phpRT.matchCatch("Exception", &TypeError{Name: "strlen"}) {
+		t.Error("the php runtime took a TypeError under catch (Exception)")
+	}
+}
+
+// TestThrowValue covers the value each runtime accepts in a throw.
+func TestThrowValue(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	goRT := New(nil, Options{Runtime: RuntimeGo})
+	if got := goRT.throwValue(boom); got != boom {
+		t.Errorf("go throw of an error answered %v, want the error itself", got)
+	}
+	err := goRT.throwValue("text")
+	var typeErr *TypeError
+	if !errors.As(err, &typeErr) {
+		t.Fatalf("go throw of a string answered %T, want *TypeError", err)
+	}
+	if got, want := typeErr.Error(), "throw(): Argument #1 must be of type error, string given"; got != want {
+		t.Errorf("message: got %q, want %q", got, want)
+	}
+
+	phpRT := New(nil, Options{})
+	if got := phpRT.throwValue("text"); got == nil || got.Error() != "uncaught exception: text" {
+		t.Errorf("php throw of a string answered %v", got)
+	}
+	obj := model.NewObject(&model.Class{Name: "Boom"})
+	if _, ok := phpRT.throwValue(obj).(*objectError); !ok {
+		t.Errorf("php throw of an object did not answer *objectError")
+	}
+	if _, ok := goRT.throwValue(obj).(*TypeError); !ok {
+		t.Errorf("go throw of an object did not answer *TypeError")
+	}
+}
+
 // TestRunnerThrowablesNameTheirClass covers the throwables the runner raises
 // itself. Each names a PHP class, which keeps an engine error out of
 // the clauses PHP would not route it to.

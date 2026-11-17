@@ -7,44 +7,39 @@ import (
 	"sync"
 )
 
-// DefaultQueue is how many runs a pool holds waiting for a worker: deep enough
-// that a burst does not block the caller that produced it, and shallow enough
-// that a queue this long means the workers are falling behind. An operator
-// needs to learn that, and no queue should absorb it.
+// DefaultQueue is how many runs wait for a worker runtime: deep enough that a
+// burst does not block the caller that produced it. Shallow enough that a queue
+// this long means the workers are falling behind. An operator needs to learn
+// that; nothing should absorb it.
 const DefaultQueue = 1024
 
-// Pool runs PHP on a fixed set of forks, fed from one queue: the workers are
-// the parallelism and the queue is the backpressure and a run that finds every
-// worker busy waits its turn and starts no extra runtime.
+// Pool runs PHP on a fixed set of forks: the forks bound the parallelism and a
+// run that finds every one busy waits its turn and starts no extra runtime.
 //
-// No type here wraps sync.Pool. The worker count is the contract, and sync.Pool
-// drops entries on a collection.
+// A run executes on the goroutine that submits it, borrowing one of the
+// pre-built runtimes. A submitted run parks and wakes no worker goroutine, which
+// is half the context switches of a worker per request; the request goroutine
+// net/http already has is the one that runs the handler.
 type Pool struct {
-	runs    chan poolRun
+	free    chan *poolWorker
+	slots   chan struct{}
 	workers int
 	queue   int
 
-	// A Submit about to send takes closing for reading, and the Close that
-	// shuts the channel takes it for writing. Without it the select in Submit
-	// has two ready cases on a closed pool - the send and the stop - and picks
-	// between them at random and one caller in two panics on a send to a
-	// closed channel and the other hears that the pool has gone.
 	closing sync.RWMutex
 	closed  bool
 
 	stop     chan struct{}
 	stopOnce sync.Once
-	done     sync.WaitGroup
 }
 
-// poolRun is one unit of work and the channel its submitter waits on.
-type poolRun struct {
-	job  Job
-	done chan struct{}
+// poolWorker is one fork and where its runs write.
+type poolWorker struct {
+	rt  *Runtime
+	out func() io.Writer
 }
 
-// NewPool forks rt into workers runtimes, each reading from a queue of depth
-// queue, and starts them.
+// NewPool forks rt into workers runtimes, each borrowed by one run at a time.
 //
 // Zero workers is GOMAXPROCS, which is the parallelism the machine has for work
 // that is all CPU, and is what a PHP handler doing no IO is; a host whose
@@ -65,29 +60,14 @@ func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 	}
 
 	pool := &Pool{
-		runs:    make(chan poolRun, queue),
+		free:    make(chan *poolWorker, workers),
+		slots:   make(chan struct{}, workers+queue),
 		workers: workers,
 		queue:   queue,
 		stop:    make(chan struct{}),
 	}
-
-	pool.done.Add(workers)
 	for range workers {
-		worker := rt.Fork(output())
-		go func() {
-			defer pool.done.Done()
-			for run := range pool.runs {
-				run.job.Run(worker)
-				// Reset after the run and not before and the next run starts
-				// on a runtime holding nothing and this run drops the values
-				// it built now, not at the next request.
-				worker.resetExecution(output(), nil)
-				// A send and no close and a lent channel serves the job's
-				// next run. The slot holds one value and a caller that
-				// stopped waiting leaves this worker free and parks nothing.
-				run.done <- struct{}{}
-			}
-		}()
+		pool.free <- &poolWorker{rt: rt.Fork(output()), out: output}
 	}
 	return pool
 }
@@ -98,68 +78,77 @@ func (p *Pool) Workers() int { return p.workers }
 // Queue answers how many runs it holds waiting.
 func (p *Pool) Queue() int { return p.queue }
 
-// Submit runs fn on a worker and waits for it, and reports whether it ran.
+// Submit runs job on a borrowed runtime and waits for it, and reports whether
+// it ran.
 //
 // It answers false when ctx ends first, and on a closed pool. For a served
-// request the first is the client leaving: the pool drops a queued run, and a
+// request the first is the client leaving: the pool drops a waiting run, and a
 // started one runs on to notice the disconnect through connection_aborted,
 // because stopping it halfway is the handler's call.
-//
-// Why the per-submit done channel is not recycled is
-// docs/allocation-performance.md, "The per-submit done channel".
 func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	var done <-chan struct{}
 	if ctx != nil {
 		done = ctx.Done()
 	}
-	// The lender's channel in place of one per submit, and the make only
-	// where no job lends one.
-	var finished chan struct{}
-	if lender, ok := job.(DoneJob); ok {
-		finished = lender.Done()
-	} else {
-		finished = make(chan struct{}, 1)
+	// An ended context drops the run before a ready slot can win the select
+	// below: two ready cases answer at random, and the caller asked to stop.
+	if ended(done) {
+		return false
 	}
-	run := poolRun{job: job, done: finished}
 
-	// The read lock spans the send alone. A worker is still draining while
-	// Close waits for the write lock and a send that found the queue full
-	// completes and never holds the shutdown.
+	// The slot bounds waiting runs the way the queue did: workers run and queue
+	// more wait, and a fuller pool blocks the caller. The fast path takes a
+	// ready slot without a select, which is the path an idle pool answers on.
+	select {
+	case p.slots <- struct{}{}:
+	default:
+		select {
+		case p.slots <- struct{}{}:
+		case <-done:
+			return false
+		case <-p.stop:
+			return false
+		}
+	}
+	defer func() { <-p.slots }()
+
 	p.closing.RLock()
 	if p.closed {
 		p.closing.RUnlock()
 		return false
 	}
+	p.closing.RUnlock()
+
+	// The ready worker takes the same fast path: a pool under its worker count
+	// has one waiting for every submit.
+	var worker *poolWorker
 	select {
-	case p.runs <- run:
-		p.closing.RUnlock()
-	case <-done:
-		p.closing.RUnlock()
-		return false
-	case <-p.stop:
-		p.closing.RUnlock()
-		return false
+	case worker = <-p.free:
+	default:
+		select {
+		case worker = <-p.free:
+		case <-done:
+			return false
+		case <-p.stop:
+			return false
+		}
 	}
 
-	select {
-	case <-run.done:
-		return true
-	case <-done:
-		// Queued or running, the run belongs to the worker now: the worker
-		// closes the run channel, and waiting here any longer would hold the
-		// caller for a client that has gone.
-		return false
-	}
+	job.Run(worker.rt)
+	// Reset after the run and not before and the next run starts on a runtime
+	// holding nothing and this run drops the values it built now.
+	worker.rt.resetExecution(worker.out(), nil)
+	p.free <- worker
+	return true
 }
 
-// Close stops the workers once they finish the runs already queued.
+// Close stops the pool accepting runs. A run already borrowed finishes on its
+// caller's goroutine.
 func (p *Pool) Close() {
 	p.stopOnce.Do(func() {
 		p.closing.Lock()
 		p.closed = true
 		close(p.stop)
-		close(p.runs)
 		p.closing.Unlock()
 	})
-	p.done.Wait()
 }

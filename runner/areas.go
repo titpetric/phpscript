@@ -104,7 +104,7 @@ func areaLayer(name string) int {
 }
 
 // Areas reports the namespaces this runtime installs; empty means all.
-func (rt *Runtime) Areas() []string { return rt.opts.Areas }
+func (rt *Runtime) Areas() []string { return rt.opts.SelectedAreas() }
 
 // CheckAreas refuses a namespace naming no registered area or opt-in
 // namespace, a misspelling that would leave a runtime without bindings. The

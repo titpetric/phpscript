@@ -16,7 +16,7 @@
 | 6     | `test:phpscript:run`    | the four scripts a release has to be able to run      |
 | 7     | `test:phpscript:matrix` | every fixture on all three runtimes                   |
 | 8     | `test:lifecycle`        | the server's pidfile, its reload and its refusal      |
-| 9     | `test:introspection`    | the two generated reference pages, regenerated        |
+| 9     | `test:introspection`    | the three generated reference pages, regenerated      |
 | 10    | `fmt`                   | the documentation step 9 wrote                        |
 
 `fmt` runs twice: once ahead of the build, once over what the generation wrote. Every job that formats delegates to it and never to `go:fmt` or `mdox:fmt` alone. The two tools then cannot drift apart, and `lint` is the same notion for the three linters.
@@ -41,14 +41,17 @@ A bench sweep costs minutes of pinned CPU and answers a performance question, wh
 
 ## Generation
 
-Two generated files are in git, and `test:introspection` rewrites them in the default pipeline. Hand-written reference pages link them and `docs/reference/README.yml` registers them.
+Three generated files are in git, and `test:introspection` rewrites them in the default pipeline. Hand-written reference pages link them and `docs/reference/README.yml` registers them.
 
-| File                                            | Written by          |
-|-------------------------------------------------|---------------------|
-| `docs/reference/README.md`                      | `php README.php`    |
-| `docs/reference/extensions/implemented-apis.md` | `scripts/list-apis` |
+| File                                            | Written by                |
+|-------------------------------------------------|---------------------------|
+| `docs/reference/README.md`                      | `php README.php`          |
+| `docs/reference/extensions/implemented-apis.md` | `scripts/list-apis`       |
+| `docs/reference/extensions/go-imports.md`       | `scripts/docs-go-imports` |
 
-The index comes first and the markdown second. The index is a Go file the next build embeds: a shipped binary holds no source tree and `phpscript list --classes` answers out of the index. `scripts/list-apis --index` writes that file itself and takes no redirection, which would truncate what the compiler is about to embed. The job ends with `mdox:fmt`. Each generator emits an unpadded table and the formatter repads it, which left both files dirty after every run.
+The two listings read the runtime the build binds. `scripts/docs-go-imports` renders the rows `phpscript list --runtime=go --bindings --json` prints, with the prose around them in `go-imports.md.tpl` beside the page.
+
+The index comes first and the markdown second. The index is a Go file the next build embeds: a shipped binary holds no source tree and `phpscript list --classes` answers out of the index. `scripts/list-apis --index` writes that file itself and takes no redirection, which would truncate what the compiler is about to embed. The job ends with `mdox:fmt`. Each generator emits an unpadded table and the formatter repads it, which left a generated file dirty after every run.
 
 `.gitignore` names five more. They travel as release assets, because each one changes on every run and generating them inside a correctness run dirtied the tree on every invocation.
 

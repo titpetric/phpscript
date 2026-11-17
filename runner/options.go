@@ -1,11 +1,19 @@
 package runner
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/stdlib/shared"
+)
+
+// The values Options.Runtime accepts.
+const (
+	RuntimePHPScript = "phpscript"
+	RuntimeGo        = "go"
 )
 
 // Options configures a Runtime.
@@ -38,6 +46,11 @@ type Options struct {
 
 	// SAPI is what `php_sapi_name` answers.
 	SAPI string `yaml:"-"`
+
+	// Runtime selects the binding namespace. phpscript, the default, installs
+	// Areas. go installs Runtime\Go and no area under Runtime\PS or Runtime\PX,
+	// and parses every file as though it imported Runtime\Go.
+	Runtime string `yaml:"runtime"`
 
 	// Areas names the namespaces whose bindings the default runtime installs:
 	// Runtime\PS, Runtime\PX, or the areas below them such as Runtime\PS\Core.
@@ -149,12 +162,41 @@ func (o Options) Check() error {
 	if err := o.TraceLevel.Check(); err != nil {
 		return err
 	}
+	if _, err := o.runtimeMode(); err != nil {
+		return err
+	}
+	if o.GoRuntime() && len(o.Areas) > 0 {
+		return fmt.Errorf("runner.runtime: go selects Runtime\\Go; runner.areas names %v", o.Areas)
+	}
 	return CheckAreas(o.Areas)
 }
 
+// GoRuntime reports whether Runtime selects the go namespace.
+func (o Options) GoRuntime() bool {
+	mode, err := o.runtimeMode()
+	return err == nil && mode == RuntimeGo
+}
+
+// SelectedAreas answers the namespaces the default runtime installs.
+func (o Options) SelectedAreas() []string {
+	if o.GoRuntime() {
+		return []string{NamespaceGo}
+	}
+	return o.Areas
+}
+
+// runtimeMode folds Runtime into one of the two mode names.
+func (o Options) runtimeMode() (string, error) {
+	switch strings.ToLower(strings.TrimSpace(o.Runtime)) {
+	case "", RuntimePHPScript:
+		return RuntimePHPScript, nil
+	case RuntimeGo:
+		return RuntimeGo, nil
+	}
+	return "", fmt.Errorf("runner.runtime: %q is not %q or %q", o.Runtime, RuntimePHPScript, RuntimeGo)
+}
+
 // inputLimits renders the two input limits as the form decoder takes them.
-// Zero means PHP's default on both sides and an unconfigured Options decodes
-// as PHP would.
 func (o Options) inputLimits() shared.Limits {
 	return shared.Limits{
 		MaxNesting: o.MaxInputNestingLevel,

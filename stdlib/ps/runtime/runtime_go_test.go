@@ -77,6 +77,14 @@ func TestRegisterGo(t *testing.T) {
 	}
 }
 
+// TestGoBuiltinEnvironment covers the two builtins that reach the process:
+// getenv answers os.Getenv's string and numcpu answers runtime.NumCPU.
+func TestGoBuiltinEnvironment(t *testing.T) {
+	t.Parallel()
+	goOutput(t, "<?php\nuse Runtime\\Go;\necho getenv(\"PHPS_GO_RUNTIME_TEST_UNSET_9C1\") === \"\" ? \"empty\" : \"set\";\n", "empty")
+	goOutput(t, "<?php\nuse Runtime\\Go;\necho numcpu() >= 1 ? \"cpus\" : \"none\";\n", "cpus")
+}
+
 // TestGoBareNames covers what the import is for: the builtins read as go writes
 // them, with no namespace in the source. A leading separator and the case of
 // the namespace are php's to ignore, and php's own name wins where php has one.

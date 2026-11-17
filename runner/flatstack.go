@@ -204,7 +204,7 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 // interpreter uses and `catch (Exception $e)` declines a TypeError on both
 // backends and not on one of them.
 func (h flatHost) MatchCatch(declaredType string, err error) bool {
-	return matchCatchType(declaredType, err)
+	return h.runtime.matchCatch(declaredType, h.runtime.catchError(err))
 }
 
 // ClassConst reads a class constant, reusing the interpreter's resolution so
@@ -220,20 +220,11 @@ func (h flatHost) ClassConst(class, name string) (any, error) {
 
 func (h flatHost) Cast(typ string, value any) any { return helperCast(typ, value) }
 
-// Throw turns a thrown value into the error it travels as, the same way the
-// interpreter's throw statement does.
-func (h flatHost) Throw(value any) error {
-	if thrown, ok := value.(error); ok {
-		return thrown
-	}
-	if obj, ok := value.(*model.Object); ok {
-		return newObjectError(obj)
-	}
-	return fmt.Errorf("uncaught exception: %s", phpString(value))
-}
+// Throw turns a thrown value into the error it travels as.
+func (h flatHost) Throw(value any) error { return h.runtime.throwValue(value) }
 
 // CatchValue returns what a catch clause binds for err.
-func (h flatHost) CatchValue(err error) any { return catchValue(err) }
+func (h flatHost) CatchValue(err error) any { return catchValue(h.runtime.catchError(err)) }
 
 func (h flatHost) Binary(op string, left, right any) (any, error) {
 	switch op {

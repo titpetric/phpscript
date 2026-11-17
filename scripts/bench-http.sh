@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 #
-# The load sweep for one API written five ways, one directory each under
+# The load sweep for one API written six ways, one directory each under
 # testdata/, driven by one load generator so the difference reads off directly.
 #
 # BENCH_TARGETS names the sides. The default pair needs no docker:
 #
 #	goserver         testdata/goserver, net/http, the floor: no VM
 #	bridge           testdata/phpscript-http-bridge, Path B
+#	goruntime        testdata/phpscript-go-runtime-server, Path B on runner.runtime: go
 #	service          testdata/phpscript-service, Path A
 #	vanilla-apache   testdata/php-vanilla on apache with mod_php, Slim
 #	vanilla-nginx    testdata/php-vanilla on nginx with php-fpm, Slim
 #
-#	BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
+#	BENCH_TARGETS="goserver bridge goruntime service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 #
 # This script brings every side up and tears it down. Each one shares the
 # host's network namespace, answers on the same worker count and runs at
@@ -84,11 +85,12 @@ warmup="${BENCH_WARMUP:-2s}"
 # 64 the script's `config()` sets. Above the worker count the comparison stops
 # being honest.
 concurrencies="${BENCH_CONCURRENCY:-1 4}"
-# The five sides, one directory each under testdata/. The default pair is the
+# The six sides, one directory each under testdata/. The default pair is the
 # one that needs no docker; the rest are opt-in.
 #
 #	goserver         testdata/goserver, net/http, the floor
 #	bridge           testdata/phpscript-http-bridge, Path B
+#	goruntime        testdata/phpscript-go-runtime-server, Path B on runner.runtime: go
 #	service          testdata/phpscript-service, Path A
 #	vanilla-apache   testdata/php-vanilla on apache with mod_php
 #	vanilla-nginx    testdata/php-vanilla on nginx with php-fpm
@@ -218,6 +220,7 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "  CGO_ENABLED=0 go build -o bin/phpscript ."
 	echo "  CGO_ENABLED=0 go build -o bin/testserver-go testdata/goserver/main.go"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit phpscript run testdata/phpscript-http-bridge/server.php"
+	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers phpscript -f testdata/phpscript-go-runtime-server/phpscript.yml run testdata/phpscript-go-runtime-server/server.php"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit bin/testserver-go"
 	echo "  phpscript server -f <addr 127.0.0.1:0> testdata/phpscript-service"
 	case " $targets " in
@@ -242,6 +245,7 @@ target_model() {
 	case "$1" in
 	goserver) echo "testdata/goserver on net/http, the floor: no VM, one goroutine per request." ;;
 	bridge) echo "testdata/phpscript-http-bridge, Path B: the script is the server, parsed once, workers forked at listen()." ;;
+	goruntime) echo "testdata/phpscript-go-runtime-server, Path B on runner.runtime: go: the same server with Runtime\\Go and no Runtime\\PS." ;;
 	service) echo "testdata/phpscript-service, Path A: annotated endpoints under \`phpscript server\`, a pooled runtime reset between requests." ;;
 	vanilla-apache) echo "testdata/php-vanilla on apache with mod_php, Slim: a bootstrap per request." ;;
 	vanilla-nginx) echo "testdata/php-vanilla on nginx with php-fpm, Slim: a bootstrap per request." ;;
@@ -255,6 +259,8 @@ start_server() {
 	case "$target" in
 	bridge) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
 		nice -n -20 phpscript run testdata/phpscript-http-bridge/server.php >"$log" 2>&1 & ;;
+	goruntime) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
+		nice -n -20 phpscript -f testdata/phpscript-go-runtime-server/phpscript.yml run testdata/phpscript-go-runtime-server/server.php >"$log" 2>&1 & ;;
 	goserver) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
 		nice -n -20 "$root/bin/testserver-go" >"$log" 2>&1 & ;;
 	service)

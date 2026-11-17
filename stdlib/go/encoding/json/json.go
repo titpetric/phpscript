@@ -5,6 +5,7 @@ package json
 
 import (
 	gojson "encoding/json"
+	"io"
 
 	"github.com/titpetric/phpscript/modelutil"
 	"github.com/titpetric/phpscript/runner"
@@ -28,4 +29,25 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterFunc(name("Unmarshal"), func(data string) (any, error) { return core.JSONDecode(data) })
 	// Runtime\Go\Encoding\JSON\Valid reports whether $data is valid JSON.
 	rt.RegisterFunc(name("Valid"), func(data string) bool { return gojson.Valid([]byte(data)) })
+	// Runtime\Go\Encoding\JSON\NewEncoder returns an encoder that writes to $w, a writer the script names.
+	rt.RegisterFunc(name("NewEncoder"), NewEncoder)
+}
+
+// Encoder writes one value's JSON to a writer.
+type Encoder struct {
+	w io.Writer
+}
+
+// NewEncoder returns an encoder writing to w.
+func NewEncoder(w io.Writer) *Encoder { return &Encoder{w: w} }
+
+// Encode writes v as JSON followed by a newline.
+func (e *Encoder) Encode(v any) error {
+	buf, err := core.AppendJSON(make([]byte, 0, 64), v)
+	if err != nil {
+		return err
+	}
+	buf = append(buf, '\n')
+	_, err = e.w.Write(buf)
+	return err
 }

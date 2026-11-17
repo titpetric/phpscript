@@ -335,6 +335,11 @@ func JSONEncode(value any) (string, error) {
 	return string(buf), err
 }
 
+// AppendJSON appends value's JSON to buf, as the json_encode binding encodes it.
+func AppendJSON(buf []byte, value any) ([]byte, error) {
+	return appendJSONValue(buf, value)
+}
+
 // JSONDecode decodes text as the json_decode binding does.
 func JSONDecode(text string) (any, error) {
 	dec := json.NewDecoder(strings.NewReader(text))

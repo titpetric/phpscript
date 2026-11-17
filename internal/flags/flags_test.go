@@ -390,9 +390,13 @@ func TestOptions_RunWith(t *testing.T) {
 
 	t.Run("command error", func(t *testing.T) {
 		want := errors.New("boom")
-		var opts flags.Options
+		mem := filepath.Join(t.TempDir(), "mem.pprof")
+		opts := flags.Options{MemProfile: mem}
 		if err := opts.RunWith(func(context.Context, []string) error { return want })(context.Background(), nil); !errors.Is(err, want) {
 			t.Errorf("err = %v, want %v", err, want)
+		}
+		if info, err := os.Stat(mem); err != nil || info.Size() == 0 {
+			t.Errorf("profile after a failed command: %v", err)
 		}
 	})
 

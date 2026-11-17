@@ -3,7 +3,9 @@ package runtime
 import (
 	"fmt"
 	"io"
+	goos "os"
 	"reflect"
+	goruntime "runtime"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -70,6 +72,10 @@ func RegisterGo(rt *runner.Runtime) {
 	rt.RegisterFunc(goFunc("print"), func(args ...any) error { return goPrint(rt, args, false) })
 	// Runtime\Go\println writes its arguments spaced, with a newline, as go's println does.
 	rt.RegisterFunc(goFunc("println"), func(args ...any) error { return goPrint(rt, args, true) })
+	// Runtime\Go\getenv returns the value of environment variable $key, or "" for a name the process does not hold.
+	rt.RegisterFunc(goFunc("getenv"), func(key string) string { return goos.Getenv(key) })
+	// Runtime\Go\numcpu returns the number of logical CPUs the process can use.
+	rt.RegisterFunc(goFunc("numcpu"), func() int64 { return int64(goruntime.NumCPU()) })
 	registerGoTypes(rt)
 }
 

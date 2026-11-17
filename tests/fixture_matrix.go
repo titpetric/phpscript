@@ -54,7 +54,11 @@ func (f *Fixture) Runs(r Runner) bool {
 	case RunnerFlatstack:
 		return f.Runner.Flatstack == nil || *f.Runner.Flatstack
 	case RunnerPHP:
-		return f.Runner.PHP == nil || *f.Runner.PHP
+		if f.Runner.PHP != nil {
+			return *f.Runner.PHP
+		}
+		// php cannot run source written for the go runtime.
+		return !f.runnerOptions().GoRuntime()
 	default:
 		return true
 	}

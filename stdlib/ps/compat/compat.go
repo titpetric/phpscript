@@ -50,12 +50,12 @@ func init() {
 func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerDatetime(rt)
-	registerBuffers(rt)
+	RegisterBuffers(rt)
 }
 
-// registerBuffers installs the ob_* output buffering functions. Each runtime
+// RegisterBuffers installs the ob_* output buffering functions. Each runtime
 // gets its own buffer stack and concurrent requests capture their own output.
-func registerBuffers(rt *runner.Runtime) {
+func RegisterBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
 	// A reset between programs drops the levels with the redirections they
 	// mirror. A reused runtime answers ob_get_level with the levels this

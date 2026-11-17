@@ -129,6 +129,18 @@ func rowList(rows int) *model.Array {
 	return list
 }
 
+// TestAppendJSON covers the exported appender: it keeps the prefix and writes the document.
+func TestAppendJSON(t *testing.T) {
+	t.Parallel()
+	buf, err := AppendJSON([]byte("prefix:"), map[string]any{"a": int64(1)})
+	if err != nil {
+		t.Fatalf("AppendJSON: %v", err)
+	}
+	if got, want := string(buf), `prefix:{"a":1}`; got != want {
+		t.Errorf("AppendJSON = %q, want %q", got, want)
+	}
+}
+
 // BenchmarkAppendJSONValue measures the walk over a list of keyed rows, which
 // is the response shape an API answers with and the one where the walk pays a
 // per-collection cost once per row and not once per document.

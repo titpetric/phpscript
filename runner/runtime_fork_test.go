@@ -7,6 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
 )
 
 // forkParent returns a runtime that has run src, holding the declarations a
@@ -145,5 +146,35 @@ func TestRuntime_InvokeClosure(t *testing.T) {
 
 	if _, err := rt.InvokeClosure(nil); err == nil {
 		t.Error("InvokeClosure(nil) answered no error")
+	}
+}
+
+// TestForkReplaysImportedAreas covers a constant an opt-in area installs after
+// the parent froze its standard library.
+func TestForkReplaysImportedAreas(t *testing.T) {
+	var parentOut strings.Builder
+	parent := runner.New(&parentOut, runner.Options{Runtime: runner.RuntimeGo})
+	stdlib.Register(parent)
+	parent.FreezeStdlib()
+
+	prog, err := parent.Load(`<?php import "net/http";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := parent.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	var childOut strings.Builder
+	child := parent.Fork(&childOut)
+	childProg, err := child.Load(`<?php echo \Runtime\Go\Net\HTTP\StatusOK;`)
+	if err != nil {
+		t.Fatalf("child parse: %v", err)
+	}
+	if err := child.Run(childProg); err != nil {
+		t.Fatalf("child run: %v", err)
+	}
+	if childOut.String() != "200" {
+		t.Errorf("child answered %q, want 200", childOut.String())
 	}
 }
