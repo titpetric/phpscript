@@ -4,16 +4,16 @@ This is a PHP interpreter written in Go, with a bytecode backend beside it and a
 
 ## One API, six runtimes
 
-One set of endpoints written six ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `febd93f6` by `scripts/benchmark.php`:
+One set of endpoints written six ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `2f756154` by `scripts/benchmark.php`:
 
 | Runtime                                                                                                                | `/hello`               | p90 us | p99 us |
 |------------------------------------------------------------------------------------------------------------------------|------------------------|--------|--------|
-| [`goserver`](./testdata/goserver/README.md), net/http and no VM, the floor                                             | 25977 req/s, 35 us/req | 44     | 138    |
-| [`phpscript-http-bridge`](./testdata/phpscript-http-bridge/README.md), a PHP program that is the server                | 21051 req/s, 43 us/req | 54     | 214    |
-| [`phpscript-go-runtime-server`](./testdata/phpscript-go-runtime-server/README.md), the same server under `runtime: go` | 21094 req/s, 43 us/req | 54     | 192    |
-| [`phpscript-service`](./testdata/phpscript-service/README.md), `@route` endpoints under `phpscript server`             | 12131 req/s, 74 us/req | 99     | 357    |
-| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                                          | 2440 req/s, 384 us/req | 486    | 798    |
-| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                                         | 2104 req/s, 455 us/req | 525    | 760    |
+| [`goserver`](./testdata/goserver/README.md), net/http and no VM, the floor                                             | 26006 req/s, 35 us/req | 44     | 141    |
+| [`phpscript-http-bridge`](./testdata/phpscript-http-bridge/README.md), a PHP program that is the server                | 21595 req/s, 42 us/req | 52     | 192    |
+| [`phpscript-go-runtime-server`](./testdata/phpscript-go-runtime-server/README.md), the same server under `runtime: go` | 21734 req/s, 42 us/req | 52     | 173    |
+| [`phpscript-service`](./testdata/phpscript-service/README.md), `@route` endpoints under `phpscript server`             | 12081 req/s, 73 us/req | 99     | 402    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                                          | 2429 req/s, 383 us/req | 496    | 900    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                                         | 2128 req/s, 446 us/req | 514    | 860    |
 
 Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
 
