@@ -8,6 +8,18 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
+// TestStdlibClassesReportsAClass covers the reflected class under the name asked about.
+func TestStdlibClassesReportsAClass(t *testing.T) {
+	t.Parallel()
+	classes, err := list.StdlibClasses(runner.Options{}, `HTTP\Client`)
+	if err != nil {
+		t.Fatalf("StdlibClasses: %v", err)
+	}
+	if len(classes) != 1 || classes[0].Name != `HTTP\Client` {
+		t.Fatalf("StdlibClasses returned %#v", classes)
+	}
+}
+
 // TestStdlibReportsWhatTheRuntimeRegisters checks the listing against names the
 // runtime binds, one per kind, and against the counts the runtime reports for
 // itself and this listing and the `info` command answer the same question

@@ -137,11 +137,14 @@ func TestRouteSkipsExcludedDirectory(t *testing.T) {
 	}
 }
 
+// chiRouter returns the router the route and startup tests mount on.
+func chiRouter() *chi.Mux { return chi.NewRouter() }
+
 // TestRouteMountsOnPlatformRouter pins the second registrar: the same
 // annotations reach a platform router as a lifecycle module.
 func TestRouteMountsOnPlatformRouter(t *testing.T) {
 	t.Parallel()
-	router := chi.NewRouter()
+	router := chiRouter()
 	if err := annotations.NewRoute(testRouteFileSystem).Mount(context.Background(), router); err != nil {
 		t.Fatal(err)
 	}

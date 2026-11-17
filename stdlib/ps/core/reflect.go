@@ -96,8 +96,7 @@ func registerReflection(rt *runner.Runtime) {
 	})
 }
 
-// classNameOf reports the PHP class name of a value: the declared name for an
-// interpreted object, and the Go type name for a host-backed one.
+// classNameOf reports a value's PHP class name, or its Go type name for a host value.
 func classNameOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name

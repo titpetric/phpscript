@@ -54,11 +54,7 @@ func RegisterSharedMemory(rt *runner.Runtime) {
 	rt.RegisterInfo("SharedMemory", sharedMemoryInfo)
 }
 
-// sharedMemoryInfo reports the store bound into the runtime, for phpinfo().
-//
-// A store outlives the requests that write to it and memory_get_usage() counts
-// none of it. A host that bound none has nothing to report and the section does
-// not print.
+// sharedMemoryInfo reports the store the runtime registers for phpinfo(), nil when it registers none.
 func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {
 	store, _ := rt.Context().Value(sharedMemoryKey{}).(*SharedMemory)
 	if store == nil {

@@ -144,21 +144,7 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*DB, error)
 	return db, err
 }
 
-// cached will return a singleton *DB from a named connection.
-//
-// The credential picks which name the pool belongs to, and cached reads and
-// writes the cache under that one, and not under the first name the caller
-// passed.
-// Callers name fallbacks: Database\Migrate names "app:migrate" before
-// "app", and both mean the credential "app" until a deployment registers the
-// first. Keying on the name passed would open that caller a separate pool
-// and every caller naming "app" another, and two pools on a DSN that
-// names no shared file are two databases and the schema one applied would not
-// be in the one the next script queries.
-//
-// Reading the cache before the credential has the mirror image of that problem:
-// "app:migrate" registered behind an open "app" would answer with the pool of
-// "app" and run the migrations under the credential it exists to avoid.
+// cached returns the pool for the credential the first resolvable name maps to.
 func (r *DatabaseProvider) cached(connector Connector, names ...string) (*DB, error) {
 	name, value, ok := r.resolve(names)
 	if !ok {
@@ -183,9 +169,7 @@ func (r *DatabaseProvider) cached(connector Connector, names ...string) (*DB, er
 	return db, nil
 }
 
-// resolve returns the first of names that has a credential, with the credential
-// itself. No name is the default connection, which a caller that named
-// none has always meant.
+// resolve returns the first named credential, default when names holds no entry.
 func (r *DatabaseProvider) resolve(names []string) (string, string, bool) {
 	if len(names) == 0 {
 		names = []string{"default"}

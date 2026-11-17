@@ -10,18 +10,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/crypto"
 )
 
-// shaPrefix is what `htpasswd -s` writes: the literal {SHA} and the base64 of
-// one sha1 of the password. No salt and no cost parameter and a stolen file
-// costs a wordlist lookup per row. This build reads it because deployments
-// still hold such files; docs/security.md prices it against the rest.
+// shaPrefix is the {SHA} form's prefix, ahead of a base64-encoded sha1.
 const shaPrefix = "{SHA}"
 
-// verify reports whether secret produced stored, dispatching on the shape of
-// the stored value the way password_verify does.
-//
-// A value no format claims answers false, with no error. A file this package
-// parsed holds no such line, because the parse refuses one; the fallthrough
-// keeps a store built another way from authenticating anyone.
+// verify reports whether secret produced stored, answering false for an unknown format.
 func verify(secret, stored string) bool {
 	switch {
 	case isSHA(stored):
@@ -33,9 +25,7 @@ func verify(secret, stored string) bool {
 	}
 }
 
-// formatError reports a stored value this build will not read, naming what to
-// write it with instead. The parse refuses such a file whole and an operator
-// acts on this message.
+// formatError reports a stored value this build refuses, naming what to write instead.
 func formatError(stored string) error {
 	if strings.HasPrefix(stored, "$1$") {
 		return fmt.Errorf("md5-crypt is php's $1$ and not apache's $apr1$; rewrite the line with htpasswd -B")
@@ -50,15 +40,12 @@ func formatError(stored string) error {
 	return fmt.Errorf("unreadable password hash, want bcrypt ($2y$), argon2, apache md5 ($apr1$) or {SHA}; write it with htpasswd -B")
 }
 
-// readable reports whether a stored value is a format verify can decide. The
-// parse runs it per line and the constructor refuses a bad file and no login
-// discovers one.
+// readable reports whether a stored value is a format verify can decide.
 func readable(stored string) bool {
 	return isSHA(stored) || crypto.IsAPR1(stored) || crypto.IsPasswordHash(stored)
 }
 
-// isSHA reports whether a stored value is the {SHA} form, base64 included: the
-// prefix alone would claim a truncated line that nothing can verify.
+// isSHA reports whether stored is the {SHA} form, its base64 digest included.
 func isSHA(stored string) bool {
 	encoded, ok := strings.CutPrefix(stored, shaPrefix)
 	if !ok {
@@ -68,9 +55,7 @@ func isSHA(stored string) bool {
 	return err == nil && len(sum) == sha1.Size
 }
 
-// shaVerify compares one sha1 of the secret against the stored digest. The
-// comparison is constant time for the form's sake; the derivation it protects
-// is one digest and an attacker does not need the comparison.
+// shaVerify compares one sha1 of secret against the stored digest in constant time.
 func shaVerify(secret, stored string) bool {
 	want, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(stored, shaPrefix))
 	if err != nil {

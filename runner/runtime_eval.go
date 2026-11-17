@@ -107,10 +107,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	return expr.Run(ce.prog, &st.cenv)
 }
 
-// helperVar reads a variable or bare name from the live scope at evaluation
-// time. The closure engine reads it in place of the slot snapshot inside
-// expressions that contain a marked sub-expression, whose scope writes a
-// snapshot taken before the run would miss.
+// helperVar reads a variable or bare name from the live scope at evaluation time.
 func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 	return func(name string, isConst bool) (any, error) {
 		ident := varIdent(name)
@@ -121,12 +118,7 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 	}
 }
 
-// resolveVar returns the value Eval binds for one variable entry. Bare
-// identifiers that are not set in the current scope fall back to the constant
-// table (PHP constants are visible in every scope, whereas plain variables
-// belong to their frame), then the superglobals. A bare name nothing
-// defines is an error - PHP 8 raises Error there, while an unset variable of
-// the same spelling stays null and the two hold different identifiers.
+// resolveVar reads a name from the scope, then the constant table, then the superglobals.
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
@@ -146,10 +138,7 @@ func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	return nil, nil
 }
 
-// resolveAuto answers a superglobal read: the bound value, or the view the
-// request's lazy binder builds on the first read of that name. It binds what
-// the binder answers and the next read is one field read, and a write through
-// the view reaches every later reader the way an eagerly bound view did.
+// resolveAuto answers a superglobal, binding the lazy view on its first read.
 func (rt *Runtime) resolveAuto(name string) (any, bool) {
 	if v, ok := rt.auto.Lookup(name); ok {
 		return v, true
@@ -194,10 +183,7 @@ func (rt *Runtime) setCompiledExpr(e model.Expr, ce *compiledExpr) {
 	rt.compiled[e] = ce
 }
 
-// acquireEnv returns an evaluation environment bound to scope. Evaluations
-// reuse environments: buildEnv builds the expensive part, one closure per
-// registered function plus the PHP-semantic helpers, once per function-table
-// generation, and every later call only rebinds the scope.
+// acquireEnv returns a reusable evaluation environment bound to scope.
 func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 	rt.envMu.Lock()
 	var st *evalEnv
@@ -221,20 +207,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 	return st
 }
 
-// buildEnv fills st with the env shared by every evaluation: the PHP-semantic
-// helpers. The engine holds no builtins and a registered function
-// resolves as a bare identifier the engine calls by name, but buildEnv
-// installs *no* such function: installFunc adds the ones an expression
-// actually calls, on demand (see Eval). Eval layers variables and other
-// per-expression keys on top.
-//
-// adapt() wraps every function into a uniform func(...any) (any, error)
-// signature. This lets the compile-time type env accept dynamically typed PHP
-// arguments and keeps the runtime func type in sync with the type env (see
-// helpers.go::adapt and Eval).
-//
-// The closures read the scope through st.ref and capture nothing, which keeps
-// the environment reusable.
+// buildEnv installs the PHP-semantic helpers, which read the scope through st.ref.
 func (rt *Runtime) buildEnv(st *evalEnv) {
 	env := st.env
 	clear(env)
@@ -276,25 +249,7 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 	st.built = true
 }
 
-// installFunc adds the registered function name to st's environment, unless it
-// already holds one. The closure stays in the environment (releaseEnv strips
-// only the per-expression keys) and installFunc wraps a function at most
-// once per environment per function-table generation: buildEnv clears the map
-// whenever the generation moves, the one point at which a name could have been
-// re-registered with a different implementation.
-//
-// A name that is in no function table installs a stub that reports the call as
-// undefined and this engine and flatstack (see helperFunc) report the same
-// message to a script where the VM would say "cannot call nil". The stub
-// belongs to the current generation like any other entry: declaring the
-// function afterwards re-registers it, which moves the generation and
-// rebuilds the environment.
-//
-// Names resolve case-insensitively, as PHP function names do and as helperFunc
-// resolves them.
-//
-// Like buildEnv, the closure reads the scope through st.ref at call time and
-// captures nothing.
+// installFunc adds a function-table lookup for name to st, resolving the entry per call.
 func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	if _, ok := st.env[name]; ok {
 		return
@@ -316,9 +271,7 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	}
 }
 
-// releaseEnv clears the per-expression slots, drops the references the
-// environment held to the scope and expression, and returns it to the free
-// list.
+// releaseEnv clears the per-expression state and returns the environment to the free list.
 func (rt *Runtime) releaseEnv(st *evalEnv) {
 	st.exprs = nil
 	st.ref.scope = nil
@@ -340,9 +293,7 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 	rt.envMu.Unlock()
 }
 
-// helperSet implements assignment used as an expression (AssignExpr with a Var
-// target): it mutates the current scope and returns the assigned value so the
-// surrounding expression (e.g. a comparison) can use it.
+// helperSet writes name in the scope and answers the value it wrote.
 func (rt *Runtime) helperSet(ref *scopeRef) func(name string, val any) (any, error) {
 	return func(name string, val any) (any, error) {
 		ref.scope.Set(name, val)
@@ -380,10 +331,7 @@ func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
 	return rt.joinParts(parts, scope)
 }
 
-// joinParts evaluates each part and joins their PHP string forms. It serves
-// the concat fast path above; an interpolated literal compiles instead, in
-// expr.compileInterp, because a per-part Eval dispatch at every execution
-// measured 21% slower than the compiled closure (see the Interp benchmarks).
+// joinParts evaluates each part and joins their PHP string forms.
 func (rt *Runtime) joinParts(parts []model.Expr, scope *Scope) (any, error) {
 	var out strings.Builder
 	for _, part := range parts {
@@ -404,10 +352,7 @@ func flattenConcat(e model.Expr, out []model.Expr) []model.Expr {
 	return append(out, e)
 }
 
-// helperFunc dispatches a (possibly namespace-qualified) free-function call. It
-// looks up name in the runtime function table and, if missing, the global
-// fallback name, matching PHP's namespace resolution where an unqualified call
-// falls back to the global function of the same short name.
+// helperFunc dispatches a free-function call, falling back to the global name.
 func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ...any) (any, error) {
 	return func(name, fallback string, args ...any) (any, error) {
 		scope := ref.scope
@@ -440,8 +385,7 @@ func ScopeBuiltins() []string {
 	return []string{"func_get_args"}
 }
 
-// scopeBuiltin resolves the builtins installed per-environment, outside
-// through the function table, under the name a PHP script calls them by.
+// scopeBuiltin resolves a per-environment builtin the function table does not hold.
 func scopeBuiltin(name string, scope *Scope) (any, bool) {
 	if strings.EqualFold(name, "func_get_args") {
 		return funcGetArgs(scope), true
@@ -454,8 +398,7 @@ func funcGetArgs(scope *Scope) []any {
 	return scope.args
 }
 
-// helperRef returns a setter for a by-reference output parameter (e.g.
-// preg_match_all's $matches). The shim calls it to write back into scope.
+// helperRef returns a setter a shim uses to write a by-reference parameter back to scope.
 func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 	return func(name string) func(any) {
 		// A shim takes the setter and may call it after this expression
@@ -465,8 +408,7 @@ func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 	}
 }
 
-// helperClassConst resolves Class::NAME (and self::NAME), evaluating the
-// constant's expression once and caching it.
+// helperClassConst resolves Class::NAME, evaluating the constant once and caching it.
 func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any, error) {
 	return func(class, name string) (any, error) {
 		scope := ref.scope

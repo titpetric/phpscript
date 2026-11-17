@@ -75,12 +75,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 	}
 }
 
-// reloadScope derives the context one generation runs under, and answers
-// whether a SIGHUP ended it.
-//
-// The signal cancels the generation and not the run and the script stops
-// the way it stops for anything else - its context ends - and the loop above
-// decides whether another generation follows.
+// reloadScope returns a generation context and the reload test a SIGHUP sets.
 func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 	generation, cancel := context.WithCancel(ctx)
 
@@ -107,9 +102,7 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 	return generation, seen.Load, stop
 }
 
-// runOnce is one generation: a runtime, the script read and parsed again, and
-// the run. It drops everything it built when it returns and a reload picks up
-// an edited file.
+// runOnce runs one generation from a fresh runtime, dropped on return for the reload.
 func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
 	if err := options.Check(); err != nil {
@@ -173,14 +166,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	return nil
 }
 
-// writeCoverage writes the profile the run collected, and the per-symbol report
-// when --cover named one. Columns come from the source text below root, as
-// the profile format reads them.
-//
-// The report goes to stderr because the script owns stdout: a run pipes its own
-// echo somewhere, and a coverage table mixed into that stream corrupts the
-// output the command exists to produce. `phpscript test` prints its report on
-// stdout, because there the runner owns it.
+// writeCoverage writes the profile and the --cover report to stderr, which the script does not own.
 func writeCoverage(collector *coverage.Collector, globals *flags.Options, root string) error {
 	if collector == nil {
 		return nil
@@ -210,13 +196,7 @@ func writeCoverage(collector *coverage.Collector, globals *flags.Options, root s
 	return nil
 }
 
-// resolveEntrypoint splits the script the user named into the path to load and
-// the directory to root the runtime at.
-//
-// A path at or below the working directory keeps the working directory as the
-// root and an include resolves the way PHP resolves it. Anything else, an
-// absolute path or one that climbs out with "..", roots at the script's own
-// directory, since the working directory cannot name it.
+// resolveEntrypoint returns the script path and its root, the script's dir outside the workdir.
 func resolveEntrypoint(arg string) (script, root string, err error) {
 	absolute, err := filepath.Abs(arg)
 	if err != nil {

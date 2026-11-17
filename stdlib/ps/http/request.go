@@ -44,9 +44,7 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 	return request, nil
 }
 
-// flattenHeader renders a header set as the array shape a script reads, joining
-// a header sent more than once with ", ". map[string]string is the cheap shape
-// for a value a script only reads; see docs/allocation-performance.md.
+// flattenHeader renders a header set as map[string]string, joining repeated values with ", ".
 func flattenHeader(header nethttp.Header) map[string]string {
 	out := make(map[string]string, len(header))
 	for name, values := range header {

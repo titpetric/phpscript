@@ -11,14 +11,10 @@ import (
 // the virtual host rooted there.
 const VirtualHostConfigFile = "phpscript.yml"
 
-// tenantKeys are the keys a site may not set in its own configuration file.
-// The listen address belongs to the operator and a site cannot contain further
-// sites.
+// tenantKeys lists the keys a site may not set in its own configuration file.
 var tenantKeys = []string{"server", "virtualhost"}
 
-// tenantKeysOwner completes the sentence that reports a rejected tenant key.
-// A whole clause and no word, because docs/configuration.md records the
-// message verbatim.
+// tenantKeysOwner is the clause docs/configuration.md records verbatim after a rejected key.
 const tenantKeysOwner = "is set by the operator, not by the site"
 
 // VirtualHost routes a set of domains to an application root. The operator owns
@@ -84,8 +80,7 @@ func (v VirtualHost) Load(base Config) (Config, error) {
 	return result, err
 }
 
-// load is Load, also returning the keys the file named. Validation needs to
-// tell a setting the site named from one it inherited from base.
+// load is Load, also returning the keys the site's file named.
 func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	filename := filepath.Join(v.Root, VirtualHostConfigFile)
 	name := v.Name()

@@ -11,8 +11,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// terminalTable writes one padded row at a time. It fixes the column widths
-// before the tests start and a completed fixture prints immediately.
+// terminalTable writes one padded row at a time, fixing column widths before the fixtures start.
 type terminalTable struct {
 	w       io.Writer
 	headers []string
@@ -49,9 +48,7 @@ func newTerminalTable(w io.Writer, opts Options) *terminalTable {
 	}
 }
 
-// sizeColumns rebuilds the header row and the column widths for one folder.
-// The folder name is the header of the filename column and a table says which
-// area it covers without spending a line on a title.
+// sizeColumns rebuilds the header row and column widths, naming the folder in the filename column.
 func (t *terminalTable) sizeColumns(dir string, labels []string) {
 	if dir == "" {
 		dir = "Filename"
@@ -210,21 +207,12 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 	t.writeMarkdownRow(row)
 }
 
-// writeSummary closes the report with the per-folder totals and the reader
-// need not add up the tables above it.
+// writeSummary closes the report with the per-folder totals.
 func (t *markdownTable) writeSummary(passed, failed, total int, duration time.Duration) {
 	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.lat || t.loop || t.profile, nil)
 }
 
-// writeMarkdownSummary renders the per-folder totals table that closes a
-// report. The Total row is the sum of the folder rows and equals the counts
-// the caller passed and the report checks itself.
-//
-// The duration column appears only when the run named cost columns. Every
-// pipeline run regenerates a checked-in report, and a timing that differs by a
-// millisecond each time would show up as a diff in every commit. A matrix run
-// passes its engines and gets a duration column per runner beside the
-// wall-clock one.
+// writeMarkdownSummary renders the totals table, with a duration column when timings is true.
 func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, total int, duration time.Duration, timings bool, engines []engineDuration) {
 	headers := []string{"Area", "Fixtures", "Passed", "Failed"}
 	widths := []int{len("**Total**"), len("Fixtures"), len("Passed"), len("Failed")}
@@ -299,8 +287,7 @@ func engineTime(runner tests.Runner, engines []engineDuration) time.Duration {
 	return 0
 }
 
-// markdownCell keeps a value inside its table cell: a pipe would end the cell
-// and a newline would end the row.
+// markdownCell keeps a value inside its table cell, escaping a pipe and collapsing newlines.
 func markdownCell(value string) string {
 	value = strings.ReplaceAll(value, "|", "\\|")
 	return strings.Join(strings.Fields(value), " ")
@@ -318,9 +305,7 @@ func formatDuration(duration time.Duration) string {
 	return strconv.FormatInt(duration.Milliseconds(), 10)
 }
 
-// formatEngineSplit renders the duration a summary line closes with. A matrix
-// run names each engine's share after the wall-clock figure; a plain run has
-// no split and keeps the single figure.
+// formatEngineSplit renders the wall-clock duration with each engine's share after it.
 func formatEngineSplit(engines []engineDuration, duration time.Duration) string {
 	if len(engines) == 0 {
 		return fmt.Sprintf("%dms", duration.Milliseconds())

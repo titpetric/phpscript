@@ -21,8 +21,7 @@ type Conn = sqlx.Conn
 // a host that wants instrumented queries supplies its own.
 type Connector = func(driver, dsn string) (*DB, error)
 
-// newDB wraps an open database/sql pool, under the driver name the handle reads
-// to pick the bind variable form.
+// newDB wraps pool under driver, the name sqlx reads to pick the bind variable form.
 func newDB(pool *sql.DB, driver string) *DB {
 	return sqlx.NewDb(pool, driver)
 }

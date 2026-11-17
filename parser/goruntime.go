@@ -23,8 +23,7 @@ import (
 // runtime both: `\strlen($s)` is php's whatever the file imported, and
 // `Runtime\Go\make(...)` is go's.
 
-// useGo records the import of the go runtime, the one import the parser reads
-// for itself. A leading separator and the namespace's case are php's to ignore.
+// useGo records a `use Runtime\Go` import, ignoring a leading separator and case.
 func (p *parser) useGo(name string) {
 	if strings.EqualFold(strings.Trim(name, "\\"), modelutil.GoNamespace) {
 		p.goRuntime = true
@@ -41,9 +40,7 @@ func (p *parser) goBound(name string) bool {
 	return p.goRuntime && modelutil.GoBuiltin(name)
 }
 
-// atGoSlice reports whether the tokens at a type position open a `[]T` type: a
-// `[]` pair with an element type behind it, which is a slice, a nested one, or
-// a qualified class name.
+// atGoSlice reports whether a type position opens a `[]T` type.
 func (p *parser) atGoSlice() bool {
 	if !p.goRuntime || !p.isOp("[") || !p.isOpAt(1, "]") {
 		return false
@@ -56,15 +53,12 @@ func (p *parser) atGoPointer() bool {
 	return p.goRuntime && p.isOp("*")
 }
 
-// atGoMake reports whether the call ahead reads `make([]`, the one place a
-// type stands where php puts an expression. Everywhere else `[` opens an
-// array literal, and `foreach ([] as $v)` reads it there.
+// atGoMake reports whether the call ahead reads `make([]`, where a type names an expression.
 func (p *parser) atGoMake(name string) bool {
 	return name == "make" && p.isOpAt(1, "[") && p.isOpAt(2, "]")
 }
 
-// parseGoMakeArgs reads make's argument list: a type, then the length and the
-// capacity, which are expressions like any other.
+// parseGoMakeArgs reads make's type, length and capacity arguments.
 func (p *parser) parseGoMakeArgs() ([]model.Expr, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
@@ -91,12 +85,7 @@ func (p *parser) parseGoMakeArgs() ([]model.Expr, error) {
 	return p.exprs.take(mark), p.eatOp(")")
 }
 
-// parseGoTypeArg reads a type spelling, which php has no expression for: one
-// `[]` per dimension and then the element type, go's or a class.
-//
-// The value is the spelling the binding reads, with a class name qualified the
-// way the file qualifies any other name, and the source spelling goes in as the
-// one the formatter prints.
+// parseGoTypeArg reads a type spelling as the value the binding reads and the formatter prints.
 func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	dims := ""
 	for p.isOp("[") && p.isOpAt(1, "]") {
@@ -120,16 +109,7 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	return p.newStringLit(dims+qualified, dims+name), nil
 }
 
-// goFold is the conversion a builtin type applies to a literal, applied where
-// the file parses: `int64(0)` is the literal 0, it reaches no function table at
-// run time and both engines read the literal.
-//
-// Only a pair the conversion decides on its own folds. A value php has to read
-// first, a string under a numeric type, reaches the binding, which reads it
-// through phpval and applies the same conversion to the result.
-//
-// A folded value prints as the literal it became, which is the spelling the
-// printer already picks for a number: it prints `0x10` as 16.
+// goFold folds a builtin type conversion over a literal, leaving a value php must read to the binding.
 func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
 	if len(args) != 1 || !modelutil.GoType(name) {
 		return nil, false
@@ -150,9 +130,7 @@ func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
 	return p.newLit(folded), true
 }
 
-// goLitValue reads the value of a literal argument. php has no negative
-// literal: `-1` is a unary minus over 1, go folds the sign into the constant,
-// and a conversion of a literal reads both the same way.
+// goLitValue reads a literal argument's value, folding a unary minus into it.
 func goLitValue(arg model.Expr) (any, bool) {
 	switch n := modelutil.UnwrapParenthesized(arg).(type) {
 	case *model.Lit:

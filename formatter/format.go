@@ -34,13 +34,13 @@ func Source(src string) (string, error) {
 	// printer rewrites statements. A template's lines keep their contents, and
 	// only the leading indentation moves. See template.go.
 	if hasInlinePHPBlock(src) {
-		return alignTemplate(src), nil
+		return alignTemplate(src, isGoRuntimeSource(src)), nil
 	}
-	prog, err := parseSource(src)
+	prog, goRuntime, err := parseSource(src)
 	if err != nil {
 		return "", err
 	}
-	out, unsupported := printProgram(prog, Options{Comments: CollectComments(src)})
+	out, unsupported := printProgram(prog, Options{Comments: CollectComments(src), GoRuntime: goRuntime})
 	// Formatting rewrites the file in place and a node the printer cannot
 	// spell has to stop the rewrite: emitting the placeholder would delete
 	// working code.
@@ -63,21 +63,36 @@ func hasInlinePHPBlock(src string) bool {
 }
 
 // parseSource reads src as php, and as a go runtime file when php refuses it.
-func parseSource(src string) (*model.Program, error) {
+func parseSource(src string) (*model.Program, bool, error) {
 	prog, err := parser.Parse(src)
 	if err == nil {
-		return prog, nil
+		return prog, usesGoRuntime(prog), nil
 	}
 	// A go runtime file spells what php cannot: `import "net/http";`, a
 	// `{key: value}` map and a `[]T{...}` literal.
 	if goProg, goErr := parser.ParseFileOptions("input.php", src, parser.Options{GoRuntime: true}); goErr == nil {
-		return goProg, nil
+		return goProg, true, nil
 	}
-	return nil, err
+	return nil, false, err
 }
 
-// splitShebang separates a leading `#!` interpreter line from the rest of the
-// file. It reports false for a file that does not have one.
+// usesGoRuntime reports whether prog imports the go runtime namespace.
+func usesGoRuntime(prog *model.Program) bool {
+	for _, s := range prog.Stmts {
+		use, ok := s.(*model.Use)
+		if !ok {
+			continue
+		}
+		for _, imp := range use.Imports {
+			if strings.EqualFold(strings.TrimPrefix(imp.Path, `\`), `Runtime\Go`) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// splitShebang separates a leading interpreter line, reporting false when absent.
 func splitShebang(src string) (shebang, rest string, ok bool) {
 	if !strings.HasPrefix(src, "#!") {
 		return "", src, false
@@ -108,7 +123,7 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 			stmts = stmts[:len(stmts)-1]
 		}
 	}
-	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, comments: opts.Comments}
+	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, comments: opts.Comments, goRuntime: opts.GoRuntime}
 	p.imports = collectImports(stmts)
 	p.goImports = collectGoImports(stmts)
 	if startsInPHP {
@@ -152,9 +167,7 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 	return out, p.unsupported
 }
 
-// splitDeclarePreamble separates the leading `declare(...);` statements from
-// the rest of the program. PHP requires them to be the first statement in the
-// file, ahead of the namespace declaration.
+// splitDeclarePreamble separates the leading declare statements PHP requires first.
 func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 	for i, s := range stmts {
 		d, ok := s.(*model.Declare)
@@ -165,12 +178,7 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 	return stmts, nil
 }
 
-// collectImports maps every name a file imports to the alias it gave it and
-// the printer can write a reference the way the author did and not the way
-// the parser resolved it.
-//
-// The alias of an unaliased import is its last segment, the name the
-// short name in the body already means.
+// collectImports maps every imported name to its alias, the last segment when unaliased.
 func collectImports(stmts []model.Stmt) map[string]string {
 	out := map[string]string{}
 	for _, s := range stmts {
@@ -190,21 +198,7 @@ func collectImports(stmts []model.Stmt) map[string]string {
 	return out
 }
 
-// splitImportPreamble separates a file's leading includes from its leading
-// imports, and answers what follows both.
-//
-// A `use` is a compile-time alias: it binds a short name to a long one and
-// loads nothing and it can sit anywhere and is legal before the include that
-// will eventually define what it names. That is exactly why the order is
-// worth fixing here, and not left to whoever types it: a reader
-// scanning the top of a file learns what the file pulls in before what it
-// renames, and one order for every file is one less thing to decide.
-//
-// This reorders the leading run alone, and only across the include/use
-// boundary. Includes keep their order among themselves, because an include
-// runs code and the next one may depend on it; imports keep theirs. A `use`
-// further down the file, after real work has started, stays where the author
-// put it.
+// splitImportPreamble separates the leading includes from imports, preserving each group's order.
 func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt) {
 	from := len(stmts)
 	for i, s := range stmts {

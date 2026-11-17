@@ -52,6 +52,18 @@ echo "none";`
 // call, call_user_func and a variable function all resolve through the one
 // function table, on either engine. strlen answers beside each refusal and the
 // failure is the absence of the name and no broken runtime.
+// TestMountGoBindsHeader covers the request function the go runtime installs.
+func TestMountGoBindsHeader(t *testing.T) {
+	t.Parallel()
+	rt := runner.New(io.Discard, runner.Options{Runtime: "go"})
+	stdlib.Mount(rt, stdlib.Secure)
+	for _, name := range []string{"header", "http_response_code", "getallheaders"} {
+		if _, ok := rt.LookupFunc(name); !ok {
+			t.Errorf("the go runtime installed no %s", name)
+		}
+	}
+}
+
 func TestMountSecureExcludesExec(t *testing.T) {
 	t.Parallel()
 	calls := []struct {

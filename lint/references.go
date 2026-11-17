@@ -7,12 +7,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// lintReferences reports the reference markers that parse and confer nothing
-// (docs/design.md, "`&` outside `foreach`"): `$a = &$b` binds by value, and
-// `function &f()` returns by value. Both spellings survive the formatter and
-// the linter is where a port hears that the aliasing they promise never
-// happens. The `&` of `foreach ($a as &$v)`, a parameter or a closure `use`
-// never builds these nodes and is not reported.
+// lintReferences reports the `&` markers outside foreach, which alias nothing.
 func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 	w := &astWalker{prog: prog}
 	byRefDecl := func(fallback model.Stmt, fn *model.FuncDecl, name string) {
@@ -60,24 +55,7 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 	w.walk(prog.Stmts)
 }
 
-// lintChainedAssign reports `$a = $b = value`, a single statement binding one
-// value to two or more names.
-//
-// PHP copies an array on assignment and there each name holds its own
-// array. phpscript's arrays are references and both names point at one array;
-// a later write through either is visible through the other, a bug the shape
-// hides and never announces.
-//
-// The rule sees only the chains the parser left after fixing the ones it can.
-// The parser splits a chain ending in an array literal into one allocation
-// per name (parser.lowerChainedAlloc); that chain never reaches here. It
-// leaves a chain ending in a scalar literal alone. This check skips that one,
-// because a string or a number has no interior for the names to share. What
-// remains is a chain ending in a name, a call or a `new`, where either the
-// value is a handle the names really do share -- `$dba = $dbb = new Database`
-// leaves one connection under two names in PHP as well -- or its type is not
-// known until the statement runs. Both are worth reading again, and the
-// finding says so.
+// lintChainedAssign reports `$a = $b = value` where the names may share an array handle.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	chained, ok := modelutil.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
@@ -93,9 +71,7 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	})
 }
 
-// chainedValue walks to the end of an assignment chain and the check judges
-// `$a = $b = $c = '00'` by the `'00'` and not by the assignment that binds
-// `$c`.
+// chainedValue returns the final value of an assignment chain.
 func chainedValue(n *model.AssignExpr) model.Expr {
 	v := modelutil.UnwrapParenthesized(n.Value)
 	for {
@@ -113,12 +89,7 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 	}
 }
 
-// isScalarLiteral reports whether the source spells out a value that no name
-// can share: a string, int, float, bool or null literal, an interpolated
-// string, which always evaluates to a string, or a prefix operator over one of
-// those and a negative number counts. A *model.Lit holding a *model.Array is
-// not one of these; the parser does not build them, but the check reads the
-// value and never guesses it.
+// isScalarLiteral reports a literal value no second name can share.
 func isScalarLiteral(e model.Expr) bool {
 	switch v := e.(type) {
 	case *model.Interp:

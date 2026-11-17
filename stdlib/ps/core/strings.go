@@ -138,10 +138,7 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("crc32", phpCRC32)
 }
 
-// htmlSpecialCharsReplacer holds one Replacer for the whole package: a
-// strings.Replacer compiles a trie over its pairs, and htmlspecialchars runs
-// once per template variable and constructing it inside the binding paid for
-// that trie on every call.
+// htmlSpecialCharsReplacer builds the Replacer once so htmlspecialchars pays no trie per call.
 var htmlSpecialCharsReplacer = strings.NewReplacer(
 	"&", "&amp;",
 	"<", "&lt;",
@@ -153,14 +150,7 @@ var htmlSpecialCharsReplacer = strings.NewReplacer(
 // crc32IEEETable is the standard reflected IEEE table, built once.
 var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 
-// phpCRC32 checksums a string without the []byte(str) conversion the previous
-// implementation paid on every call. Escape analysis confirmed the conversion
-// escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
-// argument leaks into the slicing-by-8 and hardware paths and every crc32()
-// allocated and copied its input. Short strings, every practical use since
-// crc32 keys and etags are short, run the table loop in place with no
-// allocation. Longer ones keep the standard library's implementation, which
-// processes eight bytes at a time and amortises the copy over the input.
+// phpCRC32 checksums str without allocating a copy for short inputs.
 func phpCRC32(str string) int64 {
 	if len(str) > crc32NativeThreshold {
 		return int64(crc32.ChecksumIEEE([]byte(str)))
@@ -172,14 +162,10 @@ func phpCRC32(str string) int64 {
 	return int64(^crc)
 }
 
-// crc32NativeThreshold is where the table loop stops winning outright. Below
-// it the loop beats allocating a copy (8 bytes: 38ns/0 allocs against
-// 105ns/1 alloc); at 256 the two are level on this hardware.
-// See BenchmarkCRC32.
+// crc32NativeThreshold is where the table loop stops beating crc32.ChecksumIEEE.
 const crc32NativeThreshold = 256
 
-// phpSubstr implements substr($s, $start[, $length]) with PHP's negative
-// offset and length semantics, counting bytes. mbSubstr counts characters.
+// phpSubstr implements substr with PHP's negative offset and length semantics, counting bytes.
 func phpSubstr(s string, start int64, length ...int64) string {
 	n := int64(len(s))
 	if start < 0 {
@@ -209,9 +195,7 @@ func phpSubstr(s string, start int64, length ...int64) string {
 	return s[start:end]
 }
 
-// chrTable holds the 256 one-byte strings chr can return. Building it once
-// means chr allocates nothing per call, where string(byte(n)) would cost an
-// allocation for every byte outside the runtime's small-string cache.
+// chrTable holds the 256 one-byte strings chr returns, built once.
 var chrTable = func() [256]string {
 	var t [256]string
 	for i := range t {
@@ -220,9 +204,7 @@ var chrTable = func() [256]string {
 	return t
 }()
 
-// phpChr returns the byte $codepoint names. PHP reduces the argument modulo
-// 256 and wraps negatives up into 0-255 and chr(256) is chr(0) and chr(-1) is
-// chr(255).
+// phpChr returns the byte codepoint names, reduced modulo 256.
 func phpChr(codepoint int64) string {
 	c := codepoint % 256
 	if c < 0 {
@@ -231,8 +213,7 @@ func phpChr(codepoint int64) string {
 	return chrTable[c]
 }
 
-// phpOrd returns the first byte, not the first rune: PHP's ord is byte-wise and
-// a multi-byte character reports its leading byte. An empty string is 0.
+// phpOrd returns the first byte of character, zero for an empty character.
 func phpOrd(character string) int64 {
 	if character == "" {
 		return 0

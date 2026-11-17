@@ -101,11 +101,7 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-// contextWithScope returns a context holding the calling frame, and the file
-// and line to attribute a span to, as the fields of one bindingCtx in place of
-// three context.WithValue layers. Bindings take rt.bindingContext, which picks
-// the request as the base while one is live; this one keeps the base the caller
-// chose, for the trace region that must stay on the session chain.
+// contextWithScope returns a context holding the frame, file and line of one binding context.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	c := &bindingCtx{Context: ctx, scope: scope, env: rt.Env}
 	rt.fillSource(scope, c)

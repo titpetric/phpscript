@@ -4,8 +4,7 @@ import (
 	"math"
 )
 
-// Bounds of the int64 range as float64. A double at or above 2^63 does not fit,
-// and 2^63 is exactly representable and the test is a half-open interval.
+// twoPow63 and twoPow64 bound the int64 range, both exactly representable as float64.
 const (
 	twoPow63 = 9223372036854775808.0  // 2^63
 	twoPow64 = 18446744073709551616.0 // 2^64

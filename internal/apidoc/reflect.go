@@ -11,9 +11,7 @@ var (
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 )
 
-// reflectParams derives PHP parameters from a Go function type. Reflection
-// reports no parameter names and nameParams invents them from the PHP type,
-// with a numeric suffix when a type repeats.
+// reflectParams derives PHP parameters from a Go func type, inventing names from each type.
 func reflectParams(t reflect.Type) []Param {
 	params := []Param{}
 	for i := 0; i < t.NumIn(); i++ {
@@ -51,8 +49,7 @@ func nameParams(params []Param) []Param {
 	return dedupeParams(params)
 }
 
-// dedupeParams numbers repeated parameter names and two ignored arguments
-// render as $unused1 and $unused2, and never twice as $unused.
+// dedupeParams suffixes repeated names; a duplicate reads $unused1 and $unused2.
 func dedupeParams(params []Param) []Param {
 	counts := map[string]int{}
 	for _, p := range params {
@@ -94,13 +91,7 @@ func typeParamName(p Param) string {
 	return "value"
 }
 
-// reflectReturn folds a Go function's results into one PHP type. Registered
-// concrete types use their PHP class name; a trailing error reaches the script
-// as a throw and never as a return.
-//
-// Two or more non-error results are one array and no union: the runtime packs
-// them into a PHP list for the script to destructure and time.Time.ISOWeek's
-// (year, week) documents as array and not as int.
+// reflectReturn folds results into one PHP type; an error throws and more than one result becomes an array.
 func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}
 	for i := 0; i < t.NumOut(); i++ {

@@ -55,13 +55,7 @@ func Register(rt *runner.Runtime) {
 	})
 }
 
-// serverName reads the one optional argument `new Mail` takes.
-//
-// The parameter is any and not a string and this refuses a settings array and
-// coerces nothing. A string parameter turns that array into the empty name,
-// which resolves to "default": a script written against the old binding would
-// go on sending, silently, through whatever server the host configured first.
-// It has to fail and name where the settings live now.
+// serverName reads `new Mail`'s optional name and refuses a settings array.
 func serverName(names []any) (string, error) {
 	if len(names) > 1 {
 		return "", fmt.Errorf("Mail(): expects at most 1 argument, %d given", len(names))
@@ -83,19 +77,7 @@ func serverName(names []any) (string, error) {
 	return name, nil
 }
 
-// send is the one delivery path both bindings take and the span records every
-// message exactly once, whichever way the script spelled it.
-//
-// Mail leaves the process and is the slowest thing most scripts do and the span
-// marks it external work and no internal step. It records the recipient and the
-// subject; the body and its HTML stay out of it and only their size goes in. A
-// body is the one part of a delivery that is certain to be private. A size
-// answers the question an operator opens a trace to answer.
-//
-// The span names the server by its configured name and never by its hostname.
-// The name is what an operator reads the trace against, and the only server
-// detail this side of the provider holds, because the interface exposes no part
-// of a credential, hostname included.
+// send delivers a message and records its recipient, subject and size once on the span.
 func send(ctx context.Context, servers model.MailProvider, message Message) (err error) {
 	span := telemetry.StartSpan(ctx, "mail", telemetry.KindExternal)
 	span.SetAttribute("server", message.Server)
@@ -116,20 +98,12 @@ func send(ctx context.Context, servers model.MailProvider, message Message) (err
 	return servers.Send(ctx, message.Server, message.Recipient, message.Subject, message.Body)
 }
 
-// messageSender is a provider that delivers a whole Message, HTML part and
-// Reply-To included. Provider and Memory are. model.MailProvider declares a
-// plain-text Send only, and stays that way so a host's own provider keeps
-// compiling; send refuses a message a provider without SendMessage cannot
-// send.
+// messageSender is the optional provider interface delivering a whole Message.
 type messageSender interface {
 	SendMessage(ctx context.Context, message Message) error
 }
 
-// replyAddress reads the Reply-To a script passed as one address, a display
-// name allowed. header strips CR and LF first, as from every header and a
-// smuggled header leaves one malformed address behind, which this refuses and
-// never sends. A bare address stays bare; one with a name is re-rendered, which
-// quotes the name and encodes a name outside ASCII.
+// replyAddress reads one Reply-To address, refusing a value that smuggled a header.
 func replyAddress(value string) (string, error) {
 	if value == "" {
 		return "", nil

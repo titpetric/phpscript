@@ -87,8 +87,7 @@ func (rt *Runtime) UseNamespace(name string) bool {
 	return true
 }
 
-// useImport installs what one import names: the namespace, or the namespace a
-// `use function` or `use const` import names a symbol in.
+// useImport installs the namespace one import names, dropping a trailing symbol.
 func (rt *Runtime) useImport(path string) {
 	if _, known := NamespaceInstaller(path); known {
 		rt.UseNamespace(path)
@@ -99,11 +98,7 @@ func (rt *Runtime) useImport(path string) {
 	}
 }
 
-// useImports installs the namespace bindings the statements import.
-//
-// Both engines pass through here. The bytecode compiler resolves a call
-// through the runtime's function table at run time, and an install before
-// execution serves it as it serves the interpreter.
+// useImports installs the namespace bindings the statements import, for both engines.
 func (rt *Runtime) useImports(stmts []model.Stmt) {
 	for _, s := range stmts {
 		use, ok := s.(*model.Use)

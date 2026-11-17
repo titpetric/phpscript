@@ -7,19 +7,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// lintTypeReassign reports a variable whose first literal assignment fixed a
-// type and whose later literal assignment spells a different one. The rule
-// reads the first literal as the declaration of the variable's type, the
-// convention the flat VM's typed operator selection leans on; a reassignment
-// at another type is legal PHP and runs unchanged here too and the finding is
-// advisory and never fatal.
-//
-// Tracking is per function body (methods included), and the whole body is one
-// scope: an if arm assigning a string where the else arm assigns an int is
-// the same drift the rule exists to name. Only an assignment whose right
-// side is a literal counts; a call, a variable or any other computed value
-// says nothing about the declared type and neither records nor conflicts.
-// Closure bodies are not walked.
+// lintTypeReassign reports, as advice, a variable whose later literal assignment spells a different type.
 func lintTypeReassign(file string, prog *model.Program, out *[]Diagnostic) {
 	w := &reassignWalker{file: file, prog: prog, out: out}
 	w.scope(prog.Stmts)
@@ -37,9 +25,7 @@ type reassignWalker struct {
 	out  *[]Diagnostic
 }
 
-// scope checks one function body's statements against a fresh type table,
-// then flags $s[$i] on the strings it declared: advisory, and silent for
-// arrays and unknown variables under the same syntax.
+// scope checks one function body's statements, flagging string offsets on the strings it declared.
 func (w *reassignWalker) scope(stmts []model.Stmt) {
 	types := map[string]string{}
 	w.walk(stmts, types)
@@ -62,8 +48,7 @@ func (w *reassignWalker) scope(stmts []model.Stmt) {
 	offsets.walk(stmts)
 }
 
-// declarations opens a new scope for every function and method body found at
-// any nesting of s, without re-checking the surrounding statements.
+// declarations opens a new scope for every function and method body nested in s.
 func (w *reassignWalker) declarations(s model.Stmt) {
 	switch n := s.(type) {
 	case *model.FuncDecl:
@@ -107,9 +92,7 @@ func (w *reassignWalker) classDecl(n *model.ClassDecl) {
 	}
 }
 
-// walk visits every statement of one scope, branches included, recording and
-// checking literal assignments. It skips function and class declarations;
-// declarations opens their own scope.
+// walk visits every statement of one scope's branches, recording and checking literal assignments.
 func (w *reassignWalker) walk(stmts []model.Stmt, types map[string]string) {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -175,9 +158,7 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 	})
 }
 
-// literalClass names the type a literal spells, "" for anything that is not
-// a literal. null fixes no type: PHP initialises with null and assigns the
-// real value later. The rule stays quiet about that.
+// literalClass names the type a literal spells, "" for a non-literal and null. The rule stays quiet about that.
 func literalClass(e model.Expr) string {
 	switch v := e.(type) {
 	case *model.Interp:

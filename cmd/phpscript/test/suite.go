@@ -13,13 +13,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// suites are the phpscript.yml files one invocation runs under, ordered
-// outermost first, with the run's own configuration at the front.
-//
-// A file marks a suite root: the directory whose fixtures resolve their
-// prelude, their connections and their hooks through it. The run's own is
-// whatever -f named or the nearest one above the working directory. It alone
-// may set the keys that describe a whole run.
+// suites holds the phpscript.yml files one invocation runs under, the run's own first.
 type suites struct {
 	// run is the suite the invocation itself is under, or nil. Its directory
 	// is not necessarily below the working directory and suites holds it
@@ -41,13 +35,7 @@ func (s suites) all() []*tests.Suite {
 	return append(result, s.found...)
 }
 
-// resolve answers the suite governing a fixture: the nearest file at or above
-// the directory holding it, and the run's own where no file is closer.
-//
-// Nearest wins because a suite is what a folder says about itself. A tree that
-// configures a bootstrap at its root and a database in one folder below it
-// names the database for that folder alone, under the same replacement rule
-// a virtual host reads its own file under.
+// resolve returns the nearest suite at or above path's directory, or the run's own.
 func (s suites) resolve(path string) *tests.Suite {
 	dir := filepath.Dir(path)
 	for {
@@ -64,13 +52,7 @@ func (s suites) resolve(path string) *tests.Suite {
 	}
 }
 
-// discoverSuites reads the configuration the run is under and every
-// phpscript.yml below the argument paths.
-//
-// It reads both halves even where the arguments select no fixture below them,
-// and a narrower path argument does not silently skip a suite's setup. The walk
-// is the fixture walk: a bare directory is not recursive, and `./...` is what
-// reaches a tree.
+// discoverSuites loads the run's suite and every phpscript.yml below paths that the walk reaches.
 func discoverSuites(base config.Config, paths []string) (suites, error) {
 	var result suites
 
@@ -137,13 +119,7 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 	return result, nil
 }
 
-// runSuite reads the phpscript.yml the invocation itself is under: the nearest
-// one at or above the working directory.
-//
-// The walk climbs upwards because that is where an application root sits
-// relative to the tests it holds. A repository keeping its fixtures in tests/
-// writes one file at its root, and every fixture below inherits it without the
-// tree repeating it per folder.
+// runSuite reads the nearest phpscript.yml at or above the working directory.
 func runSuite(base config.Config) (*tests.Suite, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -163,8 +139,7 @@ func runSuite(base config.Config) (*tests.Suite, error) {
 	}
 }
 
-// walkRoot splits a fixture path argument into the directory to walk and
-// whether the walk is recursive, matching tests.FindFixtures.
+// walkRoot splits a fixture path into its directory and whether the walk is recursive.
 func walkRoot(p string) (string, bool, error) {
 	p = filepath.Clean(p)
 	recursive := false
@@ -187,12 +162,7 @@ func walkRoot(p string) (string, bool, error) {
 	return p, recursive, nil
 }
 
-// applySuites points every fixture at the suite governing it: the connections
-// its folder configured, and the prelude and application root it named.
-//
-// --include still wins over what a suite named, and speaks from the
-// invocation root and not from a suite: an operator typed it about this run,
-// and the file it names is in the invocation directory.
+// applySuites points every fixture at the suite governing it, and --include overrides the app root.
 func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {
 		suite := found.resolve(fx.Path)
@@ -208,12 +178,7 @@ func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	}
 }
 
-// hookOutput answers where a hook's own output goes.
-//
-// Only -v reports it. A hook writes whatever its migrations and its seed print,
-// and without -v the run answers with a folder table that a schema's log lines
-// would land in the middle of. The error the run ends with reports a failure
-// either way.
+// hookOutput returns stdout under -v and discards a hook's output otherwise.
 func hookOutput(opts Options) io.Writer {
 	if opts.Verbose && !opts.JSON && !opts.coverReport() {
 		return os.Stdout
@@ -221,9 +186,7 @@ func hookOutput(opts Options) io.Writer {
 	return io.Discard
 }
 
-// absDir answers the absolute spelling of a directory, or the given one when
-// filepath.Abs fails. Two spellings of one directory must resolve to one
-// suite, or its setup hook would run twice.
+// absDir returns dir's absolute spelling, or dir when filepath.Abs fails.
 func absDir(dir string) string {
 	if abs, err := filepath.Abs(dir); err == nil {
 		return abs

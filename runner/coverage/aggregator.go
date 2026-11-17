@@ -7,9 +7,7 @@ import (
 	"sync"
 )
 
-// keySep separates the fields of a composed map key. A filename may hold any
-// byte a path may hold, colons and commas included and the separator is one
-// that cannot appear in one.
+// keySep separates the fields of a composed map key and appears in no path.
 const keySep = "\x00"
 
 // Aggregator accumulates the counts of many collectors for the lifetime of a
@@ -127,8 +125,7 @@ func (a *Aggregator) Empty() bool {
 	return len(a.blocks) == 0 && len(a.files) == 0
 }
 
-// blockKey composes the identity of one statement range. The count is the map
-// value and is not part of it.
+// blockKey composes a statement range's identity, excluding its count.
 func blockKey(b Block) string {
 	return strings.Join([]string{
 		b.File,
@@ -158,8 +155,7 @@ func parseBlockKey(key string) (Block, bool) {
 	return Block{File: parts[0], StartLine: start, EndLine: end, NumStmt: numStmt}, true
 }
 
-// funcKeyOf composes the identity of one declaration. The end line is the map
-// value, because a declaration that grew between parses keeps its start.
+// funcKeyOf composes a declaration's identity, excluding the end line that may grow.
 func funcKeyOf(fn FuncSpan) string {
 	return strings.Join([]string{fn.File, strconv.Itoa(fn.StartLine), fn.Name}, keySep)
 }

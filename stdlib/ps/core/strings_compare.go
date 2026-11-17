@@ -37,15 +37,10 @@ func registerStringCompare(rt *runner.Runtime) {
 	})
 }
 
-// wholeString is the limit strcmp and strcasecmp pass: they read to the end of
-// the shorter string and then let its length break the tie. A large number
-// would not do, because a large number is still a limit, and a limit reached is
-// what tells compareBytes to stop before the length rule.
+// wholeString is the limit the unbounded comparisons pass, letting length break a tie.
 const wholeString = -1
 
-// clampLength reads strncmp's $length. PHP 8 raises a ValueError below zero;
-// the bindings here clamp instead, and a length of zero compares nothing, the
-// result PHP returns for that call.
+// clampLength reads a negative strncmp length as zero and caps it at the int width.
 func clampLength(length int64) int {
 	if length < 0 {
 		return 0
@@ -58,15 +53,7 @@ func clampLength(length int64) int {
 	return int(length)
 }
 
-// compareBytes is the one comparison the four functions differ only in the
-// arguments to.
-//
-// It returns the difference between the first two bytes that disagree, with no
-// normalisation to -1/0/1, because PHP's memcmp answers the byte difference and
-// a fixture recorded from php pins the number: strcmp("A", "a") is -32 there,
-// not -1. Bytes compare unsigned and "\xff" sorts after "\x01" and never
-// before it. Only a tie broken by length normalises, which is also PHP's
-// reading: strcmp("a", "abcdefgh") is -1 and not -7.
+// compareBytes answers the unsigned byte difference, normalising only a tie broken by length.
 func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 	n := len(string1)
 	if len(string2) < n {
@@ -105,10 +92,7 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 	return 0
 }
 
-// lowerASCII folds one byte the way PHP's case-insensitive comparisons do:
-// A-Z only. unicode.ToLower would fold a rune, and these functions never decode
-// one - they walk bytes and strcasecmp cannot see that "\xc3\x84" and
-// "\xc3\xa4" are the same letter.
+// lowerASCII folds one A-Z byte and leaves every other byte alone.
 func lowerASCII(c byte) byte {
 	if c >= 'A' && c <= 'Z' {
 		return c + ('a' - 'A')

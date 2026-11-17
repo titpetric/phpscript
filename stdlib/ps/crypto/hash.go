@@ -101,14 +101,7 @@ func RegisterHash(rt *runner.Runtime) {
 	})
 }
 
-// digests is the algorithm table, spelled the way PHP spells the names, and
-// shorter than PHP's hash_algos(): every entry here is one a Go binary already
-// holds, and hash_algos() below answers this table and not PHP's and a
-// script reads the set it has.
-//
-// This build registers the family because storing a token as a digest an index
-// can still find needs it: bcrypt cannot answer a lookup, and a fast digest
-// chosen by name can.
+// digests maps PHP's algorithm names to the digest factories this build holds.
 var digests = map[string]func() hash.Hash{
 	"md5":    md5.New,
 	"sha1":   sha1.New,
@@ -131,16 +124,12 @@ func newDigest(fn, algo string) (hash.Hash, error) {
 	return factory(), nil
 }
 
-// unknownAlgo phrases the refusal the way PHP 8 phrases its ValueError and a
-// script that catches it reads a familiar message. No name has a nearest answer
-// here: a digest under a name this build does not list is unavailable.
+// unknownAlgo returns PHP 8's ValueError text for a digest name this build does not hold.
 func unknownAlgo(fn, algo string) error {
 	return fmt.Errorf("%s(): Argument #1 ($algo) must be a valid hashing algorithm, %q given", fn, algo)
 }
 
-// digestString renders a sum the way PHP does: hex unless the call named
-// the raw bytes, which reach a script as an ordinary string because that is
-// what a PHP string is in this runtime.
+// digestString renders a sum as hex, or raw bytes when the call passes binary true.
 func digestString(sum []byte, binary []bool) string {
 	if len(binary) > 0 && binary[0] {
 		return string(sum)

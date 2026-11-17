@@ -31,7 +31,7 @@ $ages["grace"] = 41;
 echo len($ages), ":", $ages["grace"], "\n";
 
 delete($ages, "ada");
-echo len($ages), ":", $ages["ada"] === null ? "gone" : "here", "\n";
+echo len($ages), ":", $ages["ada"] == null ? "gone" : "here", "\n";
 
 // A type nests, and a braced entry elides the element type it repeats. Both
 // spellings build each level, converting every entry on the way in.

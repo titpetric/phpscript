@@ -133,9 +133,7 @@ func StdlibDefinitions(options runner.Options, names ...string) (string, error) 
 	return strings.Join(defs, "\n"), nil
 }
 
-// constructedClasses names every declared class a constructor builds, in name
-// order. A name sharing its constructor with others is still a name a script
-// types and it gets its own definition.
+// constructedClasses names every declared class a constructor builds, in name order.
 func constructedClasses(rt *runner.Runtime, byName map[string]apidoc.Class) []string {
 	names := make([]string, 0, len(byName))
 	for _, name := range rt.DeclaredClasses() {
@@ -157,11 +155,7 @@ func StdlibMarkdown(symbols []Symbol) string {
 	return markdownTable([]string{"Kind", "Name", "Signature", "Area"}, rows)
 }
 
-// stdlibRuntime builds the runtime the phpscript CLI runs and the listing is
-// what a script sees. The request-aware functions (header, http_response_code,
-// getallheaders) arrive per request and not through stdlib.Register, and a
-// server-targeted script still names them and an empty request context
-// registers them for the listing. This is the recipe scripts/list-apis uses.
+// stdlibRuntime builds the runtime the CLI lists from, with cli SAPI and every go area.
 func stdlibRuntime(options runner.Options) *runner.Runtime {
 	options.SAPI = "cli"
 	if options.RootFS == nil {
@@ -183,14 +177,7 @@ func stdlibRuntime(options runner.Options) *runner.Runtime {
 	return rt
 }
 
-// paramTypes renders a parameter list as types alone.
-//
-// Reflection invents a name out of the Go type and a binding with two string
-// parameters publishes them as $string1 and $string2 here whatever the
-// registration site called them. Printing an
-// invented name is worse than printing none: it reads as the argument's real
-// spelling, which only the source scan behind implemented-apis.md knows. A
-// by-reference slot has no type to print and keeps its ampersand.
+// paramTypes renders params as types alone, keeping &$name for a by-reference slot.
 func paramTypes(params []apidoc.Param) string {
 	parts := make([]string, 0, len(params))
 	for _, p := range params {
@@ -206,9 +193,7 @@ func paramTypes(params []apidoc.Param) string {
 	return strings.Join(parts, ", ")
 }
 
-// constantValue renders a constant's value the way a script would write it.
-// Only the scalar shapes occur; anything else prints as its Go rendering and
-// guesses at nothing.
+// constantValue renders value as a script would write it.
 func constantValue(value any) string {
 	switch v := value.(type) {
 	case string:

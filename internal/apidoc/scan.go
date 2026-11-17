@@ -12,10 +12,7 @@ import (
 	"strings"
 )
 
-// sourceEntry holds the package and area of one registration site, the doc
-// comment beside it, and the signature when the second argument resolved to a
-// function literal or declaration. A nil params or results slice means the
-// scan could not see the signature and reflection decides.
+// sourceEntry holds one registration site's package, area, doc comment and signature.
 type sourceEntry struct {
 	pkg     string
 	area    string
@@ -47,9 +44,7 @@ type sources struct {
 	paths map[string]*typeInfo    // by import path and type name
 }
 
-// typeDoc returns the doc comment for a type name. Two packages declaring
-// the same type name resolve to stdlib's, the package that registers the
-// classes a name collision has occurred over.
+// typeDoc returns the doc comment for name, preferring the stdlib package's declaration.
 func (src *sources) typeDoc(name string) *typeInfo {
 	infos := src.types[name]
 	if len(infos) == 0 {
@@ -63,16 +58,13 @@ func (src *sources) typeDoc(name string) *typeInfo {
 	return &infos[0]
 }
 
-// skipDirs are directories a scan does not descend into: a file in them
-// registers a binding on the CLI runtime, and demos and tests register
-// separate symbols that would shadow the real sites.
+// skipDirs names the directories a scan does not descend into.
 var skipDirs = map[string]bool{
 	".git": true, "bin": true, "demos": true, "docs": true,
 	"scripts": true, "testdata": true, "tests": true, "vendor": true,
 }
 
-// emptySources is what a caller with no Go source tree to read passes in. Every
-// lookup misses and the result holds only what reflection recovered.
+// emptySources returns a source set whose every lookup misses.
 func emptySources() *sources {
 	return &sources{
 		funcs: map[string]*sourceEntry{},
@@ -83,8 +75,7 @@ func emptySources() *sources {
 	}
 }
 
-// scan parses every non-test Go file under root and collects registration
-// sites, function declarations and type doc comments.
+// scan parses every non-test Go file under root for registrations, declarations and type docs.
 func scan(root string) (*sources, error) {
 	src := emptySources()
 
@@ -177,8 +168,7 @@ func scan(root string) (*sources, error) {
 	return src, nil
 }
 
-// collect walks one function body for RegisterFunc and RegisterConstructor
-// calls with a literal name.
+// collect walks one function body for RegisterFunc and RegisterConstructor calls with a literal name.
 func (src *sources) collect(pkg, area string, body *ast.BlockStmt, cmap ast.CommentMap) {
 	var stack []ast.Node
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -224,11 +214,7 @@ func (src *sources) collect(pkg, area string, body *ast.BlockStmt, cmap ast.Comm
 	})
 }
 
-// resolveSignature fills entry from the registered expression: a function
-// literal holds its signature inline, an identifier or selector resolves
-// through the declaration index. The doc comment of a resolved declaration
-// backs an absent registration-site comment, with its leading Go name
-// rewritten to the PHP name so the published line reads as PHP documentation.
+// resolveSignature fills a registration's params and results from a literal, identifier or selector.
 func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr ast.Expr) {
 	var ft *ast.FuncType
 	var doc []string
@@ -267,8 +253,7 @@ func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr 
 	}
 }
 
-// method returns the indexed declaration for a method on typeName, as an
-// entry holding its comment and signature, or nil.
+// method returns the declaration of goName on typeName as an entry, or nil.
 func (src *sources) method(typeName, goName string) *sourceEntry {
 	for _, info := range src.decls[goName] {
 		if info.recvType != typeName {
@@ -281,8 +266,7 @@ func (src *sources) method(typeName, goName string) *sourceEntry {
 	return nil
 }
 
-// lookupDecl finds a declaration by name, preferring the calling package.
-// samePkg restricts the match to it and a bare identifier binds.
+// lookupDecl finds a declaration by name, preferring pkg and, with samePkg, excluding any other.
 func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	var fallback *declInfo
 	for _, info := range src.decls[name] {
@@ -299,15 +283,7 @@ func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	return fallback
 }
 
-// lookupDeclIn returns the declaration a qualified selector names.
-//
-// The qualifier is either a package, in which case the declaration has to be a
-// function in a package of that name, or a value, in which case the name is a
-// method on the type the qualifier holds. A qualifier naming no package in the
-// tree, which every import of the Go standard library is, leaves the signature
-// to reflection: without that, registering regexp.Compile would publish the
-// parameters of flatstack/engine.Compile, which shares the name and no
-// signature.
+// lookupDeclIn resolves a qualified selector to a same-package function or a method on the qualifier.
 func (src *sources) lookupDeclIn(pkg, qualifier, name string) *declInfo {
 	var method *declInfo
 	for _, info := range src.decls[name] {

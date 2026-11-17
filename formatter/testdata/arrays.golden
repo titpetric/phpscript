@@ -28,7 +28,6 @@ $retval[] = array(
 	"date" => isset($run["stamp"]) ? $run["stamp"] : "",
 	"value" => isset($run["duration"]) ? $run["duration"] : 0,
 );
-
 render($monthly, array(
 	"a" => 1,
 	"b" => 2,

@@ -58,9 +58,7 @@ import (
 	"strings"
 )
 
-// comment returns the text of a single-line or docblock comment, reporting
-// whether line is a comment at all. Both annotations must appear in a comment,
-// and a PHP string holding what looks like an annotation stays inert.
+// comment returns the text of a comment line, reporting whether line is one.
 func comment(line string) (string, bool) {
 	text := strings.TrimSpace(line)
 	switch {
@@ -80,8 +78,7 @@ func comment(line string) (string, bool) {
 	return text, true
 }
 
-// tag splits a comment into its annotation tag and the fields that follow it.
-// The tag may end in a colon, which is not part of the tag name.
+// tag splits a comment into its annotation tag and the fields after it, dropping a trailing colon.
 func tag(text string) (string, []string) {
 	fields := strings.Fields(text)
 	if len(fields) == 0 {

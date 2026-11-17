@@ -91,13 +91,7 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	}
 }
 
-// traceIncludes publishes what a request included as one span, the `info`
-// level's whole account of its includes: one list at the end and no span per
-// file. The debug level publishes the spans instead, and off neither.
-//
-// The span measures nothing. It holds the inventory of the run, the files
-// get_included_files() answers with, recorded where a reader of the trace
-// looks for them.
+// traceIncludes publishes the run's included files as one `info`-level span.
 func (rt *Runtime) traceIncludes() {
 	if len(rt.observers) == 0 || !rt.opts.TraceLevel.Info() || len(rt.included) == 0 {
 		return

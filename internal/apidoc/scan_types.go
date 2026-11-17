@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// signature converts an ast function type to PHP parameters and result type
-// names. A leading context.Context is the runtime's injection and does not
-// appear to PHP.
+// signature converts a function type to PHP parameters and result types, dropping context.Context.
 func signature(ft *ast.FuncType) ([]Param, []string) {
 	params := []Param{}
 	if ft.Params != nil {
@@ -42,9 +40,7 @@ func signature(ft *ast.FuncType) ([]Param, []string) {
 	return dedupeParams(params), results
 }
 
-// astParam converts one declared parameter. A func(any) parameter is the
-// runner's by-reference setter and renders as &$name; any other function
-// type is a callable.
+// astParam converts one parameter, rendering func(any) as &$name and other funcs as callable.
 func astParam(name string, t ast.Expr) Param {
 	p := Param{Name: paramName(name)}
 	if ell, ok := t.(*ast.Ellipsis); ok {
@@ -66,8 +62,7 @@ func astParam(name string, t ast.Expr) Param {
 	return p
 }
 
-// paramName converts a Go parameter name to the PHP spelling, and names the
-// blank identifier for the value a binding takes and ignores.
+// paramName converts a Go parameter name to PHP spelling, naming the blank identifier unused.
 func paramName(name string) string {
 	if name == "" || name == "_" {
 		return "unused"
@@ -75,8 +70,7 @@ func paramName(name string) string {
 	return camelToSnake(name)
 }
 
-// isCallbackName reports whether an untyped parameter's name marks it as a
-// callable checked at call time.
+// isCallbackName reports whether a parameter name marks an untyped value as a callable.
 func isCallbackName(name string) bool {
 	switch name {
 	case "fn", "cmp", "callback", "callable":
@@ -85,8 +79,7 @@ func isCallbackName(name string) bool {
 	return false
 }
 
-// isRefSetter matches func(any): the wrapper the runner passes for a PHP
-// by-reference argument.
+// isRefSetter matches func(any), the wrapper the runner passes for a by-reference argument.
 func isRefSetter(ft *ast.FuncType) bool {
 	if ft.Results != nil && len(ft.Results.List) > 0 {
 		return false
@@ -165,8 +158,7 @@ func phpTypeName(name string) string {
 	return "mixed"
 }
 
-// areaName derives a subsection title from the enclosing function name:
-// registerStrings contributes to "strings", a plain Register to none.
+// areaName derives a subsection title from the function name, empty for a plain Register.
 func areaName(fn string) string {
 	rest := strings.TrimPrefix(fn, "register")
 	if rest == fn || rest == "" {
@@ -186,8 +178,7 @@ func recvTypeName(t ast.Expr) string {
 	return ""
 }
 
-// funcResultTypeName returns the type name of a declaration's first result,
-// for a constructor whose class doc is on the type.
+// funcResultTypeName returns the type name of a declaration's first result.
 func funcResultTypeName(decl *ast.FuncDecl) string {
 	if decl.Type.Results == nil || len(decl.Type.Results.List) == 0 {
 		return ""

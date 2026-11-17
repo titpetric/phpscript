@@ -7,9 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// lintStmts applies the statement-shaped checks to every statement list in
-// prog, at any nesting. The walker holds the file and program so the
-// recursion does not thread them through every call.
+// lintStmts applies the statement checks to every statement list in prog.
 func lintStmts(file string, prog *model.Program, out *[]Diagnostic) {
 	w := &stmtWalker{file: file, prog: prog, out: out}
 	w.walk(prog.Stmts)
@@ -75,9 +73,7 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 	}
 }
 
-// lintGlobal reports the `global $x;` statement, a documented won't-build
-// (docs/design.md): it parses and binds nothing and the variable reads as
-// unset at a distance from the line that looks like it imports it.
+// lintGlobal reports `global $x;`, which binds nothing and leaves the variable unset.
 func (w *stmtWalker) lintGlobal(n *model.Global) {
 	*w.out = append(*w.out, Diagnostic{
 		File:    w.file,
@@ -86,12 +82,7 @@ func (w *stmtWalker) lintGlobal(n *model.Global) {
 	})
 }
 
-// lintAbstract reports the abstract modifier, which has nothing to mean
-// without inheritance (docs/design.md): an abstract class instantiates like
-// any other, and an abstract method has no body and calling it returns null
-// where PHP declines the class uncompleted. The parser takes both and the
-// formatter keeps them; the linter is where the author hears that nothing
-// enforces a contract. An interface is the contract the linter checks.
+// lintAbstract reports `abstract`, which enforces no contract without inheritance.
 func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
 	if n.Abstract {
 		*w.out = append(*w.out, Diagnostic{
@@ -116,10 +107,7 @@ func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
 	}
 }
 
-// lintMagicMethods reports a magic method the runtime never calls. Only
-// __construct and __invoke run (docs/design.md, "Won't build"); a class
-// that declares __call, __get or any other implicit hook is dead code that
-// reads as if something depended on it, which is worse than absent.
+// lintMagicMethods reports a magic method other than __construct or __invoke, which never runs.
 func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 	for _, m := range n.Methods {
 		if !strings.HasPrefix(m.Name, "__") {
@@ -142,11 +130,7 @@ func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 	}
 }
 
-// lintExtends reports `extends` on a class, a documented won't-build
-// (docs/design.md): the parser records the parent name and nothing arrives
-// through it and the child answers only with the members it wrote and is not
-// an instanceof the parent. An interface's extends is not reported: there it
-// widens the declaration contract, which instanceof does follow.
+// lintExtends reports `extends` on a class, which inherits nothing, and passes over an interface.
 func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
 	if n.Parent == "" {
 		return

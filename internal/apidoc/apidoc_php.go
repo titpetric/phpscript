@@ -34,7 +34,7 @@ func (c Class) PHP() string {
 }
 
 // Describe is the class description: the godoc of the bound Go type, then the
-// citation of that type and of the interfaces it satisfies.
+// citation of that type and the interfaces it satisfies.
 func (c Class) Describe() []string {
 	lines := append([]string{}, c.Comment...)
 	cites := c.cited()
@@ -47,9 +47,7 @@ func (c Class) Describe() []string {
 	return append(lines, cites...)
 }
 
-// cited names the Go package and symbol behind the class, and the interfaces
-// the bound type satisfies. A standard library symbol links to its reference
-// page; the citation names every other symbol bare.
+// cited names the Go package and symbol behind the class and the interfaces it satisfies.
 func (c Class) cited() []string {
 	lines := []string{}
 	if c.Binds == "" && c.Uses.Name == "" {
@@ -66,8 +64,7 @@ func (c Class) cited() []string {
 	return append(lines, "Implements "+strings.Join(parts, ", ")+".")
 }
 
-// usesSymbol is the symbol the citation names, written bare when the class
-// binds the package that declares it, qualified when it comes from elsewhere.
+// usesSymbol names the symbol bare when the class binds its package, qualified otherwise.
 func (c Class) usesSymbol() string {
 	if c.Uses.URL == "" && c.Uses.Package == c.Binds {
 		return c.Uses.Name
@@ -75,8 +72,7 @@ func (c Class) usesSymbol() string {
 	return c.Uses.Link()
 }
 
-// implementsClause is the interface list the class header prints, empty for a
-// bound type that satisfies none of the set.
+// implementsClause is the interface list the class header prints, empty when none.
 func (c Class) implementsClause() string {
 	if len(c.Implements) == 0 {
 		return ""
@@ -95,8 +91,7 @@ func (c Class) Rename(name string) Class {
 	return c
 }
 
-// writeDocblock writes doc comment lines as a PHP docblock. A member the index
-// documents with no line gets none, in place of an empty block.
+// writeDocblock writes doc comment lines as a PHP docblock, none for an empty list.
 func writeDocblock(b *strings.Builder, lines []string, indent string) {
 	if len(lines) == 0 {
 		return

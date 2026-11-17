@@ -7,23 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// phpInstanceOf evaluates `$value instanceof Class` as class-name equality:
-// `get_class($value) == "Class"`, compared case-insensitively as class names
-// are everywhere else.
-//
-// class is the name written on the right, or the value an expression there
-// produced, since PHP accepts a class name held in a variable and an object to
-// take the class of. A scalar, null and an array are an instance of nothing.
-//
-// An interface name matches against the list the class declared, including the
-// names those interfaces extend and `$store instanceof Reader` is true when
-// Store implements an interface extending Reader. That list is names, and no
-// member arrives through it.
-//
-// No member follows `extends` on a class, because there is no inheritance to
-// follow: a class declaring `extends RuntimeException` is an instance of itself
-// and of that class alone. `instanceof Throwable` is false, Throwable being an
-// interface no declaration in the program lists. See docs/design.md.
+// phpInstanceOf evaluates instanceof as case-insensitive class-name equality against declared interfaces.
 func phpInstanceOf(value, class any) bool {
 	want := instanceOfName(class)
 	if want == "" {
@@ -57,9 +41,7 @@ func instanceOfName(class any) string {
 	}
 }
 
-// instanceOfClass returns the class name of a value, or "" when the value is
-// not an object. A scalar is never an instance of anything and
-// `1 instanceof Foo` is false and raises nothing.
+// instanceOfClass returns the class name of a value, "" for a scalar or an array.
 func instanceOfClass(value any) string {
 	switch v := value.(type) {
 	case *model.Object:
@@ -82,9 +64,7 @@ func instanceOfClass(value any) string {
 	return goTypeName(value)
 }
 
-// phpClassName returns the class name a script sees for a value, which is the
-// declared name for an interpreted object and the Go type name for a
-// host-backed one.
+// phpClassName returns the class name a script sees, falling back to the value's type name.
 func phpClassName(value any) string {
 	if class := instanceOfClass(value); class != "" {
 		return class
@@ -92,9 +72,7 @@ func phpClassName(value any) string {
 	return phpDebugType(value)
 }
 
-// goTypeName returns the declared name of the Go type behind a value, which is
-// the class name a script sees for a host-backed object: `new Database("app")`
-// produces a *database.Database and `$db instanceof Database` is true.
+// goTypeName returns the declared Go type name behind a value, a pointer dereferenced.
 func goTypeName(value any) string {
 	t := reflect.TypeOf(value)
 	for t != nil && t.Kind() == reflect.Pointer {

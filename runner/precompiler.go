@@ -98,9 +98,7 @@ func liveHeap() int64 {
 	return int64(stats.HeapAlloc)
 }
 
-// sources lists the .php files below Root. The walk passes over a directory it
-// cannot read and runs to the end and one unreadable folder costs its own
-// files and not the tree.
+// sources lists the .php files below Root, skipping an unreadable directory.
 func (p Precompiler) sources() []string {
 	var files []string
 	_ = fs.WalkDir(p.Root, ".", func(name string, entry fs.DirEntry, err error) error {
@@ -113,12 +111,7 @@ func (p Precompiler) sources() []string {
 	return files
 }
 
-// compile parses one file into the caches and reports whether it cached it.
-//
-// The pass leaves out a file that does not parse, and a program the flat
-// compiler rejects. Both are the state the tree is in without precompilation,
-// and a request that reaches one gets the same answer it gets today: startup
-// stays quiet about a source error in a file nothing may ever request.
+// compile parses one file into the caches, reporting false when it does not parse.
 func (p Precompiler) compile(name string) bool {
 	src, err := fs.ReadFile(p.Root, name)
 	if err != nil {

@@ -61,9 +61,7 @@ func CheckInterfaces(stmts []model.Stmt, extra ...*model.ClassDecl) []model.Inte
 	return out
 }
 
-// interfaceIndex maps the lower-cased name of every interface declared in
-// stmts to its declaration. PHP compares a class or interface name without
-// regard to case and this index lower-cases every key.
+// interfaceIndex maps each lower-cased interface name in stmts to its declaration.
 func interfaceIndex(stmts []model.Stmt) map[string]*model.InterfaceDecl {
 	var index map[string]*model.InterfaceDecl
 	for _, s := range stmts {
@@ -79,17 +77,13 @@ func interfaceIndex(stmts []model.Stmt) map[string]*model.InterfaceDecl {
 	return index
 }
 
-// contractMethod is one method name a contract declares, and the interface
-// that named it. A violation reports both.
+// contractMethod is one method name a contract declares, with the interface that named it.
 type contractMethod struct {
 	Interface string
 	Method    string
 }
 
-// contractOf returns the methods named by an interface and, transitively, by
-// every interface it extends. The result is a union of names computed here
-// and no set of members held anywhere: an extended interface contributes
-// what it declares to what the class must declare, and contributes no more.
+// contractOf returns the method names an interface and its extended interfaces require.
 func contractOf(name string, index map[string]*model.InterfaceDecl) []contractMethod {
 	var (
 		out  []contractMethod
@@ -125,10 +119,7 @@ func collectContract(name string, index map[string]*model.InterfaceDecl, visited
 	}
 }
 
-// declaredMethods is the set of method names a class declares, lower-cased.
-// Both spellings count: a method written in the class body, and one written at
-// the top level as `function Class::method()`, which the runtime attaches to
-// the same class.
+// declaredMethods returns the lower-cased names a class declares in its body or at top level.
 func declaredMethods(cd *model.ClassDecl, stmts []model.Stmt) map[string]bool {
 	declared := make(map[string]bool, len(cd.Methods))
 	for _, m := range cd.Methods {

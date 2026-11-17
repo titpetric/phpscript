@@ -9,30 +9,9 @@ import (
 )
 
 // trackers is the free list the per-request answer trackers come from.
-//
-// A tracker's lifetime ends when the request does and this is a
-// free list and not a cache: a request takes one, the worker answers through it,
-// and answer puts it back having dropped the writer it wrapped. No code outside
-// one request ever holds a reference, and the one path where a reference may
-// outlive the request does not put it back; see answer.
 var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
 
-// answerTracker records whether a handler has begun its response and a throw
-// afterwards does not try to replace a status that is already on the wire, and
-// stores the throw itself for the caller outside the worker.
-//
-// It forwards and buffers no body: a handler streaming a large body does not
-// have it held in memory for the sake of an error that may never come.
-//
-// failure is here and not beside the call because the value already lives for
-// the length of the request: a local error written from inside the run is a
-// second heap cell for the same request, and the same code writes it and reads
-// it.
-//
-// callable, request and args are the work and the value submitted to the pool
-// is this one and the submit allocates no closure. args is an array and no
-// slice so the Invoke arguments travel in the tracker: a variadic call site
-// builds one slice per request, and a slice of the array builds none.
+// answerTracker records whether a handler began its response and holds its throw.
 type answerTracker struct {
 	nethttp.ResponseWriter
 	wrote   bool
@@ -41,10 +20,12 @@ type answerTracker struct {
 	callable *runner.Callable
 	request  *nethttp.Request
 	args     [2]any
+
+	requestContext runner.Context
+	headersApplied bool
 }
 
-// Run answers the request this tracker holds, on the worker's runtime, as the
-// runner.Job the pool runs, which is this value and not a closure over it.
+// Run answers the request the tracker holds, on the worker's runtime.
 func (a *answerTracker) Run(rt *runner.Runtime) {
 	// The response for the length of the call and a handler that echoes
 	// reaches the client and not the process's own output. The tracker and
@@ -56,6 +37,18 @@ func (a *answerTracker) Run(rt *runner.Runtime) {
 	rt.PushOutput(a)
 	defer rt.PopOutput()
 
+	// The request functions (header, $_GET and the rest) resolve this Context
+	// at call time; it returns to the worker after the response. Register runs
+	// ahead of BeginRequest, which records the request's own connection over
+	// the one Register leaves behind.
+	request := runner.FromRequest(a.request)
+	saved := rt.Context()
+	request.Register(rt)
+	defer rt.SetContext(saved)
+	defer request.Cleanup()
+	a.requestContext = request
+	defer func() { a.requestContext = runner.Context{} }()
+
 	// The request's own connection and connection_aborted() reports the
 	// client that is waiting and a disconnect ends the handler unless it
 	// ignored that. The Begin and End pair in place of EnterRequest's
@@ -66,42 +59,66 @@ func (a *answerTracker) Run(rt *runner.Runtime) {
 		rt.RecordError(err)
 		a.failure = err
 	}
+	a.begin()
+	if status := a.requestContext.ResponseStatus(); status != 0 && !a.wrote {
+		a.wrote = true
+		a.ResponseWriter.WriteHeader(status)
+	}
 }
 
-// release clears everything the request owns and puts the tracker back. The
-// writer, the request and the boxed arguments all reach outside the http
-// package, and a tracker left holding them would keep a connection and a
-// request body alive for as long as the free list does.
+// release clears everything the request owns and returns the tracker to the pool.
 func (a *answerTracker) release() {
 	a.ResponseWriter, a.failure = nil, nil
 	a.callable, a.request = nil, nil
 	a.args[0], a.args[1] = nil, nil
+	a.requestContext, a.headersApplied = runner.Context{}, false
 	trackers.Put(a)
 }
 
+// begin copies the headers a script staged before the first write goes out.
+func (a *answerTracker) begin() {
+	if a.headersApplied {
+		return
+	}
+	a.headersApplied = true
+	for name, values := range a.requestContext.ResponseHeaders() {
+		for _, value := range values {
+			a.ResponseWriter.Header().Add(name, value)
+		}
+	}
+}
+
 func (a *answerTracker) WriteHeader(status int) {
+	a.begin()
 	a.wrote = true
 	a.ResponseWriter.WriteHeader(status)
 }
 
 func (a *answerTracker) Write(p []byte) (int, error) {
-	a.wrote = true
+	a.begin()
+	if !a.wrote {
+		a.wrote = true
+		if status := a.requestContext.ResponseStatus(); status != 0 {
+			a.ResponseWriter.WriteHeader(status)
+		}
+	}
 	return a.ResponseWriter.Write(p)
 }
 
-// WriteString keeps the io.StringWriter net/http's response writer implements
-// reachable through the wrapper. io.WriteString finds the method where the
-// writer underneath has one, and a wrapper hiding it sends every such write,
-// fwrite($w, ...) among them, down the fallback that clones the string onto
-// the heap. A writer without the method gets the same fallback here.
+// WriteString keeps net/http's io.StringWriter reachable through the wrapper.
 func (a *answerTracker) WriteString(s string) (int, error) {
-	a.wrote = true
+	a.begin()
+	if !a.wrote {
+		a.wrote = true
+		if status := a.requestContext.ResponseStatus(); status != 0 {
+			a.ResponseWriter.WriteHeader(status)
+		}
+	}
 	if sw, ok := a.ResponseWriter.(io.StringWriter); ok {
 		return sw.WriteString(s)
 	}
 	return a.ResponseWriter.Write([]byte(s))
 }
 
-// Unwrap exposes the real writer to net/http's ResponseController and a handler
-// reaching for Flush or a deadline still finds it.
+// Unwrap exposes the real writer to net/http's ResponseController.
 func (a *answerTracker) Unwrap() nethttp.ResponseWriter { return a.ResponseWriter }

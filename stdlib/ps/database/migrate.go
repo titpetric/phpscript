@@ -76,23 +76,7 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	return err
 }
 
-// observe reports the run mig returned. It replaces the logger mig once took
-// and now refuses. It turns a failure into something diagnosable: what Apply
-// returns is the driver error alone, near "THIS": syntax error, which does not
-// say which of a dozen files it came out of.
-//
-// The log keeps the per-file line the old binding produced. The span records the
-// file and the statement's index in that file, because an operator reads a
-// startup schema failure off the trace before anyone opens the log. Only the
-// file the run stopped at goes there: mig applies in filename order and returns
-// on the first failure, and one attribute per file would bury it under the
-// files that pass.
-//
-// runErr is what decides a file failed, and not the status on its record.
-// The slice mig reports holds a row per file plus the rows of files since
-// removed from the tree, and one of those can hold the error of a run that
-// failed from before the file's removal; a run answering nil applied everything
-// it found, whatever those rows say.
+// observe reports a mig run, logging per-file failures and recording the stopping file on span.
 func (m *DatabaseMigrate) observe(ctx context.Context, span *telemetry.Span, applied []migrate.Migration, runErr error) {
 	log := logger.New(ctx, "migrate")
 	reported := false

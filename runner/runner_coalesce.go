@@ -5,9 +5,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// coalesceAssign stores value where target reads null, as `$target ??= value`,
-// and answers what the target holds afterwards. It resolves the target once:
-// `$a[k()] ??= 1` calls k once, as php does.
+// coalesceAssign stores value where target reads null, resolving the target once as `$a[k()] ??= 1` does.
 func (rt *Runtime) coalesceAssign(target, value model.Expr, scope *Scope) (any, error) {
 	switch tgt := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:

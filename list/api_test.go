@@ -54,6 +54,13 @@ func TestAPIReportsMethods(t *testing.T) {
 	if len(rows) != 4 {
 		t.Fatalf("got %d rows, want 4: %#v", len(rows), rows)
 	}
+	fileRows, err := list.APIFile(path)
+	if err != nil {
+		t.Fatalf("APIFile: %v", err)
+	}
+	if len(fileRows) != len(rows) {
+		t.Fatalf("APIFile returned %d rows, API returned %d", len(fileRows), len(rows))
+	}
 	want := []list.MethodRow{
 		{Class: `Task\Finder`, Member: "byFolder", Signature: `byFolder(string $folder): ?Model\Workspace`, Doc: "One workspace by folder, or null."},
 		{Class: `Task\Finder`, Member: "all", Signature: "all(): array"},

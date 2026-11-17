@@ -21,9 +21,7 @@ import (
 // call down the planned reflect path with its coercion and its errors intact;
 // no case here may answer differently than that path would.
 
-// directGoMethod returns the typed call for a resolved method, nil when no
-// shape matches. base is the receiver the method resolved on and a cache
-// entry only holds a direct call its own receiver type answers.
+// directGoMethod returns the typed call for a resolved method, nil when no shape matches.
 func directGoMethod(base any, goName string) func(any, []any) (any, bool, error) {
 	switch goName {
 	case "Header":
@@ -142,9 +140,7 @@ func directGoMethod(base any, goName string) func(any, []any) (any, bool, error)
 	return nil
 }
 
-// directStringString wraps the one-string-in, string-out shape three of the
-// cases share. The argument coerces through phpString, matching the reflect
-// path's coercion of a string parameter, nil included.
+// directStringString wraps the one-string-in, string-out shape, coercing through phpString.
 func directStringString(call func(any, string) string) func(any, []any) (any, bool, error) {
 	return func(recv any, args []any) (any, bool, error) {
 		if len(args) > 1 {

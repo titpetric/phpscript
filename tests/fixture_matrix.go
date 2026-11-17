@@ -71,9 +71,7 @@ type phpRun struct {
 	ExitCode int
 }
 
-// executePHP runs the fixture source through the php binary. writePHPScript
-// puts the script in the fixture's include root and relative includes and
-// __DIR__ resolve the way they do for the two Go runtimes rooted there.
+// executePHP runs the fixture source through the php binary in its include root.
 func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	binary, err := exec.LookPath("php")
 	if err != nil {
@@ -148,12 +146,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	return out, nil
 }
 
-// phpPrepend materializes the harness prelude for the php runner as an
-// auto_prepend_file: the generated file includes each prelude file from the
-// application root and php sees the same world the in-process runtimes
-// assemble from SetAppRoot. The includes run inside a function scope with the
-// application root as the working directory, mirroring the fresh scope and
-// root-relative resolution the Go runtimes apply to the prelude.
+// phpPrepend writes the prelude as an auto_prepend_file including each file in the app root.
 func phpPrepend(f *Fixture) ([]string, func(), error) {
 	if f.appRoot == "" || len(f.includes) == 0 {
 		return nil, func() {}, nil
@@ -199,8 +192,7 @@ func phpQuote(s string) string {
 // shellQuoteReplacer holds one Replacer, for the reason exportReplacer does.
 var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
-// writePHPScript materializes the fixture source as a hidden file in dir. It
-// derives the name from the fixture path so parallel fixtures never collide.
+// writePHPScript writes the fixture source to a hidden file named from its path.
 func writePHPScript(dir string, f *Fixture) (string, func(), error) {
 	// A _test.php body is already a file php can run, at the path the other
 	// runtimes read it from. Copying it would move __FILE__ and __DIR__ to a
@@ -242,8 +234,7 @@ func phpEnv(f *Fixture) []string {
 	return env
 }
 
-// phpFatal reports whether stderr holds an engine failure. An exit status is
-// not enough alone: a script chooses its own status through exit().
+// phpFatal reports an engine failure on stderr, which an exit status alone cannot.
 func phpFatal(stderr string) error {
 	for _, line := range strings.Split(stderr, "\n") {
 		if strings.Contains(line, "Fatal error") || strings.Contains(line, "Parse error") {

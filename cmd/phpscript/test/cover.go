@@ -23,10 +23,7 @@ const (
 // profileBlock is one line of a written profile.
 type profileBlock = coverage.ProfileBlock
 
-// writeCoverage renders the collectors installed on the fixtures: one profile
-// per fixture next to it under --split, and the merged profile at
-// opts.CoverFile either way. It runs after the fixtures did, whichever mode ran
-// them; a fixture whose runtime runner never executed simply has empty counts.
+// writeCoverage renders one profile per fixture under --split and the merged profile at opts.CoverFile.
 func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	if opts.Split {
 		for _, fx := range fixtures {
@@ -61,9 +58,7 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	return nil
 }
 
-// mergeCoverBlocks folds every fixture's collected blocks into one profile.
-// A statement more than one fixture reached is one block whose counts add up,
-// and a folder's total is independent of how it splits its fixtures.
+// mergeCoverBlocks folds every fixture's blocks into one profile, adding the counts of a shared statement.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
 	for _, fx := range fixtures {
@@ -95,20 +90,14 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	return blocks
 }
 
-// profileKey identifies a block across fixtures. Columns come from the same
-// source lines everywhere and the line range is the identity.
+// profileKey identifies a block across fixtures by its file and line range.
 type profileKey struct {
 	file      string
 	startLine int
 	endLine   int
 }
 
-// coverFilePath resolves a collected filename to the path the runtime read it
-// from, as seen from the invocation directory. Includes resolve through a
-// union: the fixture's directory answers first, then the application root,
-// which is the invocation directory itself. The profile must name the file the
-// union served and the same order decides here: the fixture-joined path when
-// it exists, the bare path otherwise.
+// coverFilePath resolves a collected filename to the fixture path when it exists, the bare path otherwise.
 func coverFilePath(fx *tests.Fixture, file string) string {
 	joined := filepath.ToSlash(filepath.Join(fx.RootDir(), file))
 	if _, err := os.Stat(filepath.FromSlash(joined)); err == nil {
@@ -120,10 +109,7 @@ func coverFilePath(fx *tests.Fixture, file string) string {
 	return joined
 }
 
-// fixtureCoverBlocks renders one fixture's collected coverage: include paths
-// resolve the way the fixture's include union resolved them and the profile
-// names files by their path below the invocation directory, and the columns
-// come from the source text.
+// fixtureCoverBlocks renders one fixture's coverage with include paths resolved as the union served them.
 func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 	sources := map[string][]string{}
 	lines := func(file string) []string {
@@ -185,19 +171,14 @@ func writeCoverProfile(path string, blocks []profileBlock) error {
 	return coverage.WriteProfile(f, blocks)
 }
 
-// coverFixtures installs one collector per fixture. Per-fixture collectors are
-// what --split reports from. They keep parallel fixtures from sharing mutable
-// state; the merge above reassembles the whole run.
+// coverFixtures installs one collector per fixture, keeping parallel fixtures off shared state.
 func coverFixtures(fixtures []*tests.Fixture) {
 	for _, fx := range fixtures {
 		fx.SetCoverage(coverage.New())
 	}
 }
 
-// coverFuncs merges every fixture's declaration spans, resolved to the paths
-// the profile names. Fixture entrypoints do not declare application functions
-// worth reporting, and reportBlocks drops their rows wholesale below and this
-// drops their spans too.
+// coverFuncs merges every fixture's declaration spans, resolved to the profile's paths, entrypoints excluded.
 func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 	type key struct {
 		file, name string
@@ -236,10 +217,7 @@ func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 	return funcs
 }
 
-// coverFiles merges every fixture's registered files, resolved to the paths
-// the profile names, fixture entrypoints excluded. This is the report's file
-// universe: a file of pure declarations has no profile block, and only the
-// register record reports the load at all.
+// coverFiles merges every fixture's registered files into the report's file universe, entrypoints excluded.
 func coverFiles(fixtures []*tests.Fixture) []string {
 	seen := map[string]bool{}
 	for _, fx := range fixtures {
@@ -265,10 +243,7 @@ func coverFiles(fixtures []*tests.Fixture) []string {
 	return files
 }
 
-// reportBlocks filters the merged profile down to what a report charges:
-// application sources. A .phpt entrypoint is the test itself: its top-level
-// code runs by definition and would only inflate every summary built on the
-// report.
+// reportBlocks drops .phpt entrypoint blocks, whose top-level code runs by definition.
 func reportBlocks(blocks []profileBlock) []profileBlock {
 	out := make([]profileBlock, 0, len(blocks))
 	for _, b := range blocks {

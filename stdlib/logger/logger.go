@@ -72,9 +72,7 @@ func (l *Logger) Error(msg string, args ...any) {
 	telemetry.SpanFromContext(l.ctx).RecordError(cause(msg, args))
 }
 
-// slog returns the logger to write the message to. A logger holding none writes
-// to the default logger, and reads it per call and not at construction and a
-// process that configures logging after the fact still gets the output.
+// slog returns the logger, falling back to the default one on every call.
 func (l *Logger) slog() *slog.Logger {
 	if l.log != nil {
 		return l.log
@@ -93,9 +91,7 @@ func (l *Logger) label(msg string) string {
 	return l.name + " " + msg
 }
 
-// cause returns the error to fail a span with: the first error among the
-// values, kept under the message beside it, and the message alone where the
-// caller passes none.
+// cause wraps the first error among args under msg, or msg alone without one.
 func cause(msg string, args []any) error {
 	for _, arg := range args {
 		if err, ok := arg.(error); ok {

@@ -154,15 +154,13 @@ func run(opts Options, args []string, out io.Writer) error {
 	return nil
 }
 
-// sink is one output the findings go to: the terminal or a report file, each
-// holding one table per folder scanned.
+// sink writes the findings to one output, holding one table per folder scanned.
 type sink struct {
 	w        io.Writer
 	markdown bool
 }
 
-// summary writes the run's closing line in a table's summary shape, matching
-// the per-folder lines above it.
+// summary writes the run's closing line in a table's summary shape.
 func (s sink) summary(format string, args ...any) {
 	text := fmt.Sprintf(format, args...)
 	if !s.markdown {
@@ -171,9 +169,7 @@ func (s sink) summary(format string, args ...any) {
 	fmt.Fprintf(s.w, "\n%s\n", text)
 }
 
-// collect lints every file and returns one result per finding, plus a passing
-// result for a file with no findings: the table reports every file it checks,
-// including the clean ones.
+// collect lints every file and reports one result per finding and per clean file.
 func collect(args []string, checkFlatstack bool) ([]result, error) {
 	files, err := list.ExpandFiles(args)
 	if err != nil {
@@ -216,10 +212,7 @@ func collect(args []string, checkFlatstack bool) ([]result, error) {
 	return results, nil
 }
 
-// newTable returns one folder's findings table. The folder names the file
-// column and a table says which area it covers without spending a line on a
-// title. The line number is right aligned as a number; everything else reads
-// as a label.
+// newTable returns one folder's findings table, naming its file column after the folder.
 func newTable(w io.Writer, markdown bool, dir string) *table.Table {
 	if dir == "" {
 		dir = "File"
@@ -263,8 +256,7 @@ func line(n int) string {
 	return strconv.Itoa(n)
 }
 
-// writeReportHeader opens a generated markdown report with its title plus the
-// command that produced it; a checked-in report names how to regenerate itself.
+// writeReportHeader opens a markdown report with its title plus the command that produced it.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
 

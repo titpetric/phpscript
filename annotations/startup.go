@@ -51,8 +51,7 @@ func (s *Startup) Start(ctx context.Context) error {
 	return errors.Join(failures...)
 }
 
-// run executes one job, tracked as a background trace when an observer records
-// lifecycle work: a startup job is not a request, and has no trace to join.
+// run executes one job, tracked as a lifecycle trace when an observer records one.
 func (s *Startup) run(ctx context.Context, file string, src []byte) error {
 	job := func(ctx context.Context) error {
 		return s.execute(ctx, file, src)

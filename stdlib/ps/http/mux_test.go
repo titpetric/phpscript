@@ -140,6 +140,33 @@ define("MUX", $mux);
 	}
 }
 
+// TestMuxHeaderStagesTheResponse covers header() inside a handler: the staged
+// header and status reach the client ahead of the body.
+func TestMuxHeaderStagesTheResponse(t *testing.T) {
+	t.Parallel()
+	_, handler := serveScript(t, `<?php
+$mux = new HTTP\Mux();
+$mux->handle("GET /", function ($w, $r) {
+	header("X-Staged: yes");
+	header("HTTP/1.1 418 Teapot");
+	echo "short and stout";
+});
+define("MUX", $mux);
+`)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/", nil))
+	if response.Code != nethttp.StatusTeapot {
+		t.Errorf("status = %d, want %d", response.Code, nethttp.StatusTeapot)
+	}
+	if got := response.Header().Get("X-Staged"); got != "yes" {
+		t.Errorf("X-Staged = %q, want %q", got, "yes")
+	}
+	if got := response.Body.String(); got != "short and stout" {
+		t.Errorf("body = %q", got)
+	}
+}
+
 // TestMuxHandlerThrowIsOneRequestsProblem keeps a failing handler from taking
 // the server with it: the request gets a status and the mux answers the next.
 func TestMuxHandlerThrowIsOneRequestsProblem(t *testing.T) {

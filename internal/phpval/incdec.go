@@ -70,11 +70,7 @@ func StringNumber(s string) (any, bool) {
 	return num.f, true
 }
 
-// incrementString is PHP's increment_string: the last character steps
-// within its class (a-z, A-Z, 0-9), z, Z and 9 wrap and overflow left. It
-// drops an overflow that reaches a character outside the three classes; one
-// that runs off the start of the string prepends a, A or 1 by the class of
-// the first character. The empty string increments to "1".
+// incrementString applies PHP's increment_string, wrapping z, Z and 9 and prepending on overflow.
 func incrementString(s string) string {
 	if s == "" {
 		return "1"

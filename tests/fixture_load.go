@@ -39,17 +39,14 @@ func testPHPFS() fs.FS {
 	return phpFS
 }
 
-// fixtureArea is the fixtures of one area directory, in discovery order, with
-// the suite governing them where the directory holds a phpscript.yml.
+// fixtureArea is one area's fixtures in discovery order, with its governing suite.
 type fixtureArea struct {
 	Name     string
 	Fixtures []*Fixture
 	Suite    *Suite
 }
 
-// isFixturePath reports whether a file is a fixture: the .phpt document, or a
-// _test.php body with its expected output beside it. A _test.php with no .txt
-// is a php file someone put in the tree, and no fixture.
+// isFixturePath reports whether name is a .phpt or a _test.php with its .txt.
 func isFixturePath(name string) bool {
 	if strings.HasSuffix(name, ".phpt") {
 		return true
@@ -61,15 +58,7 @@ func isFixturePath(name string) bool {
 	return err == nil
 }
 
-// embeddedFixtures walks the embedded tree and groups every .phpt by the area
-// directory holding it. A fixture's include root is that directory, which is
-// also where the php runner executes and all three runners resolve a relative
-// include to the same file.
-//
-// LoadSuiteFS reads an area holding a phpscript.yml as a suite and the Go tests
-// run under the connections and the prelude the same folder passes to the
-// command. Discovery is per area and not per ancestor: the walk starts at
-// tests/fixtures and no invocation root is above it to walk up to.
+// embeddedFixtures groups the embedded .phpt files by area directory, loading each suite.
 func embeddedFixtures() ([]fixtureArea, error) {
 	index := map[string]int{}
 	var areas []fixtureArea
@@ -144,9 +133,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 	return areas, nil
 }
 
-// setupAreas runs the setup hook of every area that has one, and returns the
-// teardown the caller defers. The Go tests take the same path a command run
-// does: a suite lays its state down once, before the fixtures that read it.
+// setupAreas runs every area's setup hook and returns the teardown to defer.
 func setupAreas(ctx context.Context, areas []fixtureArea, out io.Writer) (func() error, error) {
 	suites := make([]*Suite, 0, len(areas))
 	for _, area := range areas {
@@ -199,10 +186,7 @@ func goldenOutput(path string) string {
 	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
 }
 
-// unmarshalHeader reads the yaml header of a .phpt document into target.
-//
-// This package reads every header through this one door and a fixture and a
-// test of the parser agree on what a key means and on which library decided.
+// unmarshalHeader reads a .phpt yaml header through the package's one door.
 func unmarshalHeader(data []byte, target any) error {
 	return yaml.Unmarshal(data, target)
 }

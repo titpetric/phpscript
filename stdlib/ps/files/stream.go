@@ -9,8 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerStreams installs the file-handle functions. A handle is the *os.File
-// fopen() returns; PHP calls it a resource.
+// registerStreams installs the file-handle functions over *os.File handles.
 func registerStreams(rt *runner.Runtime, r root) {
 	// fopen opens $filename in $mode and returns a handle, or false on
 	// failure; php://output is the script's own output stream, php://input the
@@ -108,10 +107,7 @@ func registerStreams(rt *runner.Runtime, r root) {
 	})
 }
 
-// outputStream is the handle fopen("php://output") returns. It holds the
-// runtime and not the writer of the moment and every write lands wherever
-// script output goes at the time: a handle opened before ob_start() writes into
-// the buffer while one is active, exactly as echo would.
+// outputStream writes to the runtime's current Output, as echo would at call time.
 type outputStream struct {
 	rt *runner.Runtime
 }
@@ -120,18 +116,12 @@ func (o outputStream) Write(p []byte) (int, error) {
 	return o.rt.Output().Write(p)
 }
 
-// inputStream is the handle fopen("php://input") returns. The named type is
-// what lets fclose recognise it.
+// inputStream is the php://input handle, named so fclose recognises it.
 type inputStream struct {
 	io.Reader
 }
 
-// inputSource returns what php://input reads, matching PHP's two SAPIs: a
-// request answers with the buffered body, rewindable on every open as PHP
-// 5.6+ made it, while the CLI maps it onto stdin, a live stream a script
-// drains once. A staged body wins over the SAPI because the test harness
-// speaks as cli, the way the php column does, while still holding the
-// request a fixture states; a cli run without one keeps its stdin.
+// inputSource answers php://input from a staged body, else stdin under the cli SAPI.
 func inputSource(rt *runner.Runtime) io.Reader {
 	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {
 		return bytes.NewReader(c.RawBody())
@@ -144,9 +134,7 @@ func inputSource(rt *runner.Runtime) io.Reader {
 	return bytes.NewReader(nil)
 }
 
-// openMode maps a PHP fopen() mode string onto the flags os.OpenFile takes. It
-// takes the "b" suffix and ignores it, as PHP does on every platform it runs
-// on but Windows.
+// openMode maps a PHP fopen mode onto os.OpenFile flags, ignoring the "b" suffix.
 func openMode(name, mode string) (*os.File, error) {
 	switch strings.TrimSuffix(mode, "b") {
 	case "r":
@@ -162,8 +150,7 @@ func openMode(name, mode string) (*os.File, error) {
 	}
 }
 
-// writes reports whether an fopen() mode can change the file. Only "r" cannot;
-// every other mode either truncates, appends or allows a write on the handle.
+// writes reports whether an fopen mode can change the file, which only "r" cannot.
 func writes(mode string) bool {
 	return strings.TrimSuffix(mode, "b") != "r"
 }

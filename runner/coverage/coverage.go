@@ -29,8 +29,7 @@ type Collector struct {
 	files map[string]bool
 }
 
-// coverStmt is one registered statement: the file it parses from, the line
-// range charged for it, and how many times the interpreter reached it.
+// coverStmt holds one registered statement's file, line range and execution count.
 type coverStmt struct {
 	file  string
 	span  model.SourceSpan
@@ -95,10 +94,7 @@ func (c *Collector) Register(filename string, program *model.Program) {
 	c.registerFuncs(filename, program)
 }
 
-// registerFuncs records the span of every declared function body: free
-// functions from the statement list, methods from class declarations, named or
-// anonymous. An abstract method has no body span to charge and add returns
-// early; an interface declares only signatures and charges nothing.
+// registerFuncs records the body span of every declared function and method.
 func (c *Collector) registerFuncs(filename string, program *model.Program) {
 	seen := map[*model.FuncDecl]bool{}
 	add := func(fd *model.FuncDecl, class string) {
@@ -232,9 +228,7 @@ func (c *Collector) Blocks() []Block {
 	return blocks
 }
 
-// coverable reports whether a statement executes. A declaration does not: the
-// interpreter hoists it and exec passes it by and counting it would mark a
-// never-called function's signature covered while its body stays at zero.
+// coverable reports whether a statement executes, which a declaration does not.
 func coverable(s model.Stmt) bool {
 	switch s.(type) {
 	case *model.FuncDecl, *model.ClassDecl, *model.InterfaceDecl, *model.Use:
@@ -243,10 +237,7 @@ func coverable(s model.Stmt) bool {
 	return true
 }
 
-// coverSpan is the line range charged for a statement. A compound statement's
-// parsed span covers its whole body, but the body's statements hold separate
-// spans and coverSpan returns the header line alone: an untaken branch
-// must not read as covered because the interpreter reaches its `if`.
+// coverSpan returns the header line alone for a compound statement, whose body has spans.
 func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	switch n := s.(type) {
 	case *model.If, *model.For, *model.Foreach, *model.DoWhile, *model.Switch, *model.Try:

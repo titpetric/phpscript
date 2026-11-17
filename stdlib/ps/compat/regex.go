@@ -45,9 +45,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerRegex installs the preg_* shims onto rt. Each Runtime gets its own
-// compiled-pattern cache and a pattern compiled for one request is not shared
-// with another.
+// registerRegex installs the preg_* shims, each runtime keeping its own compiled-pattern cache.
 func registerRegex(rt *runner.Runtime) {
 	cache := newRegexpCache()
 	registerRegexConstants(rt)
@@ -86,10 +84,7 @@ func registerRegex(rt *runner.Runtime) {
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 
-// The PREG_* flag bits, with the values PHP defines. A script passes them as
-// ordinary integers and combines them by adding and the values are part of the
-// interface and no implementation detail: a $flags of 258 has to mean
-// set order with offset capture.
+// The PREG_* flag bits hold the values PHP defines, part of the script interface.
 const (
 	pregPatternOrder    = 1
 	pregSetOrder        = 2
@@ -101,10 +96,7 @@ const (
 	pregSplitOffsetCapture = 4
 )
 
-// registerRegexConstants defines the PREG_* constants. The two families share
-// the low bits and are not interchangeable: PREG_SPLIT_NO_EMPTY and
-// PREG_PATTERN_ORDER are both 1 and only the function that takes the flag
-// decides what it means.
+// registerRegexConstants defines the PREG_* constants, whose two families share the low bits.
 func registerRegexConstants(rt *runner.Runtime) {
 	rt.SetConst("PREG_PATTERN_ORDER", int64(pregPatternOrder))
 	rt.SetConst("PREG_SET_ORDER", int64(pregSetOrder))
@@ -116,18 +108,10 @@ func registerRegexConstants(rt *runner.Runtime) {
 	rt.SetConst("PREG_SPLIT_OFFSET_CAPTURE", int64(pregSplitOffsetCapture))
 }
 
-// backtrackTimeout bounds one match by the backtracking engine. A pattern that
-// needs backreferences has no linear-time guarantee, and a request that hangs
-// is worse than one that reports no match.
+// backtrackTimeout bounds one backtracking match at a second, a hung request being worse.
 const backtrackTimeout = time.Second
 
-// phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches,
-// $flags, $offset), returning the number of matches, or false for a pattern
-// that does not compile. PHP leaves $matches untouched in that case. The
-// failure is distinguishable from "no matches".
-//
-// $flags selects PREG_PATTERN_ORDER (the default) or PREG_SET_ORDER, either
-// combined with PREG_OFFSET_CAPTURE and PREG_UNMATCHED_AS_NULL.
+// phpPregMatchAll implements preg_match_all, returning the count or false for a pattern that does not compile.
 func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any), flags any, offset any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -148,10 +132,7 @@ func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any)
 	return int64(len(all))
 }
 
-// phpPregMatch implements preg_match($pattern, $subject, &$matches, $flags,
-// $offset), returning 1 or 0 and filling $matches with the first match's
-// groups. A pattern that does not compile, or an $offset outside $subject,
-// returns false with $matches untouched, as PHP does.
+// phpPregMatch implements preg_match, returning 1 or 0, or false for a bad pattern or offset.
 func (c *regexpCache) phpPregMatch(pattern, subject string, matches func(any), flags any, offset any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -171,9 +152,7 @@ func (c *regexpCache) phpPregMatch(pattern, subject string, matches func(any), f
 	return int64(1)
 }
 
-// phpPregReplace implements preg_replace($pattern, $replacement, $subject) for
-// string arguments, converting PHP backreference syntax (\1 / $1) in the
-// replacement to the ${1} form both engines expand.
+// phpPregReplace implements preg_replace, converting \1 and $1 backreferences to ${1}.
 func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) string {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -182,11 +161,7 @@ func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) strin
 	return re.replaceAll(subject, pcreReplacement(replacement))
 }
 
-// phpPregReplaceCallback implements preg_replace_callback($pattern, $callback,
-// $subject, $limit, &$count, $flags). Neither engine's ReplaceAll can call
-// back into the interpreter and this shim builds the replacement by hand from
-// the match indexes. $limit is the number of replacements, -1 for every match;
-// a pattern that does not compile returns null with $count zero, as PHP does.
+// phpPregReplaceCallback implements preg_replace_callback, returning null and a zero count for a bad pattern.
 func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...any) (any, error), subject string, limit any, count func(any), flags any) (any, error) {
 	replaced := int64(0)
 	re, err := c.compilePCRE(pattern)
@@ -223,16 +198,7 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 	return b.String(), nil
 }
 
-// phpPregSplit implements preg_split($pattern, $subject, $limit, $flags),
-// returning the pieces between the matches of $pattern, or false for a pattern
-// that does not compile.
-//
-// $limit caps the number of pieces, the last of which holds the unsplit rest;
-// 0, -1 and an omitted argument all mean no limit, and any other negative
-// value splits nothing, which is PHP's behaviour and not a reading of it.
-// Only a piece that reaches the result counts against the limit, which makes
-// PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an empty piece
-// that NO_EMPTY drops leaves the limit alone.
+// phpPregSplit implements preg_split, counting only pieces that reach the result against $limit.
 func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -266,8 +232,7 @@ func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any
 	return pieces.result()
 }
 
-// phpPregQuote escapes the characters that are special in a PCRE pattern and a
-// caller can splice a literal into one.
+// phpPregQuote escapes PCRE-special characters and the optional delimiter for splicing.
 func phpPregQuote(subject string, delimiter ...string) string {
 	special := ".\\+*?[^]$(){}=!<>|:-#/"
 	if len(delimiter) > 0 && delimiter[0] != "" {

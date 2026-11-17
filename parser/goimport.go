@@ -22,14 +22,12 @@ import (
 // The name binds per file, as every import does. A second file of the same
 // program writes its own `import` line or reaches the area by its name.
 
-// atGoImport reports whether the statement ahead is a go import: the keyword,
-// a quoted path, and a file that bound the go runtime to read them.
+// atGoImport reports whether the statement ahead is a go import.
 func (p *parser) atGoImport() bool {
 	return p.goRuntime && p.peek(1).kind == tString
 }
 
-// parseGoImport reads `import "net/http";` into the `use` of the area that
-// binds the package. It refuses a path the standard library does not spell.
+// parseGoImport reads import "path" into a use of the area binding it, refusing an unknown path.
 func (p *parser) parseGoImport() (model.Stmt, error) {
 	line := p.next().line // import
 	path := p.next().val
@@ -45,23 +43,18 @@ func (p *parser) parseGoImport() (model.Stmt, error) {
 	return &model.Use{Imports: []model.UseImport{{Path: area, Alias: alias, Package: path}}}, nil
 }
 
-// goPackage returns the area an imported package name resolves to. The name is
-// go's, compared byte for byte where php folds a function's case: a file that
-// wrote `HTTP.NewRequest` named no package this import bound.
+// goPackage returns the area name resolves to, matched byte for byte.
 func (p *parser) goPackage(name string) (string, bool) {
 	area, ok := p.goPkgs[name]
 	return area, ok
 }
 
-// atGoMember reports whether the member spelling, `.Name`, stands where the
-// parser is.
+// atGoMember reports whether a ".Name" member spelling starts at the cursor.
 func (p *parser) atGoMember() bool {
 	return p.isOp(".") && p.peek(1).kind == tIdent
 }
 
-// goMember folds `http.Request` into the area name the import resolved it to,
-// and answers the source spelling beside it for whoever prints the file back.
-// A name no import bound comes back unchanged.
+// goMember folds name.member into its area path and answers the source spelling too.
 func (p *parser) goMember(name string) (full, source string, ok bool) {
 	area, bound := p.goPackage(name)
 	if !bound || !p.atGoMember() {

@@ -55,9 +55,7 @@ func registerOutput(rt *runner.Runtime) {
 	})
 }
 
-// valueWriter renders one call of var_export, var_dump or print_r. The three
-// share a buffer type because they share the walk: the same object graph, the
-// same cycle problem, the same object numbering.
+// valueWriter renders one var_export, var_dump or print_r call over a shared object walk.
 type valueWriter struct {
 	b *strings.Builder
 	// ids numbers objects for var_dump's "#n". PHP's number is the object
@@ -74,8 +72,7 @@ func newValueWriter() *valueWriter {
 	return &valueWriter{b: &strings.Builder{}}
 }
 
-// enter records an object as being on the current path and returns its number
-// along with whether the walk may descend into it.
+// enter records an object on the current path, returning its id and whether to descend.
 func (w *valueWriter) enter(value any) (id int, ok bool) {
 	key, addressable := objectKey(value)
 	if !addressable {
@@ -142,8 +139,7 @@ func (w *valueWriter) export(value any, indent int) {
 	}
 }
 
-// exportEntry writes one "key => value," line. A composite value moves to its
-// own line, leaving the trailing space after the arrow that var_export emits.
+// exportEntry writes one "key => value," line, moving a composite value to its own line.
 func (w *valueWriter) exportEntry(key string, value any, keyIndent, valIndent int) {
 	w.pad(keyIndent)
 	w.b.WriteString(key)
@@ -157,8 +153,7 @@ func (w *valueWriter) exportEntry(key string, value any, keyIndent, valIndent in
 	w.b.WriteString(",\n")
 }
 
-// dump writes value with its type at the given indent, backing var_dump. Every
-// value occupies whole lines and the caller never has to close one.
+// dump writes value with its type at indent, each value occupying whole lines.
 func (w *valueWriter) dump(value any, indent int) {
 	w.pad(indent)
 	switch x := value.(type) {
@@ -228,9 +223,7 @@ func (w *valueWriter) dump(value any, indent int) {
 	}
 }
 
-// printR writes value for reading, backing print_r. depth counts array or
-// object nesting; PHP moves eight columns per level and puts the entries four
-// past the parenthesis.
+// printR writes value for reading, moving eight columns per depth level as PHP does.
 func (w *valueWriter) printR(value any, depth int) {
 	header := ""
 	switch {

@@ -3,6 +3,7 @@ package stdlib
 import (
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/ps/compat"
+	pshttp "github.com/titpetric/phpscript/stdlib/ps/http"
 )
 
 // Mount is Register narrowed to a profile: it installs only the binding areas
@@ -12,8 +13,9 @@ import (
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
 	if rt.GoRuntime() {
-		// The go runtime keeps echo's output buffers; its errors are go's and it names no throwable class.
+		// The go runtime keeps echo's output buffers and the request functions; its errors are go's and it names no throwable class.
 		compat.RegisterBuffers(rt)
+		pshttp.RegisterRequest(rt)
 	} else {
 		registerErrors(rt)
 		registerExceptions(rt)

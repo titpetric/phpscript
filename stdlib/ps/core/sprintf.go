@@ -9,9 +9,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// formatError reports a format string php rejects, under the class php raises
-// for it: ValueError for a specifier it cannot read, ArgumentCountError for an
-// argument the format names and the call did not pass.
+// formatError reports a rejected format under the PHP class it raises.
 type formatError struct {
 	class   string
 	message string
@@ -23,8 +21,7 @@ func (e *formatError) Error() string { return e.message }
 // ThrowableClass names the PHP class, implementing runner.Throwable.
 func (e *formatError) ThrowableClass() string { return e.class }
 
-// formatSpec is one conversion read off a format string, in php's grammar:
-// %[argnum$][flags][width][.precision]specifier.
+// formatSpec is one conversion read off a format string in PHP's grammar.
 type formatSpec struct {
 	argnum    int // 1-based; argNext for "the argument after the last one taken"
 	width     int
@@ -40,13 +37,7 @@ type formatSpec struct {
 // argNext is argnum's value for a conversion that did not name an argument.
 const argNext = -1
 
-// phpSprintf formats args into format the way php's sprintf does.
-//
-// The conversion is php's, not Go's: phpval coerces an argument before the
-// renderer writes it and %s of 42 is "42" where fmt writes %!s(int64=42), and
-// width, precision and padding count bytes, which is the unit the str*
-// functions use.
-// docs/reference/extensions/strings.md owns the table of specifiers.
+// phpSprintf formats args with PHP's conversions, counting width and precision in bytes.
 func phpSprintf(format string, args ...any) (string, error) {
 	var out strings.Builder
 	out.Grow(len(format) + 16)
@@ -90,9 +81,7 @@ func phpSprintf(format string, args ...any) (string, error) {
 	return out.String(), nil
 }
 
-// parseFormatSpec reads one conversion starting at i, the byte after the '%',
-// and returns it with the index of the first byte past it. A spec whose verb is
-// zero ran off the end of the format, which the caller reports.
+// parseFormatSpec reads the conversion at i and the index past it, verb zero at format end.
 func parseFormatSpec(format string, i int) (formatSpec, int, error) {
 	spec := formatSpec{argnum: argNext, pad: ' '}
 	// An argument number is digits followed by '$'. Digits not followed by one
@@ -157,9 +146,7 @@ func parseFormatSpec(format string, i int) (formatSpec, int, error) {
 	return spec, i, nil
 }
 
-// formatArg answers the argument a conversion names, advancing the implicit
-// counter only for a conversion that did not name one: php's own counter works
-// the same way and `%1$s %s` reads the first argument twice.
+// formatArg returns the named argument, advancing the implicit counter only for an unnamed one.
 func formatArg(spec formatSpec, args []any, taken *int) (any, error) {
 	n := spec.argnum
 	if n == argNext {
@@ -217,10 +204,7 @@ func (spec formatSpec) render(arg any) (string, error) {
 	}
 }
 
-// float renders a floating conversion. php spells a non-finite value as INF,
-// -INF or NaN under whichever conversion named it, prints a negative zero
-// unsigned, and writes an exponent with the digits it needs and no padding
-// it to two the way C and Go do.
+// float renders a floating conversion, spelling INF, -INF and NaN and trimming the exponent.
 func (spec formatSpec) float(f float64) string {
 	switch {
 	case math.IsNaN(f):
@@ -254,8 +238,7 @@ func (spec formatSpec) float(f float64) string {
 	return trimExponent(s)
 }
 
-// trimExponent drops the leading zeros php does not write in an exponent and
-// Go's 1.234500e+03 reads back as php's 1.234500e+3.
+// trimExponent drops leading zeros from an exponent; e+03 reads back as e+3.
 func trimExponent(s string) string {
 	i := strings.IndexAny(s, "eE")
 	if i < 0 {
@@ -274,12 +257,7 @@ func trimExponent(s string) string {
 	return mantissa + sign + exponent
 }
 
-// pack pads a rendered conversion to the spec's width.
-//
-// Zero padding goes after the sign of a numeric conversion and
-// %05d of -42 read -0042; a padding character the format named goes before it,
-// and a left-aligned conversion pads with spaces where the zero flag named
-// zeros, both as php does.
+// pack pads a conversion to width, placing zero padding after a numeric sign as PHP does.
 func (spec formatSpec) pack(s string, numeric bool) string {
 	if spec.width <= len(s) {
 		return s

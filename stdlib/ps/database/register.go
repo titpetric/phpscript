@@ -122,25 +122,10 @@ func RegisterMigrate(rt *runner.Runtime) {
 	})
 }
 
-// provider returns the connections rt resolves through. A host that configured
-// none, which is every CLI run, gets the process environment; a virtual host
-// sets its own and resolves through that alone.
+// provider returns the runtime's configured connections, else the process environment default.
 func provider(rt *runner.Runtime) model.DatabaseProvider {
 	if configured := rt.Database(); configured != nil {
 		return configured
 	}
 	return Default
-}
-
-// Connect opens the connection the host registered under name, the call behind
-// `new Database($name)` and Runtime\Go\Database\SQL\Open.
-func Connect(rt *runner.Runtime, ctx context.Context, name string) (*Database, error) {
-	handle, err := provider(rt).Connect(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	database := &Database{bridge: newBridge(handle)}
-	database.bridge.WithObserver(database.observe)
-	return database, nil
 }

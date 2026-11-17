@@ -122,31 +122,19 @@ func registerConstants(rt *runner.Runtime) {
 	}
 }
 
-// root maps a path a script supplied onto the host filesystem, the same way
-// stdlib/ps/files does and an image read and a file read agree on what a relative
-// path means.
+// root maps a script path onto the host filesystem, anchored inside dir.
 type root struct {
 	dir      string
 	writable []string
 }
 
-// resolve anchors every path inside the root, absolute ones included. An
-// absolute path names the root and never the host filesystem, which is the
-// spelling stdlib/ps/files answers for the same input: there is no spelling for a
-// host path outside the root, because a virtual host that could read one could
-// read another tenant's.
-//
-// Returning an absolute path unchanged would let the image functions reach any
-// file the process can, where the files shim refuses file_get_contents on the
-// same path, and would let imagepng write one.
+// resolve anchors every path inside the root, absolute paths naming the root.
 func (r root) resolve(p string) string {
 	clean := path.Clean("/" + filepath.ToSlash(p))
 	return filepath.Join(r.dir, filepath.FromSlash(clean))
 }
 
-// resolveWrite is resolve for a path the caller will write. A path outside
-// writable_paths is an error, not a false return, matching stdlib/ps/files: a
-// refused write is a configuration no script may escape.
+// resolveWrite refuses a write outside writable_paths with an error, not false.
 func (r root) resolveWrite(fn, p string) (string, error) {
 	name := r.resolve(p)
 	if len(r.writable) == 0 {
@@ -196,9 +184,7 @@ func registerCreate(rt *runner.Runtime, r root) {
 	})
 }
 
-// decoder builds imagecreatefrom<format>. PHP's decoders are format specific
-// and this keeps that contract: naming the wrong one is an error, not a
-// silent success and a script that branches on the return sees what PHP sees.
+// decoder builds imagecreatefrom<format>, refusing a mismatched format.
 func decoder(r root, want string) func(string) any {
 	return func(filename string) any {
 		f, err := os.Open(r.resolve(filename))
@@ -214,9 +200,7 @@ func decoder(r root, want string) func(string) any {
 	}
 }
 
-// wrap turns a decoded image into a handle, copying into RGBA when the decoder
-// produced something the drawing calls cannot touch. Every paletted or YCbCr
-// image takes this path and a decoded JPEG or GIF is writable.
+// wrap turns a decoded image into a writable RGBA handle when needed.
 func wrap(src image.Image) *Image {
 	if d, ok := src.(Drawable); ok {
 		if _, paletted := src.(*image.Paletted); !paletted {
@@ -334,8 +318,7 @@ func registerWrite(rt *runner.Runtime, r root) {
 	})
 }
 
-// encodeTo is the shared body of the three writers: pick the destination the
-// way PHP does, then pass the writer to the format.
+// encodeTo picks the destination as PHP does, then passes the writer to enc.
 func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc func(io.Writer, image.Image, []any) error) (any, error) {
 	if im == nil || im.m == nil {
 		return false, nil
@@ -381,10 +364,7 @@ func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc 
 	return true, nil
 }
 
-// checkDimensions raises the ValueError PHP raises for a non-positive width or
-// height. PHP 8 raises for it where PHP 7 returned false, and a binding that
-// answers false instead would let a script run on past a mistake PHP 8
-// stops at.
+// checkDimensions raises the ValueError PHP 8 raises for a non-positive width or height.
 func checkDimensions(fn string, width, height int64) error {
 	if width <= 0 {
 		return fmt.Errorf("%s(): Argument #1 ($width) must be greater than 0", fn)

@@ -41,8 +41,7 @@ type config struct {
 // false answer, and a nil func, leave the response to the endpoint.
 type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool
 
-// moduleName returns the platform module name for base, suffixed when the
-// caller named one.
+// moduleName returns base with the configured module suffix appended.
 func (c config) moduleName(base string) string {
 	if c.moduleSuffix == "" {
 		return base

@@ -30,14 +30,7 @@ const (
 	interpCurly
 )
 
-// interpPart is one piece of a double-quoted literal. Which fields hold a
-// value depends on Kind: Text for interpText, Name with at most one of Sub and
-// Prop for interpSimple, and Inner for interpCurly.
-//
-// Raw and Line describe the part's source. The parser reads the decoded fields
-// and the tokenizer reads Raw, because token_get_all reports a literal the way
-// the source spells it: an escape inside a text run stays an escape there, exactly as
-// it does in the T_CONSTANT_ENCAPSED_STRING of a literal that embeds nothing.
+// interpPart holds one piece of a double-quoted literal, its fields set by Kind.
 type interpPart struct {
 	Kind  interpKind
 	Text  string
@@ -49,14 +42,7 @@ type interpPart struct {
 	Line  int
 }
 
-// scanInterp walks the body of a double-quoted literal starting at src[start],
-// the first byte after the opening quote, and splits it into parts. It
-// returns the offset just past the closing quote, and whether any part is an
-// embedded expression.
-//
-// A literal with no embedded expression still scans cleanly and reports
-// interp=false and the caller keeps treating it as a plain
-// string. The scan decodes a text part and the caller never decodes twice.
+// scanInterp splits a double-quoted literal into parts and reports its end offset and interp.
 func scanInterp(src string, start int, line int) (parts []interpPart, end int, interp bool, err error) {
 	var text strings.Builder
 	textStart, textLine := start, line
@@ -127,9 +113,7 @@ func scanInterp(src string, start int, line int) (parts []interpPart, end int, i
 	return nil, 0, false, fmt.Errorf("line %d: unterminated string", line)
 }
 
-// scanSimple reads the simple-syntax expression starting at the `$` under
-// src[i]. It reports ok=false when the `$` does not begin one and a
-// lone dollar such as `"$ 5"` stays literal text, as it does in PHP.
+// scanSimple reads the simple-syntax expression at src[i], ok=false for a lone dollar.
 func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	if i+1 >= len(src) {
 		return part, 0, false, nil
@@ -170,10 +154,7 @@ func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool,
 	return part, j, true, nil
 }
 
-// scanCurly reads the `{$expr}` starting at the brace under src[i] and returns
-// the expression source between the braces. The braces re-enter PHP and the
-// scan tracks nesting and skips over string literals: `"{$a['}']}"` closes on
-// the second brace, not on the one inside the key.
+// scanCurly reads the expression in {$expr}, tracking nesting and skipping string literals.
 func scanCurly(src string, i int, line int) (inner string, end int, err error) {
 	depth := 0
 	for j := i; j < len(src); j++ {
@@ -196,11 +177,7 @@ func scanCurly(src string, i int, line int) (inner string, end int, err error) {
 	return "", 0, fmt.Errorf("line %d: unterminated {$...} string interpolation", line)
 }
 
-// parseInterp builds the AST for a tInterp token. The lexer already decided the
-// literal embeds an expression, and kept the source spelling in raw; this runs
-// the scan again and stores nothing on the token, because interpolated
-// literals are a small share of the tokens in a file and every token pays for
-// the struct.
+// parseInterp builds the AST for a tInterp token, scanning its raw source again.
 func (p *parser) parseInterp(t token) (model.Expr, error) {
 	// raw is the literal with its quotes and the body starts at 1 and the scan
 	// stops on the closing quote the lexer already found.
@@ -245,10 +222,7 @@ func (p *parser) interpExpr(part interpPart, line int) (model.Expr, error) {
 	}
 }
 
-// interpSubscript resolves the key of a simple-syntax `$a[sub]`. PHP reads a
-// bare word there as a string key and `"$row[id]"` is `$row['id']` and not the
-// constant `id`: the one place a bare word inside a subscript does not
-// mean a constant.
+// interpSubscript resolves a simple-syntax $a[sub] key, a bare word reading as a string.
 func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 	if sub == "" {
 		return nil, fmt.Errorf("line %d: empty [] in string interpolation", line)
@@ -264,11 +238,7 @@ func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 	return p.parseSubExpr(sub, line)
 }
 
-// parseSubExpr parses PHP expression source that came from inside a literal. It
-// runs on a separate parser because the source is a substring and no
-// span of the token stream. It takes the namespace and imports of the
-// enclosing file so a name inside the braces resolves the way the same name
-// resolves outside the braces.
+// parseSubExpr parses expression source from inside a literal, on a parser holding the file's namespace.
 func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 	lx := newLexer(src)
 	lx.inPHP = true
@@ -289,9 +259,7 @@ func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 	return e, nil
 }
 
-// skipQuoted returns the offset just past the string literal opening at src[i],
-// or ok=false for a literal nothing terminates. It only has to find the end and it reads
-// `\x` as two bytes without decoding it.
+// skipQuoted returns the offset past the literal opening at src[i], ok=false when unterminated.
 func skipQuoted(src string, i int) (end int, ok bool) {
 	quote := src[i]
 	for j := i + 1; j < len(src); j++ {
@@ -306,18 +274,7 @@ func skipQuoted(src string, i int) (end int, ok bool) {
 	return 0, false
 }
 
-// scanDollarBrace reads the `${name}` and `${name[subscript]}` forms starting at
-// the `$` under src[i].
-//
-// PHP's string grammar admits two things after `${`: a STRING_VARNAME, which is
-// an identifier with an optional subscript and names the variable directly, and
-// an arbitrary expression, which names the variable whose name the expression
-// evaluates to. `${name}` is `$name` and `${arr['k']}` is `$arr['k']`; the
-// expression form is variable-variable syntax and needs `$$name`, which this
-// parser does not read and this fails.
-//
-// PHP deprecated the whole syntax in 8.2 and removes it in 9. It parses here
-// because php 8.5 runs it.
+// scanDollarBrace reads the ${name} and ${name[subscript]} forms starting at the `$` under src[i].
 func scanDollarBrace(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	j := i + 2
 	if j >= len(src) || !isIdentStart(rune(src[j])) {
@@ -344,8 +301,7 @@ func scanDollarBrace(src string, i int, line int) (part interpPart, end int, ok 
 	return part, j + 1, true, nil
 }
 
-// dollarBraceErr reports a `${...}` whose contents are not an identifier with an
-// optional subscript: the variable-variable form.
+// dollarBraceErr reports a ${...} that names the variable-variable form, which is not implemented.
 func dollarBraceErr(line int) error {
 	return fmt.Errorf("line %d: ${expression} names a variable by its value and needs $$name, which is not implemented; write {$...} for an expression", line)
 }

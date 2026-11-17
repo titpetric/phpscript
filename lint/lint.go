@@ -58,16 +58,7 @@ func File(name, src string) ([]Diagnostic, error) {
 	return out, nil
 }
 
-// lintJSONFlags reports a JSON_* constant.
-//
-// The runtime defines no JSON_* constant and the name evaluates to null and
-// json_encode ignores the argument. The call runs and encodes correctly and
-// this is a warning: the call still runs, and the author named a formatting the
-// encoder does not vary. See docs/design.md.
-//
-// The scan is over tokens and not the AST: a constant can appear in any
-// expression, and T_STRING already tells a bare name apart from the same text
-// inside a string literal and defined("JSON_PRETTY_PRINT") is not a use.
+// lintJSONFlags reports a JSON_* constant, which json_encode ignores and the runtime leaves undefined.
 func lintJSONFlags(file, src string, out *[]Diagnostic) {
 	for _, token := range parser.TokenGetAll(src) {
 		triple, ok := token.([]any)
@@ -90,15 +81,7 @@ func lintJSONFlags(file, src string, out *[]Diagnostic) {
 	}
 }
 
-// lintRoutes reports an @route path whose parameters the router cannot
-// answer for.
-//
-// The two routers this runtime registers on disagree about what a {...}
-// segment may say, and neither refuses the spellings the other does not
-// understand in a way an author sees: chi takes {module=users} as a parameter
-// of that literal name, matches every request to the segment and exports
-// no value. Registration skips such a route; this is the diagnostic that names
-// the file and the line before it gets that far.
+// lintRoutes reports an @route path with a parameter spelling the routers disagree on.
 func lintRoutes(file, src string, out *[]Diagnostic) {
 	for _, route := range annotations.ParseRoutes([]byte(src)) {
 		if _, err := modelutil.ParseRoutePath(route.Path); err != nil {
@@ -107,10 +90,7 @@ func lintRoutes(file, src string, out *[]Diagnostic) {
 	}
 }
 
-// lintInterfaces reports a class that declares `implements` and does not
-// declare a method the interface names. The runtime raises a RuntimeException
-// for the same condition and the finding is the warning that arrives before
-// the program runs.
+// lintInterfaces reports a class implementing an interface without a method it names.
 func lintInterfaces(file string, prog *model.Program, out *[]Diagnostic) {
 	for _, v := range modelutil.CheckInterfaces(prog.Stmts) {
 		*out = append(*out, Diagnostic{

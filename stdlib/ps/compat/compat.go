@@ -40,8 +40,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the compatibility bindings (the ob_* family) to
-// stdlib.Register.
+// init registers the compatibility area with the runtime's area table.
 func init() {
 	runner.RegisterArea(`Runtime\PS\Compat`, Register)
 }

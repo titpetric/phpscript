@@ -26,8 +26,7 @@ func init() {
 	Set.Install()
 }
 
-// readFull reads count bytes of reader, as io.ReadFull does over a buffer a
-// script has no spelling for.
+// readFull reads count bytes of reader, as io.ReadFull does over a buffer scripts cannot name.
 func readFull(reader goio.Reader, count int) ([]byte, error) {
 	buf := make([]byte, count)
 	n, err := goio.ReadFull(reader, buf)

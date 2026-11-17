@@ -12,9 +12,7 @@ import (
 // interpreter's dispatch. The value operations the host answers in place stay
 // in flatstack.go.
 
-// boundScope materialises the running frame as an interpreter scope, for the
-// callees that read or write caller locals. It snapshots the frame before the
-// callee body runs, the ordering the by-reference marks rely on.
+// boundScope snapshots the running frame as an interpreter scope before the callee runs.
 func (h *flatHost) boundScope() *Scope {
 	scope := h.runtime.newScope()
 	if h.frame != nil {
@@ -25,9 +23,7 @@ func (h *flatHost) boundScope() *Scope {
 	return scope
 }
 
-// pullScope writes a materialised scope's variables back into the frame.
-// boundScope builds that scope for one call and nothing keeps it and this
-// deletes the magic constants in place and filters nothing into another map.
+// pullScope writes a materialised scope back into the frame, dropping the magic constants.
 func (h *flatHost) pullScope(scope *Scope) {
 	if h.frame == nil {
 		return
@@ -67,10 +63,7 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 	return result, err
 }
 
-// Call resolves a function the way helperFunc does, but a binding whose
-// signature declares no context never sees the scope and this builds it no
-// snapshot, no Scope and no write-back. That is the interpreter's own
-// contract: installFunc calls the same bindings with no per-call scope.
+// Call resolves a function by name, materialising a scope only for context-taking bindings.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 	if entry, ok := h.runtime.lookupEntry(fnName); ok {
 		return h.callResolved(entry, fnName, args)
@@ -88,10 +81,7 @@ func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 	return result, err
 }
 
-// callResolved invokes a function-table hit: lean when the entry's invoker
-// declares no context, through a materialised scope when it does. invokeEntry
-// holds the panic boundary, the argument-count check and the memory burst
-// guard either way.
+// callResolved invokes a table hit through a scope only when its invoker takes context.
 func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any, error) {
 	if !entry.invoker().wantsCtx {
 		result, err := h.runtime.invokeEntry(entry, args, nil)
@@ -103,8 +93,7 @@ func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any,
 	return result, nameCallError(err, name)
 }
 
-// InvokeValue calls a callable held in a value, `$fn(...)`, through the same
-// resolution call_user_func uses and every callable spelling works.
+// InvokeValue calls a callable held in a value through the interpreter's resolution.
 func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperInvoke(&scopeRef{scope: scope})(callee, args...)
@@ -112,13 +101,7 @@ func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 	return result, err
 }
 
-// CallableValue takes `greet(...)` and `$fn(...)`, php 8.1's first-class
-// callable syntax over a name or a value, through the interpreter's resolution.
-//
-// A name the flat compiler declared is in the function table too - runFlat
-// hoists before it runs - so the Closure resolves here and the body it names
-// runs on the interpreter when something calls the value, the way a callable
-// held in a value already does.
+// CallableValue takes a first-class callable over a name or a value.
 func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallable(&scopeRef{scope: scope})(target, fallback)
@@ -126,8 +109,7 @@ func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 	return result, err
 }
 
-// CallableMember takes `$obj->method(...)` and `Class::method(...)`. The frame
-// snapshot forwards `this`, as it does for a static call.
+// CallableMember takes a first-class callable over a method, forwarding the frame's this.
 func (h *flatHost) CallableMember(target any, method any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallableMember(&scopeRef{scope: scope})(target, method)
@@ -135,10 +117,7 @@ func (h *flatHost) CallableMember(target any, method any) (any, error) {
 	return result, err
 }
 
-// CallStatic dispatches `Class::method(args...)` through the interpreter's
-// resolution: host statics, then a declared PHP method with the current
-// `$this` forwarded for the `self::` instance-call form. The frame snapshot
-// forwards `this`.
+// CallStatic dispatches Class::method through host statics and declared PHP methods.
 func (h *flatHost) CallStatic(class string, method any, args []any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperStaticCall(&scopeRef{scope: scope})(class, method, args...)
@@ -146,8 +125,7 @@ func (h *flatHost) CallStatic(class string, method any, args []any) (any, error)
 	return result, err
 }
 
-// GetStaticProp reads `Class::$name`, autoloading the class the way the
-// interpreter would.
+// GetStaticProp reads Class::$name, autoloading the class first.
 func (h *flatHost) GetStaticProp(class, name string) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperStaticProp(&scopeRef{scope: scope})(class, name)
@@ -155,8 +133,7 @@ func (h *flatHost) GetStaticProp(class, name string) (any, error) {
 	return result, err
 }
 
-// SetStaticProp writes `Class::$name`, applying a compound operator against
-// the current value under the same rules a property assignment uses.
+// SetStaticProp writes Class::$name, applying op against the current value.
 func (h *flatHost) SetStaticProp(class, name string, value any, op string) error {
 	scope := h.boundScope()
 	defer h.pullScope(scope)

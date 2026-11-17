@@ -77,9 +77,7 @@ func Compare(x, y any) int {
 	return strings.Compare(String(x), String(y))
 }
 
-// comparableArray reports whether v is an array for a comparison,
-// returning it as an *Array. A binding that returns a native Go collection
-// is one too and it sorts where a *model.Array would.
+// comparableArray returns v as an *Array when v is an array or a Go collection.
 func comparableArray(v any) (*model.Array, bool) {
 	switch x := v.(type) {
 	case *model.Array:
@@ -95,10 +93,7 @@ func comparableArray(v any) (*model.Array, bool) {
 	return nil, false
 }
 
-// compareArrays orders two arrays the way PHP does: fewer members
-// is smaller, and same-size arrays compare member by member over the left
-// array's keys. A key the right array does not have makes the left array
-// greater, PHP's answer for two arrays it cannot compare.
+// compareArrays orders two arrays by length, then member by member over the left array's keys.
 func compareArrays(x, y *model.Array) int {
 	if x.Len() != y.Len() {
 		return compareBools(x.Len() > y.Len(), y.Len() > x.Len())
@@ -116,9 +111,7 @@ func compareArrays(x, y *model.Array) int {
 	return result
 }
 
-// isObject answers side where v is an instance, and the opposite otherwise. It
-// reads one pairing: an array against an instance, which PHP calls for the
-// instance.
+// isObject answers side when v is an instance and its negation otherwise.
 func isObject(v any, side int) int {
 	if _, ok := v.(*model.Object); ok {
 		return side
@@ -126,10 +119,7 @@ func isObject(v any, side int) int {
 	return -side
 }
 
-// compareObjects orders two instances the way PHP does: one class compares
-// property by property over the left's own order, and two classes that differ
-// answer 1, PHP's answer for a pair it cannot order. Identity is `===`, which
-// phpIdentical answers and this never reads.
+// compareObjects orders two instances by class then property, answering 1 for two classes.
 func compareObjects(x, y *model.Object) int {
 	if x == y {
 		return 0
@@ -156,8 +146,7 @@ func compareObjects(x, y *model.Object) int {
 	return result
 }
 
-// isBoolish reports whether v drags the comparison into the boolean domain,
-// where PHP compares (bool)$x with (bool)$y whatever the other side is.
+// isBoolish reports whether v is nil or a bool, which drags a comparison into the bool domain.
 func isBoolish(v any) bool {
 	if v == nil {
 		return true
@@ -167,7 +156,6 @@ func isBoolish(v any) bool {
 }
 
 // toBool is PHP's truthiness: "", "0", 0 and 0.0 are false, other scalars true.
-// Arrays never reach it; Compare has taken them by then.
 func toBool(v any) bool {
 	switch x := v.(type) {
 	case nil:
@@ -198,9 +186,7 @@ func compareBools(x, y bool) int {
 	}
 }
 
-// phpNum is a value in PHP's numeric domain: an int64 for an integer that
-// fits one, a float64 otherwise. text is the numeric string behind it,
-// kept for the precision fallback in compareNumbers.
+// phpNum is a value in PHP's numeric domain: an int64 when it fits, a float64 otherwise.
 type phpNum struct {
 	i       int64
 	f       float64
@@ -216,9 +202,7 @@ func (n phpNum) float() float64 {
 	return n.f
 }
 
-// phpNumeric returns v as a number, reporting false for anything PHP would
-// compare as a string. A numeric string counts as a number: PHP compares
-// "10" and "9" as 10 and 9.
+// phpNumeric returns v as a number, counting a numeric string as one.
 func phpNumeric(v any) (phpNum, bool) {
 	switch x := v.(type) {
 	case int:
@@ -238,11 +222,7 @@ func phpNumeric(v any) (phpNum, bool) {
 	return phpNum{}, false
 }
 
-// numericString reads s the way PHP's is_numeric_string does: whitespace around
-// an optional sign, digits with an optional fraction and an optional exponent.
-// scanNumeric checks the syntax, and strconv never does: it also accepts
-// hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
-// numeric and "0x1A" has to sort as a string.
+// numericString reads s as PHP's is_numeric_string does, rejecting hex floats, Inf and NaN.
 func numericString(s string) (phpNum, bool) {
 	text := strings.Trim(s, " \t\n\r\v\f")
 	isInt, ok := scanNumeric(text)
@@ -265,8 +245,7 @@ func numericString(s string) (phpNum, bool) {
 	return phpNum{f: f, text: text}, true
 }
 
-// scanNumeric checks a trimmed numeric literal. ok reports one; isInt reports
-// the plain integer spelling, with no fraction and no exponent.
+// scanNumeric reports whether s is a PHP numeric literal, and whether it spells a plain integer.
 func scanNumeric(s string) (isInt, ok bool) {
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {
@@ -305,9 +284,7 @@ func scanNumeric(s string) (isInt, ok bool) {
 
 func isDigit(c byte) bool { return c >= '0' && c <= '9' }
 
-// compareNumbers compares two values from the numeric domain. Two integers
-// compare as int64 so that ids near 2^63 do not lose their last digits to a
-// float64.
+// compareNumbers compares two values from the numeric domain, keeping int64 precision for ids.
 func compareNumbers(x, y phpNum) int {
 	if x.isInt && y.isInt {
 		return compareBools(x.i > y.i, y.i > x.i)

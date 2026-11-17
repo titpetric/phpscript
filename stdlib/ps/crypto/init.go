@@ -4,8 +4,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the password hashing, CSPRNG, message-digest and
-// id-generator bindings to stdlib.Register.
+// init registers the password, CSPRNG, digest and identifier areas.
 func init() {
 	runner.RegisterArea(`Runtime\PS\Crypto`, Register)
 	runner.RegisterArea(`Runtime\PS\Crypto\Random`, RegisterRandom)

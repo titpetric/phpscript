@@ -11,14 +11,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerStat installs the questions a script asks about a path: what kind of
-// thing is there, its size, and what a directory holds.
-//
-// They live here and not beside the other new bindings because they have to
-// resolve a path exactly as file_get_contents resolves it - through the bound
-// root, the per-request working directory chdir() moved, and the source
-// filesystem before the host. A second resolver written elsewhere would be a
-// second answer to "which file is that", which a sandbox cannot have.
+// registerStat installs the path questions, resolving every one through the read resolver.
 func registerStat(rt *runner.Runtime, r root) {
 	// is_file reports whether $filename names an ordinary file, in the source
 	// filesystem or on the host; a directory is not one and a missing path is
@@ -142,10 +135,7 @@ func registerStat(rt *runner.Runtime, r root) {
 	})
 }
 
-// stat answers about a script-supplied path the way the read side answers about
-// one: an uploaded file first, then the source filesystem, then the host. The
-// order is what makes is_file() agree with file_get_contents() about which file
-// a name reaches.
+// stat answers about a path through upload, source filesystem, then host.
 func (r root) stat(p string) (iofs.FileInfo, bool) {
 	if name, ok := r.uploadPath(p); ok {
 		info, err := os.Stat(name)
@@ -158,8 +148,7 @@ func (r root) stat(p string) (iofs.FileInfo, bool) {
 	return info, err == nil
 }
 
-// readDir lists a directory through the same order, and reports "not a
-// directory" the same way for both filesystems.
+// readDir lists a directory through the same order, false when not a directory.
 func (r root) readDir(p string) ([]string, bool) {
 	if source := r.sourceFS(); source != nil {
 		if name, ok := r.fsPath(p); ok {

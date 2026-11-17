@@ -87,16 +87,7 @@ func ParsePairs(limits Limits, pairs []Pair) *model.Array {
 	return out
 }
 
-// parseKey splits a decoded name into its top-level key and bracket path. The
-// final return is false for a name PHP drops: empty, or nested past maxNesting.
-//
-// Two behaviours here look like bugs and are not. Mangling applies to the
-// top-level name only and `a.b` is the key `a_b` while `e[f.g]` nests under
-// `f.g`. And parseKey discards anything after the last well-formed bracket
-// and keeps the name valid and `a[b]c` and `a[b]]` are both `a[b]`.
-//
-// An unterminated *first* bracket is the exception: the name has no path at
-// all and parseKey mangles it whole and `a[b` is the flat key `a_b`.
+// parseKey splits a name into its mangled top-level key and bracket path, refusing a dropped name.
 func parseKey(name string, maxNesting int) (string, []string, bool) {
 	open := strings.IndexByte(name, '[')
 	if open < 0 || strings.IndexByte(name[open:], ']') < 0 {
@@ -122,9 +113,7 @@ func parseKey(name string, maxNesting int) (string, []string, bool) {
 	return top, path, true
 }
 
-// mangle substitutes in a top-level name. The set is exactly space, `.` and
-// `[`; `a-b`, `a:b` and `a$b` survive as written. A `+` is already a space by
-// now and `a+b=1` is `a_b`.
+// mangle substitutes underscores for space, . and [ in a top-level name.
 func mangle(name string) string {
 	if !strings.ContainsAny(name, " .[") {
 		return name
@@ -137,9 +126,7 @@ func mangle(name string) string {
 	}, name)
 }
 
-// assign writes value at key/path, creating arrays along the way. The last
-// assignment decides the shape: `a=1&a[b]=2` makes `a` an array, `a[b]=1&a=2`
-// makes it a string again.
+// assign writes value at key and path; the last assignment decides the shape.
 func assign(root *model.Array, key string, path []string, value string) {
 	if len(path) == 0 {
 		root.Set(phpval.Key(key), value)
@@ -167,8 +154,7 @@ func assign(root *model.Array, key string, path []string, value string) {
 	}
 }
 
-// child returns the array at key, replacing a scalar in the way and never
-// merging into it: `x[a]=2&x[a][c]=3` leaves `x[a]` holding only `c`.
+// child returns the array at key, replacing a scalar and never merging into it.
 func child(parent *model.Array, key any) *model.Array {
 	if existing, ok := parent.Get(key); ok {
 		if arr, ok := existing.(*model.Array); ok {

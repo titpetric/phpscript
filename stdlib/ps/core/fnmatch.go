@@ -6,9 +6,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// FNM_* flags, as PHP numbers them. They are the matcher's own parameters
-// and no extra surface: every one of them changes a decision the loop in
-// fnmatchBytes already has to make.
+// fnmPathname, fnmNoescape, fnmPeriod and fnmCasefold are PHP's FNM_* flags.
 const (
 	fnmPathname = 1
 	fnmNoescape = 2
@@ -16,13 +14,7 @@ const (
 	fnmCasefold = 16
 )
 
-// phpFnmatch reports whether $string matches the shell wildcard $pattern.
-//
-// Go's path.Match is not the primitive underneath. It disagrees with fnmatch on
-// three points: its * and ? never cross a separator, which is fnmatch's
-// FNM_PATHNAME behaviour and not its default; it spells a negated class
-// [^...] where fnmatch also accepts [!...]; and it reports a malformed pattern
-// as an error where fnmatch simply does not match.
+// phpFnmatch reports whether string matches pattern, spelling out fnmatch over path.Match.
 func phpFnmatch(pattern, str string, flags ...any) bool {
 	var mode int64
 	if len(flags) > 0 {
@@ -38,15 +30,7 @@ func phpFnmatch(pattern, str string, flags ...any) bool {
 	return fnmatchBytes(pattern, str, mode)
 }
 
-// fnmatchBytes matches pattern against str.
-//
-// The walk is iterative with one saved backtrack point per star and a run of
-// consecutive stars costs the same as one and the match is linear in the common
-// case. The walk makes no recursive call.
-//
-// start tracks whether the current position in str is one where a leading
-// period is special, which is the test FNM_PERIOD makes: the beginning of the
-// string, and under FNM_PATHNAME the byte after every separator.
+// fnmatchBytes matches pattern against str iteratively, with one backtrack point per star.
 func fnmatchBytes(pattern, str string, mode int64) bool {
 	pathname := mode&fnmPathname != 0
 	period := mode&fnmPeriod != 0
@@ -150,12 +134,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 	return p == len(pattern)
 }
 
-// fnmatchClass matches one bracket expression starting at pattern[open], which
-// is the '['. It reports the offset just past the closing ']', whether b is in
-// the set, and whether the expression closes at all.
-//
-// PHP accepts both [!...] and [^...] for a negated class and this function
-// reads both. A ']' in the first position is a literal, as POSIX has it.
+// fnmatchClass reads one bracket expression, reporting its end, a match and whether it closes.
 func fnmatchClass(pattern string, open int, b byte, noescape bool) (end int, in, closed bool) {
 	i := open + 1
 	negate := false

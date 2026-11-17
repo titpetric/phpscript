@@ -105,8 +105,7 @@ func (o *Object) Names() []string {
 	return out
 }
 
-// appendUnrecorded adds the properties Names did not reach, sorted and Names
-// reports a direct Props write in a stable order and never a random one.
+// appendUnrecorded adds the properties Names missed, sorted so a direct Props write lists stably.
 func (o *Object) appendUnrecorded(out []string) []string {
 	have := make(map[string]bool, len(out))
 	for _, name := range out {

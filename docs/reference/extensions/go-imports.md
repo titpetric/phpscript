@@ -70,6 +70,7 @@ The rows below come from the runtime this build binds: `phpscript list --runtime
 | [`time`](https://pkg.go.dev/time)                   | `Runtime\Go\Time`          |
 | -                                                   | `Runtime\Go`               |
 | -                                                   | `Runtime\PS\Compat`        |
+| -                                                   | `Runtime\PS\HTTP\SAPI`     |
 
 A package var binds as a constant: `sql.ErrNoRows` arrives as the error value itself, the same value the package returns. Two reads name one value. `throw sql.ErrNoRows` passes the catch clause the error go defines. `json.NewEncoder` takes any `io.Writer`, the response writer a handler holds included. `Encode` converts a php array the way `json_encode` does and appends go's newline.
 
@@ -189,9 +190,9 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | Kind     | Name                                     | Signature                  |
 |----------|------------------------------------------|----------------------------|
 | function | [`Getenv`](https://pkg.go.dev/os#Getenv) | `Getenv(string): string`   |
-| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x2208d46c40c0}`        |
-| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x2208d46c4000}`        |
-| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x2208d46c4060}`        |
+| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x30e9128c40c0}`        |
+| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x30e9128c4000}`        |
+| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x30e9128c4060}`        |
 | class    | [`File`](https://pkg.go.dev/os#File)     | `new Runtime\Go\Os\File()` |
 
 ### `Runtime\Go\Path` (`path`)
@@ -270,7 +271,7 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | function | `delete`  | `delete(mixed, mixed): void`        |
 | function | `float32` | `float32(mixed ...): mixed`         |
 | function | `float64` | `float64(mixed ...): mixed`         |
-| function | `getenv`  | `getenv(string): string`            |
+| function | `getenv`  | `getenv(string): mixed`             |
 | function | `int`     | `int(mixed ...): mixed`             |
 | function | `int16`   | `int16(mixed ...): mixed`           |
 | function | `int32`   | `int32(mixed ...): mixed`           |
@@ -320,6 +321,18 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | function | `ob_get_flush`    | `ob_get_flush(): mixed`     |
 | function | `ob_get_level`    | `ob_get_level(): int`       |
 | function | `ob_start`        | `ob_start(mixed ...): bool` |
+
+### `Runtime\PS\HTTP\SAPI`
+
+| Kind     | Name                     | Signature                               |
+|----------|--------------------------|-----------------------------------------|
+| function | `apache_request_headers` | `apache_request_headers(): array`       |
+| function | `get_all_headers`        | `get_all_headers(): array`              |
+| function | `getallheaders`          | `getallheaders(): array`                |
+| function | `header`                 | `header(string, mixed ...): void`       |
+| function | `http_response_code`     | `http_response_code(mixed ...): mixed`  |
+| function | `setcookie`              | `setcookie(string, mixed ...): bool`    |
+| function | `setrawcookie`           | `setrawcookie(string, mixed ...): bool` |
 
 ## Writing a package
 

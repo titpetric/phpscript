@@ -12,8 +12,8 @@ import (
 // each insecure area it enables: Mount(rt, stdlib.Secure|stdlib.Exec).
 type Profile = runner.Profile
 
+// Secure is every binding confined to the runtime's sandbox boundaries.
 const (
-	// Secure is every binding confined to the runtime's sandbox boundaries.
 	Secure = runner.ProfileSecure
 	// Exec is process execution, the stdlib/ps/pexec package: exec, system,
 	// passthru, shell_exec, the shell quoting pair and the pid pair.
@@ -31,8 +31,7 @@ const AreaNames = "all, secure, exec"
 
 var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
 
-// profile is what Register mounts, for the whole process: --stdlib limits the
-// runtime an operator started, and no single host inside the process.
+// profile holds the areas Register mounts for every runtime in the process.
 var profile = All
 
 // ParseProfile reads a --stdlib value: area names separated by commas, empty

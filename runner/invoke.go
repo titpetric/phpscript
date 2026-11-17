@@ -17,23 +17,17 @@ import (
 // types, and the reduction of a reflect Call result to the value a script
 // sees. dispatch.go holds the pre-bound dispatch it feeds.
 
-// contextType is context.Context as a reflect.Type, which detects the callables
-// that declare the runtime context as their first argument for auto-injection.
+// contextType is context.Context as a reflect.Type for first-argument injection.
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 var durationType = reflect.TypeOf(time.Duration(0))
 
-// callbackPanic holds the error a PHP callback reported out of the Go frames
-// between it and the host boundary. A binding declaring func(string) string
-// leaves nowhere to return one and the only way across is a panic; the boundary
-// unwraps this one in place of reporting a host panic and a script that throws
-// inside a callback catches its own exception.
+// callbackPanic sends a PHP callback's error out through a Go frame with no error return.
 type callbackPanic struct{ err error }
 
-// recoveredError turns a recovered value into the error a script sees. callable
-// names what panicked, for the host-panic case.
+// recoveredError turns a recovered value into the error a script sees, unwrapping callbackPanic.
 func recoveredError(recovered any, callable string) error {
 	if carried, ok := recovered.(callbackPanic); ok {
 		return carried.err
@@ -46,15 +40,7 @@ func wantsContext(t reflect.Type) bool {
 	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
 }
 
-// injectedArgs is how many arguments the call paths prepend to the ones a
-// script wrote: one for a binding declaring the runtime context, none
-// otherwise. Every number a script reads subtracts it, because the context is
-// no PHP parameter. Counting it names a limit one higher than the signature
-// accepts, and a call at that limit fails with the same message.
-//
-// A binding that declares the context always arrives with it in place:
-// invokeWithScopeContext and invokeEntry prepend it, and callGoMethod prepends
-// it for a method, each ahead of the arity check that reads this.
+// injectedArgs counts the context prepended to a script's arguments, one or none.
 func injectedArgs(t reflect.Type) int {
 	if wantsContext(t) {
 		return 1
@@ -62,9 +48,7 @@ func injectedArgs(t reflect.Type) int {
 	return 0
 }
 
-// invokeWithScopeContext derives a context containing the active PHP frame so
-// language helpers such as compact() can inspect caller-local variables and
-// observability can identify the active source file.
+// invokeWithScopeContext prepends the active frame's context, then invokes fn.
 func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any, error) {
 	if wantsContext(reflect.TypeOf(fn)) {
 		full := make([]any, 0, len(args)+1)
@@ -87,27 +71,19 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 	return result, err
 }
 
-// adapt wraps any Go callable in the uniform func(...any) (any, error)
-// signature the evaluation environment uses, which is the one shape the
-// engine's call closures assert. The wrapper performs PHP-ish argument
-// coercion via reflection so shims keep natural Go signatures.
+// adapt wraps a Go callable in the uniform func(...any) (any, error) shape.
 func adapt(fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(nil, args) }
 }
 
-// adaptOn is adapt for a wrapper whose runtime the caller holds. A Go func
-// declaring a callable parameter gets one bound to the runtime doing the
-// calling, which lets a callable handed across a fork run where the call sits;
-// the helpers adapt() wraps take `any` and resolve their own.
+// adaptOn adapts fn bound to rt; a callable parameter calls where the call sits.
 func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(rt, args) }
 }
 
-// nameCallError fills in the PHP name of an error raised while building a call.
-// invokeAny works from the Go signature alone and has no name to report; only
-// the dispatch site holds the name a script typed.
+// nameCallError fills the PHP name into a call error the Go signature alone lacks.
 func nameCallError(err error, name string) error {
 	// The nil check keeps the allocation count down: the errors.As targets
 	// below take their address and escape, which costs a heap allocation on
@@ -127,11 +103,7 @@ func nameCallError(err error, name string) error {
 	return err
 }
 
-// phpParamTypeName spells a declared Go parameter type the way PHP names the
-// type in a TypeError ("must be of type int"). It describes a *parameter* and
-// it stays separate from phpDebugType, which describes a value, and from
-// gettype's legacy names (integer/double/boolean) in stdlib: no code may fold
-// one table into the other.
+// phpParamTypeName spells a declared parameter type as a PHP TypeError does.
 func phpParamTypeName(t reflect.Type) string {
 	if t == nil {
 		return "mixed"
@@ -159,11 +131,7 @@ func phpParamTypeName(t reflect.Type) string {
 	return t.String()
 }
 
-// phpDebugType names a value the way PHP's get_debug_type() does ("array
-// given"). It describes a *value* and it stays separate from phpParamTypeName,
-// which describes a declared parameter type, and from gettype's legacy names
-// (integer/double/boolean) in stdlib: no code may fold one table into the
-// other.
+// phpDebugType names a value the way get_debug_type does.
 func phpDebugType(v any) string {
 	switch value := v.(type) {
 	case nil:
@@ -206,9 +174,7 @@ func plural(n int, noun string) string {
 	return fmt.Sprintf("%d %ss", n, noun)
 }
 
-// argAt returns the i-th argument, or nil when the script passed fewer
-// arguments than the binding declares. PHP tolerates the short call, and the
-// reflect path pads the same way with zero values.
+// argAt returns argument i, or nil when the script passed fewer.
 func argAt(args []any, i int) any {
 	if i < len(args) {
 		return args[i]
@@ -216,8 +182,7 @@ func argAt(args []any, i int) any {
 	return nil
 }
 
-// argsTail2 is the variadic tail after two fixed parameters, aliased the way
-// argsTail aliases.
+// argsTail2 returns the variadic tail after two fixed parameters, aliased like argsTail.
 func argsTail2(args []any) []any {
 	if len(args) > 2 {
 		return args[2:]
@@ -225,9 +190,7 @@ func argsTail2(args []any) []any {
 	return nil
 }
 
-// argsTail is the variadic tail after the first fixed parameter. It aliases
-// the slice and copies no element: each call builds args fresh and the binding
-// sees exactly what reflect.Value.Call would have handed it.
+// argsTail returns the tail after the first argument, aliasing the slice without copying.
 func argsTail(args []any) []any {
 	if len(args) > 1 {
 		return args[1:]
@@ -235,9 +198,7 @@ func argsTail(args []any) []any {
 	return nil
 }
 
-// invokeAny calls fn (any Go callable) with args, coercing arguments to the
-// declared parameter types where convertible. fastInvoker dispatches the
-// common signatures directly; the rest go through reflection.
+// invokeAny calls fn with args, coercing them to the declared parameter types.
 func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 	// The uniform ABI is the hot entry-less shape: a compiled closure, a bound
 	// method, a Callable resolution, an adapt output. One guard, no construction.
@@ -260,13 +221,7 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 	return newInvoker(fn).call(rt, args)
 }
 
-// coerceArgOn converts an argument of a call on rt.
-//
-// The runtime matters for one kind of value: a callable. A binding declaring the
-// uniform callable shape gets one bound to rt and not to the runtime that
-// built the value and a comparator passed to usort or a callback passed to
-// array_map inside a handler runs on the worker answering the request and never
-// reaches back into the runtime the script built the value on.
+// coerceArgOn coerces v for a call on rt, binding a callable to rt.
 func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	if want == nil || want.Kind() != reflect.Func {
 		return coerceArg(want, v)
@@ -300,13 +255,7 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	return coerceArg(want, v)
 }
 
-// adaptCallable wraps a PHP callable in want, the Go function type a binding
-// declared.
-//
-// want must return one value or none, since a PHP closure returns one. An error
-// the callable reports has nowhere to go in a signature that declares no error
-// slot and adaptCallable panics with it, and the host boundary turns that into
-// a catchable throwable the way it does any other panic in a binding.
+// adaptCallable wraps a PHP callable in the Go function type a binding declared.
 func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.Value, bool) {
 	if want.IsVariadic() || want.NumOut() > 1 {
 		return reflect.Value{}, false
@@ -332,16 +281,7 @@ func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.V
 	return fn, true
 }
 
-// coerceArg converts a value to the target parameter type where a cheap
-// conversion makes it assignable. The final return reports whether it did: a
-// false refuses the value, and the caller turns that into a PHP TypeError,
-// with no reflect.Value.Call left to panic on it.
-//
-// It converts everything except a callable, which needs the runtime the call is
-// on and resolves through coerceArgOn: a map key, a slice element and a struct
-// field reach this one, none of which a callable arrives as, and keeping it
-// callable-free is also what keeps the expression helpers out of an
-// initialisation cycle with the interpreter.
+// coerceArg converts v to want where cheap; a callable resolves through coerceArgOn.
 func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 	if want == nil {
 		return reflect.ValueOf(v), true
@@ -378,19 +318,7 @@ func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 	return reflect.Value{}, false
 }
 
-// callResult reduces a reflect Call result to (value, error) following Go
-// conventions: the trailing error goes to the error result, and the non-error
-// values become the PHP result.
-//
-// A Go callable returning two or more values is not a special case to hide.
-// One value returns as itself; two or more become a PHP list, in declaration
-// order, which a script destructures the way PHP returns a tuple:
-//
-//	list($year, $week) = $t->iso_week();
-//
-// Keeping only the first value would silently answer a different question than
-// the one asked: time.Time.ISOWeek returns (year, week), and dropping the tail
-// makes `$t->iso_week()` answer the year.
+// callResult reduces reflect results to value and error, two or more becoming array.
 func callResult(out []reflect.Value) (any, error) {
 	var values []reflect.Value
 	for _, o := range out {

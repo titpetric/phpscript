@@ -62,10 +62,7 @@ func (c Config) address() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
-// tlsConfig returns the STARTTLS settings for the configured host. Insecure
-// turns off verification entirely: the certificate is still used to encrypt the
-// session, but the dial verifies neither its chain nor its names and the
-// connection is open to a man in the middle.
+// tlsConfig returns the STARTTLS settings for the host, Insecure turning off all verification.
 func (c Config) tlsConfig() *tls.Config {
 	return &tls.Config{
 		ServerName:         c.Host,
@@ -74,8 +71,7 @@ func (c Config) tlsConfig() *tls.Config {
 	}
 }
 
-// envelopeAddress extracts the bare address from an address that may hold a
-// display name, as required by the SMTP MAIL FROM command.
+// envelopeAddress extracts the bare address from one that may hold a display name.
 func envelopeAddress(from string) (string, error) {
 	if !strings.ContainsAny(from, "<>") {
 		return from, nil

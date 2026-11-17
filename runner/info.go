@@ -44,15 +44,12 @@ func (rt *Runtime) infoReport() string {
 	return out.String()
 }
 
-// mib renders a byte count in MiB, which is the unit the sizes reported here
-// land in and the one php states a memory figure in.
+// mib renders a byte count in MiB, the unit php states a memory figure in.
 func mib(bytes int64) string {
 	return fmt.Sprintf("%.2f MiB", float64(bytes)/(1024*1024))
 }
 
-// registerCompiledTreeInfo reports the parsed and compiled source tree under
-// phpinfo(). The name is phpscript's own: the mechanism is not opcache, there
-// is no arena behind it, and no opcache_* function exists here.
+// registerCompiledTreeInfo adds the compiled source tree to phpinfo() under OPcache.
 func (rt *Runtime) registerCompiledTreeInfo() {
 	rt.RegisterInfo("OPcache", func(rt *Runtime) []InfoField {
 		programs, expressions, heap := rt.CompiledTree()

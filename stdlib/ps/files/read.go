@@ -10,10 +10,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerReads installs the read side. Each of these looks in the runtime's
-// source filesystem first, the tree an embedded or in-memory application
-// ships, and falls back to the host filesystem for what only exists there, such
-// as a file an earlier write produced.
+// registerReads installs the read functions, which check the source filesystem before the host.
 func registerReads(rt *runner.Runtime, r root) {
 	// glob returns the paths matching $pattern, searched in the source
 	// filesystem when the runtime has one, otherwise on the host; a pattern
@@ -105,16 +102,12 @@ func registerReads(rt *runner.Runtime, r root) {
 	})
 }
 
-// sourceFS is the read-only filesystem the script itself loads from. A
-// host that runs a script straight off disk leaves it unset and every read
-// through it has to tolerate its absence.
+// sourceFS returns the runtime's source filesystem, nil for a script run off disk.
 func (r root) sourceFS() iofs.FS {
 	return r.rt.FS()
 }
 
-// statSource stats a script-supplied path in the source filesystem, and reports
-// the absence of that filesystem, or of a way to name the path in it, as a
-// miss. A miss is not an answer: every caller falls through to the host.
+// statSource stats p in the source filesystem, reporting any miss as ErrNotExist.
 func (r root) statSource(p string) (iofs.FileInfo, error) {
 	source := r.sourceFS()
 	if source == nil {

@@ -13,15 +13,7 @@ import (
 // and the binary operators. The dispatcher that reaches them is in
 // direct.go.
 
-// compileInterp compiles an interpolated string to one closure that writes
-// every part into a single builder. This compiles the parts once and an
-// embedded expression costs what the same expression costs anywhere else and
-// the literal pays no dispatch per execution.
-//
-// The builder is what a fold over Concat cannot do: a chain of pairwise
-// concatenations allocates an intermediate string per part, where this
-// allocates the result once. A lone literal part is itself, and the empty literal
-// is the result for a literal with no parts at all.
+// compileInterp compiles an interpolated string to one closure that writes every part into a builder.
 func (dc *directCompiler) compileInterp(n *model.Interp) (closure, error) {
 	if len(n.Parts) == 0 {
 		return constClosure(""), nil

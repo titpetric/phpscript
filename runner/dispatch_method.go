@@ -15,8 +15,7 @@ import (
 // Throwable method set every Go error answers. dispatch_direct.go holds the
 // typed fast paths it falls back from.
 
-// goMethodKey and goMethodInfo cache Go method resolution per receiver type
-// and spelled name; see Runtime.goMethods.
+// goMethodKey is the receiver type and spelled name goMethods caches a resolution under.
 type goMethodKey struct {
 	t    reflect.Type
 	name string
@@ -41,12 +40,7 @@ type goMethodInfo struct {
 	direct func(base any, args []any) (any, bool, error)
 }
 
-// resolveGoMethod resolves the way callGoMethod always has: the exact name,
-// then case-insensitively, then without underscores so a snake_case PHP
-// spelling finds the idiomatic Go name (get_id -> GetID), the same ladder
-// methodByNameFold climbs. It computes the bound signature and the context
-// check once here, on the value and the per-call path is one map hit and an
-// index.
+// resolveGoMethod finds a method by exact, folded or underscore-free name, planning the call once.
 func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	t := rv.Type()
 	index := -1
@@ -84,9 +78,7 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	}
 }
 
-// bindGoMethod plans a method call the way reflectInvoker plans a function
-// call: parameter types, variadic element and padding resolved at cache
-// time, coercion through the one table per call.
+// bindGoMethod plans a method call's coercion, variadic element and padding at cache time.
 func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any, error) {
 	numIn, variadic := mtype.NumIn(), mtype.IsVariadic()
 	injected := injectedArgs(mtype)
@@ -131,10 +123,7 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 	}
 }
 
-// callGoMethod invokes a Go method by reflection. It calls scopeFor only when
-// the method's first parameter is a context, the one moment the runtime has to
-// materialise the PHP frame; a caller with the scope in hand passes a closure
-// returning it, which never escapes and costs nothing.
+// callGoMethod invokes a Go method and calls scopeFor only to inject a context parameter.
 func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor func() *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -181,8 +170,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 	return result, nil
 }
 
-// methodCallError names the method on the errors bindGoMethod reports
-// nameless.
+// methodCallError names the method on the arity and type errors bindGoMethod reports.
 func methodCallError(err error, method string) error {
 	var arity *ArgumentCountError
 	if errors.As(err, &arity) && arity.Name == "" {
@@ -197,13 +185,7 @@ func methodCallError(err error, method string) error {
 	return err
 }
 
-// throwableMethod implements PHP's Throwable interface over any Go error.
-//
-// stdlib registers every throwable class name to one type and a catch clause
-// binds whatever error reached it: an Exception a script threw, an error a
-// binding returned, or a panic converted at the host boundary. Each answers the
-// method set a script expects on a caught value. A method the concrete Go type
-// defines wins and *stdlib.Exception reports its own code.
+// throwableMethod answers PHP's Throwable methods over any Go error, a concrete method winning.
 func throwableMethod(base any, method string) (any, bool) {
 	err, ok := base.(error)
 	if !ok {
@@ -231,9 +213,7 @@ func throwableMethod(base any, method string) (any, bool) {
 	return nil, false
 }
 
-// methodByNameFold finds an exported method using PHP's case-insensitive
-// semantics, then retries without underscores so snake_case PHP names resolve
-// idiomatic Go names (for example get_all -> GetAll).
+// methodByNameFold finds a method by exact, folded or underscore-free name.
 func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 	t := rv.Type()
 	for i := 0; i < t.NumMethod(); i++ {
@@ -251,19 +231,13 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 	return reflect.Value{}
 }
 
-// goFieldInfo is one cached field resolution: the index chain
-// Value.FieldByIndexErr reads, and whether the name resolved to an exported
-// field at all. structField caches a miss too and a probe does not rescan the
-// field set.
+// goFieldInfo holds a field's index chain and whether the name resolved to an exported field.
 type goFieldInfo struct {
 	index []int
 	found bool
 }
 
-// structField resolves a property read's field once per (struct type, spelled
-// name), climbing the ladder fieldByNameFold climbs: the exact name, then
-// case-insensitively, then without underscores. An unexported match resolves
-// as not found, which is the CanInterface check the uncached read made.
+// structField resolves and caches a struct field, answering false for an unexported match.
 func (rt *Runtime) structField(t reflect.Type, name string) ([]int, bool) {
 	key := goMethodKey{t: t, name: name}
 	if info, ok := rt.goFields[key]; ok {
@@ -287,10 +261,7 @@ func (rt *Runtime) structField(t reflect.Type, name string) ([]int, bool) {
 	return info.index, info.found
 }
 
-// fieldByNameFold finds a struct field the way methodByNameFold finds a method:
-// exact match first (PHP property access on a Go struct, `$rec->value` for the
-// field Value), then case-insensitively, then without underscores so snake_case
-// PHP property names resolve idiomatic Go names (is_readonly -> IsReadonly).
+// fieldByNameFold finds a struct field by exact, folded or underscore-free name.
 func fieldByNameFold(value reflect.Value, name string) reflect.Value {
 	if f := value.FieldByName(name); f.IsValid() {
 		return f

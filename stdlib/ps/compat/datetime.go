@@ -9,14 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerDatetime installs the clock functions scripts time themselves with,
-// and the simplistic strtotime/date shims. The clock pair answers "how long
-// did that take" in the epoch integers PHP spells them in; the shims cover the
-// epoch-and-layout corner of PHP's date family, and no more of it: strtotime
-// matches a fixed list of layouts and reads no English, and date covers
-// only the numeric format characters. Anything richer is stdlib/ps/time, where
-// the value is a Go time.Time and no int; docs/design.md records the boundary
-// under "Dates and times".
+// registerDatetime installs the clock functions and the fixed-layout strtotime and date shims.
 func registerDatetime(rt *runner.Runtime) {
 	// time returns the current Unix timestamp in seconds.
 	rt.RegisterFunc("time", func() int64 {
@@ -43,12 +36,7 @@ func registerDatetime(rt *runner.Runtime) {
 	rt.RegisterFunc("date", date)
 }
 
-// strtotimeLayouts are the formats strtotime recognises, ordered most specific
-// first so the winning layout is the one that read the most of the input:
-// strtotime claims an offset and a fraction before the same instant written
-// without them. A layout without an offset reads in the runtime's local
-// timezone, as PHP reads it in date.timezone. English forms ("next thursday")
-// stay out; see docs/design.md under "Dates and times".
+// strtotimeLayouts are the layouts strtotime tries, most specific first, without English forms.
 var strtotimeLayouts = []string{
 	time.RFC3339Nano,
 	time.RFC3339,

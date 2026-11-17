@@ -21,11 +21,7 @@ func copyPixels(dst Drawable, src image.Image, at image.Point) {
 	draw.Draw(dst, dst.Bounds(), src, at, draw.Src)
 }
 
-// resample scales the sr region of src into the dr region of dst.
-//
-// CatmullRom is the interpolation this package reads imagecopyresampled as:
-// GD's own resample is bicubic, and nearest neighbour would answer a different
-// image for every scaled fixture.
+// resample scales an image region with CatmullRom, this package's stand-in for GD.
 func resample(dst Drawable, dr image.Rectangle, src image.Image, sr image.Rectangle) {
 	draw.CatmullRom.Scale(dst, dr, src, sr, draw.Src, nil)
 }

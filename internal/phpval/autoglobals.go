@@ -22,7 +22,6 @@ type AutoGlobals struct {
 }
 
 // field returns the storage for name, nil when name is not a superglobal.
-// The first-byte check rejects almost every variable before the switch.
 func (g *AutoGlobals) field(name string) *any {
 	if len(name) < 4 || name[0] != '_' {
 		return nil

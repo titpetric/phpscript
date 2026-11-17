@@ -24,15 +24,7 @@ type Message struct {
 	ReplyTo   string
 }
 
-// buildMessage renders the RFC 5322 message. From holds the configured
-// display name ("Name <user@host>"), the envelope sender is the bare address.
-//
-// A message with no HTML is the text/plain message mail() has always sent,
-// byte for byte. One with HTML and text is multipart/alternative, text first
-// and HTML last, because RFC 2046 puts the preferred part last; HTML alone is
-// a single text/html part. Either way buildMessage encodes the parts
-// quoted-printable and a long line or a non-ASCII byte reaches the server as
-// 7-bit lines of 76 characters.
+// buildMessage renders an RFC 5322 message, quoted-printable, HTML alone or as multipart/alternative.
 func buildMessage(from string, message Message) (string, error) {
 	headers := []string{
 		"From: " + header(from),
@@ -64,8 +56,7 @@ func buildMessage(from string, message Message) (string, error) {
 	return strings.Join(headers, "\r\n") + "\r\n\r\n" + body.String(), nil
 }
 
-// writeAlternative writes text and html as the two parts of a
-// multipart/alternative body, returning the Content-Type naming its boundary.
+// writeAlternative writes a multipart/alternative body and returns its Content-Type header.
 func writeAlternative(w io.Writer, text, html string) (string, error) {
 	writer := multipart.NewWriter(w)
 	for _, part := range []struct{ mediaType, content string }{

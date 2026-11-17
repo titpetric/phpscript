@@ -6,10 +6,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// classSource is PHP source a host ships as standard-library classes, declared
-// ahead of the registered loaders on autoload's first lookup of one of them. A
-// script that never names one pays for none. file is the name the source
-// reports and first is the class whose presence says the source is already in.
+// classSource holds PHP source a host ships, declared on autoload's first lookup of one of its classes.
 type classSource struct {
 	file    string
 	source  string
@@ -29,8 +26,7 @@ func (rt *Runtime) RegisterClassSource(file, source string, classes ...string) {
 	rt.classSources = append(rt.classSources, classSource{file: file, source: source, first: classes[0], classes: names})
 }
 
-// declareClassSource declares the source that holds class, and reports whether
-// class exists once it has.
+// declareClassSource declares the source holding class, reporting whether class exists after.
 func (rt *Runtime) declareClassSource(class string) bool {
 	key := strings.ToLower(strings.TrimPrefix(class, "\\"))
 	for _, src := range rt.classSources {

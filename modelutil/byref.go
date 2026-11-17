@@ -1,10 +1,6 @@
 package modelutil
 
-// byRefArgs lists, per builtin, the argument positions PHP passes by reference.
-// They are output parameters: the binding receives a setter that writes the
-// caller's variable in place of a value. The positions are PHP's, counted from
-// zero: preg_match_all($pattern, $subject, &$matches) and
-// preg_replace_callback($pattern, $callback, $subject, $limit, &$count).
+// byRefArgs names, per builtin, the argument positions PHP passes by reference.
 var byRefArgs = map[string]map[int]bool{
 	"preg_match_all":        {2: true},
 	"preg_match":            {2: true},

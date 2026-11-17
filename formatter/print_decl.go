@@ -43,13 +43,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	p.line("}")
 }
 
-// The printer groups class members: constants, then properties, then methods.
-// That order is what a reader of an unfamiliar class needs first, and the
-// order PHP style guides settle on.
-//
-// groupSignature is the interface counterpart of groupMethod: a body-less
-// declaration is one line and the printer keeps consecutive ones together the
-// way it keeps properties, with no blank line between each.
+// The printer groups class members as constants, properties, then methods.
 const (
 	groupConst = iota
 	groupProp
@@ -57,8 +51,7 @@ const (
 	groupMethod
 )
 
-// classMember holds one declaration to print, the group it belongs to and the
-// source lines it occupied, which decide the blank lines around it.
+// classMember holds one declaration, its group and the source lines it occupied.
 type classMember struct {
 	group int
 	span  model.SourceSpan
@@ -130,10 +123,7 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	p.line("}")
 }
 
-// printMembers writes the members of a class or an interface body, separating
-// the groups with a blank line and keeping the ones the author left between
-// members of the same group. end is the line the body closes on, and is where
-// the comments written after the last member belong.
+// printMembers writes the members, separating groups, and flushes comments up to end.
 func (p *printer) printMembers(members []classMember, end int) {
 	prev := classMember{group: -1}
 	p.lastLine = 0
@@ -161,11 +151,7 @@ func (p *printer) printMembers(members []classMember, end int) {
 	p.flushComments(end)
 }
 
-// printInterface renders an `interface Name extends A, B { ... }` declaration:
-// its constants, then its method signatures, each closed with a semicolon
-// because an interface method has no body. PHP rejects `abstract` on one and
-// the keyword is never printed here even though the shared FuncDecl can hold
-// it for an abstract class method.
+// printInterface renders constants then signatures, never printing the abstract PHP rejects.
 func (p *printer) printInterface(n *model.InterfaceDecl) {
 	head := "interface " + shortName(n.Name)
 	for i, name := range n.Extends {
@@ -204,8 +190,7 @@ func (p *printer) printInterface(n *model.InterfaceDecl) {
 	p.line("}")
 }
 
-// signature renders a method declaration with no body, the shape an
-// interface member is.
+// signature renders a method declaration with no body, as an interface member.
 func (p *printer) signature(n *model.FuncDecl) string {
 	var b strings.Builder
 	if n.Visibility != "" {
@@ -225,8 +210,7 @@ func (p *printer) signature(n *model.FuncDecl) string {
 	return b.String()
 }
 
-// staticField renders a `static $name` property declaration. The modifier
-// follows the visibility, which is the order PHP's own style guides use.
+// staticField renders a static property, the modifier after the visibility.
 func (p *printer) staticField(f model.Field) string {
 	visibility := f.Visibility
 	if visibility == "" {
@@ -289,8 +273,7 @@ func (p *printer) params(params []model.Param) string {
 	return strings.Join(parts, ", ")
 }
 
-// returnType renders a `: Type` declaration, which is empty for the many
-// functions that do not declare one.
+// returnType renders a return type as ': Type', empty when undeclared.
 func returnType(typ string) string {
 	if typ == "" {
 		return ""
@@ -305,8 +288,7 @@ func shortName(name string) string {
 	return name
 }
 
-// typeName renders a class/function name relative to the file namespace when
-// possible, and with a leading `\` when the stored name is absolute/global.
+// typeName renders a name relative to the file namespace, absolute names keeping their leading backslash.
 func (p *printer) typeName(name string) string {
 	if name == "" || name == "self" || name == "static" {
 		return name

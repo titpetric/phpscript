@@ -27,8 +27,7 @@ func helperPair(key, val any) model.ArrayItemValue {
 	return model.ArrayItemValue{Key: key, Val: val}
 }
 
-// helperArray constructs an ordered *model.Array from pairs, mirroring PHP's
-// array() where unkeyed items take the next integer index.
+// helperArray builds an ordered array and assigns unkeyed items the next integer index.
 func helperArray(items ...model.ArrayItemValue) *model.Array {
 	arr := model.NewArraySize(len(items))
 	for _, it := range items {
@@ -41,9 +40,7 @@ func helperArray(items ...model.ArrayItemValue) *model.Array {
 	return arr
 }
 
-// stringOffset reads idx as the offset of a string, reporting whether php
-// takes it as one: an integer, a float php truncates, a bool, or a string
-// spelling an integer. A key of any other shape names no byte.
+// stringOffset reports whether idx names a string byte, and its offset.
 func stringOffset(idx any) (int64, bool) {
 	switch x := idx.(type) {
 	case int, int64, float64, bool:
@@ -66,8 +63,7 @@ func stringOffset(idx any) (int64, bool) {
 	return 0, false
 }
 
-// helperIndex implements `base[idx]` for *Array, Go maps and Go slices/arrays.
-// A missing key answers nil, which is PHP's forgiving access, and raises nothing.
+// helperIndex reads base[idx] for arrays, maps and slices, answering nil for a missing key.
 func helperIndex(base, idx any) any {
 	switch b := base.(type) {
 	case *model.Array:
@@ -129,12 +125,7 @@ func helperIndex(base, idx any) any {
 	return nil
 }
 
-// helperGet implements `base->name` / `base.name` property access against PHP
-// objects (Props bag) and, by reflection, exported fields of Go structs. When a
-// PHP object has no matching property but has a method by that name, it returns
-// a *Callable bound to that object; this supports PHP idioms such as
-// `call_user_func_array($this->query, $args)`. A router takes one as a
-// handler registered as `$this->fnName`.
+// helperGet reads a property, a matching method becoming a callable bound to base.
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
 		// A bound callable produced here can outlive the expression that read it.
@@ -188,10 +179,7 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 	}
 }
 
-// exprHelpers returns the typed helper implementations the engine installs.
-// Package-level because the helpers are stateless: a compiled closure chain
-// is shareable across runtimes. PanicError mirrors invokeAny's recover and
-// a host panic surfaces as the same catchable error either way.
+// exprHelpers holds the stateless helpers, shareable across runtimes.
 var exprHelpers = &expr.Helpers{
 	Truthy:     phpTruthy,
 	Concat:     helperConcat,
@@ -214,11 +202,7 @@ var exprHelpers = &expr.Helpers{
 	Slotted: isSlotIdent,
 }
 
-// isSlotIdent reports whether an identifier is one Eval binds per evaluation:
-// a PHP variable (varIdent: `v_` or bare `this`), a bare-name constant
-// (constIdent: `c_`), or a closure literal (`__cl<N>`). The digit check
-// keeps `__classconst`, which shares the `__cl` prefix, on the Base path with
-// the other helpers.
+// isSlotIdent reports whether the evaluator binds name per evaluation: v_, c_ or __cl<N>.
 func isSlotIdent(name string) bool {
 	if name == "this" {
 		return true
@@ -237,10 +221,7 @@ func isSlotIdent(name string) bool {
 	return false
 }
 
-// helperCall implements `base->method(args...)`. It dispatches PHP methods on
-// model.Object instances back into the interpreter, and otherwise invokes a Go
-// method on the value by reflection (the "invoke from values on the stack"
-// capability the README relies on).
+// helperCall dispatches a PHP method to the interpreter, else a Go method by reflection.
 func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, args ...any) (any, error) {
 	return func(base any, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
@@ -271,8 +252,7 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 	return nil, false
 }
 
-// helperNew implements `new Class(args...)`: instantiate from the class table,
-// apply field defaults, and run the same-named constructor method if present.
+// helperNew instantiates a class, applying field defaults and its constructor.
 func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (any, error) {
 	return func(classValue any, args ...any) (any, error) {
 		scope := ref.scope

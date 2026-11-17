@@ -27,9 +27,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Time`, Register)
 }
 
-// clock holds the default location for one PHP runtime. It does
-// not mutate time.Local or process environment, which would leak one request's
-// choice into concurrent runtimes.
+// clock holds one PHP runtime's default location without touching time.Local.
 type clock struct {
 	location *stdtime.Location
 }

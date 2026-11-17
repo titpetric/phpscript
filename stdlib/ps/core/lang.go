@@ -20,16 +20,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Lang`, registerLang)
 }
 
-// isObject reports whether value is what PHP calls an object, backing
-// is_object.
-//
-// An interpreted object is one. So is a value a Go binding handed over: a
-// script constructs it with new, calls its methods and reads its properties
-// the same way, and get_class, method_exists and spl_object_id all reflect
-// over it to answer.
-//
-// A collection is an array and no object and the check comes
-// before the struct test: *model.Array is itself a pointer to a struct.
+// isObject backs is_object, counting a Go struct but not a collection as an object.
 func isObject(value any) bool {
 	if value == nil {
 		return false
@@ -51,9 +42,7 @@ func isObject(value any) bool {
 	return rv.Kind() == reflect.Struct
 }
 
-// isFloat backs is_float and is_double. A float is the one scalar this runtime
-// holds in a single Go type and the test is the type assertion: neither an
-// integer nor a numeric string is a float here, as in php.
+// isFloat backs is_float and is_double, refusing an integer or numeric string.
 func isFloat(value any) bool {
 	if _, ok := value.(float64); ok {
 		return true
@@ -62,9 +51,7 @@ func isFloat(value any) bool {
 	return ok && width.Float
 }
 
-// isInt reports whether a value is one of php's integers. A typed go value of
-// an integer width is one: gettype calls it an integer and the arithmetic
-// reads it as a number, and a script testing the type reads the same answer.
+// isInt reports whether a value is a phpscript integer, including a non-float Go width.
 func isInt(value any) bool {
 	switch value.(type) {
 	case int, int64:
@@ -74,11 +61,7 @@ func isInt(value any) bool {
 	return ok && !width.Float
 }
 
-// phpGetType backs gettype. The names it returns are PHP's original ones:
-// "integer" and "double" where the value model and get_debug_type say int and
-// float, "boolean" where they say bool, and NULL alone in capitals. Answering
-// with the modern spellings would pass every eyeball and fail every
-// `gettype($x) === "integer"`.
+// phpGetType backs gettype, answering PHP's original names such as "integer" and "double".
 func phpGetType(value any) string {
 	switch value.(type) {
 	case nil:
@@ -338,12 +321,7 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 	return fn(phpval.Values(args)...)
 }
 
-// phpIntval backs intval. Without a base, or with the default base 10, intval
-// is the (int) cast, which phpval.Int already is for every scalar; a
-// collection is its truthiness (intval([]) is 0, intval([1, 2]) is 1), which
-// the cast owns here because phpval.Int reads a collection as 0. Any other
-// base applies to a string argument only (intval(12.9, 16) is 12) and reads it
-// through strtolInt.
+// phpIntval backs intval, reading a non-10 base through strtolInt.
 func phpIntval(num any, base ...any) int64 {
 	radix := int64(10)
 	if len(base) > 0 {
@@ -361,15 +339,7 @@ func phpIntval(num any, base ...any) int64 {
 	return phpval.Int(num)
 }
 
-// strtolInt reads s the way intval passes a non-10 base to C strtol: leading
-// whitespace, one optional sign, then digits of the base until the first
-// character that is not one, saturating at the int64 bounds the way strtol
-// does. Base 0 detects the base from a 0x, 0b or 0 prefix and is 10 without
-// one; 0b is PHP's own addition for bases 0 and 2, stripped before strtol ever
-// sees the string. A base outside 0 and 2-36 is strtol's EINVAL, which intval
-// surfaces as 0 and raises nothing; php 8.5 raises no ValueError either. The 0o
-// octal prefix is not recognised, exactly because strtol does not know it:
-// intval("0o12", 8) is 0.
+// strtolInt reads s as C strtol with base, saturating at the int64 bounds.
 func strtolInt(s string, base int64) int64 {
 	if base != 0 && (base < 2 || base > 36) {
 		return 0
@@ -442,8 +412,7 @@ func strtolInt(s string, base int64) int64 {
 	return int64(mag)
 }
 
-// stdinStream is the reader STDIN answers with. It resolves the runtime's
-// current stdin per read and a read reaches whatever stdin the session set.
+// stdinStream reads the runtime's current stdin on every read.
 type stdinStream struct {
 	rt *runner.Runtime
 }

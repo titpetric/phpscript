@@ -38,9 +38,7 @@ type Options struct {
 	typed func(string) bool
 }
 
-// fromConfig fills the run-wide options a test block may also set, where the
-// command line did not name one. The flag wins: a configuration describes a
-// tree; a flag is what an operator typed about this run of it.
+// fromConfig fills options the command line left unset, a flag beating the file.
 func (o *Options) fromConfig(test config.Test) {
 	if !o.given("parallel") && test.Parallel > 0 {
 		o.Parallel = test.Parallel
@@ -58,16 +56,12 @@ func (o Options) given(name string) bool {
 	return o.typed != nil && o.typed(name)
 }
 
-// coverReport reports whether the cover mode owns stdout with a per-symbol
-// report. The run leaves the fixture tables off stdout when it does.
+// coverReport reports whether the cover mode owns stdout, leaving the tables off.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
 }
 
-// runners answers the matrix columns this invocation covers: every backend,
-// minus php when --skip-php dropped the external binary from the run. The
-// column leaves the table entirely, with no SKIP per row: a
-// skipped column says the machine has no php, this flag says do not ask.
+// runners answers the matrix columns, dropping php's column under --skip-php.
 func (o Options) runners() []tests.Runner {
 	if !o.SkipPHP {
 		return tests.Runners

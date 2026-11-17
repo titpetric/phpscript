@@ -10,38 +10,27 @@ import (
 	"strings"
 )
 
-// The work factors php defaults to, reported through the three
-// PASSWORD_ARGON2_DEFAULT_* constants. They are RFC 9106's second recommended
-// parameter set and cost more wall clock than bcrypt at cost 12. Lowering
-// memory_cost and leaving time_cost at its default trades the other way;
-// docs/reference/extensions/hashing.md prices both.
+// argon2DefaultMemory, argon2DefaultTime and argon2DefaultLanes hold php's RFC 9106 default work factors.
 const (
 	argon2DefaultMemory = 65536
 	argon2DefaultTime   = 4
 	argon2DefaultLanes  = 1
 )
 
-// The shape of the encoded hash, which is libargon2's and so php's: a
-// 16-byte salt and a 32-byte tag, in the PHC string form with version 0x13.
-// Writing the same shape is what makes a hash written here verify under php
-// and the other way around.
+// argon2SaltLen and argon2KeyLen hold the 16-byte salt and 32-byte tag php's PHC form uses.
 const (
 	argon2SaltLen = 16
 	argon2KeyLen  = 32
 	argon2Version = 19
 )
 
-// argon2MaxLanes is a limit of this implementation; argon2 itself allows more.
-// x/crypto takes the parallelism as a uint8 and php accepts larger values and a
-// threads option above this is an error. Truncating it would store a hash at a
-// parallelism the script did not name.
+// argon2MaxLanes caps parallelism at this build's uint8 limit, refusing a larger value.
 const argon2MaxLanes = 255
 
 // argon2b64 is the PHC string format's encoding: standard base64, unpadded.
 var argon2b64 = base64.RawStdEncoding
 
-// argon2Hash derives a fresh hash under p and encodes it with the salt it
-// generated, because a verify has no other way to recover the salt.
+// argon2Hash derives a fresh hash under p, encoding the generated salt into the result.
 func argon2Hash(password string, p params) (string, error) {
 	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
@@ -50,8 +39,7 @@ func argon2Hash(password string, p params) (string, error) {
 	return argon2Encode(salt, argon2Key(p, []byte(password), salt, argon2KeyLen), p), nil
 }
 
-// argon2Verify recomputes the tag from the parameters and salt the stored hash
-// holds. An unreadable hash returns false.
+// argon2Verify recomputes the tag from the stored hash's parameters and salt, false when unreadable.
 func argon2Verify(password, hash string) bool {
 	p, salt, want, err := argon2Decode(hash)
 	if err != nil {
@@ -81,10 +69,7 @@ func argon2Encode(salt, sum []byte, p params) string {
 	return b.String()
 }
 
-// argon2Decode reads the PHC string form back into the parameters, the salt
-// and the stored tag. The version field is mandatory: a string without one is
-// argon2 1.0, which derives a different tag from the same inputs and reading
-// one as 1.3 would report a mismatch as a match.
+// argon2Decode reads the PHC string into parameters, salt and tag, requiring the version field.
 func argon2Decode(hash string) (params, []byte, []byte, error) {
 	fields := strings.Split(hash, "$")
 	if len(fields) != 6 || fields[0] != "" {
@@ -140,8 +125,7 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 	return p, salt, sum, nil
 }
 
-// isArgon2 reports whether a stored hash is one of the two variants and
-// password_verify picks a derivation from the hash itself.
+// isArgon2 reports whether a stored hash names an argon2i or argon2id variant.
 func isArgon2(hash string) bool {
 	return strings.HasPrefix(hash, "$"+algoArgon2i+"$") || strings.HasPrefix(hash, "$"+algoArgon2id+"$")
 }

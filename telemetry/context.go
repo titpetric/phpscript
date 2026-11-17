@@ -55,8 +55,7 @@ func SpanSource(ctx context.Context) (string, int) {
 	return filename, line
 }
 
-// withSource records the source location from ctx on a span, and answers a
-// nil span unchanged and the caller does not have to check.
+// withSource records ctx's source location on span, answering a nil span unchanged.
 func withSource(ctx context.Context, span *Span) *Span {
 	if span == nil {
 		return nil

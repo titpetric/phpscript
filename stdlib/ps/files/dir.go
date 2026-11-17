@@ -6,19 +6,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerDirs installs the directory-handle functions. They are the other way
-// a script reads a directory: scandir answers with the whole listing at once,
-// while opendir returns a handle a loop walks one name at a time, the shape a
-// recursive walk written in PHP takes.
-//
-// The handle holds the listing taken at open time, and no open descriptor. A
-// source filesystem an embedded application ships has no descriptor to hold
-// open, and both filesystems have to answer the same way and opendir reads the
-// listing through root.readDir - the same reader scandir uses.
-//
-// No descriptor stays open between opendir and closedir, and a script that
-// forgets to close leaks no resource: the handle is an ordinary Go value the
-// collector takes once the script drops it.
+// registerDirs installs opendir, readdir and closedir over a listing taken at open.
 func registerDirs(rt *runner.Runtime, r root) {
 	// opendir returns a handle for reading the names in $directory, or false
 	// when $directory is not a directory; php's $context argument is not
@@ -59,15 +47,7 @@ func registerDirs(rt *runner.Runtime, r root) {
 	})
 }
 
-// openDir is what opendir() returns. PHP calls it a resource, a kind of value
-// this runtime does not have and the handle is a Go value the script only ever
-// passes back to readdir() and closedir() - the same arrangement fopen() uses
-// with its *os.File. The Go name is not dirHandle because that is the name of
-// the argument the two readers take, and the generated reference uses argument
-// names.
-//
-// A pointer type, because the cursor has to survive a copy into a PHP variable
-// and back out again on the next readdir().
+// openDir is the opendir handle, a pointer so its cursor survives a PHP copy.
 type openDir struct {
 	names []string
 	pos   int

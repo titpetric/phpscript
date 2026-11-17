@@ -11,14 +11,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerCSV installs the CSV pair over encoding/csv, which is RFC 4180 by
-// construction. That is a divergence by decision: PHP's $escape mechanism is
-// its own invention, and PHP 8.4 deprecates relying on it precisely because it
-// produces non-standard CSV and these functions take $escape and ignore it,
-// and the output here is what PHP emits when a script passes $escape = "".
-// The enclosure cannot vary for the same reason encoding/csv gets the quoting
-// right: it stays at '"', and csvControls refuses another, never misquoting
-// silently.
+// registerCSV installs fputcsv and fgetcsv over encoding/csv, ignoring PHP's $escape.
 func registerCSV(rt *runner.Runtime) {
 	// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n
 	// and returns the number of bytes written, or false on failure; it ignores
@@ -81,10 +74,7 @@ func registerCSV(rt *runner.Runtime) {
 	})
 }
 
-// csvControls reads the ($separator, $enclosure, $escape) tail both functions
-// take. The separator is the one control encoding/csv lets vary; csvControls
-// checks the enclosure and ignores the escape, as the registration comment
-// records.
+// csvControls reads the separator tail, refusing an enclosure other than '"'.
 func csvControls(fn string, opts []any) (rune, error) {
 	sep := ','
 	if len(opts) > 0 && opts[0] != nil {
@@ -103,8 +93,7 @@ func csvControls(fn string, opts []any) (rune, error) {
 	return sep, nil
 }
 
-// countingWriter reports how many bytes reached w: the int half of
-// fputcsv's int|false contract.
+// countingWriter counts the bytes written through to w.
 type countingWriter struct {
 	w io.Writer
 	n int64
@@ -116,10 +105,7 @@ func (c *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// byteReader passes encoding/csv one byte per Read so its internal buffering
-// stops exactly where the record ends: the next read from the handle, whether
-// another fgetcsv or a stream_get_contents, resumes at the following byte
-// and loses nothing a read-ahead buffer had swallowed.
+// byteReader passes encoding/csv one byte per Read so it cannot read past a record.
 type byteReader struct {
 	r io.Reader
 }

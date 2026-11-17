@@ -12,11 +12,7 @@ import (
 // slice around the removed element. runner_assign.go writes the script-owned
 // storage, *model.Array, directly.
 
-// assignGoIndex writes into a native Go collection returned by a binding. Go
-// maps accept new and replacement keys (they are reference types and the script
-// observes the write), and existing slice elements are addressable through the
-// shared backing array. A slice cannot grow through the interface value holding
-// it and callers reject `$a[] =` before reaching here.
+// assignGoIndex writes a map entry or an existing slice element, never growing a slice.
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	if keyed, ok := base.(model.Keyed); ok {
 		name := keyString(key)
@@ -71,15 +67,7 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	return fmt.Errorf("assign: target is not an array")
 }
 
-// unsetGoIndex removes key from a native Go collection, returning the
-// container to store back and whether it changed.
-//
-// A map is a reference type and the delete is in place and it answers nil.
-// A slice cannot hold a hole where PHP leaves one, and cannot shrink through
-// the interface value holding it either and it answers a reslice around the
-// element for the caller to assign. Anything with nothing to remove, a
-// scalar, a nil map, a key that is not there, answers nil and
-// unset($x[$k]) runs unconditionally.
+// unsetGoIndex removes a map key or answers a resliced container for a slice.
 func unsetGoIndex(base, key any) (replacement any, changed bool) {
 	if keyed, ok := base.(model.Keyed); ok {
 		keyed.Delete(keyString(key))

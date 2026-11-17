@@ -11,7 +11,7 @@ runtime: go
 import "database/sql";
 
 $e = sql.ErrNoRows;
-echo $e === sql.ErrNoRows ? "same\n" : "different\n";
+echo $e == sql.ErrNoRows ? "same\n" : "different\n";
 
 try {
     throw sql.ErrNoRows;

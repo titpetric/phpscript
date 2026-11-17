@@ -35,25 +35,12 @@ name: dbadmin
 vars:
   host: http://dbadmin.localhost
   password: hunter2hunter2
-  # How to make the service re-read its tree, which the reload case needs: a
-  # SIGHUP re-runs the @startup jobs, and users.php is what rebuilds the user
-  # table from the password file. The default is the compose service, and
-  # `--var=reload=...` is how a run against a locally started server
-  # (`phpscript server .` in the directory above) points it at that process.
   reload: docker compose -f ../../../compose.yml kill -s HUP phpscript
-  # bcrypt at cost 4 of "venomvenom", which is what the reload case appends to
-  # the password file:
-  #   php -r 'echo password_hash("venomvenom", PASSWORD_BCRYPT, ["cost" => 4]);'
-  # The cost is the lowest bcrypt accepts, because this one is written on every
-  # run and the derivation is the suite's own latency.
   venom_hash: '$2y$04$OMlazGvq2PggDEJvSPMJS.iyGlOXHj82.NAwsrbcV/2y9mdorrqCO'
 
 testcases:
   - name: remove leftovers from an earlier run
     steps:
-      # The password file is the one piece of state outside the database, and
-      # the reload case at the end of the suite appends to it. A run that died
-      # between the two left the line behind.
       - type: exec
         script: |
           rm -f .venom-jar .venom-csrf .venom-other
@@ -128,8 +115,6 @@ testcases:
 
   - name: a sign-in post without the form's token is refused
     steps:
-      # The right password with no token is still 403: the check answers before
-      # anything reads the credential, and no session cookie is staged.
       - type: exec
         script: curl -sS -i -c .venom-csrf -d "username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
@@ -150,9 +135,6 @@ testcases:
 
   - name: repeated refusals hit the sign-in rate limit
     steps:
-      # Six wrong passwords from one address cross the five-refusal ceiling.
-      # The first five come back as ordinary refusals; the output asserted on
-      # is the sixth.
       - type: exec
         script: |
           for n in 1 2 3 4 5; do
@@ -181,9 +163,6 @@ testcases:
 
   - name: signing in stages an http-only session cookie
     steps:
-      # The long way, deliberately: read the form, take the token it rendered
-      # and the cookie that came with it, and post both back. This is the step
-      # that proves a browser's sign-in works end to end.
       - type: exec
         script: |
           TOKEN=$(curl -sS -c .venom-jar {{.host}}/login | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
@@ -240,9 +219,6 @@ testcases:
 
   - name: the user table is a view of the password file
     steps:
-      # The accounts are browsable like any other table, because that is all
-      # they are: users.php rebuilds this table from .htpasswd at startup, and
-      # no password column exists anywhere in the schema.
       - type: exec
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/user
         assertions:
@@ -423,8 +399,6 @@ testcases:
           - result.systemout ShouldContainSubstring STATUS 200
           - result.systemout ShouldContainSubstring Venom probe renamed
       - type: exec
-        # -d "" and not -X POST: -X would keep the method on the redirect that
-        # follows, and POST to the browse page is not a route.
         script: curl -sS -L -b .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/table/venom_rows/row/1/delete
         assertions:
           - result.code ShouldEqual 0
@@ -471,8 +445,6 @@ testcases:
 
   - name: static assets are served from the web root
     steps:
-      # The document root is public/, so the password file in the application
-      # root is not reachable over HTTP at all - by either spelling.
       - type: exec
         script: curl -sS -i -w '\nSTATUS %{http_code}\n' {{.host}}/assets/style.css
         assertions:
@@ -492,9 +464,6 @@ testcases:
 
   - name: a user added to the password file signs in after a reload
     steps:
-      # The file is the user database, so adding an account is a line and a
-      # reload. @startup jobs run again on SIGHUP, which is what rebuilds the
-      # user table; nothing invalidates a cache and no request is dropped.
       - type: exec
         script: |
           echo 'venom:{{.venom_hash}}' >> ../.htpasswd
@@ -574,9 +543,6 @@ testcases:
 
   - name: signing out ends the session
     steps:
-      # A post without the form's token signs nobody out, even from the client
-      # that holds the session cookie: a cross-site page can make a browser
-      # send that cookie, and the token is what it cannot supply.
       - type: exec
         script: curl -sS -i -b .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/logout
         assertions:

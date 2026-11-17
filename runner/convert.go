@@ -14,12 +14,7 @@ import (
 // Value coercion mirrors PHP's loose typing where the runner needs a concrete
 // Go type (string output, truthiness for conditionals, integer indices).
 
-// phpString renders any value the way PHP would for string contexts/echo.
-//
-// The rendering is phpval's and not a second copy of it and echo, implode and
-// var_dump cannot disagree about a float's precision, a time.Time's spelling or
-// what an array reads as. The one case that is the runner's own is a caught
-// exception: `echo $e` prints the error text.
+// phpString renders v for string contexts, deferring to phpval except for a caught exception.
 func phpString(v any) string {
 	switch x := v.(type) {
 	case string:
@@ -101,9 +96,7 @@ func toInt(v any) int64 {
 	}
 }
 
-// namedScalarInt reads a named Go scalar as the integer PHP sees: the reflect
-// fallback for values no case above matched, answering zero for everything
-// that is not numeric, which is the same answer toInt gave before.
+// namedScalarInt reads a named Go scalar as the integer PHP sees, or zero.
 func namedScalarInt(v any) int64 {
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
@@ -117,11 +110,7 @@ func namedScalarInt(v any) int64 {
 	return 0
 }
 
-// numericPrefix returns the longest leading substring of s that reads as a
-// PHP number, and whether it uses float syntax. PHP's string-to-number
-// coercion takes this prefix and ignores the rest: (int)"12abc" is 12,
-// (float)"2.5kg" is 2.5. An empty prefix means the string has no leading
-// number.
+// numericPrefix returns the longest leading PHP number in s and whether it uses float syntax.
 func numericPrefix(s string) (prefix string, isFloat bool) {
 	i := 0
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\v' || s[i] == '\f') {
@@ -168,10 +157,7 @@ func numericPrefix(s string) (prefix string, isFloat bool) {
 	return s[start:end], isFloat
 }
 
-// stringToInt implements PHP's string-to-int coercion: the integer value of
-// the leading number, with float syntax truncated toward zero and an
-// out-of-range integer saturated the way C's strtol (which PHP's cast uses)
-// saturates.
+// stringToInt coerces s to int64, truncating float syntax and saturating out-of-range values.
 func stringToInt(s string) int64 {
 	prefix, isFloat := numericPrefix(s)
 	if prefix == "" {
@@ -191,8 +177,7 @@ func stringToInt(s string) int64 {
 	return int64(f)
 }
 
-// helperCast implements PHP type casts `(bool)`, `(int)`, `(float)`,
-// `(string)`, `(array)`. Only the casts minitpl uses need to be exact.
+// helperCast implements PHP's (bool), (int), (float), (string) and (array) casts.
 func helperCast(typ string, v any) any {
 	switch typ {
 	case "bool", "boolean":
@@ -245,17 +230,7 @@ func helperCast(typ string, v any) any {
 	}
 }
 
-// helperToObject implements the `(object)` cast: an array becomes a stdClass
-// whose properties are its entries, a scalar lands under `scalar`, and null
-// produces an object with nothing in it.
-//
-// The cast returns an object unchanged, which is PHP's behaviour and the reason
-// it makes no copy: `(object) $o === $o`. It copies nothing on the way in
-// either. PHP copies the array because arrays are values there; here they are
-// handles (docs/reference/types/value-semantics.md). The cast is not the
-// place to make one exception to that. An array nested under a property stays
-// an array, as PHP does too, since its copy does not convert nested arrays
-// into objects.
+// helperToObject implements the (object) cast, returning an object unchanged without copying.
 func helperToObject(v any) any {
 	switch {
 	case v == nil:
@@ -277,10 +252,7 @@ func helperToObject(v any) any {
 	return obj
 }
 
-// isObjectValue reports whether v is already an object: an interpreted one, or
-// a value a host binding returned, which `new Database` produces and which the
-// cast must return unchanged, with no fold into a `scalar` property. Call it
-// after the collection test; a Go collection would otherwise answer it.
+// isObjectValue reports whether v is an object or host struct, after the collection test.
 func isObjectValue(v any) bool {
 	if _, ok := v.(*model.Object); ok {
 		return true
@@ -327,13 +299,8 @@ func toFloat(v any) float64 {
 	}
 }
 
-// normalizeKey canonicalises array keys. PHP has int keys and string keys and
-// no third type, and the conversion rules are the same ones the standard
-// library needs for array_key_exists() and array_flip() and there is one
-// definition and this is a call to it.
+// normalizeKey converts an array key to PHP's int or string through phpval.Key.
 func normalizeKey(k any) any { return phpval.Key(k) }
 
-// keyString spells a script's index as the name a model.Keyed answers to. PHP
-// normalises a key to an int or a string; a Keyed takes string names and an
-// int index reads as its decimal spelling.
+// keyString spells an array key as the string name a model.Keyed answers to.
 func keyString(k any) string { return phpval.String(phpval.Key(k)) }

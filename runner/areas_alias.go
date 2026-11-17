@@ -5,9 +5,7 @@ import (
 	"sync"
 )
 
-// areaMembers answers which function names an area defines, keyed by the
-// folded area name. A host sets the source once; stdlib covers every area it
-// mounts.
+// areaMembers holds the source of area function names, read once on first use.
 var areaMembers struct {
 	sync.Mutex
 	current *areaTable
@@ -30,8 +28,7 @@ func SetAreaMembers(source func() map[string][]string) {
 	}
 }
 
-// areaFunc resolves a name written through its area to the global name it
-// names, and reports whether the area defines or replaces it.
+// areaFunc resolves an area-qualified function name to the global name it names.
 func areaFunc(name string) (string, bool) {
 	if !underArea(name) {
 		return "", false
@@ -64,9 +61,7 @@ func areaFunc(name string) (string, bool) {
 	return fn, true
 }
 
-// areaClasses answers which registered class an area-qualified name names,
-// keyed by the folded alias. A host sets the source once; stdlib covers every
-// area it mounts.
+// areaClasses holds the source of area class aliases, read once on first use.
 var areaClasses struct {
 	sync.Mutex
 	current *classTable
@@ -111,8 +106,7 @@ func AreaName(area, class string) string {
 // nameRoot is the namespace prefix of every area, which a class name repeats.
 const nameRoot = `Runtime\`
 
-// areaClass resolves a class name written through its area to the name it
-// registered under, and reports whether an area installs it.
+// areaClass resolves an area-qualified class name to the name it registered under.
 func areaClass(name string) (string, bool) {
 	if !underArea(name) {
 		return "", false
@@ -141,8 +135,7 @@ func areaClass(name string) (string, bool) {
 	return class, ok
 }
 
-// underArea reports whether a name starts with Runtime\PS\ or Runtime\PX\,
-// without allocating: every failed function lookup passes through here.
+// underArea reports whether name starts with Runtime\PS\ or Runtime\PX\, without allocating.
 func underArea(name string) bool {
 	n := len(NamespacePS)
 	if len(name) > 0 && name[0] == '\\' {

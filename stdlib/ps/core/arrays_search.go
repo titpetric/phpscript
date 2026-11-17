@@ -8,13 +8,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// phpArrayColumn projects one field out of every row. The real caller is
-// Database::get_all, which returns a []map[string]any and this reads the rows
-// through modelutil.RangeValues and takes any collection shape.
-//
-// Without $index_key the result is a plain list, a presized []any. With one the
-// function keys the result by a value taken from the rows, which can be a
-// hybrid of int and string keys and it returns an *model.Array (rule 4).
+// phpArrayColumn projects one field from every row, returning []any or a keyed *model.Array.
 func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	n, _ := modelutil.LenValues(array)
 
@@ -51,9 +45,7 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	return out
 }
 
-// arrayColumnValue reads one field of a row. A null column key is PHP's "the
-// whole row" and array_column($rows, null, "id") is a re-keying
-// of the input.
+// arrayColumnValue reads one field of a row, a null key returning the whole row.
 func arrayColumnValue(row any, key any) (any, bool) {
 	if key == nil {
 		return row, true
@@ -67,9 +59,7 @@ func phpInArray(needle, haystack any, strict ...any) bool {
 	return found
 }
 
-// phpArraySearch returns the key of the first match, or false. The return type
-// is PHP's union and not an int: a string-keyed array searches to a string
-// key, and key int64(0) is only told apart from false with ===.
+// phpArraySearch returns the first matching key or false, a string key staying a string.
 func phpArraySearch(needle, haystack any, strict ...any) any {
 	key, found := arrayFind(needle, haystack, arrayStrict(strict))
 	if !found {
@@ -83,10 +73,7 @@ func arrayStrict(strict []any) bool {
 	return len(strict) > 0 && phpval.Truthy(strict[0])
 }
 
-// arrayFind backs both in_array and array_search so the pair cannot disagree
-// about what a match is. Loose matching resolves through phpval.Compare, the
-// runtime's canonical comparison, and the source of PHP 8's rule that a
-// non-numeric string does not equal 0.
+// arrayFind backs both searches, loose matching through phpval.Compare as PHP 8 compares.
 func arrayFind(needle, haystack any, strict bool) (any, bool) {
 	var key any
 	found := false
@@ -104,9 +91,7 @@ func arrayFind(needle, haystack any, strict bool) (any, bool) {
 	return key, found
 }
 
-// arrayIdentical is PHP's === at value level: the types must match before it
-// compares the values. Go's == would panic on a slice or a map and values it
-// cannot compare directly fall back to reflect.DeepEqual.
+// arrayIdentical is PHP's === at value level, falling back to reflect.DeepEqual for slices.
 func arrayIdentical(x, y any) bool {
 	if x == nil || y == nil {
 		return x == nil && y == nil
@@ -121,17 +106,7 @@ func arrayIdentical(x, y any) bool {
 	return reflect.DeepEqual(x, y)
 }
 
-// phpArraySlice returns the selected run of $array.
-//
-// PHP reindexes the integer keys of the result and keeps the string ones, and
-// $preserve_keys asks it to keep the integers too. The result is a list only
-// when nothing in the selected run has a string key and nothing named the
-// original integers; that case returns []any, which is the cheap shape
-// (docs/allocation-performance.md). The rest returns a *model.Array
-// because the keys are then part of the result.
-//
-// This reads $length as PHP reads it: omitted or null runs to the end of the
-// array, and a negative value stops that many elements short of the end.
+// phpArraySlice returns the selected run, reindexing integer keys unless $preserve_keys asks otherwise.
 func phpArraySlice(array any, offset int64, args ...any) any {
 	n, _ := modelutil.LenValues(array)
 	keys := make([]any, 0, n)

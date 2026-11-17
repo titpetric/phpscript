@@ -16,23 +16,13 @@ import (
 // at the point that installs them, and only a callable that never had a
 // registration point still pays the constructor per call.
 
-// invoker is one callable's pre-bound dispatch. call owns the panic
-// boundary and the arity check; wantsCtx is the context-injection decision
-// invokeWithScopeContext and the flatstack host read without reflecting.
-//
-// call takes the runtime doing the calling because two runtimes share an
-// entry: a fork copies the table, and a binding's *Callable argument has to
-// bind to the runtime the call is on and not to the one that built the value.
-// Only the reflect path reads it, where coerceArg needs it and one wrapper
-// covers the specialised signatures below, which take no runtime.
+// invoker is one callable's pre-bound dispatch, with call taking the calling runtime.
 type invoker struct {
 	call     func(rt *Runtime, args []any) (any, error)
 	wantsCtx bool
 }
 
-// newInvoker builds the invoker for fn: the specialized direct call when
-// fn's signature is one of the shapes the stdlib and the evaluation
-// environment register, the pre-planned reflect call otherwise.
+// newInvoker builds the invoker for fn, preferring a specialized direct call.
 func newInvoker(fn any) invoker {
 	// A callable value is not a Go func and has no signature to plan: the
 	// runtime doing the calling dispatches it.
@@ -55,12 +45,7 @@ func newInvoker(fn any) invoker {
 	}
 }
 
-// guardInvoker wraps a call with what invokeAny promised every binding:
-// a panic arrives as a catchable HostPanicError naming the original
-// function's type, and a call passing more arguments than a non-variadic
-// signature declares is an ArgumentCountError before anything runs. Too few
-// arguments stay legal: a Go binding spells PHP's optional parameters as
-// extra ones, and the call paths zero-pad them.
+// guardInvoker turns a panic into HostPanicError and too many arguments into ArgumentCountError.
 func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, typeName string) func(*Runtime, []any) (any, error) {
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
 	injected := injectedArgs(ft)
@@ -78,10 +63,7 @@ func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, type
 	}
 }
 
-// reflectInvoker is the fallback constructor: the reflect call with the
-// parameter plan - types, variadic element, context flag - computed here
-// and not per argument per call. Coercion itself stays coerceArg, the
-// one table.
+// reflectInvoker plans the parameter types once and calls fn through reflect.
 func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) {
 	rv := reflect.ValueOf(fn)
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
@@ -131,11 +113,7 @@ func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) 
 	}
 }
 
-// fastInvoker runs the fast-path type switch once: each covered signature
-// returns a closure calling the binding directly, coercing exactly as the
-// reflect path coerces (string parameters through phpString, absent
-// arguments as zero values, variadic tails aliased under the borrowed-
-// arguments contract). nil sends the constructor to reflectInvoker.
+// fastInvoker returns a direct call for a covered signature and nil for the rest.
 func fastInvoker(ft reflect.Type, fn any) func([]any) (any, error) {
 	switch f := fn.(type) {
 	case func(...any) (any, error):
@@ -253,12 +231,7 @@ func fastInvoker(ft reflect.Type, fn any) func([]any) (any, error) {
 	return nil
 }
 
-// funcEntry is one function-table slot: the raw callable that introspection
-// reflects over, and the invoker built on the entry's first dispatch. Built
-// lazily because a server constructs a fresh runtime per request and
-// registers the whole stdlib into it; wrapping ~300 bindings eagerly would
-// tax every request for the dozen a script calls. Re-registration stores a
-// fresh entry, which is the cache invalidation.
+// funcEntry is one function-table slot, holding its invoker built on first dispatch.
 type funcEntry struct {
 	fn    any
 	inv   invoker
@@ -273,9 +246,7 @@ func (e *funcEntry) invoker() *invoker {
 	return &e.inv
 }
 
-// invokeEntry dispatches a table entry: context injection decided off the
-// pre-bound flag in place of a reflect.TypeOf per call, the pre-bound call,
-// and the memory burst guard a host call has always had.
+// invokeEntry dispatches a table entry, injecting context and checking the memory burst.
 func (rt *Runtime) invokeEntry(e *funcEntry, args []any, scope *Scope) (any, error) {
 	inv := e.invoker()
 	if inv.wantsCtx {

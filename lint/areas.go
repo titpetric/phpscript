@@ -21,9 +21,7 @@ var areaRuntimes = struct {
 	byArea map[string]*runner.Runtime
 }{byArea: map[string]*runner.Runtime{}}
 
-// programAreas lists the binding areas the use and import statements of prog
-// install, wherever the file writes them. A path no installer answers for is a
-// php namespace and belongs to the registry.
+// programAreas lists the binding areas prog's use and import statements install, nameless paths excluded.
 func programAreas(prog *model.Program) []string {
 	var areas []string
 	seen := map[string]bool{}

@@ -18,8 +18,7 @@ type Router = platform.Router
 // writes the one or two it has.
 type Module = platform.UnimplementedModule
 
-// newModule returns the embedded module under name, the name the platform
-// reports a module by and Options.Modules filters on.
+// newModule returns the embedded module registered under name.
 func newModule(name string) *Module {
 	return platform.NewUnimplementedModule(name)
 }

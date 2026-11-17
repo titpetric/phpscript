@@ -60,8 +60,7 @@ func (s *Set) Register(rt *runner.Runtime) {
 	}
 }
 
-// constructor answers the host constructor of a discovered type: a zero value
-// of it, addressable, as a go function takes and returns one.
+// constructor returns an addressable zero value of a discovered type as a go constructor.
 func constructor(kind reflect.Type) any {
 	return func() any { return reflect.New(kind).Interface() }
 }

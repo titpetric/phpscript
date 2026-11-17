@@ -300,10 +300,7 @@ function array_values(mixed $array): array
 ```
 
 ```php
-/**
- * compact builds an associative map from variables in the calling scope.
- * It omits names that do not exist, matching PHP's compact().
- */
+// compact builds a map from the calling scope, omitting names that do not exist.
 function compact(string ...$names): array
 ```
 
@@ -1167,10 +1164,7 @@ function extension_loaded(string $extension): bool
 ```
 
 ```php
-/**
- * filter_var implements the filter_var validators phpscript supports. An
- * unknown filter passes the value through, as FILTER_DEFAULT does.
- */
+// filter_var implements the supported filter_var validators, passing an unknown filter through.
 function filter_var(mixed $value, mixed ...$args): mixed
 ```
 
@@ -1244,11 +1238,7 @@ function strrpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-/**
- * strtr implements both spellings: strtr($subject, $from, $to) replaces
- * bytes positionally, strtr($subject, $pairs) replaces substrings, longest
- * match first.
- */
+// strtr replaces bytes given from and to, or substrings, longest match first.
 function strtr(string $subject, mixed ...$args): string
 ```
 
@@ -1479,10 +1469,7 @@ function str_repeat(string $str, int $times): string
 ```
 
 ```php
-/**
- * str_replace implements str_replace where search may be a string or a
- * collection (with a scalar or collection replacement), and subject is a string.
- */
+// str_replace backs str_replace with a string or collection search and replacement.
 function str_replace(mixed $search, mixed $replace, mixed $subject): string
 ```
 

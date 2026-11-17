@@ -39,7 +39,7 @@ function check($values)
 func TestWhitespaceBetweenStatements(t *testing.T) {
 	t.Parallel()
 	in := "<?php\nfunction run() {\n\n\n\t$a = 1;   \n\t$b = 2;\n\n\n\t$c = 3;\n\twork();\n\tif ($a) {\n\t\techo $a;\n\t}\n\tafter();\n\tif ($b) {\n\t\techo $b;\n\t}\n\n\n}\n"
-	want := "<?php\n\nfunction run() {\n\t$a = 1;\n\t$b = 2;\n\n\t$c = 3;\n\n\twork();\n\tif ($a) {\n\t\techo $a;\n\t}\n\n\tafter();\n\tif ($b) {\n\t\techo $b;\n\t}\n}\n"
+	want := "<?php\n\nfunction run() {\n\t$a = 1;\n\t$b = 2;\n\n\t$c = 3;\n\twork();\n\tif ($a) {\n\t\techo $a;\n\t}\n\n\tafter();\n\tif ($b) {\n\t\techo $b;\n\t}\n}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)

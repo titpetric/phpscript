@@ -7,18 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// lintRedeclared reports a function name declared twice in one file, and one
-// declared over a name the runtime already registers. Both are fatal errors in
-// PHP and a catchable RedeclareError here and the finding is the warning that
-// arrives before the program runs.
-//
-// The check skips a name the source guards with function_exists, the
-// polyfill idiom: declaring over an absent built-in is what it does. The
-// author has already written both branches.
-//
-// Declarations at any nesting count. The runtime only honours the ones written
-// at the top level of a file and a nested duplicate diverges today without
-// colliding; it stays the same mistake and PHP still refuses it.
+// lintRedeclared reports a duplicate or host-shadowing function name, skipping guarded declarations.
 func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 	guarded := map[string]bool{}
 	guards := &astWalker{prog: prog}

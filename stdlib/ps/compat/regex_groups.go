@@ -4,17 +4,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// patternOrder fills $matches with one entry per capture group: $matches[0]
-// holds every whole match and $matches[g] every capture of group g. The
-// columns are present even when nothing matched and a caller may index
-// $matches[1] before it checks the count.
-//
-// Without a flag that changes the entries, the columns are []string. The VM
-// indexes and iterates both levels exactly like nested PHP arrays. The
-// columns are plain string slices and a match set of g groups over n matches
-// costs g+1 allocations where an *model.Array pair would cost 2(g+1) plus 2n
-// interface boxes. PREG_OFFSET_CAPTURE boxes every entry anyway and takes the
-// []any branch.
+// patternOrder fills $matches by group, indexing $matches[g] across every match.
 func patternOrder(subject string, all [][]int, groups int, flags int64) []any {
 	out := make([]any, 0, groups+1)
 	boxed := flags&(pregOffsetCapture|pregUnmatchedAsNull) != 0
@@ -36,8 +26,7 @@ func patternOrder(subject string, all [][]int, groups int, flags int64) []any {
 	return out
 }
 
-// setOrder fills $matches with one entry per match, each holding the whole
-// match followed by its groups: the transpose of patternOrder.
+// setOrder fills $matches by match, each holding the whole match followed by its groups.
 func setOrder(subject string, all [][]int, groups int, flags int64) []any {
 	out := make([]any, len(all))
 	for i, idx := range all {
@@ -46,10 +35,7 @@ func setOrder(subject string, all [][]int, groups int, flags int64) []any {
 	return out
 }
 
-// matchOffset resolves preg_match's $offset argument to a byte offset into
-// subject. A negative offset counts from the end. An offset outside the
-// subject is a failed call: PHP returns false and the second result reports
-// whether the offset is usable at all.
+// matchOffset resolves preg_match's $offset into bytes, reporting false when it falls outside subject.
 func matchOffset(subject string, offset any) (int, bool) {
 	if offset == nil {
 		return 0, true
@@ -64,19 +50,14 @@ func matchOffset(subject string, offset any) (int, bool) {
 	return start, true
 }
 
-// splitPieces accumulates preg_split's result. It holds a []string while the
-// flags allow it, for the same reason patternOrder does, and switches to []any
-// only for PREG_SPLIT_OFFSET_CAPTURE, where every piece is a pair anyway.
+// splitPieces accumulates preg_split's result, as strings until PREG_SPLIT_OFFSET_CAPTURE takes pairs.
 type splitPieces struct {
 	flags int64
 	text  []string
 	pairs []any
 }
 
-// add appends the piece of subject between the byte offsets start and end, and
-// reports whether it landed in the result: PREG_SPLIT_NO_EMPTY drops an empty
-// one. A start of -1 is an unmatched capture group, which is an empty piece
-// at offset -1.
+// add appends the piece between start and end, dropping an empty one under PREG_SPLIT_NO_EMPTY.
 func (s *splitPieces) add(subject string, start, end int) bool {
 	piece := ""
 	if start >= 0 {
@@ -93,8 +74,7 @@ func (s *splitPieces) add(subject string, start, end int) bool {
 	return true
 }
 
-// result returns the pieces in the shape the script sees. An empty result is
-// an empty array and never null, as PHP returns where every piece drops.
+// result returns the pieces in the shape the script sees, an empty array when the split found nothing.
 func (s *splitPieces) result() any {
 	if s.flags&pregSplitOffsetCapture != 0 {
 		if s.pairs == nil {
@@ -108,13 +88,7 @@ func (s *splitPieces) result() any {
 	return s.text
 }
 
-// matchGroups renders one match as the row a script reads: index 0 is the
-// whole match and index g is group g.
-//
-// PHP drops the trailing groups that did not match and count($m) is smaller
-// for a match that ended before the last optional group;
-// PREG_UNMATCHED_AS_NULL turns those into nulls instead and then they all
-// stay. The flagless case is a []string for the reason patternOrder states.
+// matchGroups renders one match as a row, index 0 the whole match and index g group g.
 func matchGroups(subject string, idx []int, groups int, flags int64) any {
 	n := participatingGroups(idx, groups, flags)
 	if flags&(pregOffsetCapture|pregUnmatchedAsNull) == 0 {
@@ -131,10 +105,7 @@ func matchGroups(subject string, idx []int, groups int, flags int64) any {
 	return row
 }
 
-// participatingGroups reports how many entries of a match row PHP keeps: every
-// group up to the last one that participated, and always at least the whole
-// match. PREG_UNMATCHED_AS_NULL keeps them all, since a null records the
-// unmatched group and hides nothing.
+// participatingGroups counts the entries PHP keeps, dropping trailing groups that did not match.
 func participatingGroups(idx []int, groups int, flags int64) int {
 	if flags&pregUnmatchedAsNull != 0 {
 		return groups + 1
@@ -146,8 +117,7 @@ func participatingGroups(idx []int, groups int, flags int64) int {
 	return n
 }
 
-// groupStart returns the byte offset group g matched at, or -1 when the group
-// did not match or the pattern has no such group.
+// groupStart returns the byte offset group g matched at, or -1 when it did not.
 func groupStart(idx []int, g int) int {
 	if 2*g+1 >= len(idx) {
 		return -1
@@ -155,8 +125,7 @@ func groupStart(idx []int, g int) int {
 	return idx[2*g]
 }
 
-// groupText returns the text group g matched, empty for a group that did not
-// match.
+// groupText returns the text group g matched, empty for a group that did not.
 func groupText(subject string, idx []int, g int) string {
 	start := groupStart(idx, g)
 	if start < 0 {
@@ -165,10 +134,7 @@ func groupText(subject string, idx []int, g int) string {
 	return subject[start:idx[2*g+1]]
 }
 
-// matchValue renders group g the way $matches holds it under flags:
-// PREG_OFFSET_CAPTURE makes it a pair of the text and its byte offset, -1 for
-// a group that did not match, and PREG_UNMATCHED_AS_NULL makes that group's
-// text null where PHP writes empty.
+// matchValue renders group g for $matches, a text-offset pair under PREG_OFFSET_CAPTURE.
 func matchValue(subject string, idx []int, g int, flags int64) any {
 	start := groupStart(idx, g)
 	var text any = ""
@@ -184,8 +150,7 @@ func matchValue(subject string, idx []int, g int, flags int64) any {
 	return text
 }
 
-// writeRef assigns v to a by-reference out parameter. The setter is nil when
-// the script left the argument off, which is legal for every one of them.
+// writeRef assigns v through set, and does nothing when the caller omits the argument.
 func writeRef(set func(any), v any) {
 	if set != nil {
 		set(v)

@@ -13,16 +13,13 @@ import (
 // both resolve through. The container a write lands in is assign_container.go,
 // and the writes that reach a binding's native Go value assign_go.go.
 
-// execAssign mutates a variable, property or array element. expr-lang cannot do
-// this and it lives entirely here.
+// execAssign mutates a variable, property or array element through assignValue.
 func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	_, err := rt.assignValue(n.Target, n.Op, n.Value, scope)
 	return err
 }
 
-// assignValue stores value in target and answers what the target holds after
-// the store, the value php reads from an assignment used as one. A chain
-// stores outside in and each link answers its own write.
+// assignValue stores value in target and returns what the target holds after the store.
 func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, scope *Scope) (any, error) {
 	// `$a ??= b` reads the target once and stores only while it answers null:
 	// storing the value already there would write a string offset php leaves
@@ -97,8 +94,7 @@ func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, s
 	}
 }
 
-// assignIndex stores value at one element, resolving the container and the key
-// ahead of it. It answers what the element holds after the store.
+// assignIndex stores value at one element and returns what the element holds after it.
 func (rt *Runtime) assignIndex(tgt *model.Index, op string, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.container(tgt.Base, scope)
 	if err != nil {
@@ -146,8 +142,7 @@ func (rt *Runtime) assignIndex(tgt *model.Index, op string, value model.Expr, sc
 	return next, nil
 }
 
-// assignProp stores value in one property, resolving the receiver and the name
-// ahead of it. It answers what the property holds after the store.
+// assignProp stores value in one property and returns what the property holds after it.
 func (rt *Runtime) assignProp(tgt *model.PropAccess, op string, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.Eval(tgt.Base, scope)
 	if err != nil {
@@ -194,8 +189,7 @@ func bindConstructorID(target, value model.Expr, op string, result any) {
 	}
 }
 
-// propName resolves the property name of an access: the source identifier, or
-// the value `$obj->$name` / `$obj->{expr}` supplies.
+// propName resolves the property name of an access, the value `$obj->$name` supplying one.
 func (rt *Runtime) propName(tgt *model.PropAccess, scope *Scope) (string, error) {
 	if tgt.NameExpr == nil {
 		return tgt.Name, nil
@@ -216,9 +210,7 @@ func assignable(e model.Expr) bool {
 	return false
 }
 
-// execUnset removes each target from the scope, array, property bag or static
-// bag holding it. Unsetting a name nothing set is not an error:
-// `unset($map[$key])` runs unconditionally.
+// execUnset removes each target from its scope, array or bag, reporting no error for an absent one.
 func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 	for _, target := range n.Targets {
 		switch tgt := modelutil.UnwrapParenthesized(target).(type) {
@@ -324,8 +316,7 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 	}
 }
 
-// assignTo writes an already-evaluated value into an lvalue (used by list()
-// destructuring). Only plain `=` semantics apply here.
+// assignTo writes an already-evaluated value into an lvalue under plain `=` semantics.
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Var:
@@ -371,9 +362,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	}
 }
 
-// applyAssignOp resolves compound-assignment operators against the current
-// value. It reports an error for the same inputs the binary operator does and
-// `$x <<= -1` fails where `$x = $x << -1` fails, with no silent assignment.
+// applyAssignOp resolves a compound-assignment operator, reporting an error where the binary operator does.
 func applyAssignOp(op string, cur, rhs any) (any, error) {
 	switch op {
 	case "", "=", "[]=":

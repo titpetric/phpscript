@@ -32,8 +32,7 @@ type Logger = platform.Logger
 // builds from the options and the one the interpreter observes onto.
 type TelemetryModule = platform.TelemetryModule
 
-// newZeroModule returns the embedded module under name, which the platform
-// reports a module by and Options.Modules filters on.
+// newZeroModule returns a zero module under name, the value Options.Modules filters on.
 func newZeroModule(name string) *ZeroModule {
 	return platform.NewUnimplementedModule(name)
 }

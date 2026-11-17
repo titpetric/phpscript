@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
@@ -399,6 +400,20 @@ func TestParseGoCatch(t *testing.T) {
 	} {
 		if _, err := ParseFileOptions("x.php", src, Options{}); err != nil {
 			t.Errorf("php runtime parse %q: %v", src, err)
+		}
+	}
+}
+
+// TestParseGoStrictEquality covers the comparison operators the runtime refuses.
+func TestParseGoStrictEquality(t *testing.T) {
+	for _, op := range []string{"===", "!=="} {
+		src := `<?php $a = 1 == 1;`
+		src = strings.ReplaceAll(src, "==", op)
+		if _, err := ParseFileOptions("x.php", src, Options{GoRuntime: true}); err == nil {
+			t.Errorf("the go runtime parsed %s", op)
+		}
+		if _, err := ParseFileOptions("x.php", src, Options{}); err != nil {
+			t.Errorf("the php runtime refused %s: %v", op, err)
 		}
 	}
 }

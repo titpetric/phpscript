@@ -13,8 +13,7 @@ import (
 // the area name instead would rewrite every member of every imported package
 // and leave the import itself naming nothing.
 
-// collectGoImports maps the area of every `import` statement to the name the
-// path's last segment bound. It stays nil for a file that writes none.
+// collectGoImports maps each import path to the name it bound, nil when a file writes none.
 func collectGoImports(stmts []model.Stmt) map[string]string {
 	var out map[string]string
 	for _, s := range stmts {
@@ -35,9 +34,7 @@ func collectGoImports(stmts []model.Stmt) map[string]string {
 	return out
 }
 
-// goName returns the spelling an imported package's member prints as, and
-// reports whether an import of this file holds it. The member is one segment:
-// go nests packages and not names.
+// goName returns the spelling an imported member prints as and whether this file imports it.
 func (p *printer) goName(name string) (string, bool) {
 	if len(p.goImports) == 0 {
 		return "", false

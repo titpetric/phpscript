@@ -145,7 +145,7 @@ func (h *scannedHolder) Query(statement string) string { return statement }
 	}
 }
 
-// TestDocs_Apply covers what the index fills in and what it leaves alone. The
+// TestDocs_Apply covers the entries the index fills in and the ones it leaves alone. The
 // structure is reflection's answer about this build and the index holds the
 // prose; a member the index does not name keeps the name reflection invented.
 func TestDocs_Apply(t *testing.T) {

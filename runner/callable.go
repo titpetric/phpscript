@@ -55,16 +55,7 @@ type Callable struct {
 	call func(...any) (any, error)
 }
 
-// on answers the call for the runtime doing the calling.
-//
-// The runtime that built the value gets the call built with it, which covers
-// every ordinary script-level call and costs nothing. Any other runtime gets a
-// wrapper over Invoke, because a Runtime is one goroutine's execution (its
-// frames, its output stack, its statics, its request) and reaching into another
-// one is a race to reason about but a concurrent map write. See runner/fork.go.
-//
-// This is what makes a handler that wraps another callable answer on the worker
-// the request arrived on: the value crossed, the execution did not.
+// on answers the call for the runtime doing the calling, wrapping Invoke for another runtime.
 func (c *Callable) on(rt *Runtime) func(...any) (any, error) {
 	if rt == nil || rt == c.rt {
 		return c.call
@@ -79,18 +70,14 @@ func (rt *Runtime) newClosure(decl *model.Closure, env closureEnv) *Callable {
 	return c
 }
 
-// newMethod binds a method declaration to its receiver. The scope is the
-// caller's, and a span from an invocation hangs off it.
+// newMethod binds a method declaration to its receiver, with the caller's scope.
 func (rt *Runtime) newMethod(obj *model.Object, decl *model.FuncDecl, scope *Scope) *Callable {
 	c := &Callable{fn: decl, obj: obj, rt: rt}
 	c.call = func(args ...any) (any, error) { return rt.invokeMethod(obj, decl, args, scope) }
 	return c
 }
 
-// newStaticMethod binds Class::method, which has no receiver. Each call builds
-// the empty instance again and `self::` constants resolve and two calls share
-// no state; php would reject `$this` here and so does an instance with no
-// properties.
+// newStaticMethod binds Class::method, building a fresh empty instance for each call.
 func (rt *Runtime) newStaticMethod(class *model.Class, decl *model.FuncDecl, scope *Scope) *Callable {
 	c := &Callable{fn: decl, class: class, rt: rt}
 	c.call = func(args ...any) (any, error) {
@@ -99,8 +86,7 @@ func (rt *Runtime) newStaticMethod(class *model.Class, decl *model.FuncDecl, sco
 	return c
 }
 
-// newNamedCallable holds a declared function by name, for a host naming one as
-// a string.
+// newNamedCallable holds a declared function by the name a host spells as a string.
 func (rt *Runtime) newNamedCallable(name string) *Callable {
 	c := &Callable{name: name, rt: rt}
 	c.call = func(args ...any) (any, error) { return rt.InvokeNamed(name, args...) }
@@ -146,8 +132,7 @@ func (c *Callable) Captures() bool {
 	return c.obj != nil
 }
 
-// declaringClass answers the class a method callable belongs to, whether it came
-// from a receiver or from a static spelling.
+// declaringClass answers the class a method callable belongs to, from a receiver or a static spelling.
 func (c *Callable) declaringClass() *model.Class {
 	if c.class != nil {
 		return c.class
@@ -216,13 +201,10 @@ func (rt *Runtime) AsCallable(v any) (*Callable, error) {
 	return nil, &LookupError{Symbol: phpDebugType(v), Reason: callableReason}
 }
 
-// callableReason says what a host can run somewhere else, for a refusal that
-// names no other reason.
+// callableReason names what a host can run elsewhere, for a refusal that adds no detail.
 const callableReason = "a callable is a closure, an object with __invoke, a bound method, Class::method, or the name of a declared function"
 
-// asStaticCallable resolves Class::method, naming which half of the spelling
-// it cannot find: php's "no function of that name" message describes neither
-// the class nor the method.
+// asStaticCallable resolves Class::method, naming the class or the method it cannot find.
 func (rt *Runtime) asStaticCallable(spelled, className, method string) (*Callable, error) {
 	class, ok := rt.lookupClass(className)
 	if !ok {
@@ -330,8 +312,7 @@ func (rt *Runtime) boundMethod(obj *model.Object, method string, scope *Scope) (
 	return rt.newMethod(obj, decl, scope).on(rt), true
 }
 
-// staticMethod resolves Class::method without a receiver, for the spellings that
-// report callable-or-not, with no reason attached.
+// staticMethod resolves Class::method without a receiver, reporting callable-or-not only.
 func (rt *Runtime) staticMethod(className, method string, scope *Scope) (func(...any) (any, error), bool) {
 	class, ok := rt.lookupClass(className)
 	if !ok {
@@ -354,13 +335,7 @@ func splitStaticCallable(name string) (string, string, bool) {
 	return "", "", false
 }
 
-// closureValue answers `greet(...)` and `$fn(...)`, php 8.1's first-class
-// callable syntax over a name or a value: the callable the call site names,
-// without calling it. fallback is the Call node's global-namespace name.
-//
-// A value that is already callable answers itself and
-// `$fn(...) === $fn` holds as in php. Everything else resolves to a
-// *Callable and a script reads the result as php's Closure.
+// closureValue answers first-class callable syntax, returning the callable without calling it.
 func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any, error) {
 	switch value := target.(type) {
 	case *Callable:
@@ -392,14 +367,7 @@ func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any,
 	return nil, fmt.Errorf("value of type %s is not callable", phpDebugType(target))
 }
 
-// closureMember answers `$obj->method(...)` and `Class::method(...)`: the
-// declaration bound to what it will run against, as a *Callable.
-//
-// A string target is a class name and it resolves through newStaticMethod, the
-// same path staticMethod and AsCallable take for that spelling: an empty instance
-// per call and `self::` inside the body resolves and two invocations of the value
-// share nothing. A host-backed receiver has no declaration to bind and
-// its method resolves through reflection and the bound call is the value itself.
+// closureMember answers $obj->method(...) and Class::method(...) as a value.
 func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, error) {
 	switch receiver := target.(type) {
 	case *model.Object:
@@ -435,10 +403,7 @@ func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, 
 	return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(target), method)
 }
 
-// boundGoCallable binds an exported Go method as a callable value, the same
-// resolution helperGet answers `$db->close` with, without parentheses. It probes
-// before binding because a name no method answers fails here and not at the
-// call, where boundGoMethod would only find out.
+// boundGoCallable binds an exported Go method as a callable value, probing before it binds.
 func (rt *Runtime) boundGoCallable(target any, method string, scope *Scope) (func(...any) (any, error), bool) {
 	rv := reflect.ValueOf(target)
 	if !rv.IsValid() {

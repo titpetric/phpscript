@@ -12,16 +12,12 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// isComposite reports whether a value renders as more than one line. var_export
-// breaks after the arrow for a composite.
+// isComposite reports whether value renders on more than one line.
 func isComposite(value any) bool {
 	return modelutil.IsCollection(value) || isObjectLike(value)
 }
 
-// isObjectLike reports whether a value prints as an object. It repeats the
-// test is_object() makes and shares nothing with it and this file stands
-// alone; it counts a callable because PHP's Closure is an object too, and a
-// script that dumps one reads it as one.
+// isObjectLike reports whether value prints as an object, counting a callable.
 func isObjectLike(value any) bool {
 	if value == nil {
 		return false
@@ -45,9 +41,7 @@ func isObjectLike(value any) bool {
 	return rv.Kind() == reflect.Struct
 }
 
-// classOf reports the class name an object prints under: the declared name for
-// an interpreted object, the Go type name for one a binding returned, and
-// Closure for a callable, matching what get_class would answer.
+// classOf returns the name an object prints under, Closure for a callable.
 func classOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name
@@ -72,8 +66,6 @@ func classOf(value any) string {
 }
 
 // objectKey returns the address identifying an object, and whether it has one.
-// A struct passed by value has no identity and cannot close a cycle and
-// objectKey neither numbers nor guards it.
 func objectKey(value any) (uintptr, bool) {
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
@@ -86,19 +78,14 @@ func objectKey(value any) (uintptr, bool) {
 	return 0, false
 }
 
-// objectField is one property of an object. scope holds var_dump's
-// visibility annotation (":\"Class\":private", ":protected"), empty for a
-// public property.
+// objectField is one property, with var_dump's scope annotation when it has one.
 type objectField struct {
 	name  string
 	scope string
 	value any
 }
 
-// objectFields returns an object's properties in the order it reads them back:
-// the declared fields first, in declaration order, then the ones the script
-// added, in the order it added them. A dynamic property has no scope
-// annotation, because only a declaration can name a visibility.
+// objectFields returns properties in read-back order: declared fields, then dynamic ones.
 func objectFields(value any) []objectField {
 	if object, ok := value.(*model.Object); ok {
 		fields := make([]objectField, 0, object.Len())
@@ -148,8 +135,7 @@ func fieldScope(class, visibility string) string {
 	return ""
 }
 
-// exportKey renders an array key or property name as var_export writes it: an
-// integer bare, anything else single-quoted.
+// exportKey renders a key as var_export does: an integer bare, a string quoted.
 func exportKey(key any) string {
 	switch x := key.(type) {
 	case int:
@@ -160,8 +146,7 @@ func exportKey(key any) string {
 	return exportString(phpval.String(key))
 }
 
-// dumpKey renders an array key as var_dump writes it: an integer bare, a
-// string in double quotes.
+// dumpKey renders a key as var_dump does: an integer bare, a string double-quoted.
 func dumpKey(key any) string {
 	switch x := key.(type) {
 	case int:
@@ -198,19 +183,15 @@ func exportScalar(value any) string {
 	return exportString(phpval.String(value))
 }
 
-// exportString single-quotes a string the way var_export does: it escapes only
-// the quote and the backslash and a newline stays a literal newline.
+// exportString single-quotes s, escaping only the quote and the backslash.
 func exportString(s string) string {
 	return "'" + exportReplacer.Replace(s) + "'"
 }
 
-// exportReplacer holds one Replacer for the whole package. strings.NewReplacer
-// compiles its table on first use behind a sync.Once and one per call means
-// compiling it per call.
+// exportReplacer holds one Replacer for the package across every call.
 var exportReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
-// exportFloat keeps a float readable back as a float. Without the fraction,
-// var_export(1.0) would emit "1", which PHP would parse as an int.
+// exportFloat keeps a float readable as a float, adding .0 where needed.
 func exportFloat(f float64) string {
 	s := phpFormatFloat(f, -1)
 	if math.IsInf(f, 0) || math.IsNaN(f) || strings.ContainsAny(s, ".E") {
@@ -219,9 +200,7 @@ func exportFloat(f float64) string {
 	return s + ".0"
 }
 
-// printString renders a scalar the way print_r and echo do: true is 1, false
-// and null are nothing, and a float prints at precision=14 and not
-// var_dump's round-tripping digits.
+// printString renders a scalar the way print_r and echo do, at precision 14.
 func printString(value any) string {
 	switch x := value.(type) {
 	case nil:

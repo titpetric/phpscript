@@ -17,11 +17,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Arrays\Sort`, registerArraySort)
 }
 
-// registerArraySort adds the half of PHP's sort family that keeps the
-// key-to-value association: ksort/krsort order by key, asort/arsort by value,
-// uasort/uksort by a script comparator. The other half (sort, rsort, usort)
-// is in arrays.go and throws the keys away, which lets it share sortValues.
-// These six cannot.
+// registerArraySort adds the key-preserving sorts: ksort, krsort, asort, arsort, uasort and uksort.
 func registerArraySort(rt *runner.Runtime) {
 	// ksort sorts $array in place by key ascending with PHP's default
 	// comparison, keeping each key attached to its value.
@@ -79,10 +75,7 @@ func phpArsort(array any) (bool, error) {
 	return sortEntries("arsort", array, func(x, y arrayEntry) bool { return sortLess(y.val, x.val) })
 }
 
-// callbackLess adapts a script comparator (func(...any) (any, error), as
-// rt.Callable returns it) to the boolean sort.SliceStable declares, the same
-// way phpUsort does. It reads a comparator that raises as "not less" and a
-// failing callback leaves the order it saw and aborts nothing mid-sort.
+// callbackLess adapts a script comparator to a less function, treating an error as not less.
 func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	r, err := fn(x, y)
 	if err != nil {
@@ -91,22 +84,7 @@ func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	return phpval.Int(r) < 0
 }
 
-// sortEntries is the key-aware counterpart of sortValues. It snapshots the
-// entries with arrayEntries, sorts the snapshot, then rebuilds the array with
-// Clear followed by arrayReplay in restore mode: arrayReplay puts every key
-// back with Set, never Append, because Append would hand out fresh integer
-// keys and turn a key-preserving sort into sort(). Sorting the snapshot, and
-// not the storage, also means the rewrite never iterates what it overwrites.
-//
-// Divergence from PHP, and from sort()/rsort()/usort() next door: these six
-// require a *model.Array and error on anything else, including the native Go
-// slice a binding such as explode() or array_keys() returns. sortValues can
-// sort a Go slice in place through its backing array because it only permutes
-// values; a re-keying sort has nowhere to put the keys, and a Go slice has no
-// keys to preserve in the first place and sorting one here would either be a
-// plain sort() under another name or a mutation of a copy the script cannot
-// observe. arrayTarget is the established precedent (array_splice, array_shift)
-// and this follows it. Cast with (array) or build the value with array() first.
+// sortEntries sorts a *model.Array in place by less, preserving keys and refusing a Go slice.
 func sortEntries(name string, array any, less func(x, y arrayEntry) bool) (bool, error) {
 	a, err := arrayTarget(name, array)
 	if err != nil {
@@ -119,8 +97,7 @@ func sortEntries(name string, array any, less func(x, y arrayEntry) bool) (bool,
 	return true, nil
 }
 
-// phpUsort sorts values in place using cmp, reindexing with integer keys (PHP
-// semantics). cmp is the env-adapted comparator: func(...any)(any,error).
+// phpUsort sorts values in place with cmp, reindexing from zero.
 func phpUsort(cmp func(...any) (any, error), a any) bool {
 	return sortValues(a, func(x, y any) bool {
 		r, err := cmp(x, y)
@@ -131,8 +108,7 @@ func phpUsort(cmp func(...any) (any, error), a any) bool {
 	})
 }
 
-// phpSort orders a list with PHP's default comparison (see phpval.Compare). Like
-// sort(), it discards the keys and reindexes the result from zero.
+// phpSort orders a list with PHP's default comparison, discarding keys and reindexing from zero.
 func phpSort(array any) bool {
 	if sortInt64Array(array, false) {
 		return true
@@ -167,15 +143,12 @@ func sortInt64Array(a any, desc bool) bool {
 	return true
 }
 
-// sortLess is the boolean sort.SliceStable wants, derived from phpval.Compare so
-// that ties stay ties.
+// sortLess derives a less function from phpval.Compare so ties stay ties.
 func sortLess(x, y any) bool {
 	return phpval.Compare(x, y) < 0
 }
 
-// sortValues reorders a list in place using less. A *model.Array is rebuilt as
-// a 0-indexed list; it sorts a native Go slice through the backing array the
-// script shares and both change in place as PHP expects.
+// sortValues reorders a list in place, rebuilding a *model.Array as a 0-indexed list.
 func sortValues(a any, less func(x, y any) bool) bool {
 	switch target := a.(type) {
 	case nil:
@@ -208,10 +181,7 @@ func sortValues(a any, less func(x, y any) bool) bool {
 	return true
 }
 
-// edgeValue is reset and end: the first or last value of the array, false when
-// it holds none. PHP defines both through the internal pointer, which the array
-// model here omits. Every practical call reads them for the value; edgeValue
-// returns that value.
+// edgeValue returns the first or last array value, or false when empty.
 func edgeValue(array any, first bool) any {
 	var out any = false
 	found := false

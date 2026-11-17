@@ -24,9 +24,7 @@ import (
 // script's deadline, as php does where the request is the script. What a
 // request does own is its connection, which EnterRequest scopes.
 
-// maxTimeLimit is the longest limit a script can set, past any real one. It
-// keeps the seconds-to-Duration multiply from wrapping a large argument into a
-// short limit.
+// maxTimeLimit caps a script's limit, stopping the seconds-to-Duration multiply from wrapping.
 const maxTimeLimit = 100 * 365 * 24 * time.Hour
 
 // SetTimeLimit bounds how long the script may run, restarting the clock as a
@@ -71,14 +69,7 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	return func() { rt.EndRequest(saved) }
 }
 
-// watchEnd answers the channel that closes when ctx ends, nil for a context
-// that cannot end.
-//
-// One read takes the channel and the runtime keeps it and the per-statement
-// check is a non-blocking select on a field and no call through a context. A
-// channel and not a flag an AfterFunc sets, because an AfterFunc runs on
-// its own goroutine: a sleep that returned the instant its context ended would
-// reach the next statement ahead of the flag write.
+// watchEnd returns the channel that closes when ctx ends, nil when it cannot.
 func watchEnd(ctx context.Context) <-chan struct{} {
 	if ctx == nil {
 		return nil
@@ -86,8 +77,7 @@ func watchEnd(ctx context.Context) <-chan struct{} {
 	return ctx.Done()
 }
 
-// ended reports a watched channel having closed, without blocking on one that
-// has not.
+// ended reports a watched channel having closed, without blocking.
 func ended(done <-chan struct{}) bool {
 	if done == nil {
 		return false
@@ -100,15 +90,7 @@ func ended(done <-chan struct{}) bool {
 	}
 }
 
-// bindContext builds the context this session's bindings take. SetContext
-// calls it and no other code does and a binding can block on it
-// across a script changing its own limit.
-//
-// It does not cancel the one it replaces. A host layering onto the context it
-// already gave - runner.Context.Register does exactly that, seeding the request
-// onto rt.Context() - would otherwise have its new context cancelled through
-// the old one it derives from, and every script would end before its first
-// statement. resetLimits drops the old one with the program.
+// bindContext builds the session's binding context and leaves the one it replaces uncancelled.
 func (rt *Runtime) bindContext() {
 	base := rt.host
 	if base == nil {
@@ -124,9 +106,7 @@ func (rt *Runtime) bindContext() {
 	rt.refreshDeadlineArmed()
 }
 
-// armTimer restarts the clock. The timer sets the flag before it cancels the
-// context and a check that finds the context ended can tell whether the limit
-// did it.
+// armTimer restarts the clock, setting the timeout flag before it cancels the context.
 func (rt *Runtime) armTimer() {
 	if rt.scriptTimer != nil {
 		rt.scriptTimer.Stop()
@@ -146,8 +126,7 @@ func (rt *Runtime) armTimer() {
 	rt.refreshDeadlineArmed()
 }
 
-// checkDeadline reports the script having run out of time, the handler's
-// context having ended, or the client having gone away.
+// checkDeadline reports a timeout, an ended handler context or a departed client.
 func (rt *Runtime) checkDeadline() error {
 	if rt.timedOut.Load() {
 		return &TimeLimitError{Limit: rt.timeLimit}
@@ -163,24 +142,15 @@ func (rt *Runtime) checkDeadline() error {
 	return nil
 }
 
-// watchingDeadline reports whether anything can stop this run. A field and no
-// computation, which whatever changes one of its inputs refreshes, because the
-// statement loop reads it on every statement.
+// watchingDeadline reports whether anything can stop this run, reading a cached field.
 func (rt *Runtime) watchingDeadline() bool { return rt.deadlineArmed }
 
-// refreshDeadlineArmed recomputes it. Called by everything that arms or drops a
-// timer, changes the connection, or rebuilds the context - a limit a script
-// sets halfway through its own statement list has to reach the rest of that
-// list.
+// refreshDeadlineArmed recomputes the cached armed state after a timer or connection change.
 func (rt *Runtime) refreshDeadlineArmed() {
 	rt.deadlineArmed = rt.watching || rt.clientDone != nil || rt.scriptTimer != nil
 }
 
-// suspendDeadline turns the clock off and answers the function that turns it
-// back on, for the shutdown pass: a script is there because it ran out of time
-// as often as because it finished, and a callback registered to close what it
-// opened has to be able to run. php resets the timer for its shutdown functions
-// for the same reason.
+// suspendDeadline turns the clock off for the shutdown pass and returns a function that restores it.
 func (rt *Runtime) suspendDeadline() func() {
 	timedOut := rt.timedOut.Load()
 	watching, clientDone := rt.watching, rt.clientDone
@@ -196,10 +166,7 @@ func (rt *Runtime) suspendDeadline() func() {
 	}
 }
 
-// resetLimits returns the deadline and the connection to what a fresh runtime
-// has, for a host that reuses one across programs. A limit one program set is
-// not the next one's, and a timer left armed would end a program that never
-// set a limit.
+// resetLimits returns the deadline and connection to a fresh runtime's state.
 func (rt *Runtime) resetLimits() {
 	// Only a program that armed something needs its context replaced. One that
 	// set no limit left the context untouched, and rebuilding it would cost an
@@ -225,8 +192,7 @@ func (rt *Runtime) resetLimits() {
 	rt.refreshDeadlineArmed()
 }
 
-// releaseDeadline stops the timers a limit installed and a host reusing a
-// runtime does not leave one alive per program until it fires.
+// releaseDeadline stops the timers a limit installed so none outlives its program.
 func (rt *Runtime) releaseDeadline() {
 	if rt.scriptTimer != nil {
 		rt.scriptTimer.Stop()

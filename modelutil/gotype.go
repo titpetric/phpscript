@@ -16,12 +16,7 @@ import (
 // GoNamespace is the namespace a script imports to bind go's builtins.
 const GoNamespace = `Runtime\Go`
 
-// goBuiltins are the names the import binds where a script writes them
-// unqualified. An import is the more specific name: a file that imported the
-// go runtime wrote `min(...)` for go's, and `\min(...)` is php's, the way
-// `\strlen` is php's whatever the file imported. Four of these shadow a php
-// function - copy, getenv, min and max - and php's print is no function
-// phpscript registers at all.
+// goBuiltins holds the names the go import binds unqualified, four of which shadow php.
 var goBuiltins = map[string]struct{}{
 	"append":  {},
 	"cap":     {},
@@ -39,12 +34,7 @@ var goBuiltins = map[string]struct{}{
 	"println": {},
 }
 
-// goTypes maps one of go's builtin type names to the conversion it applies,
-// over a value already reduced to one of php's own scalars.
-//
-// A pair this table will not decide reports false and reaches the binding,
-// which reduces the value through phpval first. A string becoming a number has
-// one definition and phpval holds it. This package cannot import phpval.
+// goTypes maps a go type name to its conversion, false for a pair it declines.
 var goTypes = map[string]func(any) (any, bool){
 	"any":     func(v any) (any, bool) { return v, true },
 	"bool":    goBool,
@@ -65,10 +55,7 @@ var goTypes = map[string]func(any) (any, bool){
 	"float32": goNarrow("float32"),
 }
 
-// goNarrow is the conversion of a sized type: it answers the value of that
-// width, typed, which keeps the type a script wrote on the value it holds.
-// `int`, `int64` and `float64` have no entry here: they name php's own
-// widths, and `int64(5)` is php's 5.
+// goNarrow converts through the sized type name and keeps the width it names.
 func goNarrow(name string) func(any) (any, bool) {
 	w, ok := model.GoWidthNamed(name)
 	if !ok {
@@ -138,10 +125,7 @@ func goString(v any) (any, bool) {
 	return s, ok
 }
 
-// goSigned is the conversion of php's own integer width, which `int` and
-// `int64` both name: php's int is 64 bits wide and the value passes through.
-// A float or a numeric string reaches the binding, which reduces it through
-// phpval before converting.
+// goSigned converts an int64 at php's own width and declines every other type.
 func goSigned(bits int) func(any) (any, bool) {
 	return func(v any) (any, bool) {
 		n, ok := v.(int64)
@@ -167,8 +151,7 @@ func goFloat(bits int) func(any) (any, bool) {
 	}
 }
 
-// goFloat64 reads the values a float conversion takes: php's float, and its
-// int, which widens exactly as go's conversion does.
+// goFloat64 reads a php float or int as float64 and declines anything else.
 func goFloat64(v any) (float64, bool) {
 	switch x := v.(type) {
 	case float64:

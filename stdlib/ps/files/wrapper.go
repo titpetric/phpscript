@@ -30,8 +30,7 @@ func RegisterWrapper(scheme string, open Wrapper) {
 	wrappers.byScheme[strings.ToLower(scheme)] = open
 }
 
-// readStream reads a php:// scheme whole, as file_get_contents does. A fresh
-// buffer answers the empty string; a scheme no wrapper opens answers false.
+// readStream reads a php:// scheme whole, a scheme no wrapper opens answering false.
 func readStream(rt *runner.Runtime, scheme string) any {
 	handle, ok, err := openWrapper(rt, scheme, "r")
 	if !ok || err != nil {
@@ -49,7 +48,6 @@ func readStream(rt *runner.Runtime, scheme string) any {
 }
 
 // writeStream writes data to a php:// scheme and answers the bytes written.
-// php://output reaches script output; a wrapper's buffer takes the write and goes.
 func writeStream(rt *runner.Runtime, scheme, data string) any {
 	var handle any = outputStream{rt: rt}
 	if !strings.EqualFold(scheme, "output") {
@@ -70,10 +68,7 @@ func writeStream(rt *runner.Runtime, scheme, data string) any {
 	return int64(n)
 }
 
-// openWrapper opens the handle for scheme, and reports whether the registry
-// holds one. A scheme php spells with an argument, `temp/maxmemory:1024`,
-// resolves on the name ahead of the first slash. The wrapper reads the
-// argument itself: a nil handle is a name it refused, reported as no wrapper.
+// openWrapper opens a scheme's handle, resolving a name with an argument at the first slash.
 func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, err error) {
 	name := strings.ToLower(scheme)
 	wrappers.RLock()

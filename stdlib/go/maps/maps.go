@@ -21,8 +21,7 @@ func init() {
 
 func name(fn string) string { return Namespace + `\` + fn }
 
-// clone copies the entries of a collection into a new array, keys in order.
-// The result is an array to keep the keys.
+// clone copies a collection's entries into a new array, keeping keys in order.
 func clone(m any) *model.Array {
 	out := model.NewArray()
 	modelutil.RangeValues(m, func(k, v any) bool {

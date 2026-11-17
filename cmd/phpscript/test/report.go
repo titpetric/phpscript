@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-// teeResultTable forwards every call to each table and one run prints a
-// terminal table to stdout and writes a markdown report to a file.
+// teeResultTable forwards every call to each table, printing to stdout and writing a report.
 type teeResultTable []resultTable
 
 func (t teeResultTable) writeGroup(dir string, labels []string) {
@@ -64,10 +63,7 @@ func (t teeMatrixTable) writeSummary(passed, failed, total int, duration time.Du
 	}
 }
 
-// writeReportHeader opens a generated markdown report with its title, the
-// command that produced it, and a sentence naming what it covers. It builds
-// the provenance line from the invocation and never hardcodes it and the line
-// always names the job that actually wrote the file.
+// writeReportHeader opens a markdown report with its title, provenance line and coverage sentence.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
 
@@ -79,9 +75,7 @@ func writeReportHeader(w io.Writer, argv []string) {
 	fmt.Fprint(w, "last. See [testing.md](./testing.md) for the fixture format and how to add one.\n\n")
 }
 
-// openReport creates the -o markdown sink and writes its header. It runs
-// before the first fixture and an unwritable path fails the command
-// immediately, and not after the whole suite has executed.
+// openReport creates the -o markdown sink and its header, before the first fixture runs.
 func openReport(opts Options, args []string) (*os.File, error) {
 	if opts.Output == "" {
 		return nil, nil

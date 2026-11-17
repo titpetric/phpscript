@@ -66,11 +66,7 @@ func registerMath(rt *runner.Runtime) {
 	rt.RegisterFunc("hexdec", phpHexdec)
 }
 
-// phpHexdec backs hexdec. PHP reads the digits it recognises and skips the
-// rest without a word (hexdec("0x1A") is 26 because PHP skips the x), and
-// switches to float arithmetic at the first digit that would overflow the
-// int and hexdec("7fffffffffffffff") is PHP_INT_MAX and one more
-// digit of anything is a float.
+// phpHexdec backs hexdec, skipping unrecognised characters and overflowing into a float.
 func phpHexdec(hexString string) any {
 	var asInt int64
 	var asFloat float64
@@ -103,9 +99,7 @@ func phpHexdec(hexString string) any {
 	return asInt
 }
 
-// phpAbs backs abs. phpval.Number decides the return type and an int argument
-// keeps its type and a float argument stays a float. PHP_INT_MIN has no int
-// counterpart and becomes a float, as it does in PHP.
+// phpAbs backs abs, keeping the argument's type and turning PHP_INT_MIN into a float.
 func phpAbs(num any) any {
 	switch x := phpval.Number(num).(type) {
 	case float64:
@@ -123,11 +117,7 @@ func phpAbs(num any) any {
 	}
 }
 
-// phpPow backs pow with the rule the ** operator follows in runner.phpPow:
-// two int operands with a non-negative exponent stay int, and a float
-// operand, a negative exponent or an int result that overflows makes the
-// result a float. A fixture that prints pow(2, 63) next to 2 ** 63 holds the
-// two implementations together.
+// phpPow backs pow, keeping two int operands with a non-negative exponent as int.
 func phpPow(num, exponent any) any {
 	a, b := phpval.Number(num), phpval.Number(exponent)
 	af, aIsFloat := a.(float64)
@@ -165,8 +155,7 @@ func phpPow(num, exponent any) any {
 	return result
 }
 
-// mulInt64 multiplies two int64s, reporting false on overflow so pow can fall
-// back to a float the way PHP does.
+// mulInt64 multiplies two int64s, reporting false on overflow.
 func mulInt64(x, y int64) (int64, bool) {
 	z := x * y
 	if x != 0 && (z/x != y || (x == -1 && y == math.MinInt64)) {
@@ -175,10 +164,7 @@ func mulInt64(x, y int64) (int64, bool) {
 	return z, true
 }
 
-// phpLog backs log with an explicit base. Bases 2 and 10 read through
-// math.Log2 and math.Log10, as PHP does: the division of two
-// logarithms is a digit out on some exact powers, and log(1024, 2) has to be
-// float(10) where the division produces 10.000000000000002.
+// phpLog backs log with an explicit base, reading bases 2 and 10 exactly.
 func phpLog(num, base float64) float64 {
 	switch base {
 	case 2:
@@ -190,14 +176,7 @@ func phpLog(num, base float64) float64 {
 	}
 }
 
-// phpMinMax backs min and max. It takes either one collection or a list of
-// values, orders every candidate with phpval.Compare, and returns the winning
-// element unchanged and max(1, "2", 3) is int(3) and never a number the
-// comparison built. want is 1 for max and -1 for min.
-//
-// Ties follow PHP, which does not break them the same way for both: min keeps
-// the last of equal values and max keeps the first and min(1, 1.0) is float(1)
-// and max(1, 1.0) is int(1).
+// phpMinMax backs min and max, returning the winning candidate unchanged with PHP's tie rule.
 func phpMinMax(name string, args []any, want int) (any, error) {
 	values := args
 	if len(args) == 1 {
@@ -219,13 +198,7 @@ func phpMinMax(name string, args []any, want int) (any, error) {
 	return best, nil
 }
 
-// integerDigits renders an integer argument as its own decimal digits and that
-// grouping an int64 does not lose the low bits a float64 cannot hold. exact is
-// false for every other value, which then rounds through a float as before.
-//
-// A negative $decimals rounds the integer, which is more than a digit copy: it
-// drops the digits past the cut and rounds the kept ones, the same rule
-// roundDecimal applies to a decimal string.
+// integerDigits renders an integer argument as decimal digits, exact false for a non-integer.
 func integerDigits(num any, decimals int) (integer, fraction string, neg, exact bool) {
 	var n int64
 	switch v := num.(type) {
@@ -327,18 +300,7 @@ func phpNumberFormat(num any, opts ...any) string {
 	return out.String()
 }
 
-// phpRound rounds v to precision decimal places, half away from zero.
-//
-// phpRound rounds the decimal text and not the binary value.
-// PHP rounds what the number prints as, and the two disagree wherever a decimal
-// literal has no exact float: the nearest float to 1.005 is
-// 1.00499999999999989... and math.Round(1.005*100)/100 is 1.0 where PHP's
-// round(1.005, 2) is 1.01.
-// Formatting with 'f' and -1 first produces the shortest decimal that reads back
-// as the same float ("1.005"), which is the number the script wrote, and
-// rounding that text reproduces PHP for every case. Rounding through
-// FormatFloat with a precision instead would round half to even, making
-// round(2.5) 2.0.
+// phpRound rounds v to precision decimal places, rounding the decimal text half away from zero.
 func phpRound(v float64, precision int) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return v
@@ -361,18 +323,7 @@ func phpRound(v float64, precision int) float64 {
 	return rounded
 }
 
-// roundDecimal rounds v half away from zero at precision decimal places and
-// returns the result as a sign and two digit strings, the integer part and the
-// fraction. The fraction is exactly precision digits long, empty when precision
-// is zero or less; a negative precision rounds to the left of the point and
-// roundDecimal(1234.5678, -2) is "1200" and "".
-//
-// roundDecimal takes the number apart as the digit string FormatFloat produced
-// plus the position of its point. Dropping everything from cut = len(integer) +
-// precision and incrementing the digit before it when the first dropped digit
-// is 5 or more is decimal half-away-from-zero rounding. It needs no
-// arithmetic on the float, because the float cannot represent the value a
-// script wrote.
+// roundDecimal rounds v half away from zero, returning a sign and the integer and fraction digits.
 func roundDecimal(v float64, precision int) (integer, fraction string, neg bool) {
 	text := strconv.FormatFloat(v, 'f', -1, 64)
 	if strings.HasPrefix(text, "-") {
@@ -421,8 +372,7 @@ func roundDecimal(v float64, precision int) (integer, fraction string, neg bool)
 	return string(kept) + strings.Repeat("0", -precision), "", neg
 }
 
-// incrementDigits adds one to a decimal digit string, growing it by a leading
-// "1" when the increment runs off the front ("99" -> "100", "" -> "1").
+// incrementDigits adds one to a decimal digit string, growing a leading "1" on overflow.
 func incrementDigits(digits []byte) []byte {
 	for i := len(digits) - 1; i >= 0; i-- {
 		if digits[i] < '9' {

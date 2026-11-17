@@ -1,11 +1,24 @@
 package compat
 
 import (
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/runner"
 )
+
+// TestRegisterBuffers covers the functions the installer binds.
+func TestRegisterBuffers(t *testing.T) {
+	t.Parallel()
+	rt := runner.New(io.Discard, runner.Options{})
+	RegisterBuffers(rt)
+	for _, name := range []string{"ob_start", "ob_get_level", "ob_get_contents"} {
+		if _, ok := rt.LookupFunc(name); !ok {
+			t.Errorf("RegisterBuffers installed no %s", name)
+		}
+	}
+}
 
 // TestBuffersNest covers the stack discipline a template engine renders
 // through: ob_start pushes a level, a flush writes into the level below it,

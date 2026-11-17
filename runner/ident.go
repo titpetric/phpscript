@@ -7,8 +7,7 @@ package runner
 // names and had to avoid collisions; the slot table keeps them because
 // resolveVar still reads the kind off the identifier.
 
-// varIdent is the identifier used for a PHP variable. `$this` stays `this`;
-// everything else takes a `v_` prefix.
+// varIdent is the slot identifier for a PHP variable, $this staying this.
 func varIdent(name string) string {
 	if name == "this" {
 		return "this"
@@ -16,11 +15,8 @@ func varIdent(name string) string {
 	return "v_" + name
 }
 
-// constIdentPrefix marks the identifier of a bare name. The runtime reads it
-// to decide what an unresolved name means.
+// constIdentPrefix marks a bare name's slot identifier, which resolveVar reads.
 const constIdentPrefix = "c_"
 
-// constIdent is the identifier for a bare name, kept apart from the variable
-// of the same spelling: `define("x", 1); echo x;` and `echo $x;` are two
-// lookups, and only the second is null when nothing set it.
+// constIdent is a bare name's identifier, kept apart from the variable's.
 func constIdent(name string) string { return constIdentPrefix + name }

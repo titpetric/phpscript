@@ -9,9 +9,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// fixtureGroup is the fixtures of one folder, in discovery order. Grouping is
-// what lets the runner print a table per area in place of one long table and
-// a reader takes a folder's fixtures as a set.
+// fixtureGroup holds one folder's fixtures in discovery order.
 type fixtureGroup struct {
 	Dir      string // folder holding the fixtures, "." when they are in the run directory
 	Fixtures []*tests.Fixture
@@ -32,16 +30,13 @@ type groupTotals struct {
 	Engines []engineDuration
 }
 
-// engineDuration is the time one runner spent, summed over its fixture runs.
-// Under --parallel the engines together can exceed the wall-clock Duration
-// beside them, which measures the run and not the work.
+// engineDuration holds the time one runner spent over its fixture runs.
 type engineDuration struct {
 	Runner   tests.Runner
 	Duration time.Duration
 }
 
-// mapFixtures runs fn over a group with bounded concurrency and returns values
-// in fixture discovery order, keeping terminal, Markdown, and JSON output stable.
+// mapFixtures runs fn with bounded concurrency and returns values in discovery order.
 func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(worker, i int, fx *tests.Fixture) T) []T {
 	results := make([]T, len(fixtures))
 	if parallel <= 1 || len(fixtures) <= 1 {
@@ -93,9 +88,7 @@ func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, 
 	workers.Wait()
 }
 
-// groupFixtures buckets fixtures by the folder holding them, preserving the
-// order discovery established both between folders and inside one.
-// list.GroupByDir does that for any path list.
+// groupFixtures buckets fixtures by their folder, preserving discovery order.
 func groupFixtures(fixtures []*tests.Fixture, displayPaths []string) []fixtureGroup {
 	buckets := list.GroupByDir(displayPaths)
 	groups := make([]fixtureGroup, 0, len(buckets))

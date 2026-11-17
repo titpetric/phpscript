@@ -166,21 +166,7 @@ func (p *PasswordFile) Users(ctx context.Context) ([]User, error) {
 	return users, nil
 }
 
-// read parses the file into username and stored hash.
-//
-// Every refusal is here, and each one names a file an operator has to fix: a
-// username that is not lowercase, a username twice, a line with no separator,
-// and a hash in no format this build reads. The parse refuses a file whole,
-// because skipping the bad lines would leave a file whose contents nobody can
-// predict from reading it.
-//
-// The messages compose with %v and not %w, which is the reflex. The runtime
-// unwraps a caught error to its root cause before a catch clause sees it
-// (runner/runner.go:741) and a wrapped chain reaches a script as its innermost
-// message alone - "unreadable password hash" with no file and no line number.
-// The whole sentence has to be the leaf, because the whole sentence is what an
-// operator acts on. The one errors.Is in this file reads the filesystem error
-// before anything composes it and nothing depends on a cause surviving.
+// read parses username and hash pairs, refusing the whole file and composing each error with %v.
 func (p *PasswordFile) read() (map[string]string, error) {
 	file, err := os.Open(p.path)
 	if err != nil {
@@ -225,12 +211,7 @@ func (p *PasswordFile) read() (map[string]string, error) {
 	return entries, nil
 }
 
-// validName holds a username to the shape the primary key derives from.
-//
-// The key follows from the name and two spellings of one name are two
-// users with two keys and two sets of rows. The rule is lowercase, and not a
-// folded comparison: folding at the comparison would leave the key depending
-// on whichever spelling the file holds first.
+// validName refuses an empty or non-lowercase username, whose derived key would differ.
 func validName(name string) error {
 	switch {
 	case name == "":

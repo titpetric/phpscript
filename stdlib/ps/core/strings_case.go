@@ -4,10 +4,7 @@ import (
 	"strings"
 )
 
-// asciiLower folds A-Z only, as PHP's strtolower does and all its
-// case-insensitive search functions fold by. strings.ToLower is Unicode-aware
-// and can change a string's byte length, which would shift the offsets those
-// searches report.
+// asciiLower folds A-Z only, as strtolower does; byte length never changes.
 func asciiLower(s string) string {
 	for i := 0; i < len(s); i++ {
 		if c := s[i]; c >= 'A' && c <= 'Z' {
@@ -42,9 +39,7 @@ func asciiUpper(s string) string {
 // ucwordsDefaultSeparators is PHP's default $separators for ucwords.
 const ucwordsDefaultSeparators = " \t\r\n\f\v"
 
-// phpUcfirst maps the first byte up when that byte is a-z and leaves every
-// other first byte alone and ucfirst("ábc") returns "ábc". mbUcfirst converts
-// the first character, ASCII or not.
+// phpUcfirst uppercases an a-z first byte and leaves any other first byte alone.
 func phpUcfirst(str string) string {
 	if str == "" || str[0] < 'a' || str[0] > 'z' {
 		return str
@@ -60,10 +55,7 @@ func phpLcfirst(str string) string {
 	return string(str[0]-'A'+'a') + str[1:]
 }
 
-// phpUcwords uppercases the first ASCII letter of every word. A word starts at
-// the beginning of the string and after any byte listed in $separators. The
-// scan is byte-wise for the reason phpUcfirst is: PHP's ucwords does not fold
-// non-ASCII letters and must not change the byte length.
+// phpUcwords uppercases the first ASCII letter of every word, byte-wise.
 func phpUcwords(str string, separators ...string) string {
 	seps := ucwordsDefaultSeparators
 	if len(separators) > 0 {

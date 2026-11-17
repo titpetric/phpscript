@@ -13,16 +13,12 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// programLoader is the half of a runtime the harness loads through, which both
-// engines answer.
+// programLoader is the half of a runtime the harness loads programs through.
 type programLoader interface {
 	LoadFile(string) (*model.Program, error)
 }
 
-// load answers the fixture's program, reading its body through the runtime the
-// first time so the parse and the compile land in the caches a precompile pass
-// fills. It holds the program because a repeat uses the same one: --count
-// re-runs the body, it does not re-read it.
+// load answers the fixture's program, reading it once and reusing it for --count.
 func (f *Fixture) load(rt programLoader) (*model.Program, error) {
 	if f.prog != nil {
 		return f.prog, nil
@@ -102,9 +98,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	return out.String(), reqCtx, nil
 }
 
-// executeFlatstack mirrors executeFixturePHP on the flat bytecode runtime, and
-// both in-process runners show the same host behavior: an uncaught error
-// produces the host error body, and reqCtx.Register installs the request.
+// executeFlatstack mirrors executeFixturePHP on the flat bytecode runtime.
 func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -19,8 +19,7 @@ func init() {
 	runner.SetAreaClasses(areaClasses)
 }
 
-// areaMembers names the functions each default area defines or replaces, the
-// table `Runtime\PS\Core\Strings\strlen($s)` resolves the global strlen in.
+// areaMembers names the functions each default area defines or replaces.
 func areaMembers() map[string][]string {
 	members := map[string][]string{}
 	for _, info := range Areas(All) {
@@ -32,8 +31,7 @@ func areaMembers() map[string][]string {
 	return members
 }
 
-// areaClasses names the classes each default area installs, for the alias table
-// `new \Runtime\PS\Database()` resolves through.
+// areaClasses names the classes each default area installs.
 func areaClasses() map[string][]string {
 	classes := map[string][]string{}
 	for _, info := range Areas(All) {

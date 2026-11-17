@@ -36,10 +36,30 @@ type printer struct {
 	// afterComment records a comment as the last thing written and a
 	// declaration can follow its documentation without a blank line between.
 	afterComment bool
+	// collapseBlank drops the source blank line above a call written directly
+	// under an assignment, which reads as one setup and run unit.
+	collapseBlank bool
+	// goRuntime spells statements without semicolons and members in lowerCamelCase.
+	goRuntime bool
 }
 
-// unsupportedNode records a node the printer cannot render and returns the
-// placeholder text used in the (discarded) output.
+// term ends a statement; the go runtime takes go's implicit semicolon.
+func (p *printer) term() string {
+	if p.goRuntime {
+		return ""
+	}
+	return ";"
+}
+
+// member spells a member name in the runtime's style.
+func (p *printer) member(name string) string {
+	if p.goRuntime {
+		return lowerMember(name)
+	}
+	return name
+}
+
+// unsupportedNode records a node the printer cannot render and returns its placeholder text.
 func (p *printer) unsupportedNode(kind string, node any) string {
 	text := fmt.Sprintf("/* unsupported %s %T */", kind, node)
 	p.unsupported = append(p.unsupported, fmt.Sprintf("%s %T", kind, node))
@@ -71,9 +91,7 @@ func (p *printer) blank() {
 	}
 }
 
-// stmts prints a statement list without leading or trailing blank lines. It
-// retains one source blank line and adds separation after block statements and
-// before a call that follows assignments.
+// stmts prints a statement list without leading or trailing blank lines, keeping one source blank.
 func (p *printer) stmts(stmts []model.Stmt) {
 	// A block opens with no leading blank line, whatever the source did
 	// between the brace and the first statement.
@@ -82,13 +100,12 @@ func (p *printer) stmts(stmts []model.Stmt) {
 		if i > 0 && p.blankBetween(stmts[i-1], s) {
 			p.blank()
 		}
+		p.collapseBlank = i > 0 && isAssignCall(stmts[i-1], s)
 		p.stmt(s)
 	}
 }
 
-// body prints the statements of a block one level in, then writes out any
-// comment left between the last statement and end, the line the block closes
-// on. An end of zero leaves those comments for the enclosing block.
+// body prints a block's statements one level in, then the comments left before its closing line.
 func (p *printer) body(stmts []model.Stmt, end int) {
 	p.depth++
 	p.stmts(stmts)
@@ -98,14 +115,12 @@ func (p *printer) body(stmts []model.Stmt, end int) {
 	p.depth--
 }
 
-// stmtEnd returns the line a statement closes on, read to place the comments
-// the statement encloses.
+// stmtEnd returns the line a statement closes on, which places its enclosed comments.
 func (p *printer) stmtEnd(s model.Stmt) int {
 	return p.spans[s].End
 }
 
-// blankBetween reports the blank lines the printer adds itself.
-// stmt keeps the ones the author wrote, by comparing source lines.
+// blankBetween reports whether the printer adds a blank line between two statements.
 func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	switch prev.(type) {
 	case *model.ClassDecl, *model.InterfaceDecl:
@@ -114,9 +129,11 @@ func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	if isBlockStmt(prev) {
 		return true
 	}
-	if isDecl(next) || isFuncDecl(prev) {
-		return true
-	}
+	return isDecl(next) || isFuncDecl(prev)
+}
+
+// isAssignCall reports a call written directly under an assignment.
+func isAssignCall(prev, next model.Stmt) bool {
 	_, assigned := prev.(*model.Assign)
 	return assigned && isCallStmt(next)
 }
@@ -130,10 +147,11 @@ func (p *printer) stmt(s model.Stmt) {
 		p.flushComments(span.Start)
 		// A declaration follows its documentation without a gap; anything
 		// else keeps the blank line the author left above it.
-		if !p.afterComment || !isDecl(s) {
+		if (!p.afterComment || !isDecl(s)) && !p.collapseBlank {
 			p.blankFor(span.Start)
 		}
 	}
+	p.collapseBlank = false
 	p.printStmt(s)
 	p.afterComment = false
 	if placed {

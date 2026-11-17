@@ -89,11 +89,7 @@ func (c *IncludeCache) Len() int {
 	return len(c.programs)
 }
 
-// snapshot copies the entries so a caller can walk the whole cache without
-// holding the lock for the walk, and reports the version it copied at. Callers
-// share the programs themselves and never copy them, which is the cache's own
-// contract: hoisting reads a parsed program into per-runtime maps and treats it
-// as immutable.
+// snapshot copies the entries and the version; a caller walks the copy without the lock.
 func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {
 	if c == nil {
 		return nil, 0

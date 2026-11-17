@@ -41,11 +41,7 @@ func registerJSON(rt *runner.Runtime) {
 	rt.RegisterConstructor("JSON\\Decoder", NewJSONDecoder)
 }
 
-// phpJSONEncode encodes value. It takes $flags and ignores it, the way
-// json_decode accepts $depth and $flags and a port passing
-// JSON_UNESCAPED_SLASHES runs: the runtime defines no JSON_* constant, the
-// argument arrives as null, and the flag selects no option. The encoding is not
-// configurable by design; see docs/design.md, "JSON".
+// phpJSONEncode encodes value, ignoring flags because the encoding is not configurable.
 func phpJSONEncode(value any, flags ...any) (any, error) {
 	buf, err := appendJSONValue(make([]byte, 0, 64), value)
 	if err != nil {
@@ -72,12 +68,7 @@ func phpJSONDecode(text string, opts ...any) (any, error) {
 	return value, nil
 }
 
-// jsonDecodeStream reads one value from the token stream.
-//
-// It reads tokens and decodes into no map, because a Go map has no
-// order and the decoder would return the document's keys in a different
-// order on every run. PHP preserves the document's own order and a
-// decoded object encoded again reads the way it arrived.
+// jsonDecodeStream reads one value, decoding objects into ordered arrays.
 func jsonDecodeStream(dec *json.Decoder) (any, error) {
 	token, err := dec.Token()
 	if err != nil {
@@ -124,10 +115,7 @@ func jsonDecodeStream(dec *json.Decoder) (any, error) {
 	return nil, fmt.Errorf("json_decode(): unexpected %v", delim)
 }
 
-// jsonEncodeValue rewrites the value model into something encoding/json
-// understands. Native Go collections are already encodable and they are only
-// walked when they might contain an *model.Array or *model.Object; scalars and
-// []string pass through untouched.
+// jsonEncodeValue rewrites a value model into what encoding/json understands.
 func jsonEncodeValue(v any) any {
 	switch x := v.(type) {
 	case nil, string, bool, int64, int, float64, []string:
@@ -189,8 +177,7 @@ func jsonEncodeValue(v any) any {
 	}
 }
 
-// arrayIsList reports whether an *model.Array's keys are the dense int64
-// sequence 0..n-1, the shape of a PHP list.
+// arrayIsList reports whether an array's keys are the dense int64 sequence 0..n-1.
 func arrayIsList(a *model.Array) bool {
 	expect := int64(0)
 	isList := true
@@ -242,9 +229,7 @@ type JSONEncoder struct {
 	enc    *json.Encoder
 }
 
-// jsonEncoderBuffer is how much of its buffer an encoder keeps between values.
-// An encoder reuses one response's buffer and drops a large document's and a
-// handle held open for the length of a script does not hold that peak with it.
+// jsonEncoderBuffer is how many bytes an encoder keeps between values.
 const jsonEncoderBuffer = 1 << 16
 
 // NewJSONEncoder returns an encoder writing to $stream.
@@ -314,8 +299,7 @@ func (d *JSONDecoder) More() bool {
 	return d.dec.More()
 }
 
-// errNilStream phrases the one refusal both constructors make: fopen() answers
-// false for a file it cannot open, and false is not a stream.
+// errNilStream phrases the refusal both constructors make for a nil stream.
 func errNilStream(class, kind string) error {
 	return &jsonStreamError{class: class, kind: kind}
 }

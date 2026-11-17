@@ -17,13 +17,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// setVar routes a whole-variable assignment. A superglobal is one binding per
-// request, visible in every scope and writing the variable itself rebinds the
-// global, the way PHP lets a script replace $_POST wholesale, and clears any
-// scope-local shadow so reads keep resolving through the global. Every other
-// name belongs to the scope. The superglobal set is phpval.AutoGlobals,
-// whose claim check is a byte compare and no map probe: this runs on
-// every assignment.
+// setVar routes a superglobal to the global binding and every other name to the scope.
 func (rt *Runtime) setVar(scope *Scope, name string, val any) {
 	if rt.auto.Set(name, val) {
 		scope.Unset(name)
@@ -290,30 +284,18 @@ type Runtime struct {
 	memPending   int64 // shallow bytes host calls produced since the last walk
 }
 
-// maxFreeEnvs bounds the per-Runtime free list of evaluation environments. Each
-// entry retains one closure per registered function and the list stays small;
-// nesting deeper than this simply builds (and discards) an environment the way
-// every Eval used to.
+// maxFreeEnvs bounds the per-Runtime free list of evaluation environments.
 const maxFreeEnvs = 16
 
-// envSizeHint presizes an evaluation environment's map to what an environment
-// holds: since installFunc adds registered functions on demand, that is the
-// ~16 PHP-semantic helpers, the functions its expressions actually call, and
-// a handful of layered per-expression keys. The hint only has to avoid the first
-// few rehashes; an environment that outgrows it grows once and is then reused.
+// envSizeHint presizes an evaluation environment's map to avoid its first rehashes.
 const envSizeHint = 48
 
-// scopeRef lets buildEnv build the environment's closures once while they
-// still see the scope of the evaluation using them. Helpers read ref.scope
-// at call time; anything that outlives the evaluation (a bound method, a
-// by-reference setter) copies the scope out of the ref first.
+// scopeRef lets closures built once read the scope of the evaluation using them.
 type scopeRef struct {
 	scope *Scope
 }
 
-// evalEnv is one reusable expr environment: the registered functions and the
-// PHP-semantic helpers, built once per function-table generation, plus the
-// per-expression keys layered on top by Eval and removed again on release.
+// evalEnv is one reusable expr environment: the helpers, plus per-expression keys.
 type evalEnv struct {
 	ref   *scopeRef
 	env   map[string]any
@@ -326,8 +308,7 @@ type evalEnv struct {
 	cenv expr.Env
 }
 
-// slots returns the pooled slot buffer sized to n. releaseEnv cleared it and
-// an evaluation sees only what it wrote.
+// slots returns the pooled slot buffer sized to n, holding only what an evaluation wrote.
 func (st *evalEnv) slots(n int) []any {
 	if cap(st.vars) < n {
 		st.vars = make([]any, n)
@@ -355,29 +336,12 @@ func (rt *Runtime) Output() io.Writer {
 	return rt.out
 }
 
-// emptyStdin is the input stream a runtime with no stdin reads:
-// no bytes, from any offset.
-//
-// One value, shared by every runtime and every reset, because it holds no state
-// to share. A strings.Reader over "" holds a read offset, which makes it a
-// value per use; this one holds no state, and a zero-size value costs no
-// allocation to put in an interface. The two readers of Runtime.Stdin - STDIN
-// in stdlib/ps/core and php://input in stdlib/ps/files - take it as an
-// io.Reader and ask
-// no more of it.
+// emptyStdin is the state-free input stream a runtime with no stdin reads.
 type emptyStdin struct{}
 
 func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
 
-// New presizes each table to the size the stdlib fills it to.
-//
-// A table starting empty rehashes its way up: `phpscript server` builds a
-// runtime and registers the whole stdlib into it per request, and over half the
-// time inside mapassign on that path went to rehash. The numbers are what the
-// `info` command reports as Internal Functions, Declared Classes and Defined
-// Constants, rounded up to leave room for what a host and a script add. They
-// are a hint and nothing reads them back and one that drifts low costs a rehash
-// and no more.
+// stdlibFuncs, stdlibClasses and stdlibConsts presize the runtime tables the stdlib fills.
 const (
 	stdlibFuncs   = 384
 	stdlibClasses = 48
@@ -499,13 +463,7 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.interfaces)
 }
 
-// resetExecution drops what one program wrote and keeps what declared it: the
-// function and class tables, and the record of loaded files.
-//
-// This is ResetSession without the forgetting, for a runtime a host hands to
-// one request after another - Pool.Put is the caller. A fork's declarations
-// came from its parent's tree and are the reason it exists; dropping them
-// between requests would leave it with nothing to answer.
+// resetExecution drops what one program wrote, keeping declarations for the next request.
 func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	if out == nil {
 		out = os.Stdout
@@ -615,8 +573,7 @@ func (rt *Runtime) newScope() *Scope {
 	return NewScope()
 }
 
-// scratchArray returns the reusable container registered under name,
-// emptied and ready to refill.
+// scratchArray returns the reusable container under name, emptied and ready to refill.
 func (rt *Runtime) scratchArray(name string) *model.Array {
 	if arr, ok := rt.sgScratch[name]; ok {
 		arr.Reset()
@@ -630,11 +587,7 @@ func (rt *Runtime) scratchArray(name string) *model.Array {
 	return arr
 }
 
-// acquireScope returns a cleared scope from the free list, or a fresh one.
-// Pair with releaseScope at a call boundary whose scope cannot outlive the
-// call: expression evaluation inside the body holds it only through
-// scopeRef, which releaseEnv nils, and a closure captures values, never the
-// scope itself.
+// acquireScope returns a cleared pooled scope; pair it with releaseScope.
 func (rt *Runtime) acquireScope() *Scope {
 	rt.envMu.Lock()
 	defer rt.envMu.Unlock()

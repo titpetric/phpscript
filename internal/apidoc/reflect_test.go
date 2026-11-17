@@ -24,7 +24,7 @@ type reflectedCloser interface {
 
 // TestPHPTypeReflect covers the Go kind to PHP type map. A []byte is a string
 // because that is what a script holding binary data has; every other slice,
-// array and map is an array; a pointer reads through to what it points at; and
+// array and map is an array; a pointer reads through to its target; and
 // an empty interface maps to mixed, one with a method to an object.
 func TestPHPTypeReflect(t *testing.T) {
 	t.Parallel()

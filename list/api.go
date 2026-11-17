@@ -10,17 +10,6 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// MethodRow is one class or interface member of the API listing. Member is the
-// method name, Signature holds the declarations the reader needs to call it,
-// and Doc is the docblock above the declaration with its comment markers
-// stripped, on one line.
-type MethodRow struct {
-	Class     string `json:"class"`
-	Member    string `json:"member"`
-	Signature string `json:"signature"`
-	Doc       string `json:"doc"`
-}
-
 // API scans path arguments and returns one row per method of every class and
 // interface the files declare. The API includes interfaces because an `implements`
 // contract is part of the API a reader needs.
@@ -59,9 +48,7 @@ func APIFile(path string) ([]MethodRow, error) {
 	return rows, nil
 }
 
-// collectAPIMethods walks the statement tree and appends the methods of every
-// class and interface it finds. It keeps the declaration order inside a file;
-// the caller sorts, because a template needs the source order.
+// collectAPIMethods appends methods in source order; the caller sorts for the template.
 func collectAPIMethods(stmts []model.Stmt, spans map[model.Stmt]model.SourceSpan, lines []string, out *[]MethodRow) {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -110,10 +97,7 @@ func appendMethods(class string, methods []*model.FuncDecl, spans map[model.Stmt
 	}
 }
 
-// methodSignature renders `name(params): type`, with `static` ahead of the name
-// when the declaration is static. It omits visibility: the inventory is an
-// API document, and a private method is an implementation detail a reader does
-// not need the modifier for.
+// methodSignature renders name, params and return type, omitting visibility.
 func methodSignature(m *model.FuncDecl) string {
 	var b strings.Builder
 	if m.Static {
@@ -162,9 +146,7 @@ func paramSignature(p model.Param) string {
 	return b.String()
 }
 
-// defaultSignature renders a parameter default. The shapes a default takes in
-// practice are literals, constants, arrays and small arithmetic expressions;
-// any other shape contributes nothing, never an invented spelling.
+// defaultSignature renders a default it can spell, and nothing for any other shape.
 func defaultSignature(e model.Expr) string {
 	switch n := modelutil.UnwrapParenthesized(e).(type) {
 	case *model.Lit:
@@ -221,10 +203,7 @@ func defaultSignature(e model.Expr) string {
 	return ""
 }
 
-// docAbove returns the docblock written immediately above a declaration
-// starting at line (1-based), with the comment markers removed and the lines
-// joined by spaces. A blank line between the docblock and the declaration
-// ends the search, as it does for the tools that render Go documentation.
+// docAbove returns the docblock above line, markers stripped, stopping at a blank line.
 func docAbove(lines []string, line int) string {
 	// line is 1-based and lines is 0-based: the declaration is lines[line-1]
 	// and lines[line-2] holds the line above.
@@ -272,8 +251,7 @@ func APIMarkdown(rows []MethodRow) string {
 	return markdownTable([]string{"Class", "Member", "Signature", "Doc"}, cells)
 }
 
-// tableText makes a doc safe for a markdown table cell: a pipe would end the
-// cell and a newline would end the row.
+// tableText escapes pipes and newlines that would end a markdown table cell.
 func tableText(s string) string {
 	s = strings.ReplaceAll(s, "|", `\|`)
 	s = strings.ReplaceAll(s, "\n", " ")

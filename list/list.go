@@ -215,9 +215,7 @@ func Markdown(rows []Row) string {
 	return markdownTable([]string{"Route", "Filename", "Classes"}, cells)
 }
 
-// markdownTable renders a table of any width, every column padded to its widest
-// cell. Both listings this package produces are the same table with different
-// headings and one function computes the padding for both.
+// markdownTable renders rows padded to each column's widest cell.
 func markdownTable(headings []string, rows [][]string) string {
 	widths := make([]int, len(headings))
 	for i, heading := range headings {

@@ -11,9 +11,7 @@ import (
 // resolve `http.NewRequest` while it parses. A binding package reads it to
 // register under the name the import resolves to.
 
-// goAreaWords spells the segments an area does not title-case. The areas under
-// `Runtime\Go` keep go's own capitalisation of an acronym. The mapping answers
-// the name a folder of stdlib/go registers.
+// goAreaWords spells the path segments an area keeps in go's own acronym casing.
 var goAreaWords = map[string]string{
 	"html": "HTML",
 	"http": "HTTP",
@@ -54,8 +52,7 @@ func goAreaSegment(segment string) string {
 	return strings.ToUpper(segment[:1]) + segment[1:]
 }
 
-// goPackageName reports whether segment spells a go package: a lower-case
-// letter, then letters, digits or underscores.
+// goPackageName reports whether segment spells a go package name.
 func goPackageName(segment string) bool {
 	if segment == "" || segment[0] < 'a' || segment[0] > 'z' {
 		return false
@@ -71,9 +68,7 @@ func goPackageName(segment string) bool {
 	return true
 }
 
-// goVersionSegment reports whether segment is a major-version element, `v2` in
-// `math/rand/v2`. It names no package, and a script addressing it would write
-// `v2.Int()`.
+// goVersionSegment reports whether segment is a major-version element such as v2.
 func goVersionSegment(segment string) bool {
 	if len(segment) < 2 || segment[0] != 'v' {
 		return false

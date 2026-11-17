@@ -7,9 +7,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// queryInfo is what the leading text of a statement says about it, read without
-// parsing SQL: the keyword the statement starts with, and the comment a caller
-// tagged it with.
+// queryInfo holds the keyword a statement starts with and the comment a caller tagged it by.
 type queryInfo struct {
 	// Type is the leading keyword, lowercased: "select", "insert", "drop".
 	// Type stays empty when the statement holds nothing but comments, or
@@ -21,12 +19,7 @@ type queryInfo struct {
 	Comment string
 }
 
-// readOnlyStatements are the statements a read-only client may run. The map is
-// an allowlist and a client refuses a statement it does not name: a keyword
-// nobody thought about is far more likely to be a write than a read.
-//
-// EXPLAIN is not on it. `EXPLAIN ANALYZE insert ...` runs the statement it
-// reports on in postgres and an explain is not reliably a read.
+// readOnlyStatements lists the statements a read-only client may run, EXPLAIN excluded.
 var readOnlyStatements = map[string]bool{
 	"select":   true,
 	"show":     true,
@@ -34,13 +27,7 @@ var readOnlyStatements = map[string]bool{
 	"desc":     true,
 }
 
-// parseQuery classifies a statement by its leading text. It skips comments
-// preceding the statement and never treats one as the statement and a query
-// tagged for `show processlist`, as in `/* userGet */ select ...` and the
-// reason to tag one, still reads as a select.
-//
-// This is prefix classification and no SQL parser: it reads what the statement
-// begins with, and stops there. A statement has to be one statement.
+// parseQuery classifies a statement by its leading keyword, skipping any preceding comment.
 func parseQuery(query string) queryInfo {
 	var info queryInfo
 	rest := query
@@ -83,10 +70,7 @@ func (i queryInfo) refusal() string {
 	return i.Type + " is not allowed"
 }
 
-// record reports what the statement is onto the span measuring it. The type and
-// the tag are what group a trace by the query behind it, which the statement
-// text alone does not: two calls of the same query differ by their bound values
-// and by no other value worth grouping on.
+// record sets the statement's type and tag on the span measuring it.
 func (i queryInfo) record(span *telemetry.Span) {
 	if i.Type != "" {
 		span.SetAttribute("query_type", i.Type)
@@ -96,8 +80,7 @@ func (i queryInfo) record(span *telemetry.Span) {
 	}
 }
 
-// leadingKeyword returns the lowercased word a statement starts with, or an
-// empty string when it starts with anything else.
+// leadingKeyword returns the statement's first word lowercased, empty when it starts otherwise.
 func leadingKeyword(query string) string {
 	end := strings.IndexFunc(query, func(r rune) bool { return !unicode.IsLetter(r) })
 	switch {

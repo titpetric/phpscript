@@ -54,8 +54,7 @@ func (c Citation) Clause() string {
 	return c.Short()
 }
 
-// cite names the Go type t, with the reference page filled in for a type the
-// standard library declares.
+// cite names the Go type t, filling in the reference page for a standard library type.
 func cite(t reflect.Type) Citation {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
@@ -72,9 +71,7 @@ func cite(t reflect.Type) Citation {
 	return c
 }
 
-// isStdlib reports whether an import path names a package of the Go standard
-// library. The first element of such a path holds no dot, the test the go
-// command applies to tell a standard library package from a module one.
+// isStdlib reports whether an import path's first element holds no dot, as the go command tests.
 func isStdlib(pkg string) bool {
 	if pkg == "" {
 		return false

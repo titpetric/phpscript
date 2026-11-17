@@ -197,9 +197,7 @@ func Pre(args []string) (*Options, []string, error) {
 	return o, remaining, nil
 }
 
-// valued names the shared flags that take a value and a walk over the
-// arguments can tell which of them consume the word after them. --verbose is the
-// only one that does not.
+// valued names the shared flags that take a value and consume the word after them.
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,
 	"--cover": true, "--coverfile": true, "--file": true, "--workdir": true,
@@ -349,8 +347,7 @@ func (o *Options) WriteCoverProfile(blocks []coverage.ProfileBlock) (string, err
 	return name, nil
 }
 
-// startCPUProfile begins the CPU profile and returns the function that ends
-// it. With no --cpuprofile the returned function does nothing.
+// startCPUProfile begins the --cpuprofile profile, if any, and returns its stop function.
 func (o *Options) startCPUProfile() (func(), error) {
 	if o.CPUProfile == "" {
 		return func() {}, nil
@@ -369,9 +366,7 @@ func (o *Options) startCPUProfile() (func(), error) {
 	}, nil
 }
 
-// writeMemProfile writes the heap profile --memprofile named. The collection
-// runs first and the profile describes what the program still reaches and
-// never what the collector has yet to sweep.
+// writeMemProfile collects the heap first and writes the profile --memprofile names.
 func (o *Options) writeMemProfile() error {
 	if o.MemProfile == "" {
 		return nil

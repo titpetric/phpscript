@@ -6,9 +6,7 @@ import (
 	"path"
 )
 
-// scanner walks a PHP source tree in path order, reading every .php file the
-// exclusion list leaves it. Route and Startup share it: discovery is one
-// responsibility, what an annotation means is another.
+// scanner walks a PHP source tree in path order, skipping excluded directories.
 type scanner struct {
 	root     fs.FS
 	excluded map[string]struct{}

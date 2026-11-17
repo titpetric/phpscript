@@ -9,14 +9,7 @@ import (
 // goes into, created where php creates one, and the store itself. The writes
 // that reach a native Go value go through assign_go.go.
 
-// container evaluates the base of an index assignment, creating the array PHP
-// would create when nothing is there yet. `$rows[$first][$second] = $v` against
-// an unset $rows makes both levels, and each level runs its own key once: the
-// created array goes back through the container and the key already in hand.
-//
-// Only an assignable base is auto-vivified. A function result or a literal has
-// nowhere to write the array back to and container returns it as it stands and
-// the caller reports the assignment as unsupported.
+// container evaluates an assignable base, auto-vivifying the arrays PHP would create.
 func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
 	switch node := modelutil.UnwrapParenthesized(base).(type) {
 	case *model.Index:

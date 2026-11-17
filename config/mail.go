@@ -7,9 +7,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
-// flatMailKeys are the settings of one server. One of them directly under mail
-// means the file wrote the single unnamed block phpscript read before the
-// key became a map of named servers.
+// flatMailKeys are the settings that mark a legacy unnamed mail block.
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
 // Mail configures the mail servers mail() and `new Mail($name)` send

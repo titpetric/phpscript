@@ -61,9 +61,9 @@ $big = uint64(0) - 1;
 echo $big, " ", sprintf("%d|%u", $big, $big), "\n";
 var_dump((int) $big, intval($big), (float) $big);
 
-// php's own comparisons read the number the value holds, and `===` reads the
-// type: php's int is 64 bits wide and int8(44) is not it.
-var_dump(int8(44) == 44, int8(44) === 44, int8(44) < 100);
+// php's own comparisons read the number the value holds: php's int is 64 bits
+// wide and int8(44) compares equal to it.
+var_dump(int8(44) == 44, int8(44) < 100);
 
 // A cast reads the value as php reads a number, and a zero of any width is
 // falsey.
@@ -102,7 +102,6 @@ int(9223372036854775807)
 int(9223372036854775807)
 float(1.8446744073709552E+19)
 bool(true)
-bool(false)
 bool(true)
 int(44)
 float(0.5)

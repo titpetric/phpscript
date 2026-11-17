@@ -60,8 +60,7 @@ func (c Context) Register(rt *Runtime) {
 	}
 }
 
-// releaseMapMaps returns the edit layers of the named globals, if they are
-// views and if anything wrote to them.
+// releaseMapMaps returns the edit layers of the named globals back to the pool.
 func releaseMapMaps(rt *Runtime, names ...string) {
 	for _, name := range names {
 		if previous, ok := rt.auto.Lookup(name); ok {
@@ -72,13 +71,10 @@ func releaseMapMaps(rt *Runtime, names ...string) {
 	}
 }
 
-// superglobalNames are the request variables Register seeds, which are the
-// views whose layers go back to the pool when the next request arrives.
+// superglobalNames lists the request variables Register seeds and releases per request.
 var superglobalNames = []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "_REQUEST", "_FILES"}
 
-// autoGlobal builds the view for one superglobal, on the first read that
-// names it. The names are the closed set AutoGlobals claims; _SESSION is
-// Session\Manager's and no request input and it builds nothing here.
+// autoGlobal builds a superglobal's view on first read, and nothing for _SESSION.
 func (c Context) autoGlobal(name string) any {
 	switch name {
 	case "_GET":
@@ -104,8 +100,7 @@ func (c Context) autoGlobal(name string) any {
 	return nil
 }
 
-// lazyArray renders a superglobal that build assembles and nothing decodes, as
-// $_REQUEST is from the four inputs it merges and $_FILES from the body.
+// lazyArray renders a superglobal that build assembles and no decode fills.
 func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 	if c.decode == nil {
 		return mapmap.New(arraySource{build()})
@@ -113,12 +108,7 @@ func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 	return mapmap.New(mapmap.Lazy(func() mapmap.Source { return arraySource{build()} }))
 }
 
-// lazyInput renders one decoded input as a view whose source is the decode
-// itself and naming the variable is what parses it.
-//
-// decoded answers the bracket-decoded array once it exists, and flat the map a
-// host set. A Context with nothing to decode reads flat directly, which is
-// every CLI run.
+// lazyInput renders one decoded input as a view that parses on the first read.
 func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]string) *mapmap.MapMap {
 	if c.decode == nil {
 		return mapmap.New(arraySource{superglobal(decoded(), flat())})
@@ -128,8 +118,7 @@ func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]s
 	}))
 }
 
-// arraySource reads a *model.Array as a mapmap source and a read reaches a
-// decoded input where it lies, with no copy into a second shape.
+// arraySource reads a *model.Array as a mapmap source with no copy into a second shape.
 type arraySource struct{ array *model.Array }
 
 // Get answers the entry under key.
@@ -180,11 +169,7 @@ func (c Context) ServerMap() *mapmap.MapMap {
 	return m
 }
 
-// serverArrayInto renders $_SERVER. Context.Server holds every value as a
-// string because that is what all but two of PHP's server keys are; the two
-// that are not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float,
-// get their type back here and a script comparing either with === sees what
-// PHP writes.
+// serverArrayInto renders $_SERVER and types REQUEST_TIME and REQUEST_TIME_FLOAT as numbers.
 func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	mapToArrayInto(arr, c.Server)
 	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
@@ -196,15 +181,7 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	return arr
 }
 
-// requestArrayInto renders $_REQUEST: the query, form and cookie fields merged in
-// PHP's default request order, with the route's path values written over them
-// last. The path values are the one deviation from PHP, whose $_REQUEST
-// holds no route parameters: a path parameter is request input here. It
-// lands under PHP's name and nothing here spells a name PHP does not
-// have. See the predefined-variables reference.
-//
-// Every entry is a copy. $_REQUEST is its own array in PHP and a write to it
-// must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
+// requestArrayInto renders $_REQUEST as a copy of query, form, cookie and path values.
 func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	// Through the accessors, because $_REQUEST is the four merged and reading
 	// it means a read of each: the fields hold nothing until a decode fills
@@ -223,9 +200,7 @@ func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	return arr
 }
 
-// superglobal prefers the decoded record, and falls back to the flat map for a
-// Context assembled by hand: a CLI run, a scheduled job, the fixture harness,
-// or an embedder filling c.Get itself. No request arrives to decode.
+// superglobal returns the decoded record, falling back to the flat map a host set.
 func superglobal(vars *model.Array, flat map[string]string) *model.Array {
 	if vars != nil {
 		return vars
@@ -233,9 +208,7 @@ func superglobal(vars *model.Array, flat map[string]string) *model.Array {
 	return mapToArray(flat)
 }
 
-// mapToArray converts a string map into a PHP associative array with stable,
-// alphabetical key order (Go map iteration is random; PHP callers expect a
-// deterministic shape).
+// mapToArray converts a string map into a PHP array in alphabetical key order.
 func mapToArray(m map[string]string) *model.Array {
 	if len(m) == 0 {
 		return model.NewArray()
@@ -243,8 +216,7 @@ func mapToArray(m map[string]string) *model.Array {
 	return mapToArrayInto(model.NewArraySize(len(m)), m)
 }
 
-// mapToArrayInto is mapToArray filling a caller-owned container, which a
-// per-request superglobal reuses across requests.
+// mapToArrayInto fills a caller-owned array in alphabetical order and reuses its storage.
 func mapToArrayInto(arr *model.Array, m map[string]string) *model.Array {
 	if len(m) == 0 {
 		return arr

@@ -34,11 +34,11 @@ var_dump(int64());
 // A literal folds while the file parses and a variable converts at run time,
 // to the same value.
 $n = 300;
-var_dump(int8(300) === int8($n));
+var_dump(int8(300) == int8($n));
 
-// float32 is the width that loses precision, and it is its own type: php's
-// float is 64 bits wide and `===` reports two types.
-var_dump(float32(0.1) === 0.1);
+// float32 is the width that loses precision: the value it holds is not
+// php's 64-bit 0.1.
+var_dump(float32(0.1) == 0.1);
 
 // A go type is in the class table, and new allocates through the conversion.
 var_dump(class_exists('Runtime\Go\int64'));

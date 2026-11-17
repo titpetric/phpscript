@@ -92,9 +92,7 @@ func normalise(x1, y1, x2, y2 int) image.Rectangle {
 	return image.Rect(x1, y1, x2+1, y2+1)
 }
 
-// line is Bresenham. The standard library draws no lines, and the axis aligned
-// shortcut is not enough: imagerectangle and any ported border code take
-// arbitrary endpoints.
+// line draws a Bresenham line between two arbitrary endpoints.
 func line(im *Image, x1, y1, x2, y2 int, packed int64) {
 	dx := abs(x2 - x1)
 	dy := -abs(y2 - y1)
@@ -132,9 +130,7 @@ func abs(v int) int {
 	return v
 }
 
-// floodFill is the scanline flood fill imagefill needs. Anything simpler only
-// covers filling a blank image from its corner, which is one of the two ways
-// ported code uses it.
+// floodFill fills the connected region matching the starting pixel's colour.
 func floodFill(im *Image, x, y int, packed int64) {
 	b := im.m.Bounds()
 	target := color.RGBAModel.Convert(im.m.At(x, y)).(color.RGBA)

@@ -32,10 +32,7 @@ func SetInclude(path string) {
 	includeFile = path
 }
 
-// knownRuntime is the registry the checks query for the names a host
-// registers. The first call builds it, once per process: registration is
-// deterministic, and the runtime never executes a script here and nothing
-// writes to the table after construction.
+// knownRuntime builds the host name registry once per process.
 func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
 		// The working directory is the source root, because an --include
@@ -73,14 +70,7 @@ func knownRuntime() *runner.Runtime {
 	return registry
 }
 
-// loadInclude runs the --include file against the registry, and says nothing
-// when there is none or when it fails.
-//
-// A failure is quiet. The file resolves names and is no part of what is under
-// test: an application whose bootstrap cannot run
-// outside a request still deserves the findings the standard library alone
-// can produce, and a linter that refused to lint because a bootstrap threw
-// would be worse than one that reports a few more unknown names.
+// loadInclude runs the --include file and stays silent when the file is missing or fails.
 func loadInclude(rt *runner.Runtime) {
 	if includeFile == "" {
 		return
@@ -96,18 +86,14 @@ func loadInclude(rt *runner.Runtime) {
 	_ = rt.Run(prog)
 }
 
-// hostFunc reports whether the runtime itself registers a function, as against
-// one the --include file declared in PHP.
+// hostFunc reports whether the runtime itself registers a function.
 func hostFunc(name string) bool {
 	knownRuntime()
 
 	return hostFuncs[strings.ToLower(strings.TrimPrefix(name, "\\"))]
 }
 
-// declaredNames is what one file declares for itself: functions, classes and
-// interfaces declared at any nesting (a conditional polyfill declaration
-// counts), plus the names the source guards with function_exists /
-// class_exists, which say the author already handles absence.
+// declaredNames holds the functions and classes one file declares or guards.
 type declaredNames struct {
 	funcs   map[string]bool
 	classes map[string]bool
@@ -124,9 +110,7 @@ func (d *declaredNames) hasClass(name string) bool {
 	return d.classes[key] || d.guarded[key]
 }
 
-// lintUndefinedNames reports function calls and class references nothing
-// answers for. Messages mirror the runtime's own and the finding reads as the
-// error that would otherwise arrive at call time.
+// lintUndefinedNames reports a call or class reference no name answers for.
 func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 	declared := &declaredNames{
 		funcs:   map[string]bool{},
@@ -242,10 +226,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 	check.walk(prog.Stmts)
 }
 
-// astWalker visits every statement and every expression in a statement list,
-// at any nesting, including closure bodies written inside expressions. It
-// reports each expression with the source line of the statement holding it,
-// since an expression records no span itself.
+// astWalker visits every statement and expression, reporting each with its statement's line.
 type astWalker struct {
 	prog *model.Program
 	stmt func(model.Stmt)

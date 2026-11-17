@@ -6,12 +6,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// phpRange builds the inclusive sequence from start to end. It counts the
-// elements up front and derives every one of them from the start, the way PHP
-// does and a float step never accumulates rounding error across the range.
-//
-// The result is a presized []any: a range is a dense list by construction and
-// there is no key information for an *model.Array to hold (rule 4).
+// phpRange builds the inclusive start-to-end sequence, deriving each element from start.
 func phpRange(start, end any, step ...any) []any {
 	var by any = int64(1)
 	if len(step) > 0 && step[0] != nil {
@@ -27,8 +22,7 @@ func phpRange(start, end any, step ...any) []any {
 	return rangeInts(phpval.Int(start), phpval.Int(end), phpval.Int(by))
 }
 
-// rangeChars reports the character-range case: both endpoints are one-character
-// strings, the rule PHP 8.3 onwards narrowed to.
+// rangeChars reports whether both endpoints are one-character strings, the PHP 8.3 rule.
 func rangeChars(start, end any) (byte, byte, bool) {
 	s, ok := start.(string)
 	if !ok || len(s) != 1 {
@@ -66,16 +60,13 @@ func rangeCharSeq(s, e byte, step any) []any {
 	return out
 }
 
-// rangeIsFloat reports whether an endpoint forces a float range. A float
-// endpoint always does, whole or not: range(0.0, 4.0) is a list of floats.
+// rangeIsFloat reports whether a float endpoint forces a float range, whole or not.
 func rangeIsFloat(v any) bool {
 	_, ok := phpval.Number(v).(float64)
 	return ok
 }
 
-// rangeStepIsFloat is the same question for $step, where PHP is laxer: a step
-// with no fractional part leaves an integer range integral and range(0, 4, 2.0)
-// is a list of ints while range(0, 10, 2.5) is a list of floats.
+// rangeStepIsFloat reports whether step has a fractional part.
 func rangeStepIsFloat(v any) bool {
 	f, ok := phpval.Number(v).(float64)
 	return ok && f != math.Trunc(f)

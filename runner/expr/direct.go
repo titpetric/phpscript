@@ -69,9 +69,7 @@ func (dc *directCompiler) compileArgs(args []model.Expr) ([]closure, error) {
 	return out, nil
 }
 
-// nameOrExpr compiles a runtime name: the constant string when the syntax
-// names it, or the expression when a value does (`$obj->$m(...)`,
-// `new $class(...)`).
+// nameOrExpr compiles the constant name, or the expression when a value names it.
 func (dc *directCompiler) nameOrExpr(name string, e model.Expr) (closure, error) {
 	if e == nil {
 		return constClosure(name), nil
@@ -325,10 +323,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 	return nil, fmt.Errorf("transpile: unsupported expression %T", e)
 }
 
-// compileCall mirrors Transpiler.emitCall: by-reference output arguments
-// that are plain variables become __ref setters, namespaced names and calls
-// with a global fallback dispatch through __func, and a plain global
-// call resolves its name in the base env, installed by Eval.
+// compileCall mirrors emitCall: __ref output args, __func dispatch and global fallback.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
 		// `greet(...)` takes the callable and never calls it and the name

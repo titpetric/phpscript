@@ -143,11 +143,6 @@ type instruction struct {
 	extra  string
 }
 
-// Binary operator classes, resolved at compile time into opBinary's b field,
-// the way runner/expr captures the operator when it compiles a closure. The
-// VM inlines the both-int64 (and both-string, for concat) cases through the
-// phpval helpers phpArith itself uses; every other operand shape falls
-// through to host.Binary with the operator name and semantics have one home.
 // binNone is zero so an unclassified emit keeps its host dispatch.
 const (
 	binNone = iota
@@ -167,8 +162,7 @@ const (
 	binConcat
 )
 
-// binOpClass classifies an operator spelling, binNone when the VM has no
-// inline case for it.
+// binOpClass classifies an operator spelling, binNone when the VM has no inline case.
 func binOpClass(op string) int {
 	switch op {
 	case "+":
@@ -215,14 +209,7 @@ type userFuncDef struct {
 	variadicSlot int
 }
 
-// closureDef is one compiled anonymous function. Its body sits inline in the
-// instruction stream, jumped over the way a function declaration's body is, and
-// opClosure turns the definition into a callable value.
-//
-// The slot numbers are frame offsets, and the same number means the same name
-// in every frame: Program.localNames is per program, not per function and
-// opClosure copies a capture straight from the creating frame into the
-// closure's own frame without a name lookup.
+// closureDef is one compiled anonymous function, its slot numbers frame offsets shared across frames.
 type closureDef struct {
 	entryPC int
 	// paramSlots holds one slot per declared parameter, in order. An argument
@@ -239,9 +226,7 @@ type closureDef struct {
 	thisSlot int
 }
 
-// catchClause is one compiled `catch (Type $var) { ... }`. declaredType stays
-// verbatim, including the `A|B` union form, because the host owns the matching
-// rules; local is -1 when the clause binds no variable.
+// catchClause is one compiled catch clause, with declaredType verbatim and local -1 when unbound.
 type catchClause struct {
 	declaredType string
 	local        int
@@ -348,55 +333,39 @@ type Host interface {
 // compiled keeps building; a program that reaches one against a host without
 // it reports the missing capability and misbehaves nowhere.
 
-// invokeHost calls a callable held in a value, `$fn(...)`, resolving every
-// PHP callable spelling.
+// invokeHost calls a callable held in a value, `$fn(...)`, resolving every callable spelling.
 type invokeHost interface {
 	InvokeValue(args []any, callee any) (any, error)
 }
 
-// globalHost holds the variables a host seeded before the run. Run
-// writes them into the top-level frame, where the language puts a
-// global: answering them from Lookup would expose them to every function
-// and every closure, where no frame below the first one declares them.
+// globalHost holds the variables a host seeded, written into the top-level frame by Run.
 type globalHost interface {
 	Globals() map[string]any
 }
 
-// unsetPropHost removes a named property, PHP's unset($obj->prop). Removing
-// one that is not there, or from a value without properties, is not an error.
+// unsetPropHost removes a named property and reports no error for an absent one.
 type unsetPropHost interface {
 	UnsetProperty(receiver any, name string) error
 }
 
-// staticCallHost dispatches `Class::method(args...)`. method arrives as a
-// value because the `Class::$m(...)` spelling names it at run time.
+// staticCallHost dispatches `Class::method(args...)` with method arriving as a value.
 type staticCallHost interface {
 	CallStatic(class string, method any, args []any) (any, error)
 }
 
-// staticPropHost reads and writes `Class::$name`, the storage the class owns.
-// SetStaticProp applies op and a compound assignment reads and writes under
-// the host's rules.
+// staticPropHost reads and writes `Class::$name` and SetStaticProp applies a compound assignment's op.
 type staticPropHost interface {
 	GetStaticProp(class, name string) (any, error)
 	SetStaticProp(class, name string, value any, op string) error
 }
 
-// closureHost answers php 8.1's first-class callable syntax, `callable(...)`:
-// the callable a call site names, as the Closure value a script holds.
-// CallableValue takes a function name, with the namespace fallback a call would
-// try, or a value that is callable already. CallableMember takes a receiver or a
-// class name together with the method, which arrives as a value because the
-// `$obj->$m(...)` spelling names it at run time.
+// closureHost answers php 8.1's first-class callable syntax, `callable(...)`, resolving the named callable.
 type closureHost interface {
 	CallableValue(target any, fallback string) (any, error)
 	CallableMember(target any, method any) (any, error)
 }
 
-// staticVarHost returns the persistent bag of one `static $x` statement and
-// whether an earlier call already seeded it. The bag is live shared storage:
-// the VM reads and writes it directly and a recursive call observes the
-// frame above it.
+// staticVarHost returns the live shared bag of one `static $x` statement and whether the bag already holds a value.
 type staticVarHost interface {
 	StaticVarBag(node *model.StaticVar) (map[string]any, bool)
 }

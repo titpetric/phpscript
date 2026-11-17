@@ -24,9 +24,7 @@ type GoWidth struct {
 	Float  bool
 }
 
-// goWidths is every sized numeric a conversion returns, by the name a script
-// writes. `rune` and `byte` are go's own aliases and take the width they
-// alias: go prints a rune as int32. So does this.
+// goWidths holds every sized numeric by its script name, rune and byte taking their alias widths.
 var goWidths = map[string]GoWidth{
 	"int8":    {Name: "int8", Bits: 8, Signed: true},
 	"int16":   {Name: "int16", Bits: 16, Signed: true},
@@ -133,8 +131,7 @@ func (w GoWidth) Narrow(v any) any {
 	return uint64(n)
 }
 
-// The bits, and not the php number: narrowing uint64(-1) to a uint8 reads the
-// low byte of 18446744073709551615, which the float php holds it in rounds off.
+// toInt returns v narrowed to int64 bits, the low byte surviving a uint64 conversion.
 func toInt(v any) int64 {
 	switch x := v.(type) {
 	case int64:

@@ -49,12 +49,7 @@ func newHandler(root fs.FS, config config) *handler {
 	return h
 }
 
-// buildRuntime constructs one runtime of this tree's pool, the way newRuntime
-// does for a startup job, minus everything per-request: the standard library,
-// the tree's root, its caches and its observers, installed once and serving
-// every request that takes it from the pool. FreezeStdlib marks the constants
-// and the environment as the host's and a reset between requests keeps them and
-// drops what an endpoint defined.
+// buildRuntime constructs the pooled runtime shared across requests, with the standard library installed once.
 func (h *handler) buildRuntime() *runner.Runtime {
 	options := h.config.runnerOptions
 	options.RootFS = h.root
@@ -78,11 +73,7 @@ func (h *handler) buildRuntime() *runner.Runtime {
 	return rt
 }
 
-// route returns the HTTP handler that serves one annotated PHP endpoint.
-//
-// pattern is the path as the annotation declared it, before either router's
-// rewriting, and rides the request context so $_REQUEST can name its path
-// parameters the way the author wrote them.
+// route returns the handler for one endpoint, with pattern naming its path parameters in $_REQUEST.
 func (h *handler) route(name, pattern string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.serve(w, r.WithContext(runner.WithRoutePattern(r.Context(), pattern)), name)

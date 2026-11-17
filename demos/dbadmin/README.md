@@ -86,4 +86,10 @@ cd tests && venom run venom.yml \
 
 The suite is idempotent: it removes its own leftovers before it starts - the scratch tables, and the account the reload case appends to `.htpasswd` - and edits rows in a scratch table so the seeded rows keep the ids the migration gave them.
 
+Each case enforces one of the demo's security rules. The server refuses a sign-in post without the form token before it reads the credential and stages no session cookie. A cross-site page can make a browser send the session cookie. The form token stays out of reach. Six wrong passwords from one address cross the five-refusal ceiling, and the sixth response is the one asserted on. The document root is `public/`. The password file in the application root is unreachable over HTTP under either spelling.
+
+The reload path runs through `SIGHUP`. The signal re-runs the `@startup` jobs, and `users.php` rebuilds the user table from `.htpasswd`: the table is a view of the password file. The schema holds no password column. Adding an account is a line in the file and a reload, with no cache to invalidate and no request dropped. The hash the reload case appends is bcrypt at cost 4, the lowest the algorithm accepts, because the suite computes it on every run.
+
+The delete step sends `-d ""` and not `-X POST`: `-X` would keep the method on the redirect, and `POST` to the browse page is not a route. The sign-in case proves the round trip: it reads the form, then posts the token and the cookie back. That round trip proves a browser's sign-in works end to end.
+
 > **Local demo only:** the login is a real session over a real password file, but this application's SQL console intentionally executes arbitrary SQL for anyone who signs in. Authorization stops at "has an account". Do not expose it to an untrusted network or use it against a production database.

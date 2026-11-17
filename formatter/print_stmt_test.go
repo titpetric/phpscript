@@ -86,6 +86,21 @@ func TestTemplateInlineBraceNestsLines(t *testing.T) {
 	}
 }
 
+// TestAssignmentAndCallStayTogether covers a call written under an assignment:
+// the blank line the author left between them comes out.
+func TestAssignmentAndCallStayTogether(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n$server = new Server;\n\n$server->run();\n"
+	want := "<?php\n\n$server = new Server;\n$server->run();\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != want {
+		t.Fatalf("assignment and call formatted as:\n%q\nwant:\n%q", out, want)
+	}
+}
+
 func TestIncludeAndRequireSyntaxPreserved(t *testing.T) {
 	t.Parallel()
 	in := `<?php
@@ -110,6 +125,26 @@ $other = include "f.php";
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("include/require syntax %q changed:\n%s", want, out)
+		}
+	}
+}
+
+// TestGoRuntimeTemplateTakesGoStyle covers a go runtime file the aligner
+// handles: code lines take the go spelling, inline template lines do not.
+func TestGoRuntimeTemplateTakesGoStyle(t *testing.T) {
+	t.Parallel()
+	in := "<?php\nimport \"net/http\"\n\nclass Page {\n\tfunction show(http.ResponseWriter $w, *http.Request $r): void {\n\t\t$r->URL->Path;\n\t\t?>\n\t\t<p><?php echo $r->PathValue(\"id\"); ?></p>\n\t\t<?php\n\t}\n}\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"import \"net/http\"\n",
+		"$r->url->path\n",
+		"<p><?php echo $r->PathValue(\"id\"); ?></p>",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in:\n%s", want, out)
 		}
 	}
 }

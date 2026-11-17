@@ -10,8 +10,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	chi "github.com/go-chi/chi/v5"
-
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
 	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
@@ -205,7 +203,7 @@ func TestStartupBindsRoutes(t *testing.T) {
 			root := os.DirFS("testdata/bind")
 			router := stdruntime.NewRouter()
 			bindings := annotations.NewBindings(annotations.WithRouter(router))
-			service := chi.NewRouter()
+			service := chiRouter()
 			steps := []func() error{
 				func() error {
 					return annotations.NewStartup(root, annotations.WithRouter(router)).Start(context.Background())

@@ -27,12 +27,7 @@ type Record struct {
 	Value string
 }
 
-// memStorage is an in-memory Storage implementation.
-//
-// The map is bare: `new Storage` builds one per call, a runtime serves one
-// goroutine, and no two of them share anything here. There is no lock and
-// these methods are unsafe to call concurrently. core.SharedMemory is the
-// binding for state two runtimes reach; see docs/testing.md.
+// memStorage is an in-memory Storage with no lock, for one runtime at a time.
 type memStorage struct {
 	data   map[string]string
 	tenant string
@@ -40,9 +35,7 @@ type memStorage struct {
 
 func (s *memStorage) Set(_ context.Context, key, value string) { s.data[key] = value }
 
-// Get returns (Record, error): a rich struct value (not a scalar). The PHP
-// side never sees the error (it arrives as a throw); the Record lands in the
-// PHP variable, whose fields a script then reads with `->`.
+// Get returns the Record for key, with the error arriving in PHP as a throw.
 func (s *memStorage) Get(_ context.Context, key string) (Record, error) {
 	v, ok := s.data[key]
 	if !ok {
@@ -51,8 +44,7 @@ func (s *memStorage) Get(_ context.Context, key string) (Record, error) {
 	return Record{Key: key, Value: v}, nil
 }
 
-// All returns a list of rich types ([]Record), key-sorted for determinism, and
-// PHP can foreach over a Go slice and read struct fields on each element.
+// All returns every Record key-sorted, for determinism on the PHP side.
 func (s *memStorage) All(_ context.Context) ([]Record, error) {
 	keys := s.sortedKeys()
 	out := make([]Record, 0, len(keys))
@@ -66,15 +58,7 @@ func (s *memStorage) Len() int64 { return int64(len(s.data)) }
 
 func (s *memStorage) Tenant() string { return s.tenant }
 
-// Keep is the method path's filter, declaring its callback in Go's own terms:
-// a predicate, the shape a library's own method set has and what
-// coerceArgOn had to wrap through reflect.MakeFunc.
-//
-// Keep is one of two because there are two declared shapes to cover and one
-// signature cannot be both. Keep and Walk are off the Storage interface: the
-// constructor returns the concrete value and PHP reaches every exported method
-// on it, which is the rule bindings.md states about registration not being an
-// allowlist.
+// Keep returns the records the predicate accepts, taking the callback in Go's own terms.
 func (s *memStorage) Keep(keep func(key, value string) bool) []Record {
 	out := make([]Record, 0, len(s.data))
 	for _, key := range s.sortedKeys() {
@@ -85,11 +69,7 @@ func (s *memStorage) Keep(keep func(key, value string) bool) []Record {
 	return out
 }
 
-// Walk is the other shape, the uniform func(...any) (any, error), whose error
-// slot is the only place a callback reports a failure without a panic.
-//
-// The signature is the shape under test. A host writing this for its own sake
-// declares func(key, value string) error and lets the bridge wrap it.
+// Walk visits each record through the uniform callable shape, whose error ends the walk.
 func (s *memStorage) Walk(visit func(...any) (any, error)) error {
 	for _, key := range s.sortedKeys() {
 		if _, err := visit(key, s.data[key]); err != nil {

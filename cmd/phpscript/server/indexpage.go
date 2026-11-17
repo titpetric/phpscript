@@ -5,21 +5,10 @@ import (
 	"path"
 )
 
-// indexNames are the files that answer for a directory, in lookup order. A
-// site that has both keeps index.php: the dynamic page is the one it wrote for
-// serving, and an index.html beside that is a placeholder the site has not
-// removed yet.
-//
-// index.html is here because a site is not always an application. A directory
-// of hand written pages, a built front end, a documentation tree: none of them
-// have an index.php to name, and before this a request for one of those
-// directories answered 404 while the file sat there unread.
+// indexNames names the files that answer for a directory, in lookup order.
 var indexNames = [2]string{"index.php", "index.html"}
 
-// indexPage returns the file that answers for a directory, named relative to
-// the document root, and whether the directory has one.
-//
-// dir is a directory below the document root, or "." for the root itself.
+// indexPage returns a directory's index file relative to the document root, or false when indexNames matches nothing.
 func (h *handler) indexPage(dir string) (string, bool) {
 	for _, name := range indexNames {
 		name = path.Join(dir, name)

@@ -16,14 +16,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Yaml`, registerYAML)
 }
 
-// registerYAML installs yaml_decode and yaml_encode.
-//
-// They answer the question json_decode and json_encode answer for the other
-// spelling. They keep their own conversions, borrowing none of the
-// JSON ones: json_encode builds an ordered object that only the JSON
-// marshaller knows how to write, and handing it to the YAML marshaller
-// produced an empty document. The fixture beside this file is what caught
-// that.
+// registerYAML installs yaml_decode and yaml_encode with their own conversions, not JSON's.
 func registerYAML(rt *runner.Runtime) {
 	// yaml_decode parses the YAML in $text into arrays: a mapping arrives as an
 	// array keyed by its field names and a sequence as a list. The keys come
@@ -34,9 +27,7 @@ func registerYAML(rt *runner.Runtime) {
 	rt.RegisterFunc("yaml_encode", phpYAMLEncode)
 }
 
-// phpYAMLDecode reads YAML into the shapes json_decode answers with: a
-// mapping is an array keyed by its field names, a sequence is a list, and a
-// whole number is an int.
+// phpYAMLDecode reads YAML into the shapes json_decode answers with.
 func phpYAMLDecode(text string) (any, error) {
 	var value any
 	if err := yaml.Unmarshal([]byte(text), &value); err != nil {
@@ -56,17 +47,7 @@ func phpYAMLEncode(value any) (any, error) {
 	return string(b), nil
 }
 
-// yamlDecodeValue turns what the decoder answers into PHP values.
-//
-// yamlMapping sorts a mapping's keys by decision: the decoder returns a Go
-// map, a Go map has no order, and reading the same document twice would
-// otherwise build two differently ordered arrays. A script reads a settings
-// file by name and sorting costs nothing and the same input decodes the same
-// way every time.
-//
-// A whole number arrives as an int. `max_pages: 400` compared against a
-// count has to be one, and a float that happens to be whole would print as
-// 400 while behaving as 400.0.
+// yamlDecodeValue turns decoded YAML into PHP values, sorting mapping keys and keeping whole numbers int.
 func yamlDecodeValue(v any) any {
 	switch x := v.(type) {
 	case map[string]any:
@@ -112,12 +93,7 @@ func yamlMapping(in map[string]any) *model.Array {
 	return out
 }
 
-// yamlEncodeValue turns PHP values into what the YAML marshaller writes.
-//
-// A mapping becomes a yaml.MapSlice and not a map and the marshaller writes
-// the keys in the order the array set them: a settings file a script wrote
-// should read the way the script built it, and a Go map would shuffle it on
-// every run.
+// yamlEncodeValue turns PHP values into marshaller input, preserving array key order.
 func yamlEncodeValue(v any) any {
 	switch x := v.(type) {
 	case *model.Array:

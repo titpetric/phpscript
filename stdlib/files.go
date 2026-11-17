@@ -21,8 +21,7 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 	}
 }
 
-// fsRoots pairs each area RegisterFS reroots with the function that does it,
-// under the name its package registers; exec ones need the Exec profile.
+// fsRoots pairs each area RegisterFS reroots with its register function; exec areas need Exec.
 var fsRoots = []struct {
 	area     string
 	exec     bool
@@ -35,9 +34,7 @@ var fsRoots = []struct {
 	{`Runtime\PS\Exec`, true, pexec.RegisterRoot},
 }
 
-// selected reports whether the runtime's areas include the named one: a runtime
-// built with no selection holds every area, and one built with a selection
-// reroots the bindings of the areas it installed alone.
+// selected reports whether the runtime installed area; no selection means every area.
 func selected(rt *runner.Runtime, area string) bool {
 	return len(runner.SelectAreas([]runner.Area{{Name: area}}, rt.Areas())) == 1
 }

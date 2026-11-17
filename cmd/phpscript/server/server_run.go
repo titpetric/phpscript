@@ -62,8 +62,7 @@ func NewModule(root, documentRoot string, options runner.Options, flatstack, aut
 	return newModule("phpserver", handler), nil
 }
 
-// newModule wraps a handler as the platform module that mounts it on every
-// path the router has not claimed.
+// newModule wraps a handler as the module that mounts it on every unclaimed path.
 func newModule(name string, handler http.Handler) *Module {
 	return &Module{
 		ZeroModule: *newZeroModule(name),
@@ -147,15 +146,7 @@ func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options
 	return h, nil
 }
 
-// executes reports whether a .php entrypoint under the document root may run.
-//
-// A writable path holds what scripts, and through them their users, put there.
-// A .php file that arrives that way is content, not code: the handler sends it
-// as bytes like anything else in the directory. An upload directory below the
-// document root is the ordinary case, and executing what lands in one turns an
-// upload form into a way to run code.
-//
-// filename is relative to the application root.
+// executes reports whether a .php entrypoint may run, false for one in a writable root.
 func (h *handler) executes(filename string) bool {
 	if len(h.writable) == 0 {
 		return true
@@ -219,9 +210,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFileFS(w, r, h.public, filename)
 }
 
-// serveNotFound answers a request that resolved to no file: the site's own page
-// when it has one, and the plain status otherwise. See serveErrorPage for who
-// gets the page.
+// serveNotFound answers with the site's error page or the plain 404 status.
 func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
 	if h.serveUnrouted(w, r, http.StatusNotFound) {
 		return
@@ -229,11 +218,7 @@ func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-// redirectToDirectory sends a request that named a directory without its
-// trailing slash to the same path with one, query string and all.
-//
-// The location is relative, as the one http.FileServer writes is: an absolute
-// path would be wrong under a mount that stripped a prefix off the request.
+// redirectToDirectory sends a relative redirect adding the trailing slash, query string included.
 func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 	target := path.Base(r.URL.Path) + "/"
 	if query := r.URL.RawQuery; query != "" {
@@ -243,18 +228,7 @@ func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMovedPermanently)
 }
 
-// serverVars adds the $_SERVER entries only the server knows: where the site
-// is on disk and which script the request resolved to. runner.Context fills
-// everything derivable from the request itself and leaves these
-// out, because it has no document root and no resolved script.
-//
-// SERVER_NAME and SERVER_PORT come from the address the listener bound in real
-// PHP, not from the Host header, which is client supplied. This server
-// routes by Host and the name a request arrived under is the site it reached,
-// which SERVER_NAME reports; the port is the one the URL named,
-// left unset when it named none.
-//
-// filename is relative to the application root, as LoadFile takes it.
+// serverVars adds the $_SERVER entries only the server knows, with filename relative to the application root.
 func (h *handler) serverVars(request runner.Context, r *http.Request, filename string) {
 	request.Server["DOCUMENT_ROOT"] = path.Join(h.rootDir, h.documentRoot)
 	request.Server["SERVER_SOFTWARE"] = "phpscript"
@@ -276,14 +250,7 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 	request.Server["SERVER_NAME"] = strings.TrimSuffix(strings.ToLower(host), ".")
 }
 
-// run executes one PHP entrypoint of this site and returns the response it
-// produced: the request context holding the headers and status the script
-// staged, the body it buffered, and whatever it ended with.
-//
-// The response reaches w unwritten. The caller decides it, and the site's own
-// page can answer an error and not the error's own words. vars, when set, adds
-// $_SERVER entries the entrypoint needs beyond the ones the request and the
-// site answer for.
+// run executes one entrypoint and returns the staged context, buffered body and error, writing nothing.
 func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
 	var out bytes.Buffer
 
@@ -363,11 +330,7 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	reqCtx.WriteResponse(w, status, body)
 }
 
-// serveStatus answers with the status and its standard text, and no more.
-//
-// What actually went wrong is in the log line and on the request trace, both
-// addressed by the same request id. The response body holds none of it: a
-// description of the site's own internals handed to whoever named it.
+// serveStatus answers the status and its standard text, holding nothing of the error.
 func serveStatus(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
@@ -389,8 +352,7 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 	return nil
 }
 
-// newManager builds the manager Run starts, with nothing bound yet. A test
-// drives Reload on it directly, without a signal.
+// newManager builds the manager Run starts, with nothing bound yet.
 func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*Manager, error) {
 	options, err := started.PlatformOptions()
 	if err != nil {
@@ -432,8 +394,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 	return manager, nil
 }
 
-// reloadConfig returns the configuration a generation runs under, read from
-// disk again. A run given no -f has no file and keeps what it started with.
+// reloadConfig reads the configuration from disk again, returning started when no -f names a file.
 func reloadConfig(started config.Config, globals *flags.Options) (config.Config, error) {
 	if globals.ConfigFile == "" {
 		return started, nil
@@ -479,8 +440,7 @@ func setup(ctx context.Context, svc *Service, appConfig config.Config, args []st
 	return nil
 }
 
-// warnFrozen reports a reloaded setting the manager read once and cannot
-// apply. Refusing instead would take a working server down over one.
+// warnFrozen reports a reloaded setting the manager cannot apply without a restart.
 func warnFrozen(log Logger, started, reloaded config.Config) {
 	if log == nil {
 		return
@@ -505,10 +465,7 @@ func warnFrozen(log Logger, started, reloaded config.Config) {
 	}
 }
 
-// registerSite wires the single tenant server: one application root, its
-// modules mounted straight onto the platform router. The route modules stay on
-// that router and not a nested one and the platform keeps seeing the pattern
-// a request matched, the label on its traces.
+// registerSite wires the single tenant server, mounting its modules straight onto the platform router.
 func registerSite(svc *Service, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
@@ -565,9 +522,7 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 	return nil
 }
 
-// documentRoot returns the directory beneath the application root served over
-// HTTP. public is the default and `config.yml` sets it; the literal here
-// only covers a Config assembled in Go without one.
+// documentRoot returns the directory served over HTTP, defaulting to public.
 func documentRoot(appConfig config.Config) string {
 	if appConfig.DocumentRoot == "" {
 		return DefaultDocumentRoot
@@ -575,9 +530,7 @@ func documentRoot(appConfig config.Config) string {
 	return appConfig.DocumentRoot
 }
 
-// annotationOptions returns the options every annotated PHP file of one source
-// tree runs under. Startup jobs, scheduled jobs and routed endpoints read the
-// same tree and execute PHP the same way and they share one set.
+// annotationOptions returns the options every annotated file of one source tree runs under.
 func annotationOptions(appConfig config.Config, runnerOptions runner.Options, observers []runner.Observer, root, suffix string) []annotations.Option {
 	return []annotations.Option{
 		annotations.WithRootDir(root),
@@ -590,12 +543,7 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 	}
 }
 
-// routeOptions adds the exclusions routed endpoints need.
-//
-// The handler serves files under the document root directly and an annotation
-// there must not publish a second, unguarded route. A writable path drops out
-// for a stronger reason: a script can put a .php file in one and scanning it
-// would let a user's upload register a route the next time the server starts.
+// routeOptions excludes the document root and each relative writable path from annotation scans.
 func routeOptions(options []annotations.Option, writablePaths []string, documentRoot string) []annotations.Option {
 	result := append(options[:len(options):len(options)], annotations.WithExcludedDirectory(documentRoot))
 	for _, p := range writablePaths {

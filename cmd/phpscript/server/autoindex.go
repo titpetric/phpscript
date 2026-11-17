@@ -12,14 +12,7 @@ import (
 	"time"
 )
 
-// autoindexStyle is the whole stylesheet, inline and small enough to send with
-// every listing.
-//
-// titpetric/exp/cmd/indexer, whose layout this borrows, loads bootstrap from a
-// CDN for the same page. A directory listing that fetches a third party asset
-// tells that third party which directory a visitor opened, and renders unstyled
-// on a machine with no route out; this one fetches nothing. There is nowhere to
-// serve a separate asset from either: the document root belongs to the site.
+// autoindexStyle holds the whole stylesheet inline so a listing fetches nothing.
 const autoindexStyle = `
 body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #222; }
 h1 { font-size: 1.2rem; font-weight: 600; margin: 0 0 1rem; }
@@ -34,8 +27,7 @@ a:hover { text-decoration: underline; }
 .thumbs img { width: 100%; height: 9rem; object-fit: contain; background: #f4f4f4; border-radius: 3px; }
 `
 
-// imageExtensions are the files a listing renders in place of naming. A
-// browser renders the set inline; anything else is a download.
+// imageExtensions names the extensions a listing shows as thumbnails.
 var imageExtensions = map[string]bool{
 	".avif": true,
 	".gif":  true,
@@ -46,14 +38,7 @@ var imageExtensions = map[string]bool{
 	".webp": true,
 }
 
-// serveAutoindex answers a directory with a listing of its contents, and
-// reports whether it wrote one. A site that did not turn autoindex on gets a
-// false answer and its 404, the state of a directory without an index page
-// when listings are off.
-//
-// dir names the directory relative to the document root, "." for the root
-// itself. Every entry links relative to the request's own path and that path
-// has to end in a trailing slash; ServeHTTP redirects first.
+// serveAutoindex writes a listing for dir and reports false when autoindex is off.
 func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir string) bool {
 	if !h.autoindex {
 		return false
@@ -73,17 +58,7 @@ func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir str
 	return true
 }
 
-// renderAutoindex returns the listing page for one directory. urlPath is the
-// request path of the directory, which every link is relative to, and entries
-// are what fs.ReadDir answers: already sorted by name.
-//
-// This writes the page directly and not with html/template. A listing is a
-// fixed shape with no user supplied markup in it and a template buys nothing
-// but a parse and a reflect walk per request; escapeEntry does the escaping it
-// would, at the only two places a name reaches the page.
-//
-// Images are both shown and listed: the thumbnail is how a visitor scans a
-// folder of screenshots, and the row below is where its size is.
+// renderAutoindex builds the page for urlPath with every link relative to it.
 func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	var images, dirs, files []fs.DirEntry
 	for _, entry := range entries {
@@ -134,8 +109,7 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	return out.Bytes()
 }
 
-// writeAutoindexRow writes one entry as a table row. An entry whose Info call
-// fails still gets a row: the entry exists and nobody came for its size.
+// writeAutoindexRow writes one entry as a row, with empty cells when Info fails.
 func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	name, href := escapeEntry(entry)
 
@@ -154,14 +128,7 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	out.WriteString("<td class=\"modified\">" + modified + "</td></tr>\n")
 }
 
-// escapeEntry returns the entry's name as text in the page and as the target of
-// a link to it, both escaped for where they go. A directory's name and its link
-// both end in a trailing slash and following it lands on the directory's own
-// listing and not on the redirect to it.
-//
-// The two escapings differ and the page needs both: URL escaping keeps a
-// name holding a space or a "?" addressable, and HTML escaping keeps one
-// holding a "&" or a "<" from ending the attribute, or the document, early.
+// escapeEntry returns the entry's name and href, both escaped, with a trailing slash on a directory.
 func escapeEntry(entry fs.DirEntry) (name, href string) {
 	name = entry.Name()
 	href = (&url.URL{Path: name}).EscapedPath()
@@ -172,8 +139,7 @@ func escapeEntry(entry fs.DirEntry) (name, href string) {
 	return html.EscapeString(name), html.EscapeString(href)
 }
 
-// formatSize returns a file size in the largest unit that leaves it above one,
-// as ls -h writes it. The exact byte count is what a HEAD request is for.
+// formatSize writes size as ls -h does, in the largest unit above one.
 func formatSize(size int64) string {
 	const unit = 1024
 	if size < unit {

@@ -15,8 +15,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// modulePrefix maps a runtime symbol name back to a package directory in the
-// scanned source tree.
+// modulePrefix maps a runtime symbol name back to its package directory.
 const modulePrefix = "github.com/titpetric/phpscript/"
 
 // Param is one PHP-visible parameter of a binding.
@@ -99,10 +98,8 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 	return GenerateAreas(rt, srcRoot, Owners{})
 }
 
-// GenerateAreas is Generate with the binding area of each name: owners takes a
-// function or a class name to the namespace that defines it, and the page then
-// groups the functions by namespace and names the area of each class. An empty Owners
-// groups by Go package, as Generate does.
+// GenerateAreas is Generate with owners naming each name's binding area.
+// An empty Owners groups by Go package.
 func GenerateAreas(rt *runner.Runtime, srcRoot string, owners Owners) (string, error) {
 	src, err := scan(srcRoot)
 	if err != nil {
@@ -118,8 +115,7 @@ func Reflect(rt *runner.Runtime) ([]Func, []Class) {
 	return build(rt, emptySources())
 }
 
-// build assembles the registered surface from the runtime and whatever the
-// source scan found, which may be nothing.
+// build assembles the registered surface from rt and whatever src holds.
 func build(rt *runner.Runtime, src *sources) ([]Func, []Class) {
 	classTypes := registeredClassTypes(rt, src)
 
@@ -133,10 +129,7 @@ func build(rt *runner.Runtime, src *sources) ([]Func, []Class) {
 	return funcs, buildClasses(rt, src, classTypes)
 }
 
-// buildFunc merges the scanned source entry for name with the reflected
-// signature of the registered Go function. Source holds parameter names and
-// comments; reflection remains authoritative for returns because it can map a
-// concrete Go type back to the PHP class registered for it.
+// buildFunc merges the scanned entry for name with reflection, which decides Returns.
 func buildFunc(name string, fn any, src *sources, classTypes map[reflect.Type]string) Func {
 	out := Func{Name: name, Returns: "void"}
 	entry := src.funcs[name]
@@ -165,8 +158,7 @@ func buildFunc(name string, fn any, src *sources, classTypes map[reflect.Type]st
 	return out
 }
 
-// buildClasses reflects over every registered constructor, grouping class
-// names that share one Go constructor into a single entry.
+// buildClasses groups registered class names that share one Go constructor.
 func buildClasses(rt *runner.Runtime, src *sources, classTypes map[reflect.Type]string) []Class {
 	groups := constructorGroups(rt)
 	classes := make([]Class, 0, len(groups))
@@ -178,8 +170,7 @@ func buildClasses(rt *runner.Runtime, src *sources, classTypes map[reflect.Type]
 	return classes
 }
 
-// buildClass assembles one class entry: the primary name is the one a scanned
-// registration site documents, falling back to the shortest of the group.
+// buildClass builds one class entry under the name its registration documents, or the shortest.
 func buildClass(names []string, ctor any, src *sources, classTypes map[reflect.Type]string) Class {
 	primary := primaryClassName(names, src)
 
@@ -248,14 +239,7 @@ func primaryClassName(names []string, src *sources) string {
 	return primary
 }
 
-// registeredClassTypes maps the concrete value returned by each constructor
-// to the PHP class name scripts use for that value. Named integer types need
-// this just as much as structs: time.Duration would otherwise render as int.
-//
-// Two constructors may build the same type, as Regexp\Compile and
-// Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins and a
-// method returning that type lands under one class and not under whichever
-// registration the scan reads last.
+// registeredClassTypes maps each constructor's concrete type to its PHP class name, first name winning.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
 	classTypes := map[reflect.Type]string{}
 	for _, group := range constructorGroups(rt) {
@@ -310,9 +294,7 @@ func constructorResultType(ctor any) (reflect.Type, bool) {
 	return nil, false
 }
 
-// ctorDecl resolves a constructor value to its scanned declaration through
-// the symbol name the Go runtime holds for it. Function literals resolve to
-// no declaration: no source declares a synthesised name like Register.func1.
+// ctorDecl resolves ctor to its scanned declaration, or nil for a function literal.
 func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	fn := goruntime.FuncForPC(reflect.ValueOf(ctor).Pointer())
 	if fn == nil {
@@ -332,9 +314,7 @@ func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	return "", nil
 }
 
-// reflectMethods lists the PHP-callable surface of the Go type a constructor
-// returns. Method dispatch is case-insensitive with underscores accepted and
-// the PHP spelling is the Go name in snake_case.
+// reflectMethods lists the PHP-callable methods of t, named in snake_case and skipping infraMethods.
 func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]string) []Method {
 	typeName := t.Name()
 	if t.Kind() == reflect.Pointer {
@@ -367,15 +347,13 @@ func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]st
 	return methods
 }
 
-// infraMethods are Go interface conventions and runtime hooks, present on a
-// bound type for the host's benefit, not for a script to call.
+// infraMethods names methods a bound type holds for the host, not for a script.
 var infraMethods = map[string]bool{
 	"Error": true, "String": true, "GoString": true, "SetID": true,
 	"MarshalJSON": true, "UnmarshalJSON": true,
 }
 
-// returnType folds a Go result list into one PHP type. A trailing error
-// reaches the script as a throw and never as a return and it never shows.
+// returnType folds results into one PHP type, dropping error and duplicates.
 func returnType(results []string) string {
 	kept := make([]string, 0, len(results))
 	seen := map[string]bool{}
@@ -395,8 +373,7 @@ func returnType(results []string) string {
 	return strings.Join(kept, "|")
 }
 
-// camelToSnake converts a Go method name to its PHP spelling: Query to query,
-// SetAttribute to set_attribute, SetID to set_id.
+// camelToSnake converts a Go method name to its PHP spelling, SetID to set_id.
 func camelToSnake(name string) string {
 	var b strings.Builder
 	runes := []rune(name)

@@ -15,16 +15,12 @@ import (
 // two cannot answer a different value for one expression. convert.go holds the
 // coercions the operators read (toInt, toFloat, phpString).
 
-// phpLooseEqual is PHP's `==`, used by switch/case matching and the flatstack
-// host. It reads the same table as the comparison operators and null equals 0,
-// "" and false, and two numeric strings compare numerically ("1" == "01").
+// phpLooseEqual answers PHP's ==, used by switch/case and the flatstack host.
 func phpLooseEqual(a, b any) bool {
 	return phpCompare("==", a, b)
 }
 
-// phpCompare applies one comparison operator with PHP 8 semantics. The loose
-// operators read phpval.Compare's ordering; `===` and `!==` are identity and
-// never coerce.
+// phpCompare applies one PHP 8 comparison, with === and !== testing identity alone.
 func phpCompare(op string, a, b any) bool {
 	switch op {
 	case "===":
@@ -56,9 +52,7 @@ func phpCompare(op string, a, b any) bool {
 	}
 }
 
-// phpSpaceship is PHP's `<=>`: -1, 0 or 1 by phpval.Compare's ordering. A NaN
-// operand answers 1 in either position, as in phpCompare, unless a bool or
-// null on the other side takes the comparison into the bool domain.
+// phpSpaceship answers -1, 0 or 1 by phpval.Compare, with a NaN operand answering 1.
 func phpSpaceship(a, b any) int64 {
 	if (isNaNValue(a) || isNaNValue(b)) && !inBoolDomain(a) && !inBoolDomain(b) {
 		return 1
@@ -78,8 +72,7 @@ func isNaNValue(v any) bool {
 	return ok && math.IsNaN(f)
 }
 
-// inBoolDomain reports an operand that drags a loose comparison into the bool
-// domain: nil or bool, phpval.Compare's isBoolish.
+// inBoolDomain reports a nil or bool operand, which forces the bool domain.
 func inBoolDomain(v any) bool {
 	if v == nil {
 		return true
@@ -88,12 +81,7 @@ func inBoolDomain(v any) bool {
 	return ok
 }
 
-// phpIdentical is PHP's `===`: same type and same value, no coercion. The one
-// widening is int against int64, which are a single PHP type (int) that
-// arrives in two Go spellings: int64 from the parser and arithmetic, int from
-// a Go binding. Arrays compare pairwise in order, objects by instance, and a
-// host value a binding returned falls back to reflect equality on its Go
-// type.
+// phpIdentical answers PHP's === and folds int and int64 into one type.
 func phpIdentical(a, b any) bool {
 	switch x := a.(type) {
 	case nil:
@@ -140,8 +128,7 @@ func phpIdentical(a, b any) bool {
 	return reflect.TypeOf(a) == reflect.TypeOf(b) && reflect.DeepEqual(a, b)
 }
 
-// identicalArrays reports whether two arrays are identical the way PHP's `===`
-// asks: the same key/value pairs, in the same order, with identical values.
+// identicalArrays reports the same key/value pairs in the same order, compared identically.
 func identicalArrays(x, y *model.Array) bool {
 	if x == y {
 		return true
@@ -245,17 +232,7 @@ func phpArith(op string, a, b any) (any, error) {
 	}
 }
 
-// phpBitwise applies & | ^ << >>.
-//
-// phpBitwise casts both operands to int, except that & | ^ between two strings
-// operate bytewise and return a string, as they do in PHP: "a" | "b" is "c".
-// The operand length follows PHP: `&` and `^` stop at the shorter operand, `|`
-// keeps the longer one and treats the missing bytes as zero.
-//
-// Shifts are int64 operations. A count of 64 or more needs no special case: Go
-// defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`; PHP
-// produces the same. A negative count is the one input with no answer, and
-// PHP raises ArithmeticError for it and picks neither.
+// phpBitwise applies & | ^ << >>, casting to int except & | ^ between two strings.
 func phpBitwise(op string, a, b any) (any, error) {
 	switch op {
 	case "&", "|", "^":
@@ -320,13 +297,7 @@ func bitwiseString(op string, a, b string) string {
 	return string(out)
 }
 
-// phpNegate implements PHP's unary minus.
-//
-// phpNegate negates a float directly and never computes it as `0 - x`, which
-// loses the sign of zero: PHP echoes -0.0 as -0. Everything else resolves
-// through the arithmetic helper so that negating the smallest int64 overflows
-// to a float the way every other arithmetic operator does, with no wrap back
-// to itself with Go's int64 negation.
+// phpNegate negates a float directly and everything else through phpArith.
 func phpNegate(v any) any {
 	if f, ok := v.(float64); ok {
 		return -f
@@ -340,12 +311,7 @@ func phpNegate(v any) any {
 	return result
 }
 
-// phpBitNot implements `~`. On a string it flips every byte; on anything else it
-// casts to int, where ~n is -(n+1).
-//
-// PHP 8 raises a TypeError for a null, bool or array operand. phpscript casts
-// those the way it casts every other bitwise operand and `~null` is -1 and no
-// fatal error (docs/README.md).
+// phpBitNot flips every byte of a string and casts anything else to int.
 func phpBitNot(v any) any {
 	if s, ok := v.(string); ok {
 		out := make([]byte, len(s))
@@ -362,9 +328,7 @@ func phpBitNot(v any) any {
 	return ^toInt(v)
 }
 
-// phpPow implements `**`. Two int operands with a non-negative exponent stay
-// int (2 ** 10 is int 1024) unless the result overflows; a float operand or a
-// negative exponent makes the result float, as in PHP.
+// phpPow keeps ** an int unless an operand is float or the exponent is negative.
 func phpPow(a, b any) any {
 	if isFloat(a) || isFloat(b) {
 		return math.Pow(toFloat(a), toFloat(b))
@@ -399,10 +363,7 @@ func isFloat(v any) bool {
 	return ok
 }
 
-// unionArrays implements PHP's array `+`. The left operand wins every key it
-// has; the right contributes only what is missing. Insertion order follows the
-// left array and then the surviving entries of the right, as PHP's
-// own union preserves.
+// unionArrays implements array +, the left operand winning every key it holds.
 func unionArrays(left, right *model.Array) *model.Array {
 	out := model.NewArraySize(left.Len() + right.Len())
 	left.Range(func(key, val any) bool {

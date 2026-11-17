@@ -16,12 +16,7 @@ import (
 // class (see Runtime.classStatics), and composer's `self::$registeredLoaders`
 // is observable from every instance and from a later static call.
 
-// resolveClassName maps the contextual class names PHP allows in a static
-// reference onto a real one. `self` and `static` both name the class of the
-// running method, because there is no inheritance and late static binding
-// resolves to the same class. `parent` names a class this runtime does not
-// have: extends records a name for the formatter and the linter and builds no
-// members. A `parent` reference fails and never calls the class's own method.
+// resolveClassName returns the class self or static names, refusing parent at runtime.
 func resolveClassName(class string, scope *Scope) (string, error) {
 	switch class {
 	case "self", "static":
@@ -38,9 +33,7 @@ func resolveClassName(class string, scope *Scope) (string, error) {
 	return strings.TrimPrefix(class, "\\"), nil
 }
 
-// classDefaultScope is the scope a class's declared defaults run in. A default
-// sits inside the class body and `self::X` in one has to resolve to that
-// class. The scope holding the `new` has no such name.
+// classDefaultScope returns the scope where a class's declared defaults resolve, binding `__class__`.
 func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 	scope := rt.newScope()
 	if caller != nil {
@@ -55,9 +48,7 @@ func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 	return scope
 }
 
-// staticBag returns the live static-property storage for a class, seeding it
-// from the declared defaults on first access. The class's canonical name keys
-// the bag and a case-insensitive lookup and the declaration share it.
+// staticBag returns a class's live static storage, seeded from its defaults on first access.
 func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, error) {
 	if bag, ok := rt.classStatics[class.Name]; ok {
 		return bag, nil
@@ -79,8 +70,7 @@ func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, 
 	return bag, nil
 }
 
-// staticStorage resolves a static reference to the bag holding it, autoloading
-// the class when nothing has declared it yet.
+// staticStorage returns the bag behind a static reference, autoloading the class when undeclared.
 func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, error) {
 	name, err := resolveClassName(class, scope)
 	if err != nil {
@@ -98,15 +88,10 @@ func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, er
 	return rt.staticBag(decl, scope)
 }
 
-// staticsKey is the interpreter bookkeeping slot holding a closure frame's
-// per-instance function-static table (the `__` prefix keeps it out of
-// DefinedVars, like the other bookkeeping slots).
+// staticsKey is the scope slot holding a closure frame's function-static table.
 const staticsKey = "__statics__"
 
-// staticVarBag returns the persistent storage of one `static $x` statement and
-// whether it already held values from an earlier call. Named functions and
-// methods share one bag per statement on the Runtime; a closure frame keeps
-// its own table and each closure value counts separately.
+// staticVarBag returns one `static $x` statement's storage and whether an earlier call left values.
 func (rt *Runtime) staticVarBag(n *model.StaticVar, scope *Scope) (map[string]any, bool) {
 	if v, ok := scope.Get(staticsKey); ok {
 		if table, ok := v.(map[*model.StaticVar]map[string]any); ok {
@@ -126,9 +111,7 @@ func (rt *Runtime) staticVarBag(n *model.StaticVar, scope *Scope) (map[string]an
 	return bag, seeded
 }
 
-// execStaticVar runs `static $x [= expr][, $y ...];`. The initializers run
-// only the first time the declaring function executes the statement; every
-// call after that rebinds the names to the values the last call left behind.
+// execStaticVar binds a `static $x` name, running its initializer on first execution only.
 func (rt *Runtime) execStaticVar(n *model.StaticVar, scope *Scope) error {
 	bag, seeded := rt.staticVarBag(n, scope)
 	for _, decl := range n.Vars {
@@ -148,9 +131,7 @@ func (rt *Runtime) execStaticVar(n *model.StaticVar, scope *Scope) error {
 	return nil
 }
 
-// helperStaticProp reads `Class::$name`. An undeclared property reads as null,
-// matching the leniency the rest of the runtime applies to
-// property and index access.
+// helperStaticProp reads `Class::$name`, an undeclared property reading as null.
 func (rt *Runtime) helperStaticProp(ref *scopeRef) func(class, name string) (any, error) {
 	return func(class, name string) (any, error) {
 		bag, err := rt.staticStorage(class, ref.scope)
@@ -171,17 +152,7 @@ func (rt *Runtime) setStaticProp(class, name string, value any, scope *Scope) er
 	return nil
 }
 
-// helperStaticCall dispatches `Class::method(args...)`.
-//
-// Three kinds of target resolve here, in the order PHP would find them:
-//
-//   - a host static, registered under the "Class::method" name: Closure::bind
-//     and its neighbours,
-//   - a PHP method declared on the class, with the current `$this` forwarded
-//     when an instance method calls a non-static method through `self::`,
-//     `static::` or its class name,
-//   - a Go constructor's package-level function, which has no static form and
-//     the call reports an undefined method.
+// helperStaticCall dispatches `Class::method` to a host static or a declared PHP method.
 func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValue any, args ...any) (any, error) {
 	return func(class string, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
@@ -224,10 +195,7 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 	}
 }
 
-// invokeStatic runs a method with no receiver. `$this` stays unset, as in a
-// genuinely static method or a class call with no instance behind it, while
-// the scope binds `__class__` so `self::` inside the body resolves back to the
-// same class. helperStaticCall forwards instance calls before reaching here.
+// invokeStatic runs a method with no `$this`, binding `__class__` so `self::` resolves.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)
@@ -244,8 +212,7 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 	return value, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// helperInvoke calls a callable held in a value: `$fn($x)`. It takes every PHP
-// callable spelling, since Callable is what call_user_func already uses.
+// helperInvoke calls any PHP callable held in a value, as in `$fn($x)`.
 func (rt *Runtime) helperInvoke(ref *scopeRef) func(callee any, args ...any) (any, error) {
 	return func(callee any, args ...any) (any, error) {
 		scope := ref.scope
@@ -257,18 +224,14 @@ func (rt *Runtime) helperInvoke(ref *scopeRef) func(callee any, args ...any) (an
 	}
 }
 
-// helperCallable takes the callable `name(...)` and `$fn(...)` name, php 8.1's
-// first-class callable syntax over a function name or a value.
+// helperCallable builds the first-class callable `name(...)` or `$fn(...)` names.
 func (rt *Runtime) helperCallable(ref *scopeRef) func(target any, fallback string) (any, error) {
 	return func(target any, fallback string) (any, error) {
 		return rt.closureValue(target, fallback, ref.scope)
 	}
 }
 
-// helperCallableMember is helperCallable for the two spellings that name a
-// member: `$obj->method(...)` and `Class::method(...)`, where target is the
-// receiver or the class name. This collapses a contextual class name and
-// `self::method(...)` resolves inside a method body.
+// helperCallableMember builds a first-class callable over `$obj->method(...)` or `Class::method(...)`.
 func (rt *Runtime) helperCallableMember(ref *scopeRef) func(target, method any) (any, error) {
 	return func(target, method any) (any, error) {
 		scope := ref.scope

@@ -6,15 +6,13 @@ import (
 	"strings"
 )
 
-// Owners takes the names of functions and of classes to the area that defines
+// Owners takes the names of functions and classes to the area that defines
 // them, one table each because the two may share a name.
 type Owners struct {
 	Funcs, Classes map[string]string
 }
 
-// annotateNamespaces files each function and class under the area that
-// defines it. A name no owner claims keeps an empty namespace and renders under
-// "other".
+// annotateNamespaces files each function and class under its owner's area, or "other".
 func annotateNamespaces(funcs []Func, classes []Class, owners Owners) {
 	for i := range funcs {
 		funcs[i].Namespace = owners.Funcs[funcs[i].Name]
@@ -34,8 +32,7 @@ func hasNamespaces(funcs []Func) bool {
 	return false
 }
 
-// areaGroup is the heading an area files under: the first three segments of
-// its namespace. Runtime\PS\Core\Strings\Compare files under Runtime\PS\Core.
+// areaGroup returns the first three segments of namespace, or "other" when empty.
 func areaGroup(namespace string) string {
 	if namespace == "" {
 		return "other"
@@ -47,9 +44,7 @@ func areaGroup(namespace string) string {
 	return strings.Join(parts, `\`)
 }
 
-// renderAreas writes the functions grouped by the area that installs them: a
-// heading per group, and a subheading per area when the group holds more than
-// one.
+// renderAreas writes the functions grouped by area, subdividing a group that holds more than one.
 func renderAreas(b *strings.Builder, funcs []Func) {
 	groups := map[string]map[string][]Func{}
 	for _, f := range funcs {

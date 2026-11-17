@@ -6,27 +6,16 @@ import (
 	"strings"
 )
 
-// apr1Magic is the identifier Apache's md5-crypt variant writes, and the whole
-// of what separates it from the `$1$` md5-crypt php's crypt() reads: the magic
-// string goes into the first digest and the same password and salt produce a
-// different hash under each. php verifies no `$apr1$` line - crypt() answers
-// "*0" for the setting - so this derivation lives here and its test vectors
-// come from `openssl passwd -apr1`.
+// apr1Magic is the identifier Apache's md5-crypt variant writes in place of $1$.
 const apr1Magic = "$apr1$"
 
-// apr1Rounds is the iteration count the algorithm fixes. No parameter names
-// it: no field in the encoded form records it and no caller can raise it. A
-// guess costs 1000 md5 compressions for every file. That is tens of
-// microseconds, a hundred thousand times under bcrypt at the default cost, and
-// the reason docs/security.md names `htpasswd -B`.
+// apr1Rounds is the algorithm's fixed 1000 md5 iterations, which no parameter raises.
 const apr1Rounds = 1000
 
-// apr1SaltMax is the salt length Apache generates and reads. apr_md5_encode
-// truncates a longer field and this one does too.
+// apr1SaltMax is the salt length Apache generates, truncating a longer field.
 const apr1SaltMax = 8
 
-// apr1Alphabet is crypt(3)'s base64 ordering, which is neither standard base64
-// nor the PHC form argon2 writes.
+// apr1Alphabet is crypt(3)'s base64 ordering, unlike standard base64.
 const apr1Alphabet = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 // APR1Verify reports whether password produced the `$apr1$salt$hash` in stored.
@@ -45,9 +34,7 @@ func IsAPR1(stored string) bool {
 	return ok
 }
 
-// apr1Split reads the salt and the tag out of the encoded form. The tag comes
-// back for the shape check alone: a verify recomputes the whole string, which
-// is the only comparison.
+// apr1Split reads the salt and tag, the tag serving the shape check alone.
 func apr1Split(stored string) (salt, tag string, ok bool) {
 	rest, found := strings.CutPrefix(stored, apr1Magic)
 	if !found {
@@ -60,14 +47,7 @@ func apr1Split(stored string) (salt, tag string, ok bool) {
 	return salt, tag, true
 }
 
-// apr1Encode is apr_md5_encode: the derivation Apache's htpasswd writes with no
-// flag, transcribed from APR's own implementation.
-//
-// Change any step and the hash stops matching what htpasswd wrote, including
-// the two steps that read as mistakes. The password length drives a loop that
-// mixes either a zero byte or the password's first byte and two passwords
-// differing only in length take different paths; and the 1000 rounds alternate
-// what they digest on the index and the derivation is serial.
+// apr1Encode is apr_md5_encode, transcribed from APR and matching every step htpasswd writes.
 func apr1Encode(password, salt string) string {
 	if len(salt) > apr1SaltMax {
 		salt = salt[:apr1SaltMax]
@@ -143,8 +123,7 @@ func apr1Encode(password, salt string) string {
 	return out.String()
 }
 
-// apr1Base64 is crypt(3)'s to64: n characters of value, least significant six
-// bits first, which is the reverse of what base64 writes.
+// apr1Base64 writes n characters of value least significant six bits first.
 func apr1Base64(out *strings.Builder, value uint32, n int) {
 	for ; n > 0; n-- {
 		out.WriteByte(apr1Alphabet[value&0x3f])

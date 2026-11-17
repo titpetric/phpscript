@@ -69,10 +69,7 @@ func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 	}
 }
 
-// storeTop consumes a value already on the operand stack and writes it to a
-// destructuring target. An index target runs its base and index once per
-// write. kind names the construct the target belongs to, "foreach" or
-// "list()" and a rejection reports the one the source actually contains.
+// storeTop writes the stack value to a destructuring target and names kind in a rejection.
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
@@ -182,8 +179,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 	return nil
 }
 
-// coalesceAssignment compiles `$a ??= b`: the target's value stays on the
-// stack when it holds something. The store then runs over the right side alone.
+// coalesceAssignment compiles `$a ??= b`, keeping a target value that is not null.
 func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *model.Coalesce, keep bool, path string) error {
 	switch node := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Index:
@@ -211,8 +207,7 @@ func (c *compiler) coalesceAssignment(target model.Expr, operator string, co *mo
 	return nil
 }
 
-// coalesceIndex compiles `$a[k] ??= b` over two hidden slots: the container and
-// the key run once, and the read and the store both load them back.
+// coalesceIndex compiles `$a[k] ??= b` with the container and key run once.
 func (c *compiler) coalesceIndex(target *model.Index, co *model.Coalesce, keep bool, path string) error {
 	baseSlot, keySlot := c.indexSlots()
 	if err := c.resolveIndex(target, baseSlot, keySlot, path); err != nil {
@@ -237,8 +232,7 @@ func (c *compiler) coalesceIndex(target *model.Index, co *model.Coalesce, keep b
 	return nil
 }
 
-// coalesceProp compiles `$o->p ??= b`: the receiver runs once into a hidden
-// slot, which the read and the store both load back.
+// coalesceProp compiles `$o->p ??= b` with the receiver run once into a hidden slot.
 func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, keep bool, path string) error {
 	recvSlot := c.slot(fmt.Sprintf("\x00assign-recv-%d", len(c.program.code)))
 	if err := c.expr(target.Base, path+".target.base"); err != nil {
@@ -262,9 +256,7 @@ func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, ke
 	return nil
 }
 
-// assignExprValue compiles an assignment used as a value. A plain store pushes
-// what it wrote; a compound operator resolves inside the host, which reports
-// no result, and a second read of the target runs through the slots that held it.
+// assignExprValue compiles an assignment used as a value, pushing what it wrote.
 func (c *compiler) assignExprValue(node *model.AssignExpr, path string) error {
 	if node.Op == "" || node.Op == "=" {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)
@@ -326,8 +318,7 @@ func (c *compiler) indexSlots() (int, int) {
 	return c.slot(fmt.Sprintf("\x00assign-base-%d", at)), c.slot(fmt.Sprintf("\x00assign-key-%d", at))
 }
 
-// resolveIndex runs the container and the key of target once and leaves each in
-// its slot, where a read and a store both reach them.
+// resolveIndex runs the container and key of target once into their slots.
 func (c *compiler) resolveIndex(target *model.Index, baseSlot, keySlot int, path string) error {
 	if err := c.ensureContainer(target.Base, path+".target.base"); err != nil {
 		return err

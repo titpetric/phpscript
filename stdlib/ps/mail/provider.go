@@ -30,12 +30,10 @@ var _ model.MailProvider = (*Provider)(nil)
 // them. A Deliver is host code and reads the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
-// errPlainTransport refuses a message a plain-text transport would have to cut
-// down: dropping the HTML or the Reply-To would deliver a different message.
+// errPlainTransport refuses a message a plain-text transport cannot send whole.
 var errPlainTransport = errors.New("mail: this transport sends plain text only, so a message with an HTML part or a Reply-To cannot be delivered")
 
-// plain passes a message to a transport that reads the three parts of a
-// plain-text one.
+// plain passes a message with no HTML part and no Reply-To to the transport.
 func (deliver Deliver) plain(config Config, message Message) error {
 	if message.HTML != "" || message.ReplyTo != "" {
 		return errPlainTransport
@@ -103,10 +101,7 @@ func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	return p.deliver(config, message)
 }
 
-// resolve returns the credential for name, defaulting an empty name. For a
-// name nobody configured, the error reports what an unconfigured database
-// connection does: the name the caller passes, and nothing about the
-// configuration.
+// resolve returns the credential for name, defaulting an empty name and naming no configuration.
 func (p *Provider) resolve(name string) (Config, error) {
 	if name == "" {
 		name = DefaultName
@@ -118,10 +113,7 @@ func (p *Provider) resolve(name string) (Config, error) {
 	return config, nil
 }
 
-// deliverSMTP runs the SMTP conversation, the transport a provider uses when
-// the host named none. It follows smtp.SendMail, which nothing here can call
-// directly because it builds its own TLS configuration, leaving no way to
-// reach a host whose certificate does not verify (see Config.Insecure).
+// deliverSMTP runs the SMTP conversation, allowing a host whose certificate does not verify.
 func deliverSMTP(config Config, message Message) error {
 	sender, err := envelopeAddress(config.From)
 	if err != nil {
@@ -145,8 +137,7 @@ func deliverSMTP(config Config, message Message) error {
 	return nil
 }
 
-// converse is the SMTP exchange itself, split out so deliver reads as the
-// decisions and this one reads as the protocol.
+// converse is the SMTP exchange itself: dial, STARTTLS, AUTH, then the message.
 func converse(config Config, auth smtp.Auth, sender, recipient, message string) error {
 	client, err := smtp.Dial(config.address())
 	if err != nil {
@@ -190,9 +181,7 @@ func converse(config Config, auth smtp.Auth, sender, recipient, message string) 
 	return client.Quit()
 }
 
-// provider returns the mail servers rt resolves through. A host that configured
-// none, which is every CLI run without a mail block, gets Default, which holds
-// no servers at all.
+// provider returns the runtime's mail servers, or Default when the runtime configures no servers.
 func provider(rt *runner.Runtime) model.MailProvider {
 	if configured := rt.Mail(); configured != nil {
 		return configured

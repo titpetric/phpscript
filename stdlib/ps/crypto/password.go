@@ -20,11 +20,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8 and it
-// holds the same value as PASSWORD_BCRYPT and a script that passes either
-// gets the same hash; argon2id is the stronger choice per millisecond spent and
-// is not the default here for the same reason php does not default to it: it
-// changes the memory footprint of a login.
+// The PHP algorithm identifiers, PASSWORD_DEFAULT resolving to bcrypt as in PHP 8.
 const (
 	algoBcrypt   = "2y"
 	algoArgon2i  = "argon2i"
@@ -38,23 +34,13 @@ const (
 	defaultCost = 12
 )
 
-// phpPrefix is the revision php's password_hash writes; goPrefix is the one
-// x/crypto's GenerateFromPassword writes. Both name the same derivation.
-//
-// Reading needs no rewrite: x/crypto refuses only a major version above '2'
-// and passes the minor through the comparison and a stored `$2y$`, `$2a$` or
-// `$2b$` verifies as it stands. Writing does need one, because the prefix is
-// script-visible: derive swaps goPrefix for phpPrefix on the way out, and a
-// hash written here reads byte for byte like php's.
+// phpPrefix is the revision php's password_hash writes, goPrefix x/crypto's.
 const (
 	phpPrefix = "$2y$"
 	goPrefix  = "$2a$"
 )
 
-// params is the algorithm and the work factors of one hash. One type covers
-// both algorithms because password_hash takes the options of whichever
-// algorithm the call names; defaultParams and readOptions fill only the fields
-// that algorithm reads, and the bounds check tests the same ones.
+// params holds one hash's algorithm and work factors, filled for that algorithm alone.
 type params struct {
 	algo   string
 	cost   int    // bcrypt, log2 of the key schedule iterations
@@ -76,9 +62,7 @@ func defaultParams(algo string) params {
 	}
 }
 
-// check refuses a parameter set the algorithm cannot run. The argon2 bounds
-// are libargon2's and php refuses the same values with the same meaning: at
-// least one lane, at least one pass, and at least eight KiB per lane.
+// check refuses a parameter set the algorithm cannot run, with libargon2's bounds.
 func (p params) check() error {
 	if p.algo == algoBcrypt {
 		if p.cost < bcryptMinCost || p.cost > bcryptMaxCost {
@@ -99,8 +83,7 @@ func (p params) check() error {
 	return nil
 }
 
-// options renders the parameters the way password_get_info reports them, which
-// is one key per knob the algorithm has.
+// options renders the parameters as password_get_info reports them.
 func (p params) options() *model.Array {
 	out := model.NewArray()
 	if p.algo == algoBcrypt {
@@ -217,8 +200,7 @@ func IsPasswordHash(stored string) bool {
 	return err == nil
 }
 
-// algoName maps an identifier to the name password_get_info reports, which is
-// the identifier itself for argon2 and a different word for bcrypt.
+// algoName maps an identifier to the name password_get_info reports.
 func algoName(algo string) string {
 	if algo == algoBcrypt {
 		return "bcrypt"
@@ -226,8 +208,7 @@ func algoName(algo string) string {
 	return algo
 }
 
-// paramsOf reads back the parameters a stored hash records.
-// password_get_info and password_needs_rehash both answer from it.
+// paramsOf reads back the parameters a stored hash records, false when unreadable.
 func paramsOf(hash string) (params, bool) {
 	if isArgon2(hash) {
 		p, _, _, err := argon2Decode(hash)
@@ -243,26 +224,12 @@ func paramsOf(hash string) (params, bool) {
 	return params{algo: algoBcrypt, cost: cost}, true
 }
 
-// isBcrypt reports whether a stored value has the length and the revision
-// marker of a bcrypt hash. The length is what x/crypto rejects a string on
-// before it parses anything, run here first so a value that is neither argon2
-// nor bcrypt answers false without a copy to a []byte.
-//
-// The revision marker is the one place this is stricter than x/crypto, which
-// parses the 1997 "$2$" spelling php refuses; bcryptRevision names the four
-// markers php reads. The cost digits and the base64 stay x/crypto's to read.
-// It can still refuse a hash this accepts.
+// isBcrypt tests a stored value's length and revision marker, stricter than x/crypto.
 func isBcrypt(hash string) bool {
 	return len(hash) >= 59 && bcryptRevision(hash)
 }
 
-// paramsFrom reads the ($algo, $options) tail both hashing functions take. PHP
-// requires the algorithm in both positions, though it does allow either to be
-// null, and a script that passes only options is the common case once the
-// algorithm is whatever PASSWORD_DEFAULT resolves to.
-//
-// It resolves the algorithm before reading the options, because the defaults
-// an absent key falls back to are the algorithm's own.
+// paramsFrom reads the ($algo, $options) tail, resolving the algorithm before its options.
 func paramsFrom(opts []any) (params, error) {
 	algo, err := algoFrom(opts)
 	if err != nil {
@@ -285,10 +252,7 @@ func paramsFrom(opts []any) (params, error) {
 	return p, nil
 }
 
-// algoFrom picks the algorithm out of the tail. A bare number is PHP 7's
-// spelling of the identifiers: 1 is bcrypt, 2 argon2i and 3 argon2id.
-// PHP 8 refuses an integer outright; accepting one here keeps a script written
-// against the older constants from silently storing the wrong algorithm.
+// algoFrom picks the algorithm, accepting PHP 7's integer identifiers PHP 8 refuses.
 func algoFrom(opts []any) (string, error) {
 	algo := algoBcrypt
 	for _, opt := range opts {
@@ -321,8 +285,7 @@ func algoFrom(opts []any) (string, error) {
 	return algo, nil
 }
 
-// legacyAlgo maps PHP 7's integer identifiers. Anything else is bcrypt, the
-// algorithm PASSWORD_DEFAULT names in that version.
+// legacyAlgo maps PHP 7's integer identifiers, anything else being bcrypt.
 func legacyAlgo(value int64) string {
 	switch value {
 	case 2:
@@ -334,8 +297,7 @@ func legacyAlgo(value int64) string {
 	}
 }
 
-// readOptions applies the keys the algorithm reads and ignores the rest, as
-// php does with an option belonging to another algorithm.
+// readOptions applies the keys the algorithm reads, ignoring another algorithm's.
 func (p *params) readOptions(options any) error {
 	if p.algo == algoBcrypt {
 		cost, err := intOption(options, "cost", int64(p.cost))
@@ -368,14 +330,10 @@ func (p *params) readOptions(options any) error {
 	return nil
 }
 
-// math32Max is the widest value the encoded parameters can hold, which is
-// also the widest x/crypto takes.
+// math32Max is the widest value the encoded parameters and x/crypto take.
 const math32Max = 1<<32 - 1
 
-// optionValue reads one key out of an options bag, whatever collection built
-// it: the array a script wrote, or the map another binding returned. The bag
-// holds a handful of keys and a range over it costs less than the map a
-// lookup-by-key would have to build first.
+// optionValue reads one key out of an options bag of any collection shape.
 func optionValue(options any, name string) (any, bool) {
 	var found any
 	ok := false
@@ -389,8 +347,7 @@ func optionValue(options any, name string) (any, bool) {
 	return found, ok
 }
 
-// intOption reads one option key, which arrives as whatever the script wrote
-// it as, and answers fallback when the key is absent.
+// intOption reads one option key, answering fallback when the key is absent.
 func intOption(options any, name string, fallback int64) (int64, error) {
 	value, ok := optionValue(options, name)
 	if !ok {

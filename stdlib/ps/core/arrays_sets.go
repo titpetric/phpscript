@@ -14,10 +14,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Arrays\Sets`, registerArraySets)
 }
 
-// registerArraySets installs the array functions that build a new array from one
-// or two given ones. They read through modelutil.RangeValues and a script can
-// pass either a PHP array or the native Go slice or map a binding returned, as
-// stdlib/ps/core/arrays.go does for the functions it installs.
+// registerArraySets installs the array functions that build a new array from one or two given ones.
 func registerArraySets(rt *runner.Runtime) {
 	// array_fill returns an array of $count copies of $value, keyed from
 	// $start_index upwards. A $count below zero clamps to the empty array, which
@@ -151,8 +148,7 @@ func registerArraySets(rt *runner.Runtime) {
 	})
 }
 
-// valueList reads the values of an array in order. array_combine needs both
-// sides indexable at the same offset, which a range alone cannot do.
+// valueList reads an array's values in order, for pairing two by the same offset.
 func valueList(array any) []any {
 	n, _ := modelutil.LenValues(array)
 	out := make([]any, 0, n)
@@ -163,11 +159,7 @@ func valueList(array any) []any {
 	return out
 }
 
-// filterByValue is array_diff and array_intersect: same walk, opposite verdict.
-//
-// The comparison is by string, which is PHP's documented rule for this family -
-// (string)$a === (string)$b - and not the loose == the sorts use;
-// array_diff([0], ["0"]) is empty for that reason.
+// filterByValue serves array_diff and array_intersect, comparing each value as a string.
 func filterByValue(array any, others []any, keep bool) *model.Array {
 	seen := make(map[string]int, len(others))
 	for _, other := range others {
@@ -194,13 +186,7 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 	return out
 }
 
-// wanted turns "how many of the other arrays hold this" into the verdict.
-//
-// The two are not each other's negation: intersect keeps a value present in
-// every other array, diff keeps it when NONE of them hold it. With one other
-// array those coincide and the difference only shows once a call passes a
-// third - array_diff($a, $b, $c) drops a value $b holds even though $c does
-// not.
+// wanted reports whether a count of holding arrays passes intersect or diff.
 func wanted(count, others int, keep bool) bool {
 	if keep {
 		return count == others
@@ -208,9 +194,7 @@ func wanted(count, others int, keep bool) bool {
 	return count == 0
 }
 
-// filterByKey is array_diff_key and array_intersect_key. It normalises keys
-// through phpval.Key first and the integer 1 and the string "1" are the one key
-// PHP treats them as.
+// filterByKey serves array_diff_key and array_intersect_key, comparing keys through phpval.Key.
 func filterByKey(array any, others []any, keep bool) *model.Array {
 	seen := make(map[any]int, len(others))
 	for _, other := range others {
@@ -234,9 +218,7 @@ func filterByKey(array any, others []any, keep bool) *model.Array {
 	return out
 }
 
-// edgeKey answers the first or last key. There is no internal pointer in this
-// runtime, and array_key_first and array_key_last are for that: they read
-// an edge without one, where PHP's older spelling is reset() plus key().
+// edgeKey answers the first or last key without an internal array pointer.
 func edgeKey(array any, first bool) any {
 	var found any
 	has := false

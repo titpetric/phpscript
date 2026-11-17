@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// stmtComment returns the comment written against the statement enclosing
-// the current inspect position: the leading group when there is one, else a
-// trailing comment on the same line.
+// stmtComment returns the leading or same-line trailing comment of the enclosing statement.
 func stmtComment(cmap ast.CommentMap, stack []ast.Node) []string {
 	for i := len(stack) - 1; i >= 0; i-- {
 		stmt, ok := stack[i].(ast.Stmt)
@@ -28,8 +26,7 @@ func stmtComment(cmap ast.CommentMap, stack []ast.Node) []string {
 	return nil
 }
 
-// declComment returns a declaration's doc comment with the godoc-style
-// leading symbol name replaced by the registered PHP name.
+// declComment returns the doc comment with its leading symbol name swapped for the PHP name.
 func declComment(decl *ast.FuncDecl, phpName string) []string {
 	if decl.Doc == nil {
 		return nil

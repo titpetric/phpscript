@@ -125,9 +125,7 @@ func (m *Mux) Group(fn any) error {
 	return nil
 }
 
-// wrap applies the middleware stack to handler, innermost last. The
-// middleware runs here, on the runtime registering the route, and the
-// handler it returns is what the workers answer through.
+// wrap applies the middleware stack to handler, innermost last, on the registering runtime.
 func (m *Mux) wrap(handler any) (any, error) {
 	for i := len(m.middleware) - 1; i >= 0; i-- {
 		wrapped, err := m.middleware[i].Invoke(m.rt, handler)
@@ -174,19 +172,14 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 	answered.release()
 }
 
-// workers answers the pool this mux runs on, building a default one for a mux
-// that never called listen(): a Go host that mounted it serves it concurrently
-// too. The script runs on the runtime that built it.
+// workers answers the mux's pool, building a default one lazily when no listen call set it.
 func (m *Mux) workers() *runner.Pool {
 	m = m.root
 	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, 0, nil) })
 	return m.pool
 }
 
-// usePool installs the workers handlers run on, sized by the server that is
-// about to serve them. It loses to a pool a request already built, which cannot
-// happen through HTTP\Server: the script calls listen() before anything can
-// arrive.
+// usePool installs the pool handlers run on unless a request already built one.
 func (m *Mux) usePool(pool *runner.Pool) {
 	m = m.root
 	m.once.Do(func() { m.pool = pool })
@@ -195,8 +188,7 @@ func (m *Mux) usePool(pool *runner.Pool) {
 // UsePoolForTest is usePool under a name a test can reach.
 func (m *Mux) UsePoolForTest(pool *runner.Pool) { m.usePool(pool) }
 
-// closeWorkers stops them once the workers have answered the queue, for a
-// server shutting down.
+// closeWorkers stops the workers once they answer the queue, for a server shutting down.
 func (m *Mux) closeWorkers() {
 	m = m.root
 	if m.pool != nil {

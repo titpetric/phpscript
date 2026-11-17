@@ -91,16 +91,7 @@ func (rt *Runtime) Const(name string) (any, bool) {
 	return v, ok
 }
 
-// entrypointConst answers __FILE__ and __DIR__ for source that named no file.
-//
-// parser.ParseFile compiles both to literals and a program read from the
-// filesystem never asks. That leaves Runtime.Load, which takes source with
-// no file behind it. There the entrypoint is the best answer there is.
-//
-// They are not in the constant table. php resolves them when it compiles and
-// defined("__FILE__") is false there and get_defined_constants() omits them;
-// holding them as constants reported the opposite, and cost a copy of the whole
-// table per run because the first write after FreezeStdlib clones it.
+// entrypointConst answers __FILE__ and __DIR__ for source with no file, never as table constants.
 func (rt *Runtime) entrypointConst(name string) (any, bool) {
 	if rt.entrypoint == "" {
 		return nil, false
@@ -150,8 +141,7 @@ func (rt *Runtime) lookupFunc(name string) (any, bool) {
 	return nil, false
 }
 
-// lookupEntry resolves a function-table entry: exact name, then the
-// case-insensitive scan PHP's function names require.
+// lookupEntry resolves a function-table entry by exact then case-insensitive name.
 func (rt *Runtime) lookupEntry(name string) (*funcEntry, bool) {
 	if entry, ok := rt.funcs[name]; ok {
 		return entry, true
@@ -318,8 +308,7 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 	return nil, false
 }
 
-// lookupInterface resolves a declared interface by name, with the same
-// case-insensitive fallback PHP applies to class-like names.
+// lookupInterface resolves an interface by exact then case-insensitive name.
 func (rt *Runtime) lookupInterface(name string) (*model.InterfaceDecl, bool) {
 	if id, ok := rt.interfaces[name]; ok {
 		return id, true

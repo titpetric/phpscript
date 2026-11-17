@@ -27,10 +27,7 @@ const (
 	UploadErrCantWrite = 7
 )
 
-// collectUploads copies every file part of a parsed multipart body to a
-// temporary file and records it on the context. PHP exposes a path on disk and
-// no stream and the copy happens up front; Cleanup removes
-// whatever the script did not move away.
+// collectUploads copies each file part to a temp file and records it on the context.
 func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 	if r.MultipartForm == nil {
 		return
@@ -52,9 +49,7 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 	_ = r.MultipartForm.RemoveAll()
 }
 
-// saveUpload writes one file part to its own temporary file. It reports a
-// failure the way PHP does, as an error code on the entry, because a script
-// reads $_FILES[...]["error"] and catches nothing.
+// saveUpload writes one file part to a temp file, reporting failure as a PHP error code.
 func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 	upload := &UploadedFile{
 		Name:     uploadBaseName(header.Filename),
@@ -96,9 +91,7 @@ func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 	return upload
 }
 
-// uploadBaseName strips the directory part a client may have sent along with
-// the file name. The separator is the client's, not this host's and it cuts on
-// both; PHP keeps the base name only.
+// uploadBaseName strips a client-sent directory from name, cutting on both separators.
 func uploadBaseName(name string) string {
 	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
 		name = name[i+1:]
@@ -139,8 +132,7 @@ func (c Context) IsUpload(path string) bool {
 // uploadKeys is the key set of a $_FILES entry, in the order PHP writes it.
 var uploadKeys = [...]string{"name", "full_path", "type", "tmp_name", "error", "size"}
 
-// uploadValue reads one key of a $_FILES entry off an upload and the scalar and
-// the parallel-array shapes cannot disagree about what a key holds.
+// uploadValue reads one key of a $_FILES entry off file.
 func uploadValue(file *UploadedFile, key string) any {
 	switch key {
 	case "name":
@@ -159,10 +151,7 @@ func uploadValue(file *UploadedFile, key string) any {
 	return nil
 }
 
-// filesArrayInto renders $_FILES. A field named "files[]" takes PHP's parallel
-// array shape, $_FILES["files"]["name"][0]; any other field takes the scalar
-// shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
-// way a repeated form value assigns over the one before it.
+// filesArrayInto renders $_FILES, a "files[]" field taking the parallel-array shape.
 func (c Context) filesArrayInto(arr *model.Array) *model.Array {
 	if len(c.files()) == 0 {
 		return arr
@@ -196,8 +185,7 @@ func uploadArray(file *UploadedFile) *model.Array {
 	return arr
 }
 
-// uploadListArray renders a list field: the same keys, each holding one value
-// per file in place of a single value.
+// uploadListArray renders a list field, each key holding one value per file.
 func uploadListArray(files []*UploadedFile) *model.Array {
 	arr := model.NewArraySize(len(uploadKeys))
 	for _, key := range uploadKeys {

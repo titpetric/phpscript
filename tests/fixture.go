@@ -74,16 +74,7 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
 }
 
-// sourceName names the file the runtime reads a fixture's PHP section from.
-//
-// A fixture is a document and no file the runtime can open and sourceFS
-// serves its body as one. The name keeps the .phpt, which no real
-// file in the tree ends in and it shadows nothing the fixture includes.
-//
-// It keeps the fixture's whole path and not its base, because the parser
-// compiles __DIR__ from the name the runtime reads a file under: served at the
-// area root the name has no directory, and a fixture reading __DIR__ would see
-// "/" where its own folder belongs.
+// sourceName names the file the runtime reads, keeping the whole path for __DIR__.
 func (f *Fixture) sourceName() string {
 	name := fsName(filepath.ToSlash(f.Path))
 	// A .php fixture is already a file the runtime can open, under a name it
@@ -94,13 +85,7 @@ func (f *Fixture) sourceName() string {
 	return name + ".php"
 }
 
-// fsName turns a path as the caller spelled it into one an fs.FS accepts,
-// keeping as much of the directory as it can.
-//
-// FindFixtures names a fixture from the working directory and the path arrives
-// absolute or with leading ".." segments, and fs.ValidPath rejects both.
-// Dropping the leading segments keeps the folder holding the fixture. The
-// parser compiles __DIR__ from that.
+// fsName turns a caller-spelled path into an fs.FS path, keeping the fixture's folder.
 func fsName(p string) string {
 	p = path.Clean(p)
 	p = strings.TrimPrefix(p, "/")
@@ -113,11 +98,7 @@ func fsName(p string) string {
 	return p
 }
 
-// sourceFS lays the fixture bodies over the tree they belong to, as the second
-// layer and not the first: unionFS resolves a name to the first layer that
-// opens it and does not merge directory listings and a leading layer holding
-// only the bodies would answer "." with a directory holding only those, and
-// scandir would stop seeing the tree.
+// sourceFS lays the fixture bodies over root, above the application files.
 func (f *Fixture) sourceFS(root fs.FS) fs.FS {
 	sources := f.sources
 	if sources == nil {
@@ -162,19 +143,12 @@ func (f *Fixture) RootDir() string {
 	return filepath.Join(dir, f.Root)
 }
 
-// realRoot reports whether the fixture named a directory on disk. Such a
-// fixture gets its own include caches: those key on the path as the script
-// wrote it and a fixture reaching a different tree must not read back a
-// program cached for the embedded one.
+// realRoot reports whether the fixture named a directory on disk.
 func (f *Fixture) realRoot() bool {
 	return f.Root != "" || f.appRoot != ""
 }
 
-// unionFS resolves a path against each layer in order, first hit wins: a
-// fixture keeps its own directory as the include root while the application
-// root the test command ran in answers for everything the fixture directory
-// does not hold. fs.Stat and fs.ReadFile both fall back to Open and Open is
-// the whole contract.
+// unionFS resolves a path against each layer in order, first hit wins.
 type unionFS []fs.FS
 
 func (u unionFS) Open(name string) (fs.File, error) {
@@ -194,10 +168,7 @@ func (u unionFS) Open(name string) (fs.File, error) {
 	return nil, firstErr
 }
 
-// includePrelude includes the files the test command named with --include
-// before the fixture body runs. It runs every session, because ResetSession
-// clears user declarations. It skips a file that is not there: the flag
-// names what to load when the application holds it.
+// includePrelude includes the --include files before the body, skipping a missing one.
 func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 	for _, name := range f.includes {
 		clean := strings.TrimPrefix(path.Clean(filepath.ToSlash(name)), "/")

@@ -61,10 +61,7 @@ func (r *Router) Install(rt *runner.Runtime) {
 	})
 }
 
-// bind calls fn with a mux that registers straight on the attached registrar.
-//
-// The mux is only good while fn runs: it keeps no routes and nothing lists
-// them. A handle on it after fn has returned throws.
+// bind calls fn with a mux that registers on the attached registrar while fn runs.
 func (r *Router) bind(rt *runner.Runtime, fn any) error {
 	r.mu.Lock()
 	registrar := r.registrar

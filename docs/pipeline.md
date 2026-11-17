@@ -39,6 +39,8 @@ A bench sweep costs minutes of pinned CPU and answers a performance question, wh
 
 `publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds and never the binaries alone, and `release:publish` stays reachable under its own name. Run `atkins build` and `atkins gen` first: the release skill creates a release for an existing tag and never the tag itself, `bin/` is in `.gitignore`, and the five generated documents are there for the same reason.
 
+The shared release skill builds through docker and names one tag. `release:notes` and `release:binaries` read git instead: every tag with no release, built from its own source with `go build` alone. `scripts/release.sh --help` states the flags.
+
 ## Generation
 
 Three generated files are in git, and `test:introspection` rewrites them in the default pipeline. Hand-written reference pages link them and `docs/reference/README.yml` registers them.

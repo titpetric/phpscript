@@ -56,9 +56,7 @@ func phpBin2hex(str string) string {
 	return hex.EncodeToString([]byte(str))
 }
 
-// phpHex2bin returns any because PHP's contract is string|false: it answers an
-// odd length or a character outside [0-9A-Fa-f] with false and never raises.
-// encoding/hex rejects both and the whole contract is one decode.
+// phpHex2bin returns false for odd length or non-hex input, as PHP's string|false does.
 func phpHex2bin(str string) any {
 	out, err := hex.DecodeString(str)
 	if err != nil {
@@ -74,9 +72,7 @@ func phpBase64Encode(str string) string {
 // base64Alphabet is the standard encoding's character set, in value order.
 const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-// base64Values maps a byte to its base64 value, with -1 for whitespace (which
-// both decode modes skip) and -2 for anything else (which strict mode
-// rejects). The table is package level so no decode builds one per call.
+// base64Values maps a byte to its base64 value, -1 for whitespace and -2 for the rest.
 var base64Values = newBase64Values()
 
 func newBase64Values() [256]int8 {
@@ -93,13 +89,7 @@ func newBase64Values() [256]int8 {
 	return table
 }
 
-// phpBase64Decode returns any because PHP's contract is string|false: strict
-// mode answers a bad character with false and never raises.
-//
-// This spells the decode out and never calls encoding/base64 because PHP's
-// lenient mode drops every character outside the alphabet, padding included,
-// and decodes what remains even when its length does not divide by four.
-// Neither StdEncoding nor RawStdEncoding does that.
+// phpBase64Decode returns false in strict mode, spelling out PHP's lenient decode.
 func phpBase64Decode(str string, strict ...any) any {
 	isStrict := len(strict) > 0 && phpval.Truthy(strict[0])
 
@@ -155,9 +145,6 @@ func phpBase64Decode(str string, strict ...any) any {
 }
 
 // urlFormSafe and urlRawSafe mark the bytes each encoder leaves literal.
-// application/x-www-form-urlencoded keeps the alphanumerics plus '-', '_' and
-// '.'; RFC 3986 keeps '~' as well. Both are package-level tables so an encode
-// is a lookup per byte.
 var (
 	urlFormSafe = newURLSafe("-_.")
 	urlRawSafe  = newURLSafe("-_.~")
@@ -186,10 +173,7 @@ func phpURLEncode(str string) string { return urlEncode(str, true) }
 
 func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 
-// urlEncode percent-escapes str. In form mode a space becomes '+', matching
-// urlencode(); otherwise every escaped byte becomes '%XX', matching
-// rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP escapes
-// it and the tables above take its place.
+// urlEncode percent-escapes str, using '+' for a space in form mode.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
 	if form {
@@ -222,22 +206,12 @@ func urlEncode(str string, form bool) string {
 	return b.String()
 }
 
-// The decoders are in stdlib/shared because the runner needs them too: it
-// builds $_GET and $_POST from a request with the same rules parse_str applies
-// to a string. Two implementations would let a form arrive one way through the
-// superglobals and another through parse_str.
+// phpURLDecode decodes as shared.URLDecode, the rule the runner builds $_GET with.
 func phpURLDecode(str string) string { return shared.URLDecode(str) }
 
 func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 
-// phpParseStr writes the decoded query string through the by-reference second
-// parameter, which is the only form of parse_str modern PHP has: the
-// single-argument spelling wrote the variables into the caller's scope and went
-// with register_globals in PHP 8.
-//
-// The setter is nil when a script omitted the argument. PHP raises an
-// ArgumentCountError for that call. This runtime pads a short call instead.
-// phpParseStr then returns before the decode and writes nothing.
+// phpParseStr writes the decoded query string through the by-reference result setter.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
 		return
@@ -245,9 +219,7 @@ func phpParseStr(str string, result func(any)) {
 	result(shared.ParseStr(str, shared.Limits{}))
 }
 
-// phpHTTPBuildQuery takes data as any and reads it through modelutil.RangeValues.
-// A *model.Array keeps its insertion order and a map[string]any row from a
-// database binding arrives with no array conversion first.
+// phpHTTPBuildQuery joins data into a query string, reading any collection shape.
 func phpHTTPBuildQuery(data any) string {
 	var b strings.Builder
 	if n, ok := modelutil.LenValues(data); ok {
@@ -258,9 +230,7 @@ func phpHTTPBuildQuery(data any) string {
 	return b.String()
 }
 
-// buildQuery appends data's pairs to b. prefix is the key path already walked.
-// A nested value takes the name key[sub], and urlEncode escapes the
-// brackets along with the rest of that name as it writes the pair.
+// buildQuery appends data's pairs to b under prefix, nesting as key[sub].
 func buildQuery(b *strings.Builder, prefix string, data any) {
 	modelutil.RangeValues(data, func(key, val any) bool {
 		name := phpval.String(key)
@@ -284,8 +254,7 @@ func buildQuery(b *strings.Builder, prefix string, data any) {
 	})
 }
 
-// queryValue renders a scalar the way http_build_query does, which differs
-// from the usual string cast in one place: false is "0", not "".
+// queryValue renders a scalar as http_build_query does, false becoming "0".
 func queryValue(v any) string {
 	if b, ok := v.(bool); ok {
 		if b {

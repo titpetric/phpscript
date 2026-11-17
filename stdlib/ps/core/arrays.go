@@ -16,14 +16,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Arrays`, registerArrays)
 }
 
-// registerArrays installs the array shims. They take `any`, not *model.Array,
-// and read their input through modelutil.RangeValues and a script can pass either
-// a PHP array or the native Go slice/map a binding returned. Those that build
-// a fresh list return a []any (one allocation, presized) in place of an
-// *model.Array (a struct, a map[any]any, a growing key slice and an interface
-// box per key). The ones that preserve or merge keys still return
-// *model.Array, because only *model.Array implements PHP's ordered hybrid-key
-// semantics.
+// registerArrays installs the array shims, taking any collection and returning []any where keys drop.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
 	// count returns the number of elements in $array; non-array values count as 0.
@@ -192,17 +185,13 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("range", phpRange)
 }
 
-// The $mode values of array_filter, which are PHP's own constant values: 1
-// passes the value and the key, 2 passes the key alone, 0 (the default) passes
-// the value alone.
+// The array_filter $mode values, PHP's own: 1 passes the value and key, 2 the key.
 const (
 	arrayFilterUseBoth = int64(1)
 	arrayFilterUseKey  = int64(2)
 )
 
-// arrayHasKey looks up a normalised key in any collection shape. A *model.Array
-// and a map[string]any answer in constant time; it walks anything else, because
-// a native Go map of some other key type still needs a key-by-key comparison.
+// arrayHasKey looks up a normalised key in any collection, walking an unknown map type.
 func arrayHasKey(array any, key any) (any, bool) {
 	want := phpval.Key(key)
 	switch a := array.(type) {
@@ -229,18 +218,13 @@ func arrayHasKey(array any, key any) (any, bool) {
 	return found, ok
 }
 
-// phpArrayKeyExists is isset() without the null check: the key exists even when
-// the value stored there is null, which is the only reason the two functions
-// are not the same function.
+// phpArrayKeyExists is isset() without the null check, which is the difference.
 func phpArrayKeyExists(key, array any) bool {
 	_, ok := arrayHasKey(array, key)
 	return ok
 }
 
-// phpArrayFilter keeps the elements fn accepts. It returns an *model.Array
-// because the result keeps the keys of the input, holes included, which is a
-// shape only *model.Array holds (rule 4 of docs/allocation-performance.md).
-// A nil fn is PHP's omitted callback: it keeps the truthy values.
+// phpArrayFilter keeps the elements fn accepts and their keys, a nil fn keeping truthy ones.
 func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model.Array, error) {
 	n, _ := modelutil.LenValues(array)
 	out := model.NewArraySize(n)
@@ -279,8 +263,7 @@ func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model
 	return out, nil
 }
 
-// phpArrayReduce folds the values left to right. The keys are not passed to the
-// callback, matching PHP.
+// phpArrayReduce folds the values left to right, passing no keys.
 func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, error) {
 	var reduceErr error
 	modelutil.RangeValues(array, func(_, v any) bool {
@@ -298,9 +281,7 @@ func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, er
 	return carry, nil
 }
 
-// phpArrayFlip exchanges keys and values. The new keys go through phpval.Key so
-// that the flip of the value "1" is the key 1, the same key `$a[1] = x` would
-// have written.
+// phpArrayFlip exchanges keys and values, normalising each new key through phpval.Key.
 func phpArrayFlip(array any) *model.Array {
 	n, _ := modelutil.LenValues(array)
 	out := model.NewArraySize(n)
@@ -316,11 +297,7 @@ func phpArrayFlip(array any) *model.Array {
 	return out
 }
 
-// phpArrayReverse reverses the order of the elements. PHP drops integer keys
-// and renumbers them from zero unless $preserve_keys is true, but it keeps
-// string keys either way and an array with any string key has to come back as
-// an *model.Array. A renumbered all-integer-keyed array is a plain list, which
-// is a presized []any (rule 4).
+// phpArrayReverse reverses the order, returning []any only when string keys cannot appear.
 func phpArrayReverse(array any, preserveKeys ...any) any {
 	preserve := len(preserveKeys) > 0 && phpval.Truthy(preserveKeys[0])
 
@@ -357,10 +334,7 @@ func phpArrayReverse(array any, preserveKeys ...any) any {
 	return out
 }
 
-// phpArraySum adds the values up, preserving PHP's return type: an int64 while
-// every value read as an integer, a float64 from the first float onwards. The
-// promotion also happens on overflow, because PHP's integer arithmetic becomes
-// float arithmetic there and never wraps.
+// phpArraySum adds the values, returning int64 until a float or an overflow.
 func phpArraySum(array any) any {
 	var (
 		sum     int64
@@ -390,8 +364,7 @@ func phpArraySum(array any) any {
 	return sum
 }
 
-// phpCompact builds an associative map from variables in the calling scope.
-// It omits names that do not exist, matching PHP's compact().
+// phpCompact builds a map from the calling scope, omitting names that do not exist.
 func phpCompact(ctx context.Context, names ...string) map[string]any {
 	out := make(map[string]any, len(names))
 	scope, ok := runner.ScopeFromContext(ctx)

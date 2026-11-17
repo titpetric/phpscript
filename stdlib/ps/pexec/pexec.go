@@ -16,9 +16,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the process bindings under the Exec profile area, rooted at
-// the process working directory, where a CLI run runs.
-// stdlib.Register installs them; stdlib.Mount only when its profile names Exec.
+// init registers the process bindings under the Exec profile area.
 func init() {
 	runner.RegisterProfileArea(`Runtime\PS\Exec`, runner.ProfileExec, Register)
 }
@@ -38,16 +36,13 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	registerProcess(rt)
 }
 
-// root is the directory a command starts in, and the runtime it reads the
-// working directory off. Each call reads it again and never resolves it once,
-// because chdir moves it while the script runs.
+// root is the directory a command starts in, read fresh each call because chdir moves it.
 type root struct {
 	rt  *runner.Runtime
 	dir string
 }
 
-// registerProcess installs what names the running process and not a
-// command it starts.
+// registerProcess installs the functions that name the running process.
 func registerProcess(rt *runner.Runtime) {
 	pid := func() int64 { return int64(os.Getpid()) }
 

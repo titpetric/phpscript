@@ -13,8 +13,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the HTTP bindings to stdlib.Register, the way a program
-// wires in a database/sql driver.
+// init registers the HTTP bindings with stdlib.Register.
 func init() {
 	runner.RegisterArea(`Runtime\PS\HTTP`, Register)
 }

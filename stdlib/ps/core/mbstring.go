@@ -117,8 +117,7 @@ func toOptionalInt(v any) (int64, bool) {
 	return 0, false
 }
 
-// optionalOffset adapts a mixed optional-argument tail ($offset, then the
-// ignored $encoding) to the offset slice the search implementations take.
+// optionalOffset adapts a mixed argument tail to the one-element offset slice a search takes.
 func optionalOffset(rest []any) []int64 {
 	if len(rest) > 0 {
 		if o, ok := toOptionalInt(rest[0]); ok {
@@ -128,8 +127,7 @@ func optionalOffset(rest []any) []int64 {
 	return nil
 }
 
-// optionalLength is optionalOffset for the $length of a substring call, where
-// an explicit null means "to the end": it drops the argument, never reads 0.
+// optionalLength is optionalOffset for a $length, dropping an explicit null so it never reads 0.
 func optionalLength(rest []any) []int64 {
 	if len(rest) > 0 && rest[0] != nil {
 		if l, ok := toOptionalInt(rest[0]); ok {
@@ -139,8 +137,7 @@ func optionalLength(rest []any) []int64 {
 	return nil
 }
 
-// mbSearchLastOffset converts mb_strrpos's character $offset into the byte
-// offset searchLast takes, the two functions sharing one search.
+// mbSearchLastOffset converts mb_strrpos's character offset into the byte offset searchLast takes.
 func mbSearchLastOffset(haystack string, rest []any) []int64 {
 	offset := optionalOffset(rest)
 	if len(offset) == 0 {
@@ -258,8 +255,7 @@ func mbStrPad(s string, length int64, optional ...any) string {
 	}
 }
 
-// mbPadTo repeats pad to exactly n characters, cutting the last repetition
-// short.
+// mbPadTo repeats pad to exactly n characters, cutting the last repetition short.
 func mbPadTo(pad string, n int64) string {
 	if n <= 0 {
 		return ""
@@ -299,8 +295,7 @@ func mbLcfirst(str string) string {
 // runeLen is the character count of s.
 func runeLen(s string) int64 { return int64(utf8.RuneCountInString(s)) }
 
-// runeByteOffset converts a character offset into a byte offset in s. An
-// offset past the last character answers len(s) and false.
+// runeByteOffset converts a character offset to a byte offset, answering len(s) and false past the end.
 func runeByteOffset(s string, runes int64) (int, bool) {
 	if runes <= 0 {
 		return 0, true
@@ -318,21 +313,17 @@ func runeByteOffset(s string, runes int64) (int, bool) {
 	return len(s), false
 }
 
-// byteRuneOffset is the character count of s[:bytes], converting a byte
-// position a search found back into the character offset a script sees.
+// byteRuneOffset converts a byte position a search found to the character offset a script sees.
 func byteRuneOffset(s string, bytes int) int64 {
 	return int64(utf8.RuneCountInString(s[:bytes]))
 }
 
-// runeLower folds s rune by rune. strings.ToLower with simple mappings keeps
-// the rune count and character offsets computed on the folded string index
-// the original.
+// runeLower folds s rune by rune, keeping the rune count so offsets index the original.
 func runeLower(s string) string {
 	return strings.Map(unicode.ToLower, s)
 }
 
-// eightBit reports the "8bit" encoding at position at of an optional-
-// argument tail, the byte-unit selector PHP's mb_* functions honour.
+// eightBit reports the "8bit" encoding at position at, the byte-unit selector mb_* honours.
 func eightBit(rest []any, at int) bool {
 	if len(rest) <= at {
 		return false
@@ -341,8 +332,7 @@ func eightBit(rest []any, at int) bool {
 	return ok && strings.EqualFold(enc, "8bit")
 }
 
-// byteSplit is str_split in byte units, shared by str_split and
-// mb_str_split's "8bit" encoding.
+// byteSplit is str_split in byte units, shared with mb_str_split's "8bit" encoding.
 func byteSplit(s string, n int64) []string {
 	if s == "" {
 		return []string{}

@@ -6,8 +6,7 @@ import (
 	"strconv"
 )
 
-// lookupUser resolves the second argument of chown(), which PHP accepts as
-// either a user name or a numeric uid, to a uid.
+// lookupUser resolves chown's user name or numeric uid argument to a uid.
 func lookupUser(owner any) (int, error) {
 	switch v := owner.(type) {
 	case int64:

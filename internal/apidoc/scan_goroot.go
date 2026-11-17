@@ -10,18 +10,7 @@ import (
 	"strings"
 )
 
-// gorootDocs reads the source text of one standard library type's members out
-// of the Go distribution: the doc comment of every exported field and method,
-// with the parameter names each method declares.
-//
-// A class binding net/http.Request holds 22 properties and 20 methods whose
-// godoc is in the distribution and not in this module, and the scan of the
-// module tree reaches none of it. Reading the distribution is how
-// `phpscript list --classes` answers about such a class what `go doc` answers.
-//
-// It answers nil when the distribution is not on disk, which is a toolchain
-// the generator is not running under, and the listing then prints the
-// structure reflection sees and no prose.
+// gorootDocs reads the godoc and parameter names of one Go type from GOROOT, nil when absent.
 func gorootDocs(pkg, typeName string) *TypeDocs {
 	dir := filepath.Join(gobuild.Default.GOROOT, "src", filepath.FromSlash(pkg))
 	entries, err := os.ReadDir(dir)
@@ -69,8 +58,7 @@ func (d *TypeDocs) collectGoroot(file *ast.File, typeName string) {
 	}
 }
 
-// collectGorootType records the field comments of the type declaration, which
-// holds its own doc or inherits the declaration block's.
+// collectGorootType records the field comments of the type declaration.
 func (d *TypeDocs) collectGorootType(decl *ast.GenDecl, typeName string) {
 	for _, spec := range decl.Specs {
 		ts, ok := spec.(*ast.TypeSpec)

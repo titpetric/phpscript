@@ -10,17 +10,13 @@ import (
 // runtimeBaseline is the baseline memory overhead of the Runtime struct before script execution.
 var runtimeBaseline = int64(unsafe.Sizeof(Runtime{}))
 
-// Memory-limit checkpoint intervals. A checkpoint walks every live value and
-// it cannot run per step; statements are far heavier than VM instructions,
-// hence the distinct intervals. Both apply only under a MemoryLimit.
+// memCheckStatements and memCheckInstructions are the memory checkpoint intervals, in statements and VM instructions.
 const (
 	memCheckStatements   = 256
 	memCheckInstructions = 4096
 )
 
-// visitedSet dedups containers by pointer identity during a deep walk and the
-// walk counts an array or object reachable through two or more variables once
-// and ends on a self-referential container.
+// visitedSet dedups containers by pointer identity during a deep walk.
 type visitedSet map[any]struct{}
 
 // DeepSize estimates the bytes held by a PHP value, recursing into

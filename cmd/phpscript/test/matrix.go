@@ -21,18 +21,14 @@ const (
 	matrixSkip
 )
 
-// matrixCell holds one runner's outcome and the detail printed under the row
-// when the run is verbose.
+// matrixCell holds one runner's outcome and the detail printed under a verbose row.
 type matrixCell struct {
 	Runner tests.Runner
 	Status matrixStatus
 	Reason string
 }
 
-// matrixRow is a fixture and its cell per runner, in opts.runners() order.
-// Metrics are the default runtime's: a row has one cost column and three
-// runners and the matrix compares correctness across runners and cost on the
-// runtime the other two measure against. Per-runner cost stays in --json.
+// matrixRow holds one fixture's cell per runner and the default runtime's metrics.
 type matrixRow struct {
 	DisplayPath string
 	Label       string
@@ -66,9 +62,7 @@ func (r matrixRow) Failed() bool {
 	return false
 }
 
-// runMatrix runs every fixture through every runner and reports the number of
-// failed fixtures. It skips a fixture opted out of a runner, or a runner
-// missing from the machine, and counts neither as a failure.
+// runMatrix runs every fixture through every runner and returns the failed-fixture count.
 func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report io.Writer) int {
 	var sinks teeMatrixTable
 	if !opts.JSON && opts.Verbose {
@@ -208,9 +202,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 	return failedCount
 }
 
-// engineOrder lays the accumulated per-runner durations out in report order,
-// and every table and summary line prints them in it. A runner whose
-// fixtures all opted out reports 0ms and stays in the report.
+// engineOrder arranges the runner durations in report order, keeping a runner that measured 0ms.
 func engineOrder(runners []tests.Runner, durations map[tests.Runner]time.Duration) []engineDuration {
 	engines := make([]engineDuration, 0, len(runners))
 	for _, runner := range runners {

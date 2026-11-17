@@ -55,14 +55,7 @@ func (e *RedeclareError) GetCode() int { return 0 }
 // ThrowableClass names Exception, php having no class for a redeclaration.
 func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 
-// declareFunc records a function declaration and refuses a name that is already
-// taken, by an earlier declaration or by a registered binding.
-//
-// Only declarations hoist reaches get here, which is every declaration the
-// runtime honours: a `function` written inside an `if` or a function body is
-// not a statement hoist walks, and executing one is a no-op and there is
-// no earlier declaration to collide with. That is also why an `if (!function_exists('f'))`
-// guard needs no special case here.
+// declareFunc records a declaration and refuses a name an earlier declaration or binding took.
 func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	if previous, ok := rt.funcSites[name]; ok {
 		return &RedeclareError{Name: name, At: site, Previous: previous}
@@ -77,9 +70,7 @@ func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	return nil
 }
 
-// declSite reads the source span a program recorded for a statement. A program
-// a host assembled itself has no spans and the line is simply absent, never
-// wrong.
+// declSite reads the source span a program recorded, the line absent when it holds none.
 func declSite(prog *model.Program, stmt model.Stmt, filename string) FuncSite {
 	return FuncSite{File: filename, Line: prog.SourceSpans[stmt].Start}
 }

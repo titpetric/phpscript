@@ -4,10 +4,7 @@ import (
 	"fmt"
 )
 
-// runKeys are the test block keys a phpscript.yml below the invocation root may
-// not set. Each describes one run of the whole command and no folder of
-// fixtures, and two folders answering differently would leave the run with no
-// answer at all.
+// runKeys are the test keys a suite below the invocation root may not set.
 var runKeys = []string{"parallel", "cache", "skip_php"}
 
 // runKeysOwner completes the sentence that reports a rejected run key.

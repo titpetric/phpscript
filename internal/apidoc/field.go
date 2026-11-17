@@ -15,13 +15,7 @@ type Field struct {
 	Comment []string `json:"comment,omitempty"`
 }
 
-// reflectFields lists the properties a script reads off the Go type a
-// constructor returns, in declaration order, the order `go doc` prints a
-// struct in.
-//
-// Exported fields and no others. Runtime.structField resolves a property read
-// to an exported field and reports an unexported one as absent, and a listing
-// that printed one would name a property no script can read.
+// reflectFields lists the exported properties of a Go type in declaration order.
 func reflectFields(t reflect.Type, classTypes map[reflect.Type]string) []Field {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
@@ -47,8 +41,7 @@ func reflectFields(t reflect.Type, classTypes map[reflect.Type]string) []Field {
 	return fields
 }
 
-// fieldType is the PHP type a property read answers with. A field holding a
-// registered class reports that class, the way a return value does.
+// fieldType returns a field's PHP type, naming a registered class directly.
 func fieldType(t reflect.Type, classTypes map[reflect.Type]string) string {
 	if class, ok := classTypes[t]; ok {
 		return class

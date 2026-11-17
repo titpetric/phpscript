@@ -14,8 +14,7 @@ const (
 	strPadBoth  = 2
 )
 
-// phpStrrev reverses bytes, as PHP's strrev does and a multi-byte character
-// comes out as its bytes in reverse, which is not valid UTF-8.
+// phpStrrev reverses bytes as PHP does; a multi-byte character stops being valid UTF-8.
 func phpStrrev(str string) string {
 	b := []byte(str)
 	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
@@ -24,8 +23,7 @@ func phpStrrev(str string) string {
 	return string(b)
 }
 
-// phpStrSplit returns the chunks as a []string for the reason phpExplode does:
-// the loop allocates exactly that slice and the VM indexes it like any array.
+// phpStrSplit returns the chunks as a []string the VM indexes like any array.
 func phpStrSplit(str string, length ...int64) []string {
 	// PHP 8.2 returns an empty array for an empty subject; older versions
 	// returned a single empty chunk.
@@ -40,9 +38,7 @@ func phpStrSplit(str string, length ...int64) []string {
 	return byteSplit(str, n)
 }
 
-// phpStrPad implements str_pad($string, $length, $pad_string, $pad_type). Go
-// allows one variadic and both optional arguments arrive together: the pad
-// string first, the STR_PAD_* selector second.
+// phpStrPad backs str_pad, taking the pad string then the STR_PAD_* selector as optionals.
 func phpStrPad(str string, length int64, optional ...any) string {
 	pad := " "
 	if len(optional) > 0 {
@@ -78,8 +74,7 @@ func padTo(pad string, n int) string {
 	return whole[:n]
 }
 
-// phpSubstrReplace implements substr_replace($string, $replace, $offset[, $length]).
-// PHP clamps an out-of-range offset here and raises nothing and this does too.
+// phpSubstrReplace backs substr_replace, clamping an out-of-range offset without raising.
 func phpSubstrReplace(str, replace string, offset int64, length ...int64) string {
 	n := int64(len(str))
 	start := offset
@@ -111,8 +106,7 @@ func phpSubstrReplace(str, replace string, offset int64, length ...int64) string
 	return str[:start] + replace + str[end:]
 }
 
-// phpStrReplace implements str_replace where search may be a string or a
-// collection (with a scalar or collection replacement), and subject is a string.
+// phpStrReplace backs str_replace with a string or collection search and replacement.
 func phpStrReplace(search, replace, subject any) (string, error) {
 	out, err := phpval.StringContext(subject)
 	if err != nil {
@@ -183,9 +177,7 @@ func phpImplode(separator, array any) (string, error) {
 	return strings.Join(parts, glue), nil
 }
 
-// phpExplode returns the parts as a []string: strings.Split already allocated
-// exactly that and handing it straight to the VM costs nothing beyond the split
-// itself. The VM indexes, iterates and destructures it like any array.
+// phpExplode returns strings.Split's own []string, which the VM indexes like any array.
 func phpExplode(separator, str string, limit ...int64) []string {
 	parts := strings.Split(str, separator)
 	if len(limit) > 0 && limit[0] > 0 && int64(len(parts)) > limit[0] {

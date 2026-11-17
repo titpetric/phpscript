@@ -74,7 +74,7 @@ class Database implements fmt.Stringer
 }
 
 // TestClassPHPFieldsBeforeFunctions pins the order of the two halves. A reader
-// looking for what a class holds reads it before what it does, which is the
+// looking for what a class holds reads it before the behaviour, which is the
 // order `go doc` prints a Go type in.
 func TestClassPHPFieldsBeforeFunctions(t *testing.T) {
 	t.Parallel()
@@ -140,7 +140,7 @@ class HTTP\Client
 }
 
 // TestClass_Describe covers the description: the godoc of the bound Go type,
-// then the citation of that type and of the interfaces it satisfies. The
+// then the citation of that type and the interfaces it satisfies. The
 // renderer adds no further line.
 func TestClass_Describe(t *testing.T) {
 	t.Parallel()

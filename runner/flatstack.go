@@ -67,9 +67,7 @@ func (h *flatHost) BindFrame(frame flatvm.FrameLocals) { h.frame = frame }
 
 func (h *flatHost) TakeFrame() flatvm.FrameLocals { return h.frame }
 
-// SetGlobal claims whole-variable stores to superglobal names: those bind one
-// shared array per request, which interpreted and bytecode frames alike read
-// back through Lookup. Any other name stays with the storing frame.
+// SetGlobal claims whole-variable stores to superglobal names, other names staying with the frame.
 func (h flatHost) SetGlobal(name string, value any) bool {
 	return h.runtime.auto.Set(name, value)
 }
@@ -78,10 +76,7 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 	return h.runtime.helperGet(&scopeRef{})(receiver, name)
 }
 
-// SetProperty writes an object property, the same way the interpreter does:
-// a PHP object stores the value in its property map, and a Go binding assigns
-// the struct field the name resolves to and `$db->is_readonly = true` sets
-// IsReadonly.
+// SetProperty writes an object property or the struct field the name resolves to.
 func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
 	if object, ok := receiver.(*model.Object); ok {
 		next, err := applyAssignOp(op, object.Props[name], value)
@@ -96,22 +91,16 @@ func (h flatHost) SetProperty(receiver any, name string, value any, op string) e
 	})
 }
 
-// Echo writes through the runtime output stack and not to the base writer,
-// and ob_start captures bytecode output the way it captures interpreted output.
+// Echo writes through the runtime output stack so ob_start captures it.
 func (h flatHost) Echo(value any) error {
 	_, err := io.WriteString(h.runtime.Output(), phpString(value))
 	return err
 }
 
-// Globals returns the table runInterpreted seeds its global scope from and the
-// bytecode engine's top-level frame starts with the same names. Lookup, which
-// every frame reads, answers none of them: a global belongs to the global
-// scope, and resolveVar does not reach one from a function either.
+// Globals returns the table runInterpreted seeds the global scope from.
 func (h flatHost) Globals() map[string]any { return h.runtime.globals }
 
-// Lookup is resolveVar's tail: the superglobals, which every frame sees, and
-// then the constant table. A frame's own names are the engine's slots, and
-// Globals seeds a global into the top-level frame.
+// Lookup answers the superglobals then the constant table, nil when neither matches.
 func (h flatHost) Lookup(name string) any {
 	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value
@@ -119,10 +108,7 @@ func (h flatHost) Lookup(name string) any {
 	return h.runtime.constants[name]
 }
 
-// Constant resolves a bare name: whatever the host knows under it, then the
-// constant table, and an Error when nothing does. PHP 8 raises the same for
-// the same expression, and an unset variable of that spelling stays null.
-// Lookup answers nil where nothing matches; this one raises.
+// Constant resolves a bare name and raises when nothing matches, unlike Lookup.
 func (h flatHost) Constant(name string) (any, error) {
 	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value, nil
@@ -133,8 +119,7 @@ func (h flatHost) Constant(name string) (any, error) {
 	return nil, &UndefinedConstantError{Name: name}
 }
 
-// SetConstant is the write side of Constant: a top-level `const` entry lands
-// in the same table define() writes through Runtime.SetConst.
+// SetConstant writes a top-level const into the table define() uses.
 func (h flatHost) SetConstant(name string, value any) {
 	h.runtime.SetConst(name, value)
 }
@@ -145,10 +130,7 @@ func (h flatHost) Index(base, index any) any { return helperIndex(base, index) }
 
 func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
-// SetEntry implements the by-reference foreach write-back. Only a *model.Array
-// is script-owned storage; a native Go collection a binding returned belongs to
-// the host and this drops the write and reports nothing. Runtime.execForeach
-// takes the same view.
+// SetEntry writes a foreach by-reference entry, dropping a native Go container.
 func (h flatHost) SetEntry(container, key, value any) error {
 	array, ok := container.(*model.Array)
 	if !ok {
@@ -200,18 +182,12 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 	return nil
 }
 
-// MatchCatch answers the bytecode engine's clause selection with the rules the
-// interpreter uses and `catch (Exception $e)` declines a TypeError on both
-// backends and not on one of them.
+// MatchCatch selects a catch clause with the interpreter's rules.
 func (h flatHost) MatchCatch(declaredType string, err error) bool {
 	return h.runtime.matchCatch(declaredType, h.runtime.catchError(err))
 }
 
-// ClassConst reads a class constant, reusing the interpreter's resolution so
-// `Class::class`, autoloading and the per-class cache behave identically on
-// both backends. The compiler already collapsed self/static/parent, but the
-// scope still holds the class: a constant's default expression runs here and
-// may name the class again.
+// ClassConst reads a class constant through the interpreter's resolution.
 func (h flatHost) ClassConst(class, name string) (any, error) {
 	scope := h.runtime.newScope()
 	scope.Set("__class__", h.runtime.boxed(class))
@@ -330,8 +306,7 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 	return result, exported, nil
 }
 
-// MemoryCheckInterval reports how often the VM should poll the memory limit;
-// zero when the options name no limit.
+// MemoryCheckInterval reports how often the VM polls the memory limit, zero for none.
 func (h flatHost) MemoryCheckInterval() int {
 	if h.runtime.opts.MemoryLimit <= 0 {
 		return 0
@@ -347,8 +322,7 @@ func (h flatHost) PopLiveWalker() {
 	h.runtime.vmWalkers = h.runtime.vmWalkers[:len(h.runtime.vmWalkers)-1]
 }
 
-// CheckDeadline answers the engine's per-run deadline check; see
-// runner/runtime_deadline.go for what the two watch flags mean.
+// CheckDeadline answers the engine's per-run deadline check.
 func (h flatHost) CheckDeadline() error {
 	if !h.runtime.watchingDeadline() {
 		return nil
@@ -360,9 +334,7 @@ func (h flatHost) CheckMemory() error {
 	return h.runtime.checkMemory()
 }
 
-// UnsetProperty removes a named property, PHP's unset($obj->prop). Only a
-// PHP object holds removable storage; this passes over anything else, the
-// leniency execUnset applies.
+// UnsetProperty removes a named PHP object property and ignores any other receiver.
 func (h flatHost) UnsetProperty(receiver any, name string) error {
 	if object, ok := receiver.(*model.Object); ok {
 		object.DeleteProp(name)
@@ -370,9 +342,7 @@ func (h flatHost) UnsetProperty(receiver any, name string) error {
 	return nil
 }
 
-// StaticVarBag returns the persistent storage of one `static $x` statement,
-// the same per-node table the interpreter's named functions use and the
-// counts agree even when the two backends run the same program in turn.
+// StaticVarBag returns the per-node storage of one static statement, seeded on first use.
 func (h flatHost) StaticVarBag(node *model.StaticVar) (map[string]any, bool) {
 	bag, seeded := h.runtime.funcStatics[node]
 	if !seeded {

@@ -72,8 +72,7 @@ func fuseProgram(p *Program) {
 	p.code = fused
 }
 
-// fuseAt returns the instruction to emit for position i and how many source
-// instructions it consumed.
+// fuseAt returns the fused instruction for position i and the source width it consumed.
 func fuseAt(p *Program, protected map[int]bool, i int) (instruction, int) {
 	code := p.code
 	inst := code[i]
@@ -115,10 +114,7 @@ func fuseAt(p *Program, protected map[int]bool, i int) (instruction, int) {
 	return fused, width
 }
 
-// protectedPCs collects every instruction index recorded anywhere as a pc:
-// jump targets, try boundaries, catch clause targets and function entries.
-// A protected index must survive as its own instruction so the reference
-// still lands on it.
+// protectedPCs collects every recorded pc index, which must survive as its own instruction.
 func protectedPCs(p *Program) map[int]bool {
 	protected := map[int]bool{}
 	for _, inst := range p.code {

@@ -20,12 +20,7 @@ import (
 // along with everything it captured. Each collection costs one allocation, paid
 // again per row of a list of rows.
 
-// appendJSONValue appends one value's encoding: the scalar and collection
-// shapes a handler's response holds directly, and json.Marshal for the
-// rest, floats included, whose spelling is encoding/json's own.
-//
-// The collections append in place and a document reaches the stream without
-// building the jsonEncodeValue tree first and walking it by reflection after.
+// appendJSONValue appends one value's encoding, deferring unhandled shapes to json.Marshal.
 func appendJSONValue(buf []byte, v any) ([]byte, error) {
 	switch x := v.(type) {
 	case nil:
@@ -101,13 +96,7 @@ func appendJSONArrayList(a *model.Array, buf []byte) ([]byte, error) {
 	return append(buf, ']'), nil
 }
 
-// appendJSONArrayPairs appends a keyed PHP array as a JSON object, in the
-// insertion order, which is the order the script built it and the order php
-// writes it in.
-//
-// Keys and no Range, because a keyed array answers its insertion order slice
-// itself and allocates nothing for it, and a JSON response consists of keyed
-// arrays.
+// appendJSONArrayPairs appends a keyed PHP array as a JSON object in insertion order.
 func appendJSONArrayPairs(a *model.Array, buf []byte) ([]byte, error) {
 	keys := a.Keys()
 	buf = slices.Grow(buf, len(keys)*24+2)
@@ -129,8 +118,7 @@ func appendJSONArrayPairs(a *model.Array, buf []byte) ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONObject appends an object's properties as a JSON object, in
-// declaration order.
+// appendJSONObject appends an object's properties as a JSON object in declaration order.
 func appendJSONObject(o *model.Object, buf []byte) ([]byte, error) {
 	buf = slices.Grow(buf, o.Len()*24+2)
 	buf = append(buf, '{')
@@ -154,8 +142,7 @@ func appendJSONObject(o *model.Object, buf []byte) ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONCollection appends a request data view as a JSON object, keyed by
-// name in the order the view reports.
+// appendJSONCollection appends a request data view as a JSON object in the view's order.
 func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 	buf = slices.Grow(buf, c.Len()*24+2)
 	buf = append(buf, '{')
@@ -179,10 +166,7 @@ func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONString appends a string's encoding. It takes the string itself and
-// no any, because an any parameter boxes the key. A string does not fit an
-// interface word. Each key of every object a response holds costs one
-// allocation.
+// appendJSONString appends a string's encoding, taking a string so a key is not boxed.
 func appendJSONString(buf []byte, s string) ([]byte, error) {
 	if jsonSafe(s) {
 		buf = append(buf, '"')
@@ -196,9 +180,7 @@ func appendJSONString(buf []byte, s string) ([]byte, error) {
 	return append(buf, encoded...), nil
 }
 
-// jsonSafe reports a string encoding/json writes byte for byte: printable
-// ASCII with the quote, the backslash and the three characters the default
-// HTML escaper rewrites left out.
+// jsonSafe reports whether json.Marshal writes s byte for byte, with nothing to escape.
 func jsonSafe(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]

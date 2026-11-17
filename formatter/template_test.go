@@ -40,7 +40,7 @@ func TestAlignTemplateNestsFunctionAndTags(t *testing.T) {
 		"}",
 		"",
 	}, "\n")
-	if got := alignTemplate(in); got != want {
+	if got := alignTemplate(in, false); got != want {
 		t.Fatalf("alignTemplate:\n%s\nwant:\n%s", got, want)
 	}
 }
@@ -71,7 +71,7 @@ func TestAlignTemplateKeepsUnknownMarkupFlat(t *testing.T) {
 		"}",
 		"",
 	}, "\n")
-	if got := alignTemplate(in); got != want {
+	if got := alignTemplate(in, false); got != want {
 		t.Fatalf("alignTemplate:\n%s\nwant:\n%s", got, want)
 	}
 }
@@ -81,7 +81,7 @@ func TestAlignTemplateKeepsUnknownMarkupFlat(t *testing.T) {
 func TestAlignTemplateKeepsContents(t *testing.T) {
 	t.Parallel()
 	in := "<?php\nfunction f() {\n  ?>  \n<div>\ntext  with  spaces\n</div>\n<?php\n}\n"
-	out := alignTemplate(in)
+	out := alignTemplate(in, false)
 	inLines := strings.Split(in, "\n")
 	outLines := strings.Split(out, "\n")
 	if len(inLines) != len(outLines) {
@@ -94,13 +94,33 @@ func TestAlignTemplateKeepsContents(t *testing.T) {
 	}
 }
 
+// TestAlignTemplateDropsTrailingBlanks covers a file written with blank lines at the end.
+func TestAlignTemplateDropsTrailingBlanks(t *testing.T) {
+	t.Parallel()
+	in := "<?php\nfunction f() {\n\t?>\n\t<div>x</div>\n\t<?php\n}\n\n\n"
+	want := "<?php\nfunction f() {\n\t?>\n\t<div>x</div>\n\t<?php\n}\n"
+	if got := alignTemplate(in, false); got != want {
+		t.Fatalf("alignTemplate kept trailing blanks:\n%q\nwant:\n%q", got, want)
+	}
+}
+
+// TestAlignTemplateGoStyle covers the go runtime spelling on a code line.
+func TestAlignTemplateGoStyle(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n$r->URL->Path;\n$server = new Server;\n\n$server->run();\n"
+	want := "<?php\n$r->url->path\n$server = new Server\n$server->run()\n"
+	if got := alignTemplate(in, true); got != want {
+		t.Fatalf("alignTemplate:\n%q\nwant:\n%q", got, want)
+	}
+}
+
 // TestAlignTemplateIdempotent covers a second pass: each indent comes from
 // the source. Aligning an aligned file changes nothing.
 func TestAlignTemplateIdempotent(t *testing.T) {
 	t.Parallel()
 	in := "<?php\nfunction f() {\n\t?>\n\t<ul>\n\t<?php if ($ok) { ?>\n\t<li>x</li>\n\t<?php } ?>\n\t</ul>\n\t<?php\n}\n"
-	once := alignTemplate(in)
-	if twice := alignTemplate(once); twice != once {
+	once := alignTemplate(in, false)
+	if twice := alignTemplate(once, false); twice != once {
 		t.Fatalf("aligning twice changed the file:\n%s\nwant:\n%s", twice, once)
 	}
 }

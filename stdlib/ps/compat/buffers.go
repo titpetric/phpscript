@@ -7,9 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// buffers is one runtime's stack of output buffering levels. The runtime holds
-// the same writers as its output redirections; this side keeps them typed so
-// ob_get_contents can read their contents back, the half PHP scripts use.
+// buffers is one runtime's stack of output buffering levels, typed so ob_get_contents can read them.
 type buffers struct {
 	rt    *runner.Runtime
 	stack []*strings.Builder
@@ -29,17 +27,13 @@ func (b *buffers) push() {
 // level reports how many levels are active, backing ob_get_level.
 func (b *buffers) level() int { return len(b.stack) }
 
-// reset drops every level a program left open. It runs when the runtime is
-// reset between programs: the runtime drops its side of each redirection
-// there, and a level still held here would answer ob_get_level and
-// ob_get_contents with the previous program's state.
+// reset drops every buffering level a program left open, the runtime resetting its side too.
 func (b *buffers) reset() {
 	clear(b.stack)
 	b.stack = b.stack[:0]
 }
 
-// contents returns the innermost buffer without ending it, backing
-// ob_get_contents. The second result is false when no buffer is active.
+// contents returns the innermost buffer without ending it, false with no buffer active.
 func (b *buffers) contents() (string, bool) {
 	if len(b.stack) == 0 {
 		return "", false
@@ -47,10 +41,7 @@ func (b *buffers) contents() (string, bool) {
 	return b.stack[len(b.stack)-1].String(), true
 }
 
-// pop ends the innermost level and returns its contents. When flush is true it
-// writes the contents to the enclosing level, or to the real output, the way
-// ob_end_flush does; otherwise it drops them, as ob_end_clean does. The second
-// result is false when no buffer is active.
+// pop ends the innermost level and returns its contents, writing them on when flush is true.
 func (b *buffers) pop(flush bool) (string, bool) {
 	if len(b.stack) == 0 {
 		return "", false

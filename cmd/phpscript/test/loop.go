@@ -10,8 +10,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// fixtureMetrics is the cost of running a fixture, kept apart from the outcome
-// so a matrix row can hold it too.
+// fixtureMetrics holds the measured cost of a fixture, kept apart from its outcome.
 type fixtureMetrics struct {
 	Runs        int
 	Total       time.Duration
@@ -23,9 +22,7 @@ type fixtureMetrics struct {
 	GCRuns      uint32
 }
 
-// fixtureRun aggregates the outcome of one fixture over one or more runs.
-// DisplayPath is the full path, which a failure line and the JSON report name;
-// Label is the basename, which a per-folder table shows.
+// fixtureRun aggregates one fixture's outcome over its runs, with DisplayPath for reports and Label for tables.
 type fixtureRun struct {
 	Result      *tests.TestResult
 	DisplayPath string
@@ -134,11 +131,7 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, o
 	return runs
 }
 
-// gcCycles returns the number of completed GC cycles.
-//
-// runtime/metrics and not runtime.MemStats: NumGC is only reachable through
-// ReadMemStats, which stops the world, and runFixtureLoop reads it twice per
-// fixture per runner. The metrics reader takes a lock and copies a counter.
+// gcCycles returns completed GC cycles through runtime/metrics, which does not stop the world.
 func gcCycles() uint64 {
 	sample := [1]metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
 	metrics.Read(sample[:])

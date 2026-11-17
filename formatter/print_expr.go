@@ -54,7 +54,7 @@ func (p *printer) expr(e model.Expr) string {
 			}
 			return p.expr(n.Base) + "->{" + p.expr(n.NameExpr) + "}"
 		}
-		return p.expr(n.Base) + "->" + n.Name
+		return p.expr(n.Base) + "->" + p.member(n.Name)
 	case *model.Call:
 		name := n.Name
 		if n.Fallback != "" {
@@ -70,7 +70,7 @@ func (p *printer) expr(e model.Expr) string {
 		if n.MethodExpr != nil {
 			return p.expr(n.Base) + "->" + p.expr(n.MethodExpr) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 		}
-		return p.expr(n.Base) + "->" + n.Method + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
+		return p.expr(n.Base) + "->" + p.member(n.Method) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.New:
 		// The parser names an anonymous class itself; the name is not the
 		// source spelling. Printing it would rewrite a working file into one
@@ -193,9 +193,7 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	return b.String()
 }
 
-// callArgs prints the argument list of a call, which for PHP 8.1's first-class
-// callable syntax is the literal ellipsis. The node holds the spelling and
-// no desugared form and the printer writes `greet(...)` back as itself.
+// callArgs prints the argument list, a literal ellipsis for a first-class callable.
 func (p *printer) callArgs(firstClass bool, args []model.Expr) string {
 	if firstClass {
 		return "..."
@@ -344,10 +342,7 @@ func (p *printer) lit(v any) string {
 	}
 }
 
-// phpQuote spells s as a PHP string literal, the fallback for a literal a
-// caller built without parsing, where there is no source spelling to follow:
-// it picks single quotes where they avoid escaping, because a double-quoted
-// literal would also have to escape `$` to keep PHP from interpolating it.
+// phpQuote spells s as a PHP string literal, single-quoted where that avoids escaping.
 func phpQuote(s string) string {
 	if !strings.ContainsAny(s, "'\\") && strings.ContainsAny(s, "\"$") && !strings.ContainsAny(s, "\n\r\t") {
 		return "'" + s + "'"

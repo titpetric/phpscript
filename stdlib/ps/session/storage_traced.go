@@ -9,12 +9,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// tracedStorage records a span per session store operation. It decorates
-// whichever backend a script constructed and a single wrapper instruments
-// memory and disk alike, and the trace shows which one a request paid for.
-//
-// The span never records the session ID. That ID is the credential in the
-// cookie, and the debug front end is a place it must not turn up.
+// tracedStorage records a span per session store operation without ever recording the session ID.
 type tracedStorage struct {
 	storage Storage
 	backend string
@@ -22,9 +17,7 @@ type tracedStorage struct {
 
 var _ Storage = (*tracedStorage)(nil)
 
-// traceStorage wraps storage for recording. It returns an already traced
-// storage unchanged; a manager built from another manager's storage passes
-// one in.
+// traceStorage wraps storage for recording, returning an already traced storage unchanged.
 func traceStorage(storage Storage) Storage {
 	if _, ok := storage.(*tracedStorage); ok {
 		return storage
@@ -32,13 +25,7 @@ func traceStorage(storage Storage) Storage {
 	return &tracedStorage{storage: storage, backend: backendName(storage)}
 }
 
-// backendName is what the trace calls the storage behind the wrapper.
-//
-// Every span records it, because the two backends promise different things of
-// a session: a disk session outlives the worker and every worker reads it,
-// where a memory session does neither. A manager that fell back to memory then
-// says so on each operation, and not in the log line alone (session.go,
-// defaultStorage).
+// backendName names the storage behind the wrapper as disk, memory or custom.
 func backendName(storage Storage) string {
 	switch storage.(type) {
 	case *StorageDisk:
@@ -105,9 +92,7 @@ func (s *tracedStorage) DeleteByUser(ctx context.Context, userID string) (int, e
 	return taken, err
 }
 
-// missing reports whether an error means the session does not exist. An expired
-// or never-created session is what a logged out visitor looks like and the span
-// records a miss and the trace no failure.
+// missing reports whether an error means the session does not exist.
 func missing(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)
 }

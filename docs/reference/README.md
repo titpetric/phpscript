@@ -250,6 +250,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Output](extensions/go-runtime.md#output)
   - [Conversions](extensions/go-runtime.md#conversions)
   - [Typed values](extensions/go-runtime.md#typed-values)
+  - [Composite literals](extensions/go-runtime.md#composite-literals)
+  - [Pointers](extensions/go-runtime.md#pointers)
   - [Slices](extensions/go-runtime.md#slices)
   - [No channels](extensions/go-runtime.md#no-channels)
 - [Go imports](extensions/go-imports.md) - The import statement a file that bound the go runtime may write, and the packages of go's standard library it reaches.
@@ -272,6 +274,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Runtime\Go\Time` (`time`)](extensions/go-imports.md#runtimegotime-time)
     - [`Runtime\Go`](extensions/go-imports.md#runtimego)
     - [`Runtime\PS\Compat`](extensions/go-imports.md#runtimepscompat)
+    - [`Runtime\PS\HTTP\SAPI`](extensions/go-imports.md#runtimepshttpsapi)
   - [Writing a package](extensions/go-imports.md#writing-a-package)
     - [The types come out of the signatures](extensions/go-imports.md#the-types-come-out-of-the-signatures)
     - [A package this build does not link](extensions/go-imports.md#a-package-this-build-does-not-link)

@@ -13,13 +13,7 @@ import (
 // RuntimeFunc customizes a PHP runtime before an annotated PHP file executes.
 type RuntimeFunc func(*runner.Runtime)
 
-// newRuntime builds the runtime one annotated startup or scheduled job
-// executes in, under the "cli" sapi. A routed endpoint takes a pooled runtime
-// from its handler instead; see handler.buildRuntime.
-//
-// The register hooks run once the runtime holds the standard library, ahead of
-// the caller's RuntimeFunc options and an option can always wrap what came
-// before it, a runtime context value in particular.
+// newRuntime builds the job runtime, calling register and the configured hooks after the standard library.
 func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi string, register ...RuntimeFunc) *runner.Runtime {
 	options := c.runnerOptions
 	options.RootFS = root
@@ -48,12 +42,7 @@ func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi 
 	return rt
 }
 
-// cover installs a collector on rt and returns the function that folds what it
-// counted into the process aggregator. With no aggregator both do nothing.
-//
-// The collector is per run because it keys statements by the AST node the
-// parser produced: one kept across runs would grow with every re-parse, while
-// the aggregator holds one entry per statement range at any number of hits.
+// cover installs a per-run collector and returns the function that adds its counts to the aggregator.
 func (c config) cover(rt *runner.Runtime) func() {
 	if c.coverage == nil {
 		return func() {}

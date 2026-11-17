@@ -20,20 +20,7 @@ type Array struct {
 	nextID int64
 }
 
-// noIntKey is nextID's value for a map-mode array that has never held an
-// integer key, which PHP distinguishes from one whose next index is 0.
-//
-// PHP 8.3 changed the rule: the first integer key inserted sets the next index
-// to key+1 whatever its sign, and later keys only raise it and [-5 => a] then
-// $a[] lands on -4 where PHP 7 landed on 0. An array that never held one
-// appends at 0. Those two states are both "nextID is not above any key" and
-// they need telling apart, and math.MinInt64 is below every key a Set can see:
-// the sentinel costs no field, and the `i >= a.nextID` comparison that raises
-// the index reads it correctly without a special case.
-//
-// List mode does not use it. There nextID is len(list) by construction, and an
-// array in list mode has held every integer key from 0 up and promote keeps
-// the sentinel only when it promotes an empty list.
+// noIntKey is nextID's value for a map-mode array that never held an integer key.
 const noIntKey = math.MinInt64
 
 // NewArray returns an empty ordered array.
@@ -66,15 +53,7 @@ func (a *Array) Reset() {
 // isList reports whether the array is still in list mode.
 func (a *Array) isList() bool { return a.values == nil }
 
-// promote switches the array from list mode to map mode, materialising the
-// implicit integer keys. No other code creates the map or the key slice.
-//
-// The empty case reuses the list's backing array as the key slice and a
-// presized array whose first key is a string (json_decode of an object, the
-// sorted introspection listings) still costs exactly the map. A non-empty list
-// gets a fresh key slice by decision: a script may promote an array from inside
-// its own foreach, and Range is walking the backing array we would otherwise
-// be overwriting with keys.
+// promote switches list mode to map mode, materialising the implicit integer keys.
 func (a *Array) promote() {
 	n := len(a.list)
 	size := n

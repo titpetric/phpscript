@@ -225,9 +225,7 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 	return p.stmts.take(mark), nil
 }
 
-// pushStmt appends s to the statement list the parser collects, as the one or
-// more statements it lowers to. Every statement list passes through it so that
-// a lowering applies wherever the statement sits.
+// pushStmt appends s to the statement list, as the one or more statements it lowers to.
 func (p *parser) pushStmt(s model.Stmt) {
 	if split := p.lowerChainedAlloc(s); split != nil {
 		for _, one := range split {
@@ -238,10 +236,7 @@ func (p *parser) pushStmt(s model.Stmt) {
 	p.stmts.push(s)
 }
 
-// isPreambleStmt reports whether s is a file-preamble statement: an import or
-// a directive and not code. The parser keeps both in the AST so the formatter
-// can print them back, and neither counts as the "first statement" that closes
-// the window for a `namespace` declaration, nor as code in a namespaced file.
+// isPreambleStmt reports whether s is an import or a directive and not code.
 func isPreambleStmt(s model.Stmt) bool {
 	switch n := s.(type) {
 	case *model.Use:
@@ -400,12 +395,7 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 	return nil, nil
 }
 
-// parseUse records an import: `use A\B\C;` or `use A\B\C as D;`. Imports are a
-// compile-time alias table, where the short name (or the alias) resolves to
-// the fully-qualified one and the statement itself produces no AST node.
-//
-// `use function f;` and `use const C;` name symbols and not classes; both
-// alias the same way and the leading keyword is simply consumed.
+// parseUse records an import, aliasing the short name or `as` alias to the full name.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
 	kind := ""
@@ -446,9 +436,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 	return &model.Use{Kind: kind, Imports: imports}, nil
 }
 
-// aliasSpelling returns the alias to print for an import, which is empty when
-// the alias is just the short name of the path (`use A\B;` binds `B` with no
-// `as` clause in the source).
+// aliasSpelling returns the alias to print for an import, empty when alias matches the short name.
 func aliasSpelling(path, alias string) string {
 	if i := strings.LastIndexByte(path, '\\'); i >= 0 {
 		path = path[i+1:]
@@ -459,9 +447,7 @@ func aliasSpelling(path, alias string) string {
 	return alias
 }
 
-// parseDeclare parses `declare(directive=value, ...)`. The runtime has one set
-// of semantics, and neither `strict_types` nor `ticks` varies it and the
-// parser records the directives for printing and otherwise ignores them.
+// parseDeclare parses `declare(directive=value, ...)` and records the directives for printing only.
 func (p *parser) parseDeclare() (model.Stmt, error) {
 	p.next() // declare
 	if err := p.eatOp("("); err != nil {
@@ -576,8 +562,7 @@ func (p *parser) parseStaticVar() (model.Stmt, error) {
 	return &model.StaticVar{Vars: vars}, nil
 }
 
-// parseQualifiedName consumes Ident (\\ Ident)*. With leading set, an initial
-// namespace separator marks the name as fully qualified.
+// parseQualifiedName consumes a name and reports whether a leading separator made it absolute.
 func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
 	absolute := false
 	if leading && p.isOp("\\") {
@@ -765,8 +750,7 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 	return node, nil
 }
 
-// parseForeachTarget parses one `as` target and reports whether it spells
-// `&$v`, which binds the element itself and never a copy of it.
+// parseForeachTarget parses one `as` target and reports whether it spells `&$v`.
 func (p *parser) parseForeachTarget() (model.Expr, bool, error) {
 	byRef := false
 	if p.isOp("&") {
@@ -860,9 +844,13 @@ func (p *parser) parseWhile() (model.Stmt, error) {
 }
 
 func (p *parser) parseReturn() (model.Stmt, error) {
-	p.next() // return
+	ret := p.next() // return
 	if p.isOp(";") {
 		p.next()
+		return &model.Return{}, nil
+	}
+	// go's newline ends a bare return, and the go runtime writes no semicolon.
+	if p.goRuntime && (p.isOp("}") || p.cur().kind == tEOF || p.cur().line > ret.line) {
 		return &model.Return{}, nil
 	}
 	e, err := p.parseExpr()
@@ -1109,10 +1097,7 @@ func (p *parser) parseParams() ([]model.Param, error) {
 	return p.params.take(mark), p.eatOp(")")
 }
 
-// parseParamDecoration consumes what may precede a parameter name: the
-// visibility and readonly modifiers of a promoted constructor property, a type
-// hint, `&` for a reference and `...` for a variadic. Each part lands on the
-// parameter so the formatter can print the declaration back unchanged.
+// parseParamDecoration consumes a parameter's modifiers, type hint, `&` and `...` onto pr.
 func (p *parser) parseParamDecoration(pr *model.Param) {
 	var mods []string
 	for p.isKw("public", "private", "protected", "readonly") {
@@ -1131,13 +1116,7 @@ func (p *parser) parseParamDecoration(pr *model.Param) {
 	}
 }
 
-// parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, `A|B`
-// unions and the `[]T` a file that imported the go runtime may write, and
-// returns its spelling. It stops at the first token that cannot continue a type
-// and a parameter list with no hints costs one comparison.
-//
-// The runtime ignores types, but the formatter rewrites files in place and a
-// type it cannot see is a type it deletes.
+// parseTypeHint consumes an optional type hint and returns its spelling, ignored by the runtime.
 func (p *parser) parseTypeHint() string {
 	var b strings.Builder
 	take := func() {
@@ -1190,8 +1169,7 @@ func (p *parser) parseTypeHint() string {
 	}
 }
 
-// parseReturnType consumes a `: Type` return declaration, written between a
-// parameter list and its body, and returns the type spelling.
+// parseReturnType consumes a `: Type` declaration and returns the type spelling.
 func (p *parser) parseReturnType() string {
 	if !p.isOp(":") {
 		return ""
@@ -1200,17 +1178,14 @@ func (p *parser) parseReturnType() string {
 	return p.parseTypeHint()
 }
 
-// classModifiers are the keywords that may precede a `class` declaration. PHP
-// accepts them in any order and parseModifiedClass collects them in a loop up
-// to the class keyword and never matches a fixed prefix.
+// classModifiers are the keywords that may precede a `class` declaration, in any order.
 type classModifiers struct {
 	abstract bool
 	final    bool
 	readonly bool
 }
 
-// classFollowsModifiers reports whether the run of modifier keywords starting
-// at the cursor terminates in `class`.
+// classFollowsModifiers reports whether the modifier run at the cursor ends in `class`.
 func (p *parser) classFollowsModifiers() bool {
 	for n := 0; ; n++ {
 		t := p.peek(n)
@@ -1227,9 +1202,7 @@ func (p *parser) classFollowsModifiers() bool {
 	}
 }
 
-// parseModifiedClass consumes `abstract`/`final`/`readonly` in any order and
-// the `class` declaration they apply to. It records the modifiers on the AST
-// so the formatter can print them back; the runtime enforces none of them.
+// parseModifiedClass consumes the modifiers and the `class` declaration they apply to.
 func (p *parser) parseModifiedClass() (model.Stmt, error) {
 	var mods classModifiers
 	line := p.cur().line
@@ -1258,12 +1231,7 @@ func (p *parser) parseModifiedClass() (model.Stmt, error) {
 	return p.parseClass(mods)
 }
 
-// parseClassHeritage consumes `extends Name` and `implements A, B` and records
-// the names on cd. Recording is all it does: the runtime has no inheritance
-// and a parent contributes no members. The runtime checks no interface
-// either - modelutil.CheckInterfaceContracts does that for the linter. The parser
-// keeps the names because the formatter rewrites files in place and would
-// otherwise drop them.
+// parseClassHeritage records `extends` and `implements` names for printing, as the runtime reads neither.
 func (p *parser) parseClassHeritage(cd *model.ClassDecl) error {
 	if p.isKw("extends") {
 		p.next()
@@ -1310,9 +1278,7 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	return cd, p.parseClassBody(cd)
 }
 
-// parseClassBody consumes `{ ... }` into cd: constants, properties with their
-// modifiers and types, statics, and methods. The named and the anonymous form
-// both call it and differ only in the header above it.
+// parseClassBody consumes `{ ... }` into cd: constants, properties, statics and methods.
 func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 	wasInClass := p.inClass
 	p.inClass = true
@@ -1408,13 +1374,7 @@ func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 	return p.eatOp("}")
 }
 
-// parseInterface consumes `interface Name [extends A, B] { ... }`.
-//
-// The body holds method signatures with no body, class constants, and the
-// `static` spelling of a signature. It holds no property, because an interface
-// declares no storage, and no method body, because it declares no behaviour:
-// what it declares is a list of names a class saying `implements` must declare
-// itself. See docs/design.md.
+// parseInterface consumes `interface Name [extends A, B] { ... }` of signatures and constants only.
 func (p *parser) parseInterface() (model.Stmt, error) {
 	p.next() // interface
 	if p.cur().kind != tIdent {
@@ -1479,9 +1439,7 @@ func (p *parser) parseInterface() (model.Stmt, error) {
 	return id, p.eatOp("}")
 }
 
-// parseSignature consumes `function name(params): type;`, a declaration with
-// no body. An interface member has that shape; an abstract method in a class
-// has it too and adds the keyword.
+// parseSignature consumes `function name(params): type;`, a declaration with no body.
 func (p *parser) parseSignature(visibility string, isStatic bool) (*model.FuncDecl, error) {
 	p.next() // function
 	if p.cur().kind != tIdent {
@@ -1545,8 +1503,7 @@ func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.F
 	return fd, nil
 }
 
-// setFieldSpans records the source lines a property declaration occupies. One
-// declaration can define two or more properties (`var $a, $b;`) that share it.
+// setFieldSpans records the source lines a declaration occupies on each of its properties.
 func (p *parser) setFieldSpans(fields []model.Field, start int) {
 	span := model.SourceSpan{Start: start, End: p.toks[p.i-1].line}
 	for i := range fields {
@@ -1615,8 +1572,7 @@ func (p *parser) parseExprStmt() (model.Stmt, error) {
 	return s, nil
 }
 
-// parseSimpleStmt parses an assignment or expression statement WITHOUT consuming
-// a terminator (used in for(;;) clauses too). May return nil for empty.
+// parseSimpleStmt parses an assignment or expression statement without a terminator, nil when empty.
 func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 	if p.isOp(";") || p.isOp(")") {
 		return nil, nil
@@ -1633,28 +1589,7 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 	return p.newExprStmt(lhs), nil
 }
 
-// lowerChainedAlloc rewrites `$a = $b = array(...)` into one assignment per
-// name, each with its own copy of the literal, and returns nil for every other
-// statement.
-//
-// PHP arrays are values and that statement leaves each name holding a separate
-// array; phpscript arrays are handles and binding the one array the chain
-// builds to both names would let a later write through either show through the
-// other. The literal describes a fresh array and names no existing one and the
-// fix is one array per name, what PHP's copy amounts to here. The statements
-// share the literal node and never copy it: an ArrayLit builds a new array
-// every time it runs and one node still produces one array per assignment.
-//
-// The rewrite leaves a chain alone unless it ends in a literal that can run
-// more than once without the program noticing. `$a = $b = array(next($rows))`
-// must keep sharing, because splitting it would advance the pointer twice; so
-// must `$a = $b = new Database`, where PHP shares the object as well and the
-// two names reach one connection. Those are what `phpscript lint` reports;
-// see docs/reference/types/value-semantics.md.
-//
-// A `for` clause is not lowered either: model.For holds one statement for its
-// init and one for its post and there is nowhere to put the second assignment.
-// The chain keeps its old meaning there and the lint rule reports it.
+// lowerChainedAlloc splits `$a = $b = array(...)` into one assignment per name.
 func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 	outer, ok := s.(*model.Assign)
 	if !ok || outer.Op != "=" {
@@ -1694,16 +1629,7 @@ func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 	return append(out, outer)
 }
 
-// repeatableExpr reports whether running e a second time always produces the
-// same value and no side effect and one literal node can take the place of
-// the one array per name a chained assignment would otherwise build.
-//
-// The walk is a whitelist: it rejects a call, a `new`, a closure, an assignment
-// or an increment, because a second run would repeat it, and rejects anything
-// it does not recognise, because nobody has thought that case through. It
-// accepts reading a variable, a constant, an element or a property; none of
-// those can run script code, because phpscript has no `__get` and no
-// overloaded index (docs/design.md).
+// repeatableExpr reports whether running e again produces the same value with no side effect.
 func repeatableExpr(e model.Expr) bool {
 	switch n := e.(type) {
 	case nil:
@@ -1773,9 +1699,7 @@ func (p *parser) optSemi() {
 	}
 }
 
-// numLit parses an int/float token into a literal value. The underscore digit
-// separator is not part of the value, and base 0 covers the prefixes PHP and
-// Go spell the same way: 0x, 0b, 0o, and a leading zero for octal.
+// numLit parses an int or float token, dropping underscore separators and accepting base prefixes.
 func numLit(t token) (any, error) {
 	val := t.val
 	if strings.ContainsRune(val, '_') {

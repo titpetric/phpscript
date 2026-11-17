@@ -27,8 +27,7 @@ type compiledExpr struct {
 	closureSlots map[string]int
 }
 
-// newDirectCompiledExpr adapts a compiled expression to the binding lists
-// Eval iterates; see ident.go for the identifier spelling.
+// newDirectCompiledExpr adapts a compiled expression to the lists Eval iterates.
 func newDirectCompiledExpr(dc *expr.Compiled) *compiledExpr {
 	n := len(dc.Vars)
 	buf := make([]string, 2*n)

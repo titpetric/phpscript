@@ -93,7 +93,7 @@ tasks:
       - task: mdox:fmt
 
   test:phpscript:matrix:
-    tty: true # enable ansi
+    tty: true
     passthru: true
     env:
       include: .env.testing
@@ -102,7 +102,7 @@ tasks:
 
   gen:fixtures:
     desc: "Generate docs/test-fixtures.md from a matrix run of the whole suite"
-    tty: true # enable ansi
+    tty: true
     passthru: true
     env:
       include: .env.testing
@@ -243,9 +243,6 @@ tasks:
       - task: release:publish
       - task: release:docs
 
-  # The shared release skill builds through docker and names one tag. These two
-  # read git: every tag with no release, built from its own source with go
-  # build alone. scripts/release.sh --help states the flags.
   release:notes:
     desc: "Write build/release-notes/<tag>.md for every tag, the summary from claude"
     passthru: true

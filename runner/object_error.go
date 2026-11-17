@@ -4,13 +4,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// objectError holds an instance of a declared class that a script threw.
-//
-// An object is not an error and throwing one needs a wrapper to travel through
-// the same path a built-in throwable takes. The wrapper records the one class
-// the object declares, the name a clause filters on and what
-// get_class() reports. It records no other class: a class declaring `extends` is
-// still only its own class here, because there is no inheritance.
+// objectError holds a thrown declared-class instance and records its one class.
 type objectError struct {
 	object *model.Object
 }
@@ -43,12 +37,10 @@ func (e *objectError) ThrowableClass() string {
 	return e.object.Class.Name
 }
 
-// Value returns the object a catch clause binds and a script gets back what it
-// threw and never the wrapper.
+// Value returns the thrown object a catch clause binds, never the wrapper.
 func (e *objectError) Value() any { return e.object }
 
-// catchValue returns what a catch clause binds for err: the object for a thrown
-// instance, and the error itself for everything else.
+// catchValue returns a thrown instance's object, and err itself for everything else.
 func catchValue(err error) any {
 	if oe, ok := err.(*objectError); ok {
 		return oe.Value()

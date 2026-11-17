@@ -19,8 +19,7 @@ type Comment struct {
 	OwnLine bool
 }
 
-// flushComments writes out every comment the author placed above line. A line
-// of zero writes out the rest of them, ending the file.
+// flushComments writes every comment above line, or the rest when line is zero.
 func (p *printer) flushComments(line int) {
 	for p.nextComment < len(p.comments) {
 		c := p.comments[p.nextComment]
@@ -32,8 +31,7 @@ func (p *printer) flushComments(line int) {
 	}
 }
 
-// trailingComment appends the comment written after the code on line, if there
-// is one, to the line just printed.
+// trailingComment appends a comment written after the code on line to that line.
 func (p *printer) trailingComment(line int) {
 	if line <= 0 || p.nextComment >= len(p.comments) {
 		return
@@ -59,18 +57,14 @@ func (p *printer) appendToLine(text string) {
 	p.buf.WriteByte('\n')
 }
 
-// blankFor writes the blank line an author left above the line the printer is
-// about to emit. It writes nothing for the first line of a block, or for a
-// comment belonging to a statement the printer already emitted.
+// blankFor writes the blank line the author left above line, none at the start of a block.
 func (p *printer) blankFor(line int) {
 	if p.lastLine > 0 && line > p.lastLine+1 {
 		p.blank()
 	}
 }
 
-// comment writes one comment at the current indent. The continuation lines of
-// a block comment are re-indented so that the leading asterisks stay under the
-// opening one.
+// comment writes one comment at the current indent, re-indenting a block comment's asterisks.
 func (p *printer) comment(c Comment) {
 	p.blankFor(c.Line)
 	lines := strings.Split(strings.ReplaceAll(c.Text, "\r\n", "\n"), "\n")
@@ -117,8 +111,7 @@ func CollectComments(src string) []Comment {
 	return out
 }
 
-// trimOpenTag returns what precedes a comment on its own line, with an open
-// tag removed: a comment written directly after `<?php` still stands alone.
+// trimOpenTag returns the prefix before a comment, with an open tag removed.
 func trimOpenTag(prefix string) string {
 	trimmed := strings.TrimSpace(prefix)
 	for _, tag := range []string{"<?php", "<?=", "<?"} {

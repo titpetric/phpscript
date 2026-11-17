@@ -6,16 +6,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerStreamReads installs the read half of the handle API. fopen() already
-// returns the handle these take, and fwrite() and stream_get_contents() already
-// take one and these cover every way of reading a handle short of reading it
-// whole at once.
-//
-// None of them buffers. A buffered reader would read further than the script
-// named, which fseek() and ftell() would then disagree with and fgets()
-// walks the handle a byte at a time instead. That is one syscall per byte on a
-// host file: reading a whole file and splitting it costs less here, and a
-// script that can should.
+// registerStreamReads installs the read half of the handle API, buffering nothing.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, as Go's io
 	// package does, and fseek passes the argument through as it arrives and

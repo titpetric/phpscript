@@ -51,8 +51,7 @@ type MapMap struct {
 	edits []edit
 }
 
-// edit is one write, or one removal where gone says so. The layer records a
-// removal and applies none, because the source it hides takes no write.
+// edit is one write or removal; a removal marks the key gone.
 type edit struct {
 	key   string
 	value any
@@ -362,9 +361,7 @@ var derived = []string{
 	"SERVER_PROTOCOL",
 }
 
-// headerName turns HTTP_ACCEPT_ENCODING back into Accept-Encoding, and reports
-// whether the key named a header at all. HTTP_HOST is not one: the host is a
-// field of the request and not a header Go keeps.
+// headerName turns HTTP_ACCEPT_ENCODING into Accept-Encoding and reports false for HTTP_HOST.
 func headerName(key string) (string, bool) {
 	const prefix = "HTTP_"
 	if key == "HTTP_HOST" || len(key) <= len(prefix) || key[:len(prefix)] != prefix {

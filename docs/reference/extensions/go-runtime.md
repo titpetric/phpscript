@@ -2,7 +2,7 @@
 
 A binding is a Go function, and the values it takes and returns are Go's: a slice, a map, an integer of a stated width. `use Runtime\Go;` writes those values in php source. `make` allocates the slice a binding reads, `uint8($n)` stays a uint8 across an assignment and a return, and `len` counts either side's collection. The configuration key `runner.runtime: go` selects the namespace for the whole runtime, and no file writes the statement.
 
-The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. Two names beside them are this runtime's own: `getenv` answers `os.Getenv`'s string and `numcpu` answers `runtime.NumCPU`, with no import. The import also admits the `[]T` and `*T` types, the `pkg.Type` selector its imports spell, the `[...]` and `{...}` composite literals, and the `&x` and `*p` operators, which php has no spelling for.
+The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. Two names beside them are this runtime's own: `getenv` answers the variable's value, null for a name the process does not hold, and `numcpu` answers `runtime.NumCPU`, with no import. The import also admits the `[]T` and `*T` types, the `pkg.Type` selector its imports spell, the `[...]` and `{...}` composite literals, and the `&x` and `*p` operators, which php has no spelling for.
 
 An import is the more specific name, and `min`, `max`, `copy` and `getenv` shadow php's functions of those names in the importing file. `\min([3, 1, 2])` is php's, the way `\strlen($s)` is php's whatever the file imported, and `MAKE()` reaches php, which folds a function's case where this binds one spelling.
 
@@ -40,7 +40,7 @@ Each builtin behaves as go's. Where php has its own value in the same place, thi
 | `min`, `max`                | Values, never an array. `\min([3, 1, 2])` is php's.          |
 | `panic($value)`             | Throws a `RuntimeException` reading `panic: ` and the value. |
 | `print`, `println`          | Write to the script's output.                                |
-| `getenv($name)`             | The process environment, "" for a name it does not hold.     |
+| `getenv($name)`             | The process environment, null for a name it does not hold.   |
 | `numcpu()`                  | The logical CPUs the process can use.                        |
 
 `new`, `recover`, `close` and the complex family stay unbound: php writes `new` and `catch` itself, and the rest need [channels](#no-channels) or a value php has no spelling for.
@@ -87,7 +87,9 @@ echo $list;
 
 The go runtime keeps php's output buffers for templates: `ob_start`, `ob_get_level`, `ob_get_contents`, `ob_get_clean`, `ob_end_clean`, `ob_end_flush` and `ob_get_flush` scope what `echo` writes, and the call that closes a buffer returns or writes its contents. `ob_start` accepts php's callback and chunk size and ignores both, because nothing transforms the buffered text.
 
-Under a server the output is the request's response writer. A handler echoes its body there. A second echo writes a fragment rendered into a string into the page. An echo before a throw has already begun the response. Outside a server the output is the process's standard output, where `print` and `println` write as well. `echo` reaches the response writer's own `WriteString`, which takes the string without a copy.
+Under a server the output is the request's response writer. A handler echoes its body there, and `header("Name: value")` stages a response header ahead of the first write. A second echo writes a fragment rendered into a string into the page. An echo before a throw has already begun the response. Outside a server the output is the process's standard output, where `print` and `println` write as well. `echo` reaches the response writer's own `WriteString`, which takes the string without a copy.
+
+A go-runtime file writes member and method names in lowerCamelCase, as `$r->url->query()->get($name)` and `$r->pathValue($name)` read. The names resolve whatever their case, and `phpscript fmt` rewrites them to this spelling.
 
 ## Conversions
 
@@ -130,7 +132,7 @@ $i++;
 var_dump($i);                       // int8(-128)
 ```
 
-php's own operators read the number the value holds: `==` and `<` compare numerically, `gettype` answers `integer` or `double`, and the casts convert. `===` reads the type, and `float32(0.1) === 0.1` is false. A php function answers php's types over a typed argument, and `abs(int8(-5))` is php's 5.
+php's own operators read the number the value holds: `==` and `<` compare numerically, `gettype` answers `integer` or `double`, and the casts convert. The go runtime compares with go's `==` and `!=`; `===` and `!==` fail the parse. A php function answers php's types over a typed argument, and `abs(int8(-5))` is php's 5.
 
 An unsigned value past `PHP_INT_MAX` prints what go prints. `echo`, `%d` and `%u` write `18446744073709551615`, and the integer domain clips: `(int)` and `intval()` answer `PHP_INT_MAX`, where `(float)` answers the float holding the value.
 

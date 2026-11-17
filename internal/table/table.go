@@ -102,8 +102,7 @@ func (t *Table) Summary(format string, args ...any) {
 	fmt.Fprintf(t.w, "\n%s\n", line)
 }
 
-// sanitize keeps a value inside its cell: a row is one line, and in markdown a
-// pipe would end the cell early.
+// sanitize folds value to one line and escapes a pipe in markdown.
 func (t *Table) sanitize(value string) string {
 	value = strings.Join(strings.Fields(value), " ")
 	if t.markdown {
@@ -171,8 +170,7 @@ func (t *Table) flushMarkdown() {
 	}
 }
 
-// pad widens value to its column. The printed value holds color escapes that
-// occupy no cell and Width reads plain.
+// pad widens value to its column, measuring plain and not the color escapes.
 func (t *Table) pad(column int, value, plain string) string {
 	padding := strings.Repeat(" ", max(0, t.widths[column]-Width(plain)))
 	if t.columns[column].Align == Right {

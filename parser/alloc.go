@@ -33,9 +33,7 @@ const (
 	nodeChunkMax = 128
 )
 
-// nodeChunk returns individually addressable *T values from chunked backing
-// arrays. Chunks start small and double so a two-line script does not pay for
-// a large block and a whole file amortises the per-node allocation away.
+// nodeChunk returns individually addressable *T values from chunks that start small and double.
 type nodeChunk[T any] struct {
 	free []T
 	size int
@@ -66,9 +64,7 @@ func (s *scratch[T]) mark() int { return len(s.buf) }
 
 func (s *scratch[T]) push(v T) { s.buf = append(s.buf, v) }
 
-// take pops everything pushed since mark and returns it as a slice with
-// cap == len. It returns nil for an empty list, matching what appending to a
-// nil slice produced before.
+// take returns everything pushed since mark in a slice with cap == len, nil when empty.
 func (s *scratch[T]) take(mark int) []T {
 	n := len(s.buf) - mark
 	if n == 0 {
@@ -81,8 +77,7 @@ func (s *scratch[T]) take(mark int) []T {
 	return out
 }
 
-// drop abandons everything pushed since mark. Used on error paths so a
-// recovered parser does not leak elements onto the stack.
+// drop discards everything pushed since mark, for an error path that leaks nothing.
 func (s *scratch[T]) drop(mark int) { s.buf = s.buf[:mark] }
 
 // ---------------------------------------------------------------------------
@@ -113,8 +108,7 @@ func (p *parser) newLit(v any) *model.Lit {
 	return n
 }
 
-// newStringLit allocates a string literal, keeping the source spelling so the
-// formatter can print the literal in its own spelling.
+// newStringLit allocates a string literal keeping its source spelling for the formatter.
 func (p *parser) newStringLit(v, raw string) *model.Lit {
 	n := p.litNodes.new()
 	n.Value, n.Raw = v, raw
@@ -139,8 +133,7 @@ func (p *parser) newProp(base model.Expr, name string) *model.PropAccess {
 	return n
 }
 
-// newPropExpr is newProp for `$obj->$name` / `$obj->{$expr}`, where the
-// property name is an evaluated value.
+// newPropExpr allocates a property access whose name is an evaluated expression.
 func (p *parser) newPropExpr(base, name model.Expr) *model.PropAccess {
 	n := p.propNodes.new()
 	n.Base, n.NameExpr = base, name

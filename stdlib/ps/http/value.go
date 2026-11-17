@@ -24,9 +24,7 @@ func toString(value any) string {
 	}
 }
 
-// toBool follows PHP truthiness for the values a script can pass an option:
-// "false", "off", "no", "0" and the empty string are false, as is a zero
-// number; anything else set is true.
+// toBool follows PHP truthiness, reading "false", "off", "no" and "0" as false.
 func toBool(value any) bool {
 	switch v := value.(type) {
 	case nil:
@@ -67,9 +65,7 @@ func toInt(value any) int64 {
 	}
 }
 
-// toDuration reads a timeout. A bare number is seconds, the way PHP spells its
-// own timeouts; a string with a unit ("500ms", "1m30s") parses the way Go
-// spells one and a sub-second timeout needs no fraction.
+// toDuration reads a timeout, seconds for a bare number and a Go duration for a unit.
 func toDuration(value any) time.Duration {
 	switch v := value.(type) {
 	case string:
@@ -84,8 +80,7 @@ func toDuration(value any) time.Duration {
 	}
 }
 
-// toHeaders reads a headers option, which a script writes as an associative
-// array of name to value.
+// toHeaders reads a headers option as an associative array of name to value.
 func toHeaders(value any) (map[string]string, error) {
 	if value == nil {
 		return nil, nil

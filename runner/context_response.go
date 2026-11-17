@@ -51,10 +51,7 @@ func WantsErrorPage(r *http.Request) bool {
 	return AcceptsHTML(r.Header.Get("Accept"))
 }
 
-// statusCoder is the part of a PHP exception that holds a code:
-// `throw new Exception("Not found", 404)`. Both stdlib.Exception and
-// runner.RuntimeException have GetCode. This file spells the interface
-// structurally because stdlib imports runner and not the other way around.
+// statusCoder is the part of a PHP exception that holds a code, GetCode.
 type statusCoder interface{ GetCode() int }
 
 // StatusFor resolves the HTTP status a finished script ends on, given whatever
@@ -141,12 +138,7 @@ func (c Context) Header(header string, opts ...any) {
 	}
 }
 
-// parseStatusLine reads the status out of a "HTTP/1.0 404 Not Found" line, the
-// spelling header() takes in place of a name and a value.
-//
-// Neither the protocol nor the reason phrase reaches the response. Go writes
-// the protocol it actually serves and the reason phrase that belongs to the
-// code and all the line can contribute is the number in the middle.
+// parseStatusLine reads the status number from an "HTTP/1.0 404 Not Found" line.
 func parseStatusLine(header string) (int, bool) {
 	if !strings.HasPrefix(header, "HTTP/") {
 		return 0, false

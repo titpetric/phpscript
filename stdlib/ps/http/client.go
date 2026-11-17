@@ -21,9 +21,7 @@ import (
 // cannot recover from and no spelling turns it off.
 const DefaultTimeout = 30 * time.Second
 
-// maxResponseBody caps how much of a response body send reads. A script reads
-// a body as a string, which holds the whole of it in memory, and an unbounded
-// read turns a hostile server into an out-of-memory error.
+// maxResponseBody caps a response body at 32 MiB, keeping a hostile server from the heap.
 const maxResponseBody = 32 << 20 // 32 MiB
 
 // Client is the PHP-visible HTTP\Client. The net/http client is a named
@@ -190,9 +188,7 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 	return results, nil
 }
 
-// send performs one request against the client's configuration. Send and
-// Parallel share it: a batched request runs under the same configuration as a
-// single one.
+// send performs one request against the client's configuration, shared by Send and Parallel.
 func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	prepared, err := c.prepare(ctx, request)
 	if err != nil {
@@ -229,10 +225,7 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 	}, nil
 }
 
-// prepare resolves a request against the client's base URL and default
-// headers. It clones and mutates nothing. Two clients can send the same
-// request value. Parallel never writes to a request another goroutine is
-// reading.
+// prepare resolves a request against the base URL and default headers, cloning it.
 func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {
 	prepared := request.Clone(ctx)
 
@@ -256,8 +249,7 @@ func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethtt
 	return prepared, nil
 }
 
-// toRequestMap reads the argument Parallel takes. A script passes a PHP array
-// of HTTP\Request keyed by name; a Go caller passes the map directly.
+// toRequestMap reads the Parallel argument, a PHP array or a Go map of requests.
 func toRequestMap(requests any) (map[string]*nethttp.Request, error) {
 	switch value := requests.(type) {
 	case nil:

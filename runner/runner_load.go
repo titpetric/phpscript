@@ -40,8 +40,7 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 	return rt.loadNamed("", src)
 }
 
-// loadNamed parses src as the contents of name, which is the path a script
-// sees. An empty name is source with no file behind it.
+// loadNamed parses src as the contents of name, the path a script sees.
 func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 	rt.UpdateStatus(telemetry.StateReading)
 	program, err := parser.ParseFileOptions(name, src, parser.Options{GoRuntime: rt.opts.GoRuntime()})
@@ -79,11 +78,7 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	return prog, nil
 }
 
-// loadResolved reads and parses a path the caller has already put through
-// resolveFSPath. Resolution happens once per include, above the cache lookup,
-// and the cache keys on the file and not on the spelling: after a chdir the
-// same "x.php" names a different file, and a cache keyed on the spelling would
-// answer with the previous one.
+// loadResolved reads a path resolveFSPath already cleaned, keyed by file not spelling.
 func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
@@ -97,12 +92,7 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 	return prog, nil
 }
 
-// runPrelude includes Options.Include ahead of this request's entrypoint and
-// the entrypoint and everything it includes see what it declared.
-//
-// runPrelude skips a file that is not there: the option names what to load
-// when the application holds it and one configuration covers a tree where
-// the bootstrap file it names does not exist yet.
+// runPrelude includes Options.Include before the entrypoint, skipping a missing file.
 func (rt *Runtime) runPrelude() error {
 	if rt.preludeDone || rt.opts.Include == "" || rt.opts.RootFS == nil {
 		return nil
@@ -124,9 +114,7 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), n.Once, scope)
 }
 
-// markIncluded records a file as loaded without running it, for a caller that
-// installed its declarations another way. include_once and require_once answer
-// off this list.
+// markIncluded records a file as loaded without running it, which *_once answers off.
 func (rt *Runtime) markIncluded(path string) {
 	name := rootPath(rt.resolveFSPath(path))
 	if slices.Contains(rt.included, name) {
@@ -136,11 +124,7 @@ func (rt *Runtime) markIncluded(path string) {
 	rt.UpdateIncludedFiles(len(rt.included))
 }
 
-// includeFile evaluates one include. once is the *_once form, which
-// includeFile answers here and not at the call site so that both engines
-// dedupe on the same thing: the resolved file, never the spelling the script
-// used. After a chdir two directories can spell one name, and a scan over
-// spellings would skip the second file as though it had already run.
+// includeFile evaluates one include, answering *_once on the resolved file not the spelling.
 func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error) {
 	path = rt.includeFallback(path, scope)
 	resolved := rt.resolveFSPath(path)
@@ -285,10 +269,7 @@ func (rt *Runtime) SPLAutoload(class string) error {
 	return nil
 }
 
-// includeFallback is PHP's last stop for a relative include: when the working
-// directory holds no such path, it retries in the directory of the calling
-// script. A path written as ./ or ../ names the working directory only, and
-// one written from the root has nothing to fall back to.
+// includeFallback retries a missing relative include in the calling script's directory.
 func (rt *Runtime) includeFallback(name string, scope *Scope) string {
 	slash := filepath.ToSlash(name)
 	if rt.include != nil || rt.opts.RootFS == nil || slash == "" ||
@@ -309,8 +290,7 @@ func (rt *Runtime) includeFallback(name string, scope *Scope) string {
 	return candidate
 }
 
-// resolveInclude turns an include path into a parsed program, preferring an
-// explicit IncludeFunc resolver and otherwise reading from the configured fs.FS.
+// resolveInclude turns an include path into a parsed program, IncludeFunc first.
 func (rt *Runtime) resolveInclude(path string) (*model.Program, string, error) {
 	if rt.include != nil {
 		prog, err := rt.include(path)
@@ -332,8 +312,7 @@ func (rt *Runtime) resolveInclude(path string) (*model.Program, string, error) {
 	return nil, "", fmt.Errorf("include %q: no resolver or source FS configured", path)
 }
 
-// cleanFSPath normalises an include path for fs.FS, which requires slash-rooted,
-// unrooted, dot-free paths.
+// cleanFSPath normalises a path for fs.FS: slash-separated, unrooted and dot-free.
 func cleanFSPath(p string) string {
 	p = filepath.ToSlash(p)
 	p = strings.TrimPrefix(p, "./")
@@ -341,10 +320,7 @@ func cleanFSPath(p string) string {
 	return path.Clean(p)
 }
 
-// clampFSPath cleans p against the root: the clean collapses a ".." that would
-// climb above the root and "a/../../etc/passwd" names etc/passwd under root.
-// Cleaning happens against "/" first, which does the collapsing; path.Clean on
-// its own keeps a leading "..".
+// clampFSPath cleans p against the root, collapsing any ".." that would climb out.
 func clampFSPath(p string) string {
 	clean := strings.TrimPrefix(path.Clean("/"+filepath.ToSlash(p)), "/")
 	if clean == "" {
@@ -353,15 +329,7 @@ func clampFSPath(p string) string {
 	return clean
 }
 
-// rootPath spells an fs.FS path the way a script reads it. The source
-// filesystem is "/" and a name below it starts from there. __FILE__, __DIR__
-// and getcwd() answer with that spelling.
-//
-// The point of the leading slash is that resolveFSPath leaves it alone: a path
-// written from the root names one file whatever the working directory is, the
-// way an absolute path does in PHP. Without it `include __DIR__ . "/x.php"`
-// would be re-resolved against the working directory and name a different file
-// after every chdir, and composer's autoloader depends on that.
+// rootPath spells an fs.FS path with a leading slash; a root path survives resolveFSPath.
 func rootPath(p string) string {
 	clean := clampFSPath(p)
 	if clean == "." {
@@ -370,12 +338,7 @@ func rootPath(p string) string {
 	return "/" + clean
 }
 
-// resolveFSPath maps a path a script supplied onto the source filesystem,
-// through the working directory chdir() moved.
-//
-// A path written from the root passes through as it stands; anything else is
-// relative to the working directory. clampFSPath cleans both against the root,
-// and neither can climb out of it.
+// resolveFSPath maps a script path onto the source filesystem through the working directory.
 func (rt *Runtime) resolveFSPath(p string) string {
 	slash := filepath.ToSlash(p)
 	if strings.HasPrefix(slash, "/") {

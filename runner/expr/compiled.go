@@ -70,9 +70,7 @@ type directCompiler struct {
 	exprs     map[string]model.Expr
 }
 
-// markCall registers e as a marked sub-expression and compiles to an __eval
-// call on its id: the runtime evaluates the node itself, with live scope
-// reads and lvalue writes the closure environment cannot express.
+// markCall registers e as a marked sub-expression and compiles it to an __eval call on its id.
 func (dc *directCompiler) markCall(e model.Expr) closure {
 	if dc.exprs == nil {
 		dc.exprs = map[string]model.Expr{}
@@ -82,10 +80,7 @@ func (dc *directCompiler) markCall(e model.Expr) closure {
 	return baseCall("__eval", []closure{constClosure(id)})
 }
 
-// bindVar returns the slot for a PHP variable or bare name, registering the
-// binding on first sight. The slot key reuses the transpiler's identifier
-// spelling (`v_`, `c_`, bare `this`) so one variable referenced twice shares
-// one slot.
+// bindVar returns the slot for a variable or bare name, registering the binding on first sight.
 func (dc *directCompiler) bindVar(name string, isConst bool) int {
 	ident := "v_" + name
 	if isConst {
@@ -121,13 +116,7 @@ func slotRead(slot int) closure {
 	}
 }
 
-// baseCall evaluates args and calls the named base-env entry: a registered
-// function installed by Eval, or one of the per-runtime helpers (__call,
-// __get, __new, ...). The []any argument slice is their variadic signature.
-// A name in the scratch set borrows the environment's arena for it; every
-// other callee gets a fresh slice, because a user function retains its
-// arguments for func_get_args and a registered binding may store its
-// variadic tail.
+// baseCall evaluates args and calls a base-env entry, borrowing the arena only for a scratch name.
 func baseCall(name string, args []closure) closure {
 	if scratchName(name) {
 		return scratchCall(name, args)
@@ -149,13 +138,7 @@ func baseCall(name string, args []closure) closure {
 	}
 }
 
-// scratchName lists the helper entries whose argument slice provably ends
-// with the call: each reads its arguments as elements and stores none of the
-// slice. __call is in the set because the one sink that retains a frame's
-// arguments, the PHP-method branch of runner.helperCall, clones what it
-// hands to the frame. The dispatchers that reach a user frame or a registered
-// binding with the slice itself (__func, __invoke, __static, __new, __eval
-// and every registered name) stay off the arena.
+// scratchName reports whether a helper's argument slice provably ends with the call.
 func scratchName(name string) bool {
 	switch name {
 	case "__get", "__set", "__var", "__classconst", "__staticprop",
@@ -165,11 +148,7 @@ func scratchName(name string) bool {
 	return false
 }
 
-// scratchCall is baseCall over the environment's arena: it pushes the
-// arguments, borrows the region for the call and pops it when the call
-// returns. A covered call boxes no slice per invocation. The three-index
-// expression caps the borrowed region and an append inside the callee
-// reallocates away from the arena in place of writing over it.
+// scratchCall is baseCall over the environment's arena, pushing the arguments and popping on return.
 func scratchCall(name string, args []closure) closure {
 	return func(env *Env) (any, error) {
 		fn, ok := env.Base[name].(func(...any) (any, error))

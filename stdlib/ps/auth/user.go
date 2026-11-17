@@ -17,13 +17,7 @@ type User interface {
 	String() string
 }
 
-// user is the record a store with no stored key answers with: the name it
-// resolved, and the id computed from that name.
-//
-// The id is no column: crypto.ULIDFrom over the username makes the key a pure
-// function of the name. A user the file drops takes the row alone with them,
-// and adding the same name back answers the same key and every row that
-// referenced it still resolves.
+// user is the record a store with no stored key answers with.
 type user struct {
 	username string
 	id       string
@@ -37,8 +31,7 @@ func newUser(username string) user {
 // GetID is the primary key, 26 characters of Crockford base32.
 func (u user) GetID() string { return u.id }
 
-// String is the username, and the text the record renders as in a string
-// context.
+// String returns the username, the text the record renders as in a string context.
 func (u user) String() string { return u.username }
 
 var _ User = user{}

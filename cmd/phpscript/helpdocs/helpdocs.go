@@ -94,8 +94,7 @@ func commandTable(w io.Writer, commands []Command, markdown bool) {
 	t.Flush()
 }
 
-// flagTable writes one flag set as a table. pflag prints defaults in another
-// shape; this is the shape the rest of the tool prints in.
+// flagTable writes one flag set as a table in the shape the rest of the tool prints.
 func flagTable(w io.Writer, fs *FlagSet, markdown bool) {
 	t := table.New(w, markdown,
 		table.Column{Title: "Flag"},
@@ -146,8 +145,7 @@ func Render(w io.Writer, src string, markdown bool) error {
 	return nil
 }
 
-// tableAt reads the markdown table starting at lines[i], or nil when there is
-// none. A table is a row, a separator row, and the rows that follow.
+// tableAt returns the markdown table at lines[i] and its end, nil when none starts there.
 func tableAt(lines []string, i int) ([][]string, int) {
 	if !isRow(lines, i) || !isSeparator(lines, i+1) {
 		return nil, i
@@ -164,8 +162,7 @@ func isRow(lines []string, i int) bool {
 	return i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "|")
 }
 
-// isSeparator reports whether the line is a table's header rule: cells holding
-// only dashes and the alignment colons.
+// isSeparator reports a table header rule whose cells hold only dashes and colons.
 func isSeparator(lines []string, i int) bool {
 	if !isRow(lines, i) {
 		return false

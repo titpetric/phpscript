@@ -8,14 +8,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerWorkDir installs the working-directory pair. Unlike the functions
-// below they depend on the root, because the directory they move is a
-// position inside the root.
-//
-// The directory is per-runtime state. A host builds one runtime per
-// request and a script that moves it moves state no other request can see.
-// No code calls os.Chdir: every request in flight shares the process working
-// directory with the host itself, and owning it would never be correct.
+// registerWorkDir installs chdir and getcwd over per-runtime state rooted in the filesystem.
 func registerWorkDir(rt *runner.Runtime) {
 	// chdir changes the working directory relative paths resolve against and
 	// returns whether it could; the directory is this request's own, and a
@@ -28,9 +21,7 @@ func registerWorkDir(rt *runner.Runtime) {
 	rt.RegisterFunc("getcwd", rt.WorkDirPath)
 }
 
-// registerPaths installs the string-only path functions. They answer about the
-// shape of a path and never touch the filesystem and they are not bound to the
-// root and work the same on a path that does not exist.
+// registerPaths installs the path functions that read a path's shape and never the filesystem.
 func registerPaths(rt *runner.Runtime) {
 	// dirname returns the parent directory of $path, walking up $levels parents when given.
 	rt.RegisterFunc("dirname", func(path string, levels ...int64) string {

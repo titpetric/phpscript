@@ -42,13 +42,7 @@ func (f *Fixture) SetCacheScope(scope string) {
 	f.cacheScope = scope
 }
 
-// caches answers the include and expression caches this run installs.
-//
-// Off builds a pair for this run alone. Worker takes the pair belonging to the
-// goroutine running it and the fixtures one worker walks share what they parse
-// and two workers share nothing. Shared is the process-wide pair, keyed by
-// include root because a cache keys on the path a script wrote and two
-// folders can both hold a code/functions.php.
+// caches returns this run's include and expression caches for the fixture's cache scope.
 func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.ExprCache) {
 	switch f.cacheScope {
 	case CacheOff:
@@ -62,15 +56,7 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 	return w.includeFor(f.cacheRoot(), f, w.expr), w.expr
 }
 
-// precompileFS is the tree the precompiler walks: the fixture's own root, and
-// the bodies of the directory as a second filesystem.
-//
-// They are two and not one because a walk cannot see through the overlay.
-// unionFS answers Open from the first layer that has the name and implements
-// no ReadDir and fs.WalkDir over it lists the real tree alone and skips
-// every body. Merging the listings instead is not open: scandir(".") is
-// the same call, and a fixture reading its own directory would start seeing
-// the other fixtures' bodies in it.
+// precompileFS returns the fixture's root and its shared bodies as two filesystems.
 func (f *Fixture) precompileFS() []fs.FS {
 	trees := []fs.FS{f.runnerOptions().RootFS}
 	if f.sources != nil {
@@ -97,18 +83,7 @@ func (f *Fixture) cacheMode() string {
 	return runner.RuntimePHPScript
 }
 
-// acquireRuntime answers the runtime this run executes on, and whether that
-// runtime is fresh and still needs its bindings.
-//
-// Worker scope returns the worker's own runtime, Reset for this run and never
-// rebuilt: a reset runtime keeps the maps and buckets it grew and the next
-// fixture allocates nothing to start, and --parallel bounds what a run holds
-// and not the number of fixtures. The worker rebuilds it only when the
-// fixture answers a different runtimeKey, which is once per folder and not
-// once per fixture.
-//
-// Off scope builds one per run and lets it go when the run ends, which is the
-// clean state that mode is for.
+// acquireRuntime returns the run's runtime and whether the runtime is fresh and still needs bindings.
 func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Runtime, bool) {
 	include, expr := f.caches(ctx)
 
@@ -150,12 +125,7 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 	return rt, true
 }
 
-// runtimeKey names what a runtime serves. A worker reuses its runtime
-// when the next fixture answers the same key and builds another when it does
-// not: runner.New takes RootFS at construction and stdlib.RegisterFS binds the
-// file bindings to a directory and neither survives a move. Fixtures arrive
-// grouped by folder and the key changes once per group and not once per
-// fixture.
+// runtimeKey names what a runtime serves, and a worker rebuilds when the key changes.
 func (f *Fixture) runtimeKey() string {
 	if f.runtimeKeyS == "" {
 		f.runtimeKeyS = fmt.Sprintf("%s\x00%s\x00%v", f.cacheRoot(), f.Runtime, f.Options)
@@ -164,13 +134,6 @@ func (f *Fixture) runtimeKey() string {
 }
 
 // worker holds what one serial worker loop reuses across the fixtures it runs.
-//
-// includeFor keys the include caches by include root and never pools them into
-// one. A cache keys on the path a script wrote and one cache spanning two roots
-// would serve a fixture in one folder the code/functions.php belonging to
-// another - and with --autoload, autoload.php names a different file under
-// every invocation root. The expression caches key on source text, which
-// holds no root and one of each per worker is right.
 type worker struct {
 	include     map[string]*runner.IncludeCache
 	flatInclude map[string]*flatstack.IncludeCache
@@ -195,14 +158,7 @@ func newWorker() *worker {
 	}
 }
 
-// includeFor answers this worker's cache for one include root, precompiling the
-// tree the first time a fixture of that root reaches it. A worker runs its
-// fixtures serially and this takes no lock.
-//
-// The pass puts the fixtures in the cache before one of them runs: Precompiler
-// parses and compiles every .php below the root, the bodies among them, once,
-// and a fixture and a repeat of it then read the program back without
-// building it again.
+// includeFor returns this worker's cache for root, precompiling its tree on first use.
 func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *runner.IncludeCache {
 	key := root + "\x00" + f.cacheMode()
 	if c, ok := w.include[key]; ok {
@@ -227,19 +183,14 @@ func (w *worker) flatIncludeFor(root string, f *Fixture) *flatstack.IncludeCache
 	return c
 }
 
-// workers is the pool a worker-scoped run draws from, indexed by the id
-// WithWorker assigned. A run outside a worker loop - a single-threaded run, a
-// Go test calling RunFixture directly - gets index zero, which is a worker like
-// any other.
+// workers is the pool a worker-scoped run draws from, indexed by WithWorker's id, zero outside a loop.
 var (
 	workersMu sync.Mutex
 	workers   = map[int]*worker{}
 	workerKey = new(int)
 )
 
-// currentWorker answers the caches for the worker ctx names. Go has no
-// goroutine-local storage and the id rides the run's own context, already
-// threaded from the command down to here.
+// currentWorker returns the worker named by ctx, which holds the worker id set by the command.
 func currentWorker(ctx context.Context) *worker {
 	id := 0
 	if got, ok := ctx.Value(workerKey).(int); ok {
@@ -255,12 +206,7 @@ func currentWorker(ctx context.Context) *worker {
 	return w
 }
 
-// cacheRoot names the tree a cached include path is relative to.
-//
-// Absolute, because the relative spelling is ambiguous: a cached path is
-// relative to a root, and two roots reached from different working directories
-// can both answer to the name "suite". A fixture given an app root resolves
-// against that too and the key names both trees.
+// cacheRoot returns the absolute tree a cached include path is relative to.
 func (f *Fixture) cacheRoot() string {
 	if f.rootKey != "" {
 		return f.rootKey
@@ -269,8 +215,7 @@ func (f *Fixture) cacheRoot() string {
 	return f.rootKey
 }
 
-// buildCacheRoot spells the key. cacheRoot holds the result because absPath
-// reaches the OS for the working directory, and each execution needs it once.
+// buildCacheRoot spells the cache key from the root and any app root.
 func (f *Fixture) buildCacheRoot() string {
 	root := absPath(f.RootDir())
 	if f.appRoot != "" {
@@ -279,8 +224,7 @@ func (f *Fixture) buildCacheRoot() string {
 	return root
 }
 
-// absPath answers the absolute spelling, or the given one when it cannot read
-// the working directory - a key that is merely ambiguous beats no key.
+// absPath returns the absolute spelling, or p itself when the working directory is unreadable.
 func absPath(p string) string {
 	if abs, err := filepath.Abs(p); err == nil {
 		return abs
@@ -291,11 +235,7 @@ func absPath(p string) string {
 // cleanState reports whether the run drops what it built when it ends.
 func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 
-// acquireFlatRuntime is acquireRuntime for the bytecode runtime: worker scope
-// returns the worker's flat runtime, Reset for this run and rebuilt once
-// per folder and not once per fixture. Building a runtime is a full
-// stdlib registration, which a single-shot run pays per fixture on this
-// engine while the interpreter amortises it per folder.
+// acquireFlatRuntime is acquireRuntime for the bytecode runtime, returning the worker's flat runtime.
 func (f *Fixture) acquireFlatRuntime(ctx context.Context, out io.Writer) (*flatstack.Runtime, *flatstack.ExprCache, bool) {
 	include, expr := f.flatCaches(ctx)
 

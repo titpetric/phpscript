@@ -7,14 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// A colour identifier is the packed value libgd uses for a true colour image:
-// 0xAARRGGBB, with alpha in the top byte on GD's own scale of 0 to 127 where 0
-// is opaque and 127 is transparent.
-//
-// That scale runs opposite to every other alpha in Go, the one value in this
-// package a caller reads backwards. This package keeps it because ported code
-// computes on the value: imagecolorallocatealpha($im,230,230,230,70) has to
-// mean the same 55% here as it did under GD.
+// alphaOpaque is 0 and alphaTransparent 127 on GD's alpha scale, where 0 is opaque.
 const (
 	alphaOpaque      = 0
 	alphaTransparent = 127
@@ -58,9 +51,7 @@ func registerColor(rt *runner.Runtime) {
 	})
 }
 
-// checkRGB raises the ValueError PHP raises for a component outside 0 to 255.
-// Clamping instead would answer a colour for an argument PHP refuses, which
-// hides the mistake and reports nothing.
+// checkRGB raises PHP's ValueError for red, green or blue outside 0 to 255.
 func checkRGB(fn string, red, green, blue int64) error {
 	for i, v := range []int64{red, green, blue} {
 		if v < 0 || v > 255 {
@@ -95,8 +86,7 @@ func clampComponent(v, max int64) int64 {
 	return v
 }
 
-// rgba turns a packed identifier into a Go colour, converting GD's 0..127
-// alpha into the 0..255 the standard library wants and flipping its sense.
+// rgba converts a packed identifier into a Go colour, flipping GD's alpha to 0..255.
 func rgba(packed int64) color.RGBA {
 	r, g, b, a := unpackColor(packed)
 	return color.RGBA{R: r, G: g, B: b, A: byteFromAlpha(a)}
@@ -120,9 +110,7 @@ func image_ptIn(im *Image, x, y int64) bool {
 	return int(x) >= b.Min.X && int(x) < b.Max.X && int(y) >= b.Min.Y && int(y) < b.Max.Y
 }
 
-// blendPixel writes a packed colour over what is already there, honouring its
-// alpha. An opaque colour replaces the pixel; a partly transparent one mixes,
-// the behaviour imagealphablending being on has in PHP.
+// blendPixel writes a packed colour over a pixel, honouring its alpha.
 func blendPixel(im *Image, x, y int, packed int64) {
 	c := rgba(packed)
 	if c.A == 255 {

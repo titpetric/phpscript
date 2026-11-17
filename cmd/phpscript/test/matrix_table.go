@@ -32,8 +32,7 @@ type matrixTable interface {
 	writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration)
 }
 
-// terminalMatrix writes the ansi table. sizeColumns rebuilds the column
-// widths per folder and a row prints as soon as its fixture completes.
+// terminalMatrix writes the ansi table, one row per fixture as it completes.
 type terminalMatrix struct {
 	w         io.Writer
 	headers   []string
@@ -60,13 +59,7 @@ func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
 	return matrix
 }
 
-// fit widens the last column so a verbose table fills the terminal. A row's
-// failure detail wraps into the runner columns, and the natural width of three
-// status columns leaves too little of a reason to read.
-//
-// writeGroup calls it after sizeColumns rebuilt a folder's widths, never
-// before: fit adds to the last column and a second call on already-fitted
-// widths would compound across folders.
+// fit widens the last column and must run once per folder, after sizeColumns.
 func (t *terminalMatrix) fit(width int) {
 	if !t.verbose || width == 0 {
 		return
@@ -92,16 +85,12 @@ func newTerminalMatrix(w io.Writer, opts Options) *terminalMatrix {
 	}
 }
 
-// metrics reports whether the run named cost columns. Without a
-// benchmarking flag the matrix keeps its base width, which keeps the
-// generated report stable.
+// metrics reports whether the run named cost columns, keeping the report width stable.
 func (t *terminalMatrix) metrics() bool {
 	return t.loop || t.profile || t.lat
 }
 
-// sizeColumns rebuilds the header row and column widths for one folder. The
-// folder name is the header of the fixture column and a table says which area
-// it covers without spending a line on a title.
+// sizeColumns rebuilds the header row and widths, the folder name heading the fixture column.
 func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 	if dir == "" {
 		dir = "Fixture"
@@ -201,8 +190,7 @@ func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.D
 		table.ColorHeader, passed, failed, total, formatEngineSplit(engines, duration), table.ColorReset)
 }
 
-// detailWidth is the width of the runner columns merged into one cell, where a
-// continuation row prints its failure detail.
+// detailWidth returns the runner columns merged into one cell for failure detail.
 func (t *terminalMatrix) detailWidth() int {
 	width := 0
 	for _, w := range t.widths[1:] {
@@ -294,8 +282,7 @@ func (t *markdownMatrix) closeGroup(totals groupTotals) {
 	fmt.Fprintln(t.w)
 }
 
-// writeSummary closes the report with the per-folder totals and the reader
-// need not add up the tables above it.
+// writeSummary closes the report with the per-folder totals.
 func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
 	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics(), engines)
 }
@@ -330,8 +317,7 @@ func statusColor(status matrixStatus) string {
 	}
 }
 
-// wrapDetail splits a failure reason into lines that fit the detail column.
-// Reasons embed newlines to separate the got and want output.
+// wrapDetail splits a failure reason into lines that fit width, keeping its newlines.
 func wrapDetail(reason string, width int) []string {
 	var lines []string
 	for _, line := range strings.Split(reason, "\n") {

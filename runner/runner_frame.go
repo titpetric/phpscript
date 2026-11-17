@@ -28,9 +28,7 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// invokeMethod runs a method with $this bound to obj. The invocation span uses
-// the caller scope; the fresh scope below records where the method body lives,
-// and spans starting inside the body read it from there.
+// invokeMethod runs a method with $this bound to obj in a fresh scope.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.acquireScope()
 	defer rt.releaseScope(scope)
@@ -67,12 +65,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// closureEnv is everything a closure takes away from its defining scope:
-// the lexical magic constants, the `use (...)` captures, and the bound
-// `$this` (nil for a `static function`, or for one written outside a method).
-// captureClosureEnv fills it once where newClosure builds the closure value,
-// not on each call, which makes the capture a snapshot the way PHP's by-value
-// `use` is.
+// closureEnv holds what a closure captures from its defining scope, snapshotted once at creation.
 type closureEnv struct {
 	filename  any
 	directory any
@@ -109,11 +102,7 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 	return env
 }
 
-// invokeClosure runs an anonymous function in a fresh scope seeded with its
-// captured environment alone: the enclosing frame's other variables
-// are not reachable from the body. bindParams runs after the captures and a
-// parameter of the same name wins; php rejects that overlap outright, as
-// "Cannot use lexical variable $x as a parameter name".
+// invokeClosure runs a closure in a fresh scope seeded with its captured environment alone.
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)
@@ -143,9 +132,7 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// runDeferred invokes callbacks registered since mark in last-in, first-out
-// order. It removes each one before the call and a callback runs at most once,
-// including when it fails or registers another during the unwind.
+// runDeferred invokes callbacks registered since mark in last-in, first-out order, each once.
 func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
 	var errs []error
 	for len(scope.deferred) > mark {
@@ -181,8 +168,7 @@ func (rt *Runtime) runShutdown() error {
 	return combineErrors(errs...)
 }
 
-// combineErrors preserves an existing error unchanged when there is only one,
-// while retaining every error when execution and one or more defers fail.
+// combineErrors returns a single error unchanged and joins more than one.
 func combineErrors(errs ...error) error {
 	nonNil := errs[:0]
 	for _, err := range errs {
@@ -200,10 +186,7 @@ func combineErrors(errs ...error) error {
 	}
 }
 
-// bindParams binds positional args to parameter names, applying defaults. A
-// variadic parameter collects every remaining argument into one array, an
-// empty one when the caller stopped short of it, and is the last binding
-// either way, as the parser allows `...` only in final position.
+// bindParams binds positional args to parameters, applying defaults and collecting a variadic tail.
 func (rt *Runtime) bindParams(decl *model.FuncDecl, args []any, scope *Scope) error {
 	for i, p := range decl.Params {
 		if p.Variadic {

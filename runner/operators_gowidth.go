@@ -24,8 +24,7 @@ import (
 // Two of php's own operands never reach here: goArith reports false and the
 // caller keeps php's own arithmetic, overflow to float included.
 
-// goArith applies an arithmetic operator at a typed value's width, and reports
-// whether the operands have one.
+// goArith applies an arithmetic operator at a typed width, reporting whether operands have one.
 func goArith(op string, a, b any) (any, bool, error) {
 	w, typed, err := goOperandWidth(op, a, b)
 	if !typed || err != nil {
@@ -41,8 +40,7 @@ func goArith(op string, a, b any) (any, bool, error) {
 	}
 }
 
-// goBitwise applies a bitwise operator at a typed value's width. A shift past
-// the width leaves zero, as go's does, because the result narrows to it.
+// goBitwise applies a bitwise operator at a typed width, a shift past it leaving zero.
 func goBitwise(op string, a, b any) (any, bool, error) {
 	w, typed, err := goOperandWidth(op, a, b)
 	if !typed || err != nil {
@@ -73,8 +71,7 @@ func goBitwise(op string, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// goOperandWidth reads the width an operation answers in, and reports whether
-// either operand has one at all.
+// goOperandWidth returns the operation's width, reporting whether either value has a Go width.
 func goOperandWidth(op string, a, b any) (model.GoWidth, bool, error) {
 	left, leftTyped := model.GoWidthOf(a)
 	right, rightTyped := model.GoWidthOf(b)
@@ -92,9 +89,7 @@ func goOperandWidth(op string, a, b any) (model.GoWidth, bool, error) {
 	}
 }
 
-// goOperandInt reads an operand as the bits a width computes over: a typed
-// value answers its own, and one of php's numbers converts the way go reads an
-// untyped constant.
+// goOperandInt returns the bits an operand computes over, converting an untyped php number.
 func goOperandInt(v any) int64 {
 	if bits, ok := modelutil.GoInt(v); ok {
 		return bits
@@ -110,9 +105,7 @@ func goOperandFloat(v any) float64 {
 	return phpval.Float(v)
 }
 
-// goSignedArith computes at a signed width. The carrier is an int64 and the
-// result narrows to the width, which is the wrap go applies: int8(100) *
-// int8(100) is 10000 narrowed, int8(16).
+// goSignedArith computes at a signed width, narrowing an int64 carrier so the result wraps.
 func goSignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	x, y := goOperandInt(a), goOperandInt(b)
 	switch op {
@@ -140,8 +133,7 @@ func goSignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// goUnsignedArith is goSignedArith over unsigned bits, where every operation
-// wraps at the width: uint8(0) - 1 is uint8(255).
+// goUnsignedArith computes at an unsigned width, wrapping every operation at it.
 func goUnsignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	x, y := uint64(goOperandInt(a)), uint64(goOperandInt(b))
 	switch op {
@@ -167,8 +159,7 @@ func goUnsignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// goFloatArith computes at a float width, in a float64 that narrows back: a
-// float32 operation answers the float32 go would.
+// goFloatArith computes in float64 and narrows back so a float32 answers as go would.
 func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	x, y := goOperandFloat(a), goOperandFloat(b)
 	switch op {
@@ -197,8 +188,7 @@ func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// shiftLeft shifts within the int64 carrier, which the result narrows out of.
-// A count of 64 or more leaves zero, as go's shift does.
+// shiftLeft shifts within the int64 carrier, a count of 64 or more leaving zero.
 func shiftLeft(x, count int64) int64 {
 	if count >= 64 {
 		return 0
@@ -206,8 +196,7 @@ func shiftLeft(x, count int64) int64 {
 	return x << uint(count)
 }
 
-// shiftRight shifts the way the width's sign reads: an unsigned width shifts
-// zeroes in, a signed one keeps its sign.
+// shiftRight shifts in zeroes for an unsigned width, or keeps the sign when signed.
 func shiftRight(w model.GoWidth, x, count int64) int64 {
 	if count >= 64 {
 		if w.Signed && x < 0 {
@@ -221,8 +210,7 @@ func shiftRight(w model.GoWidth, x, count int64) int64 {
 	return int64(uint64(x) >> uint(count))
 }
 
-// goNegate negates at the operand's width: -int8(-128) is int8(-128), the
-// wrap go answers with.
+// goNegate negates at the operand's width, wrapping as go does.
 func goNegate(v any) (any, bool) {
 	w, typed := model.GoWidthOf(v)
 	if !typed {
@@ -234,8 +222,7 @@ func goNegate(v any) (any, bool) {
 	return w.Narrow(-goOperandInt(v)), true
 }
 
-// goBitNot inverts the bits at the operand's width: ~uint8(0) is uint8(255).
-// A float width has no bits and php's own cast answers for it.
+// goBitNot inverts the bits at the operand's width, reporting false for a float.
 func goBitNot(v any) (any, bool) {
 	w, typed := model.GoWidthOf(v)
 	if !typed || w.Float {

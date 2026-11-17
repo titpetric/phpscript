@@ -18,8 +18,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the filesystem bindings to stdlib.Register, rooted at the
-// process working directory, the same place a CLI run reads and writes.
+// init contributes the filesystem bindings rooted at the process working directory.
 func init() {
 	runner.RegisterArea(`Runtime\PS\Files`, Register)
 }
@@ -47,9 +46,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	registerUploads(rt, r)
 }
 
-// root is the directory RegisterRoot bound the shims to, and the runtime they
-// resolve reads through. Every binding that takes a path from PHP resolves
-// through it and the mapping from script path to host path stays in one place.
+// root is the directory RegisterRoot bound the shims to and the runtime they read through.
 type root struct {
 	rt  *runner.Runtime
 	dir string
@@ -59,34 +56,13 @@ type root struct {
 	writable []string
 }
 
-// resolve maps a path a script supplied onto the host filesystem.
-//
-// Both spellings stay inside the root and neither can climb out of it. A path
-// written from "/" names the root itself, the spelling __DIR__ and getcwd()
-// answer in and the shape most concatenated paths take; anything else is
-// relative to the working directory chdir() moved. The source filesystem is
-// what a script can address and "/" is its root and never the host's: there is
-// no spelling for a host path outside the root, and a runtime serving an
-// embedded tree could not honour one anyway.
+// resolve maps a script path onto a host path inside the root and refuses one that climbs out.
 func (r root) resolve(p string) string {
 	rel, _ := r.fsPath(p)
 	return filepath.Join(r.dir, filepath.FromSlash(rel))
 }
 
-// fsPath maps a path a script supplied onto the source filesystem, which every
-// host roots at the same directory RegisterRoot bound the shims to. It names
-// the same file resolve does, in the other spelling. The two are not
-// interchangeable: resolve answers with a host path joined onto r.dir, while an
-// fs.FS takes a slash path relative to its own root and rejects anything else,
-// r.dir included. Passing resolve's answer to an fs.FS is how a read silently
-// stops going through it for any r.dir but ".".
-//
-// The runtime states the rule, in resolveFSPath, because an include follows
-// the same one: a path written from "/" names the root, anything else is
-// relative to the working directory, and resolveFSPath cleans both against the
-// root so "a/../../etc/passwd" becomes "etc/passwd" and never climbs out.
-//
-// The second return is false only for an empty path, which names nothing.
+// fsPath names the same file resolve does as a slash path, false only for an empty path.
 func (r root) fsPath(p string) (string, bool) {
 	if p == "" {
 		return "", false
@@ -94,14 +70,7 @@ func (r root) fsPath(p string) (string, bool) {
 	return r.rt.ResolvePath(p), true
 }
 
-// uploadPath reports the host path of a file this request uploaded.
-//
-// A tmp_name is the one path a script names that is not resolved against the
-// source filesystem. The request runtime writes an uploaded part outside the
-// root by design and returns the absolute tmp_name it wrote and reading that
-// back is reading a file the runtime itself produced. The request's own
-// registry is what says which paths those are, and a path it did not issue is
-// not one of them, which is the same check is_uploaded_file answers with.
+// uploadPath reports a host path this request's upload registry issued, refusing any other.
 func (r root) uploadPath(p string) (string, bool) {
 	if !filepath.IsAbs(p) {
 		return "", false
@@ -113,9 +82,7 @@ func (r root) uploadPath(p string) (string, bool) {
 	return path.Clean(filepath.ToSlash(p)), true
 }
 
-// unresolve undoes resolve over a list of host paths, leaving them named from
-// the source filesystem's root, which is the spelling globSpelling then works
-// in.
+// unresolve undoes resolve over host paths, naming them from the source root.
 func (r root) unresolve(names []string) []string {
 	if len(names) == 0 {
 		return nil
@@ -128,11 +95,7 @@ func (r root) unresolve(names []string) []string {
 	return out
 }
 
-// globSpelling rewrites matches into the pattern's own shape. PHP
-// echoes a pattern's own shape back: a pattern written from the root answers
-// from the root, and one written relative to the working directory answers
-// relative to it. Answering resolved paths would make every match unusable as
-// the argument to the next call.
+// globSpelling rewrites matches into the pattern's own shape, root-absolute or working-directory-relative.
 func (r root) globSpelling(pattern string, matches []string) []string {
 	if len(matches) == 0 {
 		return nil
@@ -154,15 +117,7 @@ func (r root) globSpelling(pattern string, matches []string) []string {
 	return out
 }
 
-// resolveWrite is resolve for a path a script is about to write. A path
-// outside writable_paths is an error and no false return: a refused
-// write is a mistake in the script or an attempt to escape its allowance, and
-// both are worth stopping at and the script never continues believing
-// the write happened. The runtime promotes the error to a catchable exception,
-// and a script written for the refusal can try/catch it.
-//
-// Failures the operating system reports keep returning PHP's false, as PHP
-// does.
+// resolveWrite resolves a write path and refuses one outside writable_paths with an error.
 func (r root) resolveWrite(fn, p string) (string, error) {
 	name := r.resolve(p)
 	if r.writableAllows(name) {
@@ -171,9 +126,7 @@ func (r root) resolveWrite(fn, p string) (string, error) {
 	return name, fmt.Errorf("%s(%s): writable_paths allows %s", fn, p, strings.Join(r.writable, ", "))
 }
 
-// writableAllows reports whether name is under one of the writable roots. An
-// unconfigured allowlist permits everything and a project that names no
-// writable_paths keeps writing wherever its user may.
+// writableAllows reports a path under a writable root, an empty list permitting all.
 func (r root) writableAllows(name string) bool {
 	if len(r.writable) == 0 {
 		return true

@@ -9,19 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerWrites installs the write side: creating, removing, moving and
-// copying files, and the mode and ownership functions that decide who can read
-// what a script just wrote. Every one resolves against the root and reports
-// failure the way PHP does, by returning false.
-//
-// A path outside writable_paths is the exception to that: it returns an error,
-// which the runtime turns into a catchable exception. A write the operating
-// system refused is a runtime condition a script handles by checking the
-// result; a write the configuration never allowed is a mistake worth raising.
-// PHP's file_put_contents flag values. file_put_contents takes LOCK_EX so
-// ported code keeps its spelling, and then does nothing with it: none of the
-// writers here lock and honouring it would promise an exclusion the rest of
-// the package does not keep.
+// fileAppend and lockEx are PHP's FILE_APPEND and LOCK_EX; LOCK_EX parses and the runtime ignores it.
 const (
 	fileAppend = 8 // FILE_APPEND
 	lockEx     = 2 // LOCK_EX
@@ -160,9 +148,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 	})
 }
 
-// moveFile renames src to dst, copying instead when the two are on different
-// filesystems, where rename stops working. PHP's rename() crosses that
-// boundary and this one has to as well.
+// moveFile renames src to dst, copying across filesystems where rename fails.
 func moveFile(src, dst string) error {
 	if err := os.Rename(src, dst); err == nil {
 		return nil

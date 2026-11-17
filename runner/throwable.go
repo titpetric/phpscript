@@ -26,14 +26,7 @@ type Throwable interface {
 	ThrowableClass() string
 }
 
-// throwableClassOf returns the PHP class an error represents, and whether the
-// error is a PHP throwable at all.
-//
-// An error that is not one is still catchable: a Go binding returning an error,
-// and a panic recovered at the host boundary, reach a script through the same
-// try/catch and belong to no PHP class. Reporting them as "not a throwable"
-// lets matchCatchType route them to any clause, the contract every host
-// binding relies on.
+// throwableClassOf returns an error's PHP class, "" for one that is not a throwable.
 func throwableClassOf(err error) (string, bool) {
 	t, ok := err.(Throwable)
 	if !ok {

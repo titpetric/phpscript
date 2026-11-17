@@ -20,18 +20,7 @@ type StorageDisk struct {
 	storagePath string
 }
 
-// newRootedStorageDisk is the Session\Storage\Disk constructor a rooted host
-// registers.
-//
-// The runtime's own rule resolves a path the script named against the root and
-// it names the same file file_get_contents would and cannot climb out, and the
-// constructor then holds it to writable_paths. The directory it creates is one
-// the script could have written a file into by hand.
-//
-// With no path it falls through to the host's temporary directory, which is
-// outside the root by decision: no script can name it and no tenant chose it.
-// That is the spelling tests/fixtures/bindings/session_manager.phpt uses, and
-// DefaultStoragePath keeps two roots out of one directory there.
+// newRootedStorageDisk resolves dir against writable_paths, falling back to the temp directory.
 func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string) (*StorageDisk, error) {
 	if len(storagePaths) == 0 || storagePaths[0] == "" {
 		return NewStorageDisk(DefaultStoragePath(dir))

@@ -19,13 +19,7 @@ import (
 // produced them. The endpoint answers that without either.
 const CoveragePath = "/debug/phpscript/coverage"
 
-// coverageModule is the process-lifetime coverage of one server: the
-// aggregator every request folds its counts into, the endpoint that publishes
-// them, and the flush that writes the profile when the platform stops.
-//
-// A collector counts statements by AST node and it belongs to one run; the
-// aggregator holds one entry per statement range and is what survives the
-// request that produced it. See runner/coverage.
+// coverageModule holds one server's process-lifetime coverage aggregator and its endpoint.
 type coverageModule struct {
 	ZeroModule
 	aggregator *coverage.Aggregator
@@ -47,8 +41,7 @@ func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 	}
 }
 
-// watch adds a site's source tree to the roots a profile resolves columns
-// against. Every site registers one and a virtual host server has one per site.
+// watch adds a site's source tree to the roots a profile resolves columns against.
 func (m *coverageModule) watch(root fs.FS) {
 	m.roots = append(m.roots, root)
 }
@@ -59,8 +52,7 @@ func (m *coverageModule) Mount(_ context.Context, r Router) error {
 	return nil
 }
 
-// Stop writes the profile the process collected. It runs on the graceful
-// shutdown path, the one moment a server has finished.
+// Stop writes the collected profile on the graceful shutdown path.
 func (m *coverageModule) Stop(_ context.Context) error {
 	if m.aggregator.Empty() {
 		return nil
@@ -73,9 +65,7 @@ func (m *coverageModule) Stop(_ context.Context) error {
 	return nil
 }
 
-// serve answers with the profile, or with the report mode named by ?mode=. The
-// vocabulary is --cover's: line is the profile itself, func and file are the
-// per-symbol report in the format go tool cover -func prints.
+// serve answers the profile or the report ?mode= names, in --cover's vocabulary.
 func (m *coverageModule) serve(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
 	if mode == "" {
@@ -96,14 +86,12 @@ func (m *coverageModule) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// blocks renders the statements the aggregator counted, with the columns a
-// profile holds resolved from the source text.
+// blocks renders the counted statements with columns resolved from the source text.
 func (m *coverageModule) blocks() []coverage.ProfileBlock {
 	return coverage.Columns(m.aggregator.Blocks(), m.source)
 }
 
-// source reads one counted file out of the site roots. A file no root answers
-// for keeps column 1 on both ends and drops out of no profile.
+// source reads one counted file from the site roots, nil when no root answers.
 func (m *coverageModule) source(file string) []string {
 	name := strings.TrimPrefix(path.Clean(file), "/")
 	for _, root := range m.roots {

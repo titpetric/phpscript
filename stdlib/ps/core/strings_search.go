@@ -6,9 +6,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// phpStrpos implements strpos($haystack, $needle[, $offset]); the offset taken
-// and the position returned count bytes, as PREG_OFFSET_CAPTURE
-// reports and what substr consumes. mbStrpos counts characters.
+// phpStrpos implements strpos, counting its offset and its result in bytes.
 func phpStrpos(haystack, needle string, offset ...int64) any {
 	start, ok := searchStart(haystack, offset)
 	if !ok {
@@ -21,9 +19,7 @@ func phpStrpos(haystack, needle string, offset ...int64) any {
 	return int64(i + start)
 }
 
-// phpStripos implements stripos($haystack, $needle[, $offset]). It folds both
-// operands over A-Z only, which keeps their byte length and the offset still
-// indexes the original haystack; PHP folds no wider than that either.
+// phpStripos implements stripos, folding both operands over A-Z only.
 func phpStripos(haystack, needle string, offset ...int64) any {
 	return phpStrpos(asciiLower(haystack), asciiLower(needle), offset...)
 }
@@ -46,11 +42,7 @@ func phpStrripos(haystack, needle string, offset ...int64) any {
 	return int64(i)
 }
 
-// searchStart resolves the strpos-family $offset, counted in bytes, into the
-// position the search begins at. A negative offset counts from the end; PHP 8
-// raises a ValueError when it lands before the start, which phpscript clamps to
-// 0 instead. The bool is false when the offset is past the end, where the
-// search cannot match.
+// searchStart resolves the strpos-family byte offset, reporting false when it lies past the end.
 func searchStart(haystack string, offset []int64) (int, bool) {
 	if len(offset) == 0 {
 		return 0, true
@@ -68,11 +60,7 @@ func searchStart(haystack string, offset []int64) (int, bool) {
 	return int(start), true
 }
 
-// searchLast is the strrpos-family search: the last match at or before the
-// window $offset describes, or -1. A positive offset skips that many leading
-// bytes, a negative one caps where the match may start, counted from the end.
-// PHP 8 raises a ValueError when either runs off the haystack; phpscript
-// clamps a negative overrun to the start and reports no match past the end.
+// searchLast returns the last match at or before the window offset describes, or -1.
 func searchLast(haystack, needle string, offset []int64) int {
 	if len(offset) == 0 || offset[0] == 0 {
 		return strings.LastIndex(haystack, needle)
@@ -101,17 +89,14 @@ func searchLast(haystack, needle string, offset []int64) int {
 	return strings.LastIndex(haystack[:end], needle)
 }
 
-// The three PHP 8 substring predicates are one-line wrappers so the published
-// signature names $haystack and $needle, not the standard library's
-// positional parameters.
+// phpStrContains reports whether haystack contains needle.
 func phpStrContains(haystack, needle string) bool { return strings.Contains(haystack, needle) }
 
 func phpStrStartsWith(haystack, needle string) bool { return strings.HasPrefix(haystack, needle) }
 
 func phpStrEndsWith(haystack, needle string) bool { return strings.HasSuffix(haystack, needle) }
 
-// phpSubstrCount implements substr_count($haystack, $needle[, $offset[, $length]]).
-// strings.Count is non-overlapping, as PHP counts.
+// phpSubstrCount implements substr_count over the window offset and length cut.
 func phpSubstrCount(haystack, needle string, optional ...any) int64 {
 	// PHP 8 raises a ValueError on an empty needle.
 	if needle == "" {
@@ -120,10 +105,7 @@ func phpSubstrCount(haystack, needle string, optional ...any) int64 {
 	return int64(strings.Count(substrWindow(haystack, optional), needle))
 }
 
-// substrWindow cuts the haystack down to the optional $offset and $length, both
-// counted in bytes. A negative offset counts from the end and a negative length
-// stops that many bytes before it. PHP 8 raises a ValueError when either leaves
-// the string; phpscript clamps.
+// substrWindow cuts haystack to the optional byte offset and length, clamping an overrun.
 func substrWindow(haystack string, optional []any) string {
 	n := int64(len(haystack))
 	start := int64(0)

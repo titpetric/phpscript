@@ -17,8 +17,7 @@ func hostPanicReflect(v any) (any, error) {
 	panic("reflect path exploded")
 }
 
-// registerPanicBindings installs the panic bindings on either runtime, which
-// share RegisterFunc but not a concrete type.
+// registerPanicBindings installs the panic bindings on either runtime sharing RegisterFunc.
 func registerPanicBindings(rt registrar) {
 	rt.RegisterFunc("host_panic_fast", hostPanicFast)
 	rt.RegisterFunc("host_panic_reflect", hostPanicReflect)

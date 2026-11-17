@@ -14,22 +14,11 @@ import (
 
 // init contributes the request-aware functions to stdlib.Register.
 func init() {
-	runner.RegisterArea(`Runtime\PS\HTTP\SAPI`, registerRequest)
+	runner.RegisterArea(`Runtime\PS\HTTP\SAPI`, RegisterRequest)
 }
 
-// registerRequest installs the functions that answer for the request the
-// runtime is serving.
-//
-// They resolve the request at call time through runner.RequestContext, and never at
-// registration time, because a host registers the standard library once and
-// seeds the request afterwards - stdlib.Register(rt) then reqCtx.Register(rt),
-// the order every host uses. That indirection is also what lets these
-// live outside package runner.
-//
-// A script running without a request - the cli SAPI, a fixture that seeds no
-// request, finds the functions present and inert, as PHP's own cli
-// SAPI does with header().
-func registerRequest(rt *runner.Runtime) {
+// RegisterRequest installs the request-aware functions, resolving the request at call time, inert without one.
+func RegisterRequest(rt *runner.Runtime) {
 	// getallheaders returns the request headers as an associative array keyed
 	// by canonical header name, and an empty array when there is no request.
 	rt.RegisterFunc("getallheaders", func() *model.Array {
@@ -96,13 +85,7 @@ func registerRequest(rt *runner.Runtime) {
 	})
 }
 
-// stageCookie builds the cookie both spellings stage.
-//
-// The header text is net/http's, not PHP's: attributes read Path and HttpOnly
-// where PHP writes path and HttpOnly. The expiry is RFC 1123 where PHP
-// writes its own dashed variant. RFC 6265 makes attribute names
-// case-insensitive and both date spellings parseable and a client cannot tell;
-// a test asserting the exact header text can and this comment records it.
+// stageCookie stages the Set-Cookie header both spellings build, in net/http's text form.
 func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool {
 	request, ok := runner.RequestContext(rt.Context())
 	if !ok {
@@ -135,9 +118,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 	return true
 }
 
-// applyCookiePositional reads the long argument list: $expires, $path,
-// $domain, $secure, $httponly. There is no samesite in this form and
-// PHP grew the array one.
+// applyCookiePositional reads $expires, $path, $domain, $secure and $httponly, with no samesite.
 func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {
 		switch i {
@@ -155,14 +136,7 @@ func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	}
 }
 
-// applyCookieOptions reads the array form. An option the array does not name
-// keeps its zero value, as PHP leaves it out of the header.
-//
-// The keys fold, as php's do: it takes `["Expires" => ...]` for the option
-// `["expires" => ...]` names. A key naming no option passes unread here and
-// php raises a ValueError for it. The bag reads by range and not by key: it
-// arrives as the map another binding returned as readily as the array a
-// literal wrote.
+// applyCookieOptions reads the array form, folding keys and leaving unnamed options zero.
 func applyCookieOptions(cookie *nethttp.Cookie, options any) {
 	modelutil.RangeValues(options, func(key, value any) bool {
 		switch strings.ToLower(phpval.String(key)) {
@@ -183,8 +157,7 @@ func applyCookieOptions(cookie *nethttp.Cookie, options any) {
 	})
 }
 
-// setCookieExpires reads PHP's $expires: a unix timestamp, where 0 means the
-// cookie lasts as long as the browser session and sets no expiry at all.
+// setCookieExpires sets a unix expiry, leaving the cookie a session cookie on zero.
 func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 	if expires == 0 {
 		return
@@ -192,8 +165,7 @@ func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 	cookie.Expires = time.Unix(expires, 0).UTC()
 }
 
-// sameSite reads the attribute PHP spells as a string. An unrecognised value
-// stages no attribute, as a browser drops one it cannot read.
+// sameSite maps a PHP attribute string, an unrecognised value staging no attribute.
 func sameSite(value string) nethttp.SameSite {
 	switch value {
 	case "Lax", "lax":

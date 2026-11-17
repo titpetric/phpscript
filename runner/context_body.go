@@ -18,19 +18,15 @@ import (
 // and cookie decodes, which the request answers at any time, stay in
 // context.go with the Context itself.
 
-// maxMultipartMemory bounds how much of a multipart body net/http keeps in
-// memory before spilling parts to disk. It matches the net/http default.
+// maxMultipartMemory bounds in-memory multipart parts at the net/http default, 32 MiB.
 const maxMultipartMemory = 32 << 20
 
-// isMultipart reports whether the request body is a multipart form, the one
-// body shape ParseForm does not decode by itself.
+// isMultipart reports a multipart form body, which ParseForm alone does not decode.
 func isMultipart(r *http.Request) bool {
 	return mediaType(r) == "multipart/form-data"
 }
 
-// isURLEncoded reports whether the body is a urlencoded form. Only the two
-// form types populate $_POST: a JSON or XML body reaches php://input alone,
-// as in PHP.
+// isURLEncoded reports a urlencoded form body, one of the two shapes that fill $_POST.
 func isURLEncoded(r *http.Request) bool {
 	return mediaType(r) == "application/x-www-form-urlencoded"
 }
@@ -43,11 +39,7 @@ func mediaType(r *http.Request) string {
 	return parsed
 }
 
-// parseBody decodes the request body into $_POST and $_FILES. ParseForm only
-// decodes an urlencoded body; a multipart one leaves it with an empty PostForm,
-// and a form with a file input arrives empty without it. Only the content
-// type says which of the two the body is. Both calls are idempotent and a
-// no-op for bodyless requests and neither needs a method check.
+// parseBody decodes the body into $_POST and $_FILES once, buffering it for php://input.
 func (c *Context) parseBody(r *http.Request, opts Options) {
 	capBody(r, opts.PostMaxSize)
 
@@ -102,18 +94,7 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 	c.PostVars = c.decodeBody(r, opts)
 }
 
-// decodeBody builds $_POST, reading the brackets in the field names. Only the
-// two form content types produce one; anything else is php://input and leaves
-// $_POST empty.
-//
-// A urlencoded body decodes from the bytes parseBody already buffered for
-// php://input and a repeated `a[]` is two fields and not one map entry.
-//
-// A multipart body has no such string: net/http has parsed it into a map and
-// order between two field names has gone and decodeBody sorts the names to
-// make what remains deterministic. Nesting survives. What this cannot
-// reproduce is a form interleaving two top-level names and expecting the later
-// to win, which no browser produces.
+// decodeBody builds $_POST from form fields, sorting multipart names to keep a fixed order.
 func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	limits := opts.inputLimits()
 	if isURLEncoded(r) {
@@ -136,8 +117,7 @@ func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	return shared.ParsePairs(limits, pairs)
 }
 
-// capBody limits how much of a body of unannounced length a parser can read,
-// and a chunked request cannot get past post_max_size by withholding its length.
+// capBody caps an unannounced-length body so a chunked request cannot exceed post_max_size.
 func capBody(r *http.Request, limit Size) {
 	if limit <= 0 || r.Body == nil || r.ContentLength >= 0 {
 		return

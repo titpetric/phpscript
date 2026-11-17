@@ -16,8 +16,7 @@ type UploadedFile struct {
 	Error    int // an UPLOAD_ERR_* code, UploadErrOK for a stored part
 }
 
-// refuse marks an upload as not stored, in the shape PHP writes for an entry it
-// refused: the error code, and nothing that describes content there is none of.
+// refuse marks an upload as not stored, keeping the error code and clearing the content fields.
 func (u *UploadedFile) refuse(code int) *UploadedFile {
 	u.Type = ""
 	u.TmpName = ""

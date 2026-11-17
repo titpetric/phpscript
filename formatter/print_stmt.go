@@ -21,11 +21,11 @@ func (p *printer) printStmt(s model.Stmt) {
 		for i, a := range n.Args {
 			args[i] = p.expr(a)
 		}
-		p.line("echo " + strings.Join(args, ", ") + ";")
+		p.line("echo " + strings.Join(args, ", ") + p.term())
 	case *model.ExprStmt:
-		p.line(p.expr(n.X) + ";")
+		p.line(p.expr(n.X) + p.term())
 	case *model.Assign:
-		p.line(p.assign(n) + ";")
+		p.line(p.assign(n) + p.term())
 	case *model.If:
 		p.printIf(n, false)
 	case *model.Foreach:
@@ -38,16 +38,16 @@ func (p *printer) printStmt(s model.Stmt) {
 		p.line("} while (" + p.expr(n.Cond) + ");")
 	case *model.Return:
 		if n.Value == nil {
-			p.line("return;")
+			p.line("return" + p.term())
 		} else {
-			p.line("return " + p.expr(n.Value) + ";")
+			p.line("return " + p.expr(n.Value) + p.term())
 		}
 	case *model.Include:
 		kw := includeKeyword(n)
 		if n.Parenthesized {
-			p.line(kw + "(" + p.expr(n.Path) + ");")
+			p.line(kw + "(" + p.expr(n.Path) + ")" + p.term())
 		} else {
-			p.line(kw + " " + p.expr(n.Path) + ";")
+			p.line(kw + " " + p.expr(n.Path) + p.term())
 		}
 	case *model.FuncDecl:
 		p.printFunc(n, false)
@@ -56,19 +56,19 @@ func (p *printer) printStmt(s model.Stmt) {
 	case *model.InterfaceDecl:
 		p.printInterface(n)
 	case *model.Throw:
-		p.line("throw " + p.expr(n.X) + ";")
+		p.line("throw " + p.expr(n.X) + p.term())
 	case *model.Try:
 		p.printTry(n)
 	case *model.Switch:
 		p.printSwitch(n)
 	case *model.Break:
-		p.line("break;")
+		p.line("break" + p.term())
 	case *model.Continue:
-		p.line("continue;")
+		p.line("continue" + p.term())
 	case *model.Unset:
-		p.line("unset(" + p.args(n.Targets) + ");")
+		p.line("unset(" + p.args(n.Targets) + ")" + p.term())
 	case *model.Global:
-		p.line("global $" + strings.Join(n.Names, ", $") + ";")
+		p.line("global $" + strings.Join(n.Names, ", $") + p.term())
 	case *model.StaticVar:
 		decls := make([]string, len(n.Vars))
 		for i, d := range n.Vars {
@@ -77,13 +77,13 @@ func (p *printer) printStmt(s model.Stmt) {
 				decls[i] += " = " + p.expr(d.Default)
 			}
 		}
-		p.line("static " + strings.Join(decls, ", ") + ";")
+		p.line("static " + strings.Join(decls, ", ") + p.term())
 	case *model.ConstDecl:
 		decls := make([]string, len(n.Consts))
 		for i, c := range n.Consts {
 			decls[i] = c.Name + " = " + p.expr(c.Default)
 		}
-		p.line("const " + strings.Join(decls, ", ") + ";")
+		p.line("const " + strings.Join(decls, ", ") + p.term())
 	case *model.Use:
 		p.line(p.use(n))
 	case *model.Declare:
@@ -93,13 +93,11 @@ func (p *printer) printStmt(s model.Stmt) {
 	}
 }
 
-// use renders an import statement. The parser resolves imports while parsing.
-// The statement is inert; dropping it would rewrite a file into one that
-// states none of its dependencies.
+// use renders a use statement, kept so the file states its dependencies.
 func (p *printer) use(n *model.Use) string {
 	// A go import holds its path, one per statement. See goimport.go.
 	if len(n.Imports) == 1 && n.Imports[0].Package != "" {
-		return `import "` + n.Imports[0].Package + `";`
+		return `import "` + n.Imports[0].Package + `"` + p.term()
 	}
 	out := "use "
 	if n.Kind != "" {
@@ -113,7 +111,7 @@ func (p *printer) use(n *model.Use) string {
 		}
 		names = append(names, name)
 	}
-	return out + strings.Join(names, ", ") + ";"
+	return out + strings.Join(names, ", ") + p.term()
 }
 
 func (p *printer) printDeclare(n *model.Declare) {
@@ -123,7 +121,7 @@ func (p *printer) printDeclare(n *model.Declare) {
 	}
 	head := "declare(" + strings.Join(parts, ", ") + ")"
 	if !n.Block {
-		p.line(head + ";")
+		p.line(head + p.term())
 		return
 	}
 	p.line(head + " {")
@@ -138,8 +136,7 @@ func (p *printer) assign(n *model.Assign) string {
 	return p.assignText(n.Target, n.Op, n.Value)
 }
 
-// assignText prints a compound assignment, `$a ??= b` for the lowered form of
-// the null coalescing assignment.
+// assignText prints a compound assignment, spelling the lowered `??=` form.
 func (p *printer) assignText(target model.Expr, op string, value model.Expr) string {
 	if c, ok := value.(*model.Coalesce); ok && c.Assign && op == "=" {
 		return p.expr(target) + " ??= " + p.expr(c.Right)
@@ -171,8 +168,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 	p.line("}")
 }
 
-// thenEnd is the line the `then` arm of an if closes on: the `else` keyword
-// when there is one, and otherwise the closing brace of the statement.
+// thenEnd returns the else line when present, otherwise the statement's end.
 func (p *printer) thenEnd(n *model.If) int {
 	if n.ElseLine > 0 {
 		return n.ElseLine
@@ -251,8 +247,7 @@ func (p *printer) simpleStmt(s model.Stmt) string {
 	}
 }
 
-// catchClause renders the `(...)` of a catch: a type filter, a bound variable,
-// or both, in whichever combination the source used.
+// catchClause renders a catch's type filter and bound variable, either or both.
 func catchClause(c model.Catch) string {
 	parts := make([]string, 0, 2)
 	if c.Type != "" {
@@ -264,8 +259,7 @@ func catchClause(c model.Catch) string {
 	return strings.Join(parts, " ")
 }
 
-// tryEnd is the line the try block closes on: the first `catch`, or `finally`
-// when there is no catch clause.
+// tryEnd returns the first catch line, or the finally line when there is none.
 func tryEnd(n *model.Try) int {
 	if len(n.Catches) > 0 {
 		return n.Catches[0].Line

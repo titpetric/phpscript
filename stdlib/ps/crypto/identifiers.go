@@ -57,8 +57,7 @@ func ULIDFrom(seed string) string {
 	return encodeCrockford([16]byte(sum[:16]))
 }
 
-// timestampedID builds the 16 bytes both generators format: the current
-// millisecond in the top 48 bits, crypto/rand in the remaining 80.
+// timestampedID builds 16 bytes with the current millisecond in the top 48 bits.
 func timestampedID() ([16]byte, error) {
 	var b [16]byte
 	binary.BigEndian.PutUint64(b[:8], uint64(time.Now().UnixMilli())<<16)
@@ -68,9 +67,7 @@ func timestampedID() ([16]byte, error) {
 	return b, nil
 }
 
-// encodeCrockford renders 16 bytes as the 26-character ULID text form:
-// Crockford base32, most significant bits first, with the 128-bit value
-// padded to 130 bits by two leading zero bits.
+// encodeCrockford renders 16 bytes as the 26-character Crockford base32 ULID text.
 func encodeCrockford(b [16]byte) string {
 	const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 	hi := binary.BigEndian.Uint64(b[:8])

@@ -8,16 +8,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// Expression parsing uses precedence climbing. The table below mirrors the
-// subset of PHP operators the runner/transpiler understands.
-//
-// Note: the linter reports assignment inside a condition (`if ($a = "b")`),
-// which parses: an assignment is an expression and answers the value it wrote.
-//
-// The bitwise levels sit where PHP 8 puts them: `| ^ &` are looser than any
-// comparison but tighter than `&&`, and `<< >>` are tighter than `.` but looser
-// than `+ -` and `1 | 2 == 2` folds the comparison first (1) and
-// `1 << 2 + 3` shift by five (32).
+// binPrec ranks the binary operators, loosest first, as PHP 8 binds them.
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
 	"|": 3, "^": 4, "&": 5,
@@ -37,8 +28,7 @@ func (p *parser) parseExpr() (model.Expr, error) {
 	return p.parseLogical(left, 0)
 }
 
-// logicalLevel orders the word operators of the current token, looser than
-// assignment: 0 is `or`, 1 `xor` and 2 `and`. Any other token is -1.
+// logicalLevel ranks or, xor and conjunction below assignment, answering -1 for another token.
 func logicalLevel(t token) int {
 	if t.kind != tIdent {
 		return -1
@@ -54,9 +44,7 @@ func logicalLevel(t token) int {
 	return -1
 }
 
-// parseLogical folds `or`, `xor` and `and` onto left, each left associative.
-// They bind looser than assignment: `$ok = f() or die()` assigns first and
-// then tests the call. The parser folds the levels from min up.
+// parseLogical folds or, xor and conjunction onto left, looser than assignment.
 func (p *parser) parseLogical(left model.Expr, min int) (model.Expr, error) {
 	for {
 		level := logicalLevel(p.cur())
@@ -77,9 +65,7 @@ func (p *parser) parseLogical(left model.Expr, min int) (model.Expr, error) {
 	}
 }
 
-// parseAssign supports assignment used as an expression (e.g. the PHP idiom
-// `if (($x = f()) !== false)`). It binds to the right and holds only when the
-// left side is an lvalue (variable, index, property or list()).
+// parseAssign parses assignment as an expression that binds right over an lvalue.
 func (p *parser) parseAssign() (model.Expr, error) {
 	left, err := p.parseTernary()
 	if err != nil {
@@ -109,9 +95,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 	return left, nil
 }
 
-// assignExpr builds the assignment of op. `$a ??= b` assigns `$a ?? b`, where
-// b runs only while $a holds null or nothing; both engines resolve the
-// target's base and key once. An append target, `$a[] ??= b`, is a parse error.
+// assignExpr builds the assignment of op, with ??= assigning target ?? value.
 func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line int) (model.Expr, error) {
 	if op != "??=" {
 		return p.newAssignExpr(target, op, value, line), nil
@@ -132,8 +116,7 @@ func isLValue(e model.Expr) bool {
 	return false
 }
 
-// parseCoalesce parses `a ?? b`, right associative: `a ?? b ?? c` reads as
-// `a ?? (b ?? c)`. It binds tighter than the ternary and looser than `||`.
+// parseCoalesce parses a right-associative ?? that binds tighter than the ternary.
 func (p *parser) parseCoalesce() (model.Expr, error) {
 	left, err := p.parseBinary(1)
 	if err != nil {
@@ -203,6 +186,9 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 			break
 		}
 		op := p.next().val
+		if p.goRuntime && (op == "===" || op == "!==") {
+			return nil, fmt.Errorf("line %d: the go runtime compares with == and !=, not %s", t.line, op)
+		}
 		right, err := p.parseBinary(prec + 1)
 		if err != nil {
 			return nil, err
@@ -314,13 +300,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 	return p.parseInstanceOf()
 }
 
-// parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
-// `!` and `!$e instanceof Foo` negates the test and never tests the
-// negation and its level is below parseUnary. A bare class name on the
-// right takes a qualification, the same resolution `new` and a static call get and a
-// `use` alias and an unqualified name inside a namespace reach the runtime
-// fully qualified. Any other operand - a variable, a parenthesized
-// expression - names the class at run time and passes through unresolved.
+// parseInstanceOf parses instanceof, qualifying a bare class name and leaving other operands to run time.
 func (p *parser) parseInstanceOf() (model.Expr, error) {
 	left, err := p.parsePow()
 	if err != nil {
@@ -343,10 +323,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 	return left, nil
 }
 
-// parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
-// minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
-// exponent (`2 ** -1`, `2 ** 3 ** 2`) and its level is between
-// parseUnary and parsePostfix, and not in the binPrec table.
+// parsePow parses a right-associative ** that binds tighter than unary minus.
 func (p *parser) parsePow() (model.Expr, error) {
 	base, err := p.parsePostfix()
 	if err != nil {
@@ -363,8 +340,7 @@ func (p *parser) parsePow() (model.Expr, error) {
 	return base, nil
 }
 
-// parsePostfix parses a primary followed by any chain of ->method(), ->prop,
-// .method(), .prop, [index] and (call) suffixes.
+// parsePostfix parses a primary and the chain of member, index and call suffixes.
 func (p *parser) parsePostfix() (model.Expr, error) {
 	e, err := p.parsePrimary()
 	if err != nil {
@@ -533,8 +509,7 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 	return nil, fmt.Errorf("line %d: unexpected token %s", t.line, t)
 }
 
-// parseIdentExpr handles keyword literals, `new`, `array(...)`, and bare
-// function calls / constants.
+// parseIdentExpr parses a keyword literal, new, array() or a bare call or constant.
 func (p *parser) parseIdentExpr() (model.Expr, error) {
 	// `static function () {}` is a closure declared to have no `$this`. Any
 	// other `static` is the late-static-binding class name and falls through to
@@ -706,9 +681,7 @@ func isFuncKeyword(name string) bool {
 	return name == "function" || name == "fn" || name == "func"
 }
 
-// parseClosure parses an anonymous function `function(params) [use(...)] { body }`.
-// The `use` capture list names the enclosing variables the closure sees; the
-// runtime binds their values where the closure value appears.
+// parseClosure parses a closure and its use list, whose captures bind by value.
 func (p *parser) parseClosure() (*model.Closure, error) {
 	// `function &() {}` declares a by-reference return; like the named form,
 	// the parser records the marker and the closure returns by value.
@@ -760,8 +733,7 @@ func (p *parser) parseClosureUses() ([]model.ClosureUse, error) {
 	return uses, p.eatOp(")")
 }
 
-// parseList parses `list($a, $b, ...)` used as an assignment target. Empty
-// slots (`list(, $b)`) arrive as nil elements.
+// parseList parses a list() target, with an empty slot as a nil element.
 func (p *parser) parseList() (model.Expr, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
@@ -786,10 +758,7 @@ func (p *parser) parseList() (model.Expr, error) {
 	return &model.ListExpr{Elems: p.exprs.take(mark)}, p.eatOp(")")
 }
 
-// parseVarRef reads the value holding a class name: a variable, then any
-// index and property accessors applied to it. It stops before "(" and the
-// caller owns the argument list; that boundary is what separates the name from
-// the constructor call in `new $factories["png"]($file)`.
+// parseVarRef reads a variable and its accessors as a class name, stopping before "(".
 func (p *parser) parseVarRef() (model.Expr, error) {
 	if p.cur().kind != tVar {
 		return nil, fmt.Errorf("line %d: expected a variable, got %s", p.cur().line, p.cur())
@@ -863,20 +832,7 @@ func (p *parser) parseNew() (model.Expr, error) {
 	return n, nil
 }
 
-// parseAnonClass consumes `class [(args)] [extends X] [implements A, B] { ... }`
-// after `new`, the declaration of a class with no name.
-//
-// The parser assigns it one anyway. A name is what `new` resolves, what a method
-// call looks a class up by, and what `instanceof` compares and a class without
-// one would need a second path through every one of those; naming it here means
-// the runtime registers and reaches the declaration exactly like a written class, and
-// only the parser knows the difference. The spelling follows PHP's, which also
-// synthesizes a name and a script that prints get_class() sees something of the
-// same shape. The parser collects the declarations on the program because they
-// occur in an expression, where nothing walking statements would find them.
-//
-// The arguments come before the heritage, as in PHP: `new class ($dsn)
-// implements Reader { ... }` passes $dsn to __construct.
+// parseAnonClass parses new class, collecting its synthesized declaration on the program.
 func (p *parser) parseAnonClass() (model.Expr, error) {
 	line := p.cur().line
 	p.next() // class
@@ -904,10 +860,7 @@ func (p *parser) parseAnonClass() (model.Expr, error) {
 	return n, nil
 }
 
-// parseCallArgs consumes an argument list that may be PHP 8.1's first-class
-// callable syntax, `(...)`, and reports which one. Every spelling that builds
-// a Call, MethodCall, StaticCall or Invoke reads its arguments here; the three
-// `new` sites keep parseArgs, which refuses the ellipsis as php does.
+// parseCallArgs parses an argument list and reports first-class callable syntax.
 func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
 	if p.atFirstClassMarker() {
 		p.i += 5 // ( . . . )
@@ -917,11 +870,7 @@ func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
 	return args, false, err
 }
 
-// atFirstClassMarker reports whether the argument list starting at the current
-// token is exactly `(...)`. The lexer has no ellipsis token - a variadic
-// parameter reads three `.` operators in parseParamDecoration - and `.` is
-// string concatenation and one match reads all five tokens before the parser
-// consumes any.
+// atFirstClassMarker reports whether the next five tokens are the (...) marker.
 func (p *parser) atFirstClassMarker() bool {
 	return p.isOpAt(0, "(") && p.isOpAt(1, ".") && p.isOpAt(2, ".") && p.isOpAt(3, ".") && p.isOpAt(4, ")")
 }

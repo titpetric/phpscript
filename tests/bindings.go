@@ -34,8 +34,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// toString renders a value the way the PHP VM would in a string context, for
-// the comparator binding below.
+// toString renders a value as the PHP VM would in a string context.
 func toString(v any) string {
 	if s, ok := v.(string); ok {
 		return s
@@ -56,8 +55,7 @@ func (r BindingRecord) Label() string {
 	return r.Name
 }
 
-// bindingWords is the fixed input used by every list-returning binding and the
-// benchmarks compare representations and not workloads.
+// bindingWords is the fixed input every list-returning binding shares.
 var bindingWords = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
 // RegisterBindings installs the example bindings. stdlib.Register takes it as
@@ -82,8 +80,7 @@ func BindingFuncs() map[string]any {
 	return funcs
 }
 
-// collector captures RegisterFunc calls without a Runtime and the same binding
-// definitions serve both the VM tests and the raw-call benchmarks.
+// collector captures RegisterFunc calls so bindings serve the VM tests and raw benchmarks.
 type collector struct {
 	funcs map[string]any
 }

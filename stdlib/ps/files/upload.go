@@ -6,10 +6,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerUploads installs the pair of functions a script needs after $_FILES
-// arrives. The request runtime writes an uploaded part outside the root and a
-// script reaches it by the absolute tmp_name in $_FILES; both functions refuse
-// a path this request did not produce, as PHP does.
+// registerUploads installs the pair after $_FILES arrives, both refusing a path this request did not produce.
 func registerUploads(rt *runner.Runtime, r root) {
 	isUpload := func(filename string) bool {
 		request, ok := runner.RequestContext(rt.Context())

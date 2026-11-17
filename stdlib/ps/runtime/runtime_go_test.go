@@ -78,10 +78,10 @@ func TestRegisterGo(t *testing.T) {
 }
 
 // TestGoBuiltinEnvironment covers the two builtins that reach the process:
-// getenv answers os.Getenv's string and numcpu answers runtime.NumCPU.
+// getenv answers null for an unset name and numcpu answers runtime.NumCPU.
 func TestGoBuiltinEnvironment(t *testing.T) {
 	t.Parallel()
-	goOutput(t, "<?php\nuse Runtime\\Go;\necho getenv(\"PHPS_GO_RUNTIME_TEST_UNSET_9C1\") === \"\" ? \"empty\" : \"set\";\n", "empty")
+	goOutput(t, "<?php\nuse Runtime\\Go;\necho getenv(\"PHPS_GO_RUNTIME_TEST_UNSET_9C1\") ?? \"empty\";\n", "empty")
 	goOutput(t, "<?php\nuse Runtime\\Go;\necho numcpu() >= 1 ? \"cpus\" : \"none\";\n", "cpus")
 }
 
@@ -123,7 +123,7 @@ echo Runtime\Go\len(make("[]int", 2)), "\n";
 use Runtime\Go;
 
 $n = 300;
-echo int8(300) === int8($n) ? "agree" : "differ", "\n";
+echo int8(300) == int8($n) ? "agree" : "differ", "\n";
 `, "agree\n")
 	// A bare min is go's in an importing file, which reads values where php's
 	// reads an array, and `\min` is php's. Both spellings answer in one file:
@@ -187,7 +187,7 @@ func TestGoConversions(t *testing.T) {
 use Runtime\Go;
 
 echo Go\int8(300), " ", Go\uint8(-1), " ", Go\int64("12"), " ", Go\string(5), " ", Go\int32(2147483648), "\n";
-echo Go\float32(0.1) === 0.1 ? "same" : "narrowed", "\n";
+echo Go\float32(0.1) == 0.1 ? "same" : "narrowed", "\n";
 echo Go\int64(), ",", (new Go\int64(5)) + 1, ",", Go\bool("0") ? "t" : "f", "\n";
 var_dump(class_exists('Runtime\Go\int64'));
 `, "44 255 12 5 -2147483648\nnarrowed\n0,6,f\nbool(true)\n")

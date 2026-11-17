@@ -31,10 +31,7 @@ func init() {
 // with strtr/strrpos. None of that is composer-specific: any non-trivial PHP
 // library uses the same surface.
 
-// phpVersion is the PHP language version phpscript reports, and no claim of
-// full compatibility: phpscript tests its semantics against this version (see
-// docs/changelog), and libraries branch on the number when they decide which
-// language features they may use.
+// phpVersionMajor, phpVersionMinor and phpVersionRelease name the PHP version phpscript reports.
 const (
 	phpVersionMajor   = 8
 	phpVersionMinor   = 4
@@ -121,8 +118,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("E_STRICT", int64(2048))
 }
 
-// osName reports the PHP_OS value for the host. PHP uses the uname system
-// name, which for the platforms Go builds on differs from GOOS only in case.
+// osName reports the PHP_OS value, the uname name that differs from GOOS only in case.
 func osName() string {
 	switch runtime.GOOS {
 	case "windows":
@@ -266,8 +262,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	})
 }
 
-// phpFilterVar implements the filter_var validators phpscript supports. An
-// unknown filter passes the value through, as FILTER_DEFAULT does.
+// phpFilterVar implements the supported filter_var validators, passing an unknown filter through.
 func phpFilterVar(value any, args ...any) any {
 	filter := int64(516)
 	if len(args) > 0 {
@@ -300,8 +295,7 @@ func phpFilterVar(value any, args ...any) any {
 	}
 }
 
-// lastIndexOrFalse maps a strings.LastIndex result onto the int|false union
-// strrpos returns, since PHP callers compare the miss with === false.
+// lastIndexOrFalse maps a LastIndex result onto the int|false union strrpos returns.
 func lastIndexOrFalse(i int) any {
 	if i < 0 {
 		return false
@@ -309,9 +303,7 @@ func lastIndexOrFalse(i int) any {
 	return int64(i)
 }
 
-// phpStrtr implements both spellings: strtr($subject, $from, $to) replaces
-// bytes positionally, strtr($subject, $pairs) replaces substrings, longest
-// match first.
+// phpStrtr replaces bytes given from and to, or substrings, longest match first.
 func phpStrtr(subject string, args ...any) string {
 	if len(args) == 0 {
 		return subject

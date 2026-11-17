@@ -14,8 +14,7 @@ import (
 // The zero value means no limit, as 0 does in php.ini.
 type Size int64
 
-// megabyte is the multiplier of the M suffix, which is 1024*1024 in php.ini and
-// not a million.
+// megabyte is the M suffix multiplier, 1024*1024 as in php.ini.
 const megabyte = 1 << 20
 
 // ParseSize reads a php.ini-style size. An empty value is no limit.

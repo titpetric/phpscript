@@ -13,12 +13,13 @@ import (
 func TestGoImportKeepsItsSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\nimport \"net/http\";\nimport \"encoding/json\";\n\n$req = http.NewRequest(\"GET\", $url);\n$body = json.Marshal($req);\necho http.StatusOK;\n$rows = make([]http.Request, 2);\n$one = new http.Request;\n"
+	want := "<?php\n\nuse Runtime\\Go\n\nimport \"net/http\"\nimport \"encoding/json\"\n\n$req = http.NewRequest(\"GET\", $url)\n$body = json.Marshal($req)\necho http.StatusOK\n$rows = make([]http.Request, 2)\n$one = new http.Request\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != in {
-		t.Fatalf("formatting a go import changed the source:\n%s\nwant:\n%s", out, in)
+	if out != want {
+		t.Fatalf("formatting a go import produced:\n%s\nwant:\n%s", out, want)
 	}
 }
 
@@ -27,12 +28,13 @@ func TestGoImportKeepsItsSpelling(t *testing.T) {
 func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\n$list = [1, 2, 3];\n$user = {\"name\": \"ada\"};\n$names = []string{\"ada\"};\n$ages = map[string]int{\"ada\": 36};\n$empty = [];\n$none = {};\n"
+	want := "<?php\n\nuse Runtime\\Go\n\n$list = [1, 2, 3]\n$user = {\"name\": \"ada\"}\n$names = []string{\"ada\"}\n$ages = map[string]int{\"ada\": 36}\n$empty = []\n$none = {}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != in {
-		t.Fatalf("formatting a go literal changed the source:\n%s\nwant:\n%s", out, in)
+	if out != want {
+		t.Fatalf("formatting a go literal produced:\n%s\nwant:\n%s", out, want)
 	}
 }
 
@@ -41,12 +43,13 @@ func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
 func TestGoRuntimeFileFormats(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nimport \"net/http\";\nimport \"fmt\";\n\n$m = {\n\t\"a\": 1,\n\t\"b\": 2,\n\t\"c\": 3,\n};\n$rows = [][]string{[\"a\"]};\necho http.StatusOK;\n"
+	want := "<?php\n\nimport \"net/http\"\nimport \"fmt\"\n\n$m = {\n\t\"a\": 1,\n\t\"b\": 2,\n\t\"c\": 3,\n}\n$rows = [][]string{[\"a\"]}\necho http.StatusOK\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != in {
-		t.Fatalf("formatting a go runtime file changed it:\n%s\nwant:\n%s", out, in)
+	if out != want {
+		t.Fatalf("formatting a go runtime file produced:\n%s\nwant:\n%s", out, want)
 	}
 }
 
@@ -59,7 +62,7 @@ func TestGoInferredLiteralPrintsItsInnerType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, `$grid = [][]{[]{"a"}};`) {
+	if !strings.Contains(out, `$grid = [][]{[]{"a"}}`) {
 		t.Fatalf("the inferred literal printed as:\n%s", out)
 	}
 	again, err := formatter.Source(out)
@@ -73,12 +76,13 @@ func TestGoInferredLiteralPrintsItsInnerType(t *testing.T) {
 func TestGoPointerOperatorsKeepTheirSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\n$p = &$a;\n$v = *$p;\n*$p = 2;\n"
+	want := "<?php\n\nuse Runtime\\Go\n\n$p = &$a\n$v = *$p\n*$p = 2\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != in {
-		t.Fatalf("formatting a go pointer changed the source:\n%s\nwant:\n%s", out, in)
+	if out != want {
+		t.Fatalf("formatting a go pointer produced:\n%s\nwant:\n%s", out, want)
 	}
 }
 

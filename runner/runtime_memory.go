@@ -89,8 +89,7 @@ func (rt *Runtime) MemoryWalk() int64 {
 	return total
 }
 
-// lastMemoryUsage returns the cached result of the last walk. Trace spans
-// record this once, with no walk apiece.
+// lastMemoryUsage returns the cached result of the last walk, never walking again.
 func (rt *Runtime) lastMemoryUsage() int64 {
 	if rt.memUsage < runtimeBaseline {
 		return runtimeBaseline
@@ -98,8 +97,7 @@ func (rt *Runtime) lastMemoryUsage() int64 {
 	return rt.memUsage
 }
 
-// checkMemory walks and reports a RuntimeException when usage exceeds the
-// configured MemoryLimit. Without a limit it does nothing.
+// checkMemory walks and reports a RuntimeException when usage exceeds MemoryLimit, nil without one.
 func (rt *Runtime) checkMemory() error {
 	if rt.opts.MemoryLimit <= 0 {
 		return nil

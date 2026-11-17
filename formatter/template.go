@@ -24,18 +24,24 @@ type phpScan struct {
 	quote        byte
 }
 
-// alignTemplate re-indents src without rewriting a line's contents.
-func alignTemplate(src string) string {
+// alignTemplate re-indents src and applies the go runtime spelling to its code lines.
+func alignTemplate(src string, goRuntime bool) string {
 	lines := strings.Split(src, "\n")
 	var tags []string
 	var scan phpScan
+	var style styleScan
+	skip := map[int]bool{}
 	base, phpNest := 0, 0
+	prevCode := ""
 	inPHP := false
 	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
 		trimmed := strings.TrimLeft(line, " \t")
 		switch {
 		case trimmed == "":
+			if goRuntime && isAssignCallSource(prevCode, nextCode(lines, i)) {
+				skip[i] = true
+			}
 			lines[i] = ""
 		case isPHPInline(trimmed):
 			// A template line that is PHP alone stays at the code's depth: a
@@ -50,17 +56,27 @@ func alignTemplate(src string) string {
 				tags = scanTags(stripPHP(rest), tags)
 			}
 		case startsPHP(trimmed):
+			code := phpCode(trimmed)
+			if goRuntime && strings.TrimSpace(code) != "" {
+				trimmed = strings.TrimSuffix(trimmed, code) + style.line(code)
+			}
 			lines[i] = indentLine(base+phpNest, trimmed)
 			delta, _ := scan.code(phpCode(trimmed))
 			base += delta
+			prevCode = trimmed
 			inPHP = true
 		case inPHP:
 			// The PHP code between the tags keeps its own indentation; only
 			// the template's lines move. The scan still reads the nesting the
 			// template lines below it follow.
+			if goRuntime {
+				line = style.line(line)
+				trimmed = strings.TrimLeft(line, " \t")
+			}
 			delta, closeAt := scan.code(trimmed)
 			lines[i] = line
 			base += delta
+			prevCode = trimmed
 			if closeAt >= 0 {
 				inPHP = false
 				tags = scanTags(stripPHP(trimmed[closeAt+2:]), tags)
@@ -81,7 +97,40 @@ func alignTemplate(src string) string {
 			tags = scanTags(html, tags)
 		}
 	}
-	return strings.Join(lines, "\n")
+	out := make([]string, 0, len(lines))
+	for i, line := range lines {
+		if !skip[i] {
+			out = append(out, line)
+		}
+	}
+	for len(out) > 0 && out[len(out)-1] == "" {
+		out = out[:len(out)-1]
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	return strings.Join(out, "\n") + "\n"
+}
+
+// nextCode answers the next line that holds anything.
+func nextCode(lines []string, i int) string {
+	for j := i + 1; j < len(lines); j++ {
+		if line := strings.TrimSpace(lines[j]); line != "" {
+			return line
+		}
+	}
+	return ""
+}
+
+// isAssignCallSource reports a call written directly under an assignment.
+func isAssignCallSource(prev, next string) bool {
+	if !strings.HasPrefix(prev, "$") || !strings.HasSuffix(strings.TrimSuffix(next, ";"), ")") {
+		return false
+	}
+	if !strings.Contains(next, "->") && !strings.Contains(next, "(") {
+		return false
+	}
+	return strings.Contains(prev, " = ") || strings.HasSuffix(prev, " =")
 }
 
 // nestDepth answers the deeper of the PHP and markup depths.

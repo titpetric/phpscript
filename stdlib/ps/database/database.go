@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/titpetric/phpscript/modelutil"
+	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -48,10 +49,7 @@ type databaseSpanKey struct{}
 // catches it like any other database error.
 var ErrReadOnly = errors.New("database is read-only")
 
-// readOnlyError is a refusal by a read-only client. It names the statement it
-// refused, and matches ErrReadOnly without wrapping it: the flat backend
-// unwraps a caught error to its root cause, and the caught message has to say
-// which statement it drops, and never only that the client cannot write.
+// readOnlyError names the statement a read-only client refused, matching ErrReadOnly.
 type readOnlyError struct {
 	refusal string
 }
@@ -220,15 +218,7 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 	return b.bridge.RowsAffected(ctx)
 }
 
-// observe records what the query log reports onto the span of the call that
-// produced it. The span already measures the call and the statement, the values
-// bound to it and the transaction depth are what this adds. Every method is nil
-// safe and an uninstrumented run takes the same path.
-//
-// observe records the bound values, not just their count: a placeholder query
-// names no row, and reading the values back is the reason to open the trace at
-// all. They are as sensitive as the columns they filter on and the front end
-// belongs behind something that authenticates.
+// observe records the query, bound values, transaction depth and error onto the call's span.
 func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	span := databaseSpan(ctx)
 	span.SetAttribute("query", entry.Query)
@@ -242,12 +232,7 @@ func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	}
 }
 
-// queryArgs renders the values bound to a statement. The bridge passes
-// positional arguments as a slice and named ones as the map or struct they came
-// from and queryArgs passes both shapes through untouched: the front end
-// renders a slice and a map perfectly well, and flattening them would lose
-// which name held what. An empty set is not recorded and a query without
-// placeholders has no attribute and never an empty one.
+// queryArgs returns the bound values untouched, reporting false for an empty set.
 func queryArgs(args any) (any, bool) {
 	if args == nil {
 		return nil, false
@@ -264,24 +249,18 @@ func queryArgs(args any) (any, bool) {
 	return args, true
 }
 
-// recordRows records how much a read returned on the span measuring it. The row
-// count is the other half of a query: a statement that took 40ms says something
-// different when it returned 3 rows than when it returned 30,000.
+// recordRows records a read's row count on the span measuring it.
 func recordRows(ctx context.Context, rows int) {
 	databaseSpan(ctx).SetAttribute("rows", rows)
 }
 
-// databaseSpan returns the span measuring the call in progress, or nil when
-// the run has no instrumentation. Every span method is nil safe and
-// callers do not check.
+// databaseSpan returns the span measuring the call in progress, nil when uninstrumented.
 func databaseSpan(ctx context.Context) *telemetry.Span {
 	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
 	return span
 }
 
 // refuseWrite reports the error a read-only client returns for a CRUD helper.
-// The CRUD helpers classify themselves: insert(), replace() and update() write
-// by definition. refuseWrite drops them before anything builds a statement.
 func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 	if !b.IsReadonly {
 		return nil
@@ -291,12 +270,7 @@ func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 	return err
 }
 
-// refuseQuery reports the error a read-only client returns for a statement that
-// is not a read, classifying it by the keyword it starts with.
-//
-// A refused statement never reaches the query log and refuseQuery records its
-// text here: a boundary nobody can see enforced is a boundary nobody can debug
-// when it refuses the wrong statement.
+// refuseQuery reports the error a read-only client returns for a non-reading statement.
 func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	if !b.IsReadonly {
 		return nil
@@ -314,8 +288,7 @@ func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	return err
 }
 
-// name qualifies a method with the PHP variable holding this client and the
-// trace tells two clients in one request apart.
+// name qualifies a method with the client's PHP variable so a trace tells clients apart.
 func (b *Database) name(method string) string {
 	if b.ID == "" {
 		return method
@@ -328,12 +301,24 @@ func (b *Database) span(ctx context.Context, method string) *telemetry.Span {
 	return telemetry.StartSpan(ctx, b.name(method), telemetry.KindDatabase)
 }
 
-// withSpan starts a database span and returns a context holding it for the
-// query log observer, together with the closer that ends it.
+// withSpan starts a database span, returning a context holding it and its closer.
 func (b *Database) withSpan(ctx context.Context, method string) (context.Context, func()) {
 	span := b.span(ctx, method)
 	if span == nil {
 		return ctx, func() {}
 	}
 	return context.WithValue(span.Context(ctx), databaseSpanKey{}, span), span.End
+}
+
+// Connect opens the connection the host registered under name, the call behind
+// `new Database($name)` and Runtime\Go\Database\SQL\Open.
+func Connect(rt *runner.Runtime, ctx context.Context, name string) (*Database, error) {
+	handle, err := provider(rt).Connect(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	database := &Database{bridge: newBridge(handle)}
+	database.bridge.WithObserver(database.observe)
+	return database, nil
 }

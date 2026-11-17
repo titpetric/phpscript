@@ -12,20 +12,12 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// scriptExit is what an exit() looks like from here.
-//
-// The concrete type is runner.ExitError, which this package cannot name:
-// runner imports this one. The method is the seam. It returns the status so a
-// future caller needing the code has it without another interface.
+// scriptExit is the seam to runner.ExitError, which this package cannot import.
 type scriptExit interface {
 	ScriptExit() int
 }
 
-// execState is one frame stack's worth of VM state, pooled across runs. The
-// former vmScratch buffers, the error handlers, the call frames and the pc
-// live here so the run loop's helpers are methods and not closures: a
-// closure capturing a loop variable by reference forces that variable onto
-// the heap on every Run. This loop holds five of them.
+// execState holds one frame stack's VM state, pooled across runs.
 type execState struct {
 	program *Program
 	host    Host
@@ -58,8 +50,7 @@ type execState struct {
 	walker func(yield func(any))
 }
 
-// frameSlots returns a locals/initialized pair for a fresh user-function
-// frame, reusing a stashed slab when one fits.
+// frameSlots returns a locals and initialized pair for a fresh frame, reusing a stashed slab.
 func (st *execState) frameSlots(n int) ([]any, []bool) {
 	if k := len(st.spareLocals) - 1; k >= 0 {
 		locals, init := st.spareLocals[k], st.spareInits[k]
@@ -72,8 +63,7 @@ func (st *execState) frameSlots(n int) ([]any, []bool) {
 	return make([]any, n), make([]bool, n)
 }
 
-// stashFrame clears a popped frame's arrays to capacity and keeps them for
-// the next call.
+// stashFrame clears a popped frame's arrays to capacity and keeps them for reuse.
 func (st *execState) stashFrame(locals []any, init []bool) {
 	clear(locals[:cap(locals)])
 	clear(init[:cap(init)])
@@ -81,12 +71,7 @@ func (st *execState) stashFrame(locals []any, init []bool) {
 	st.spareInits = append(st.spareInits, init)
 }
 
-// release returns the state to the pool with every slot zeroed.
-//
-// The clears run to capacity and not to length. The pool holds these
-// buffers for the life of the process and a value left above the high-water
-// mark of a later, smaller program stays reachable from the pool and is never
-// collected.
+// release returns the state to the pool, clearing every slot to capacity.
 func (st *execState) release() {
 	st.program, st.host = nil, nil
 	st.stack = st.stack[:0]
@@ -118,11 +103,7 @@ var statePool = sync.Pool{
 	},
 }
 
-// armWalker installs the live-value walk over this state's own slots, once
-// per state: the closure captures the state and reads its fields at call
-// time and one closure serves every run. release leaves it in place, and a
-// state released into the pool from outside statePool.New arrives without
-// one; arming on draw keeps memory accounting alive for whoever holds it.
+// armWalker installs the live-value walk over the state's slots, once per state.
 func (st *execState) armWalker() {
 	if st.walker != nil {
 		return
@@ -162,13 +143,7 @@ func (st *execState) pop() (any, error) {
 	return value, nil
 }
 
-// args passes the callee the top count operands as a borrowed slice: the
-// values stay in the stack's backing array above the truncated top, valid
-// for the duration of the call, and the next push overwrites them. A binding
-// that keeps arguments copies them - the same contract the interpreter's
-// variadic tails alias under. A three-index slice pinches the cap and a
-// callee appending to its variadic pack reallocates and never writes into
-// the stack.
+// args returns the top count operands borrowed from the stack and valid only for the call.
 func (st *execState) args(count int) ([]any, error) {
 	if count < 0 || count > len(st.stack) {
 		return nil, fmt.Errorf("argument stack underflow")
@@ -268,12 +243,7 @@ func (st *execState) handle(runErr error) bool {
 	return true
 }
 
-// enterUserFrame pushes a call frame for def and binds the arguments: the
-// receiver into paramSlots[0] when the def takes one, the positionals in
-// order, and the leftovers into a trailing variadic collector as an array:
-// an empty one when the caller stops short of it, which is bindParams'
-// answer too. An argument the caller did not pass leaves its slot cold and
-// the entry prologue can bind the parameter's default.
+// enterUserFrame pushes a frame for def and binds its receiver, positionals and variadic tail.
 func (st *execState) enterUserFrame(def userFuncDef, receiver any, hasReceiver bool, arguments []any) {
 	st.callFrames = append(st.callFrames, callFrame{
 		returnPC:    st.pc,
@@ -320,9 +290,7 @@ func (st *execState) iterator(n int) *iteratorState {
 	return nil
 }
 
-// setIterator grows the slice to hold iterator n. The compiler numbers
-// iterators per function from zero and the slice stays as small as the
-// deepest loop nest.
+// setIterator grows the slice to hold iterator n, numbered per function from zero.
 func (st *execState) setIterator(n int, it *iteratorState) {
 	for len(st.iterators) <= n {
 		st.iterators = append(st.iterators, nil)
@@ -340,8 +308,7 @@ type iteratorState struct {
 	key    any
 }
 
-// yieldIterators passes a live-value walker everything one frame's foreach state
-// is holding: the container the loop walks and every entry taken off it.
+// yieldIterators passes the walker each container a frame's foreach loops walk and its entries.
 func yieldIterators(iterators []*iteratorState, yield func(any)) {
 	for _, iterator := range iterators {
 		if iterator == nil {
@@ -420,13 +387,10 @@ type DeadlineHost interface {
 	CheckDeadline() error
 }
 
-// deadlineCheckInstructions is how often a run looks at its deadline. The
-// interpreter looks once per statement; an instruction is finer than a
-// statement and this is the closer of the two either way.
+// deadlineCheckInstructions is the instruction interval between deadline checks.
 const deadlineCheckInstructions = 256
 
-// localSeed is one local written into a frame before it starts running: the
-// captures and the arguments of a closure call.
+// localSeed is a capture or argument written into a frame before it runs.
 type localSeed struct {
 	slot  int
 	value any
@@ -449,8 +413,7 @@ type hostFrame interface {
 	TakeFrame() FrameLocals
 }
 
-// Snapshot builds the map bindHostLocals builds per host call: every
-// initialised, non-hidden local, then the extras a host call introduced.
+// Snapshot builds the host-visible variable map from non-hidden locals and extras.
 func (st *execState) Snapshot() map[string]any {
 	vars := make(map[string]any, len(st.program.localNames)+len(st.extras))
 	for i, name := range st.program.localNames {
@@ -466,9 +429,7 @@ func (st *execState) Snapshot() map[string]any {
 	return vars
 }
 
-// lookupName reads a variable the script named at run time, which compact()
-// does when its argument is not a literal. Slots first, then the extras a
-// host call introduced, which is the order Snapshot builds in.
+// lookupName reads a run-time named variable, checking slots before extras.
 func (st *execState) lookupName(name string) (any, bool) {
 	if slot, ok := st.program.nameSlots[name]; ok && st.initialized[slot] {
 		return st.locals[slot], true
@@ -477,8 +438,7 @@ func (st *execState) lookupName(name string) (any, bool) {
 	return value, ok
 }
 
-// WriteBack writes host-visible variables into their slots, respecting the
-// by-reference marks the way the old applyHostLocals did.
+// WriteBack writes host-visible variables into their slots, respecting by-reference marks.
 func (st *execState) WriteBack(vars map[string]any) {
 	st.extras = applyNamedValues(st.program, st.locals, st.initialized, st.extras, vars, st.refWrites)
 }
@@ -500,14 +460,7 @@ func Run(host Host, program *Program) error {
 	return run(program, host, 0, nil, globals, nil)
 }
 
-// run executes one frame, starting at entryPC with seeds already written into
-// its locals. globals is the host's own variable table, seeded only into the
-// top-level frame. The frame writes its return value through result, which is
-// nil for the top-level frame because nothing consumes it.
-//
-// A closure call re-enters here and pushes no call frame on the running
-// loop: the call arrives from a host binding (usort() invoking its comparator),
-// not from an instruction and there is no loop to push onto.
+// run executes one frame from entryPC, a closure call re-entering without a frame.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
 	st := statePool.Get().(*execState)
 	st.armWalker()
@@ -1518,9 +1471,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	return nil
 }
 
-// loadLocal reads a frame slot the way opLoad does: the local if the frame set
-// it, otherwise a variable a host binding introduced, otherwise whatever the
-// host knows under that name (a global or a constant).
+// loadLocal reads a frame slot, falling back to a host-introduced extra then the host.
 func loadLocal(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, slot int) any {
 	if initialized[slot] {
 		return locals[slot]
@@ -1531,13 +1482,7 @@ func loadLocal(host Host, program *Program, locals []any, initialized []bool, ex
 	return host.Lookup(program.localNames[slot])
 }
 
-// closureValue turns a compiled closure into the func(...any) (any, error)
-// shape Runtime.Callable reduces every PHP callable to and a binding invokes a
-// bytecode closure exactly as it invokes an interpreted one.
-//
-// captured is the snapshot taken at the closure value's construction. Each
-// call gets a fresh frame seeded with it and one call cannot see another's
-// writes. The closure keeps working after its defining frame returns.
+// closureValue turns a compiled closure into a callable seeded with its captured snapshot.
 func closureValue(program *Program, host Host, def closureDef, captured []localSeed) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
@@ -1563,10 +1508,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 	}
 }
 
-// fastBinary computes a classified binary operator when both operands are
-// int64, or both strings under concat. Any other shape reports false and the
-// caller dispatches to the host and numeric strings, floats, arrays and the
-// coercion table keep their one home in the host's phpArith/phpCompare.
+// fastBinary computes a classified operator on two int64 or concat operands, reporting false otherwise.
 func fastBinary(class int, left, right any) (any, bool) {
 	if class == binConcat {
 		if l, ok := left.(string); ok {
@@ -1628,11 +1570,7 @@ func fastBinary(class int, left, right any) (any, bool) {
 	return nil, false
 }
 
-// applyNamedValues writes host-visible variables back into their slots. A slot
-// marked in refWrites keeps what the by-reference setter put there: names is a
-// snapshot from before the call and it still holds the old value. A name the
-// compiler never saw goes to extras, which this function makes on first use
-// and returns to the caller.
+// applyNamedValues writes host-visible variables back, leaving by-reference slots and creating extras.
 func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) map[string]any {
 	for name, value := range names {
 		if len(name) == 0 || name[0] == 0 {

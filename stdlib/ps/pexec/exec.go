@@ -13,9 +13,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerExec installs the four functions that run a command. They differ only
-// in what they do with the output: exec collects it, system and passthru write
-// it out as it arrives, and shell_exec returns it whole.
+// registerExec installs exec, system, passthru and shell_exec, which differ in output handling.
 func registerExec(rt *runner.Runtime, r root) {
 	// exec runs $command through the shell and returns the last line of its
 	// stdout, appending each output line to $output when the caller passes an
@@ -34,16 +32,7 @@ func registerExec(rt *runner.Runtime, r root) {
 	rt.RegisterFunc("shell_exec", r.phpShellExec)
 }
 
-// command builds the process for one of these calls.
-//
-// Dir is the working directory the script is in, resolved onto the host. This
-// is the one place a call steps outside the fs.FS sandbox: a command is a
-// process, it reads and writes with the permissions of the user running the
-// server, and writable_paths cannot reach it. What the runtime can say is where
-// it starts. It says the same thing getcwd() does.
-//
-// A host that bound no directory leaves Dir empty and every command starts in
-// the process working directory.
+// command builds the process, starting it in the script's host working directory.
 func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
 	if dir := r.hostWorkDir(); dir != "" {
@@ -52,8 +41,7 @@ func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 	return cmd
 }
 
-// hostWorkDir is the working directory as a path on the host: the directory the
-// host bound the shims to, plus wherever chdir has moved below that directory.
+// hostWorkDir returns the bound directory plus wherever chdir has moved.
 func (r root) hostWorkDir() string {
 	work := r.rt.WorkDir()
 	if work == "" || work == "." {
@@ -62,9 +50,7 @@ func (r root) hostWorkDir() string {
 	return filepath.Join(r.dir, filepath.FromSlash(work))
 }
 
-// runStatus runs cmd and reports its exit status. A command that ran and failed
-// has a status to report; the second return is false where the command could
-// not start.
+// runStatus runs cmd and reports its status, false when it could not start.
 func runStatus(cmd *exec.Cmd) (status int64, started bool) {
 	err := cmd.Run()
 	if err == nil {
@@ -77,17 +63,14 @@ func runStatus(cmd *exec.Cmd) (status int64, started bool) {
 	return 0, false
 }
 
-// writeRef writes an output parameter, tolerating the caller who left it out:
-// an omitted by-reference argument arrives as a nil setter.
+// writeRef writes v through set, tolerating an omitted argument's nil setter.
 func writeRef(set func(any), v any) {
 	if set != nil {
 		set(v)
 	}
 }
 
-// outputLines splits captured stdout the way PHP's exec does: trailing
-// whitespace comes off each line, and a command that printed nothing returns no
-// lines and never one empty one.
+// outputLines splits stdout into trimmed lines, none for empty output.
 func outputLines(stdout []byte) []string {
 	trimmed := strings.TrimRight(string(stdout), "\n")
 	if trimmed == "" {
@@ -100,13 +83,7 @@ func outputLines(stdout []byte) []string {
 	return lines
 }
 
-// phpExec captures stdout and returns its last line.
-//
-// It fills $output by appending into the array the caller passed, because an
-// array travels as a shared handle: PHP reaches the same observable result by
-// reference, and appending is what PHP does to an array that already holds
-// something. $result_code is a by-reference setter, since an integer has no
-// other route back.
+// phpExec captures stdout, fills output by appending and returns the last line.
 func (r root) phpExec(ctx context.Context, command string, output any, resultCode func(any)) any {
 	if command == "" {
 		return false
@@ -137,9 +114,7 @@ func (r root) phpExec(ctx context.Context, command string, output any, resultCod
 	return lines[len(lines)-1]
 }
 
-// phpSystem writes the output as it arrives and returns the last line. It tees
-// the stream and never buffers it to echo afterwards, because a command that
-// takes a while is one whose output a page wants while it runs.
+// phpSystem writes output as it arrives and returns the last line.
 func (r root) phpSystem(ctx context.Context, command string, resultCode func(any)) any {
 	if command == "" {
 		return false
@@ -157,9 +132,7 @@ func (r root) phpSystem(ctx context.Context, command string, resultCode func(any
 	return tail.String()
 }
 
-// phpPassthru writes the output through byte for byte and returns null. Use it
-// for a command whose output is binary, where a line-splitting pass would
-// corrupt it.
+// phpPassthru writes output through byte for byte and returns null.
 func (r root) phpPassthru(ctx context.Context, command string, resultCode func(any)) any {
 	if command == "" {
 		return false
@@ -176,9 +149,7 @@ func (r root) phpPassthru(ctx context.Context, command string, resultCode func(a
 	return nil
 }
 
-// phpShellExec returns everything the command wrote to stdout, and null when it
-// wrote nothing. The null is PHP's and a caller checking for failure has to
-// check the string and not the return.
+// phpShellExec returns the command's whole stdout, null when it wrote nothing.
 func (r root) phpShellExec(ctx context.Context, command string) any {
 	if command == "" {
 		return nil
@@ -197,9 +168,7 @@ func (r root) phpShellExec(ctx context.Context, command string) any {
 	return string(stdout)
 }
 
-// lastLine keeps the final line of a stream without holding the rest of it.
-// system() answers with its last line while the output has already gone to the
-// page.
+// lastLine keeps the final line of a stream without holding the rest.
 type lastLine struct {
 	current  strings.Builder
 	previous string

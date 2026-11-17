@@ -7,9 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// limitFor turns a count of seconds into a duration without wrapping. The
-// multiply overflows around 292 years of nanoseconds, which would turn an
-// absurd limit into a short one and never into no limit at all.
+// limitFor turns seconds into a duration, clamping at MaxInt64 so the multiply cannot wrap.
 func limitFor(seconds int64) time.Duration {
 	const maxSeconds = int64(math.MaxInt64 / int64(time.Second))
 	if seconds > maxSeconds {
@@ -23,11 +21,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Limits`, registerLimits)
 }
 
-// registerLimits installs the three functions a script bounds its own run with.
-//
-// They are one mechanism seen from three sides: the runtime holds the context
-// the host gave it and a context derived from it, and these move the derivation.
-// See runner/deadline.go.
+// registerLimits installs set_time_limit, ignore_user_abort and connection_aborted.
 func registerLimits(rt *runner.Runtime) {
 	// set_time_limit bounds the rest of this script to $seconds and answers
 	// true; the clock restarts from the call, as a second call in PHP does,

@@ -82,12 +82,6 @@ type Context struct {
 }
 
 // decoder defers reading a request until a script reads what it holds.
-//
-// A page reads one superglobal or none, and each of them costs a parse: the
-// query through ParseStr, the cookie header pair by pair, the body through
-// ParseForm and again for the bracket names. Each parse runs at most once, on
-// the first read that needs it, and writes into the Context fields the eager
-// version filled.
 type decoder struct {
 	request *http.Request
 	options Options
@@ -130,10 +124,7 @@ func NewContext() Context {
 	return c
 }
 
-// newContext allocates what every Context has. The maps a request decodes into
-// are not among them: the decode that fills each one allocates it and a page
-// reading no query allocates no query map. NewContext adds them because a host
-// writes into the fields directly.
+// newContext allocates the fields every Context has, without the decode maps.
 func newContext() Context {
 	status := 0
 	var errs []error
@@ -149,8 +140,7 @@ func newContext() Context {
 	}
 }
 
-// routePatternKey names the route path as its author declared it, which
-// RoutePattern puts on the request context.
+// routePatternKey names the context value holding the route path as declared.
 type routePatternKey struct{}
 
 // WithRoutePattern records the @route path a request matched, unrewritten.
@@ -158,8 +148,7 @@ func WithRoutePattern(ctx context.Context, pattern string) context.Context {
 	return context.WithValue(ctx, routePatternKey{}, pattern)
 }
 
-// routePattern returns the declared pattern, falling back to the one the
-// router matched. The fallback covers a host that registers routes itself.
+// routePattern returns the declared pattern, falling back to the router's match.
 func routePattern(r *http.Request) string {
 	if pattern, ok := r.Context().Value(routePatternKey{}).(string); ok && pattern != "" {
 		return pattern
@@ -259,8 +248,7 @@ func (c Context) FileMap() map[string][]*UploadedFile {
 	return c.decode.files
 }
 
-// postInto and filesInto answer the map parseBody fills, allocating it on the
-// way. A host that set the field keeps it; otherwise the decoder owns it.
+// postInto returns the map parseBody fills, keeping a field the host set.
 func (c Context) postInto() map[string]string {
 	if c.Post != nil || c.decode == nil {
 		if c.Post == nil {
@@ -287,8 +275,7 @@ func (c Context) filesInto() map[string][]*UploadedFile {
 	return c.decode.files
 }
 
-// files answers what decoding has filled in so far, forcing nothing. Cleanup
-// and the memory accounting read it: neither should parse a body to do its job.
+// files returns what decoding has filled so far, forcing no parse.
 func (c Context) files() map[string][]*UploadedFile {
 	if c.Files != nil || c.decode == nil {
 		return c.Files
@@ -314,9 +301,7 @@ func (c Context) HeaderMap() map[string]string {
 	return c.decode.headers
 }
 
-// getVars, postVars and cookieVars answer the decoded form of each input,
-// decoding it on the first call. A host that set the exported field reads that
-// back, and nothing decodes.
+// getVars returns the decoded $_GET array, keeping the field a host set.
 func (c Context) getVars() *model.Array {
 	if c.GetVars != nil {
 		return c.GetVars
@@ -350,10 +335,7 @@ func (c Context) cookieVars() *model.Array {
 	return c.decode.cookieVars
 }
 
-// decodeQuery fills $_GET, reading the query string on the first call.
-//
-// RawQuery and not r.URL.Query(): a url.Values is a map and field order is
-// already gone, and the bracket decoder needs it.
+// decodeQuery fills $_GET on the first call, reading RawQuery to keep field order.
 func (c Context) decodeQuery() {
 	if c.decode == nil {
 		return
@@ -371,9 +353,7 @@ func (c Context) decodeQuery() {
 	})
 }
 
-// decodeCookies fills $_COOKIE on the first call. r.Cookies() keeps the order
-// sent, and Go does not percent-decode a cookie the way PHP does and that
-// happens here.
+// decodeCookies fills $_COOKIE on the first call, percent-decoding as PHP does.
 func (c Context) decodeCookies() {
 	if c.decode == nil {
 		return
@@ -393,10 +373,7 @@ func (c Context) decodeCookies() {
 	})
 }
 
-// decodeForm fills $_POST, $_FILES and php://input on the first call.
-//
-// The body reads once and every path needing any part of it comes
-// through here.
+// decodeForm fills $_POST, $_FILES and php://input from the one body read.
 func (c Context) decodeForm() {
 	if c.decode == nil {
 		return
@@ -406,16 +383,7 @@ func (c Context) decodeForm() {
 	})
 }
 
-// pathValues fills c.Path from the route parameters the pattern declares,
-// which $_REQUEST merges over the request fields.
-//
-// The names come from the declared path and not the matched one and a
-// parameter reads back under its declared name whichever router serves it.
-// Both routers publish the values through r.PathValue: ServeMux natively, chi
-// by calling SetPathValue for every URL param it captured.
-//
-// A {name...} parameter is the exception. chi has no such syntax and
-// RenderRoutePath spells it as chi's * wildcard, which chi publishes under "*".
+// pathValues fills c.Path from the pattern's declared names, reading a rest parameter under "*".
 func (c Context) pathValues(r *http.Request) {
 	params, err := modelutil.ParseRoutePath(routePattern(r))
 	if err != nil {
@@ -434,18 +402,7 @@ func (c Context) pathValues(r *http.Request) {
 	}
 }
 
-// serverVars fills $_SERVER with the part of PHP's server array that the
-// request itself answers for. Every value is a string, as $_SERVER
-// holds, with the two exceptions ServerMap and serverArrayInto type back.
-//
-// The keys PHP fills from the SAPI and from resolving a URL to a file on disk
-// (DOCUMENT_ROOT, SCRIPT_NAME, SCRIPT_FILENAME, PHP_SELF, PATH_INFO,
-// SERVER_NAME, SERVER_PORT, SERVER_SOFTWARE) are not here: none of them follow
-// from an *http.Request. A real PHP answers SERVER_NAME and SERVER_PORT from
-// the socket it accepted on and not from the Host header and a request whose
-// Host names something else still reports the listening address; the host that
-// owns the listener is the one that can say. Set them on Context.Server after
-// building the context.
+// serverVars fills the $_SERVER keys the request answers, leaving the SAPI keys to the host.
 func (c Context) serverVars(r *http.Request) {
 	// REQUEST_METHOD, REQUEST_URI, QUERY_STRING, HTTP_HOST and SERVER_PROTOCOL
 	// are not written here. The request answers all five, and mapmap derives
@@ -496,15 +453,7 @@ func (c Context) serverVars(r *http.Request) {
 	c.Server["REQUEST_TIME_FLOAT"] = strconv.FormatFloat(float64(start.UnixMicro())/1e6, 'f', 6, 64)
 }
 
-// contentLength renders the CONTENT_LENGTH value of a request and reports
-// whether it has one. PHP takes the key from the Content-Length header and a
-// chunked body, which announces no length, has no CONTENT_LENGTH, while a body
-// of zero bytes that announced itself has "0".
-//
-// Go parses the header into Request.ContentLength (-1 when unknown) and leaves
-// the header in place and the header says whether the client sent one. A
-// request built in process, as httptest.NewRequest does, has the field without
-// the header; a positive length there is a body all the same.
+// contentLength renders CONTENT_LENGTH and reports whether the request announced a length.
 func contentLength(r *http.Request) (string, bool) {
 	if r.ContentLength < 0 {
 		return "", false
@@ -532,10 +481,7 @@ func (c Context) Errors() []error {
 	return *c.errors
 }
 
-// memoryFootprint estimates the bytes this Context holds on the host side of
-// the request boundary: the superglobal source maps, headers, arguments and
-// upload metadata. The superglobal arrays Register seeds into the runtime are
-// separate copies that a different walk counts.
+// memoryFootprint estimates the host-side bytes this Context holds, excluding runtime copies.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
 	// What decoding has filled in, not what it could: forcing a parse to

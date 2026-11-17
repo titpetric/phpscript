@@ -69,18 +69,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	})
 }
 
-// defaultStorage is the storage a manager takes when the script names none:
-// disk under the application root, and memory when disk cannot be had.
-//
-// The fallback writes a log line, because memory storage is a different
-// promise. It lives as long as the runtime that built it, and a server forks
-// one per worker and a session minted on one worker is invisible to the next
-// and a login fails at random. One line costs less to read than that symptom.
-// The line names the path and the reason. The trace names the backend on
-// every session span.
-//
-// Warn and not Error: the request that constructed this serves fine, and
-// failing its trace would report an outage over a misconfiguration.
+// defaultStorage returns disk storage under the root, warning and falling back to memory when it fails.
 func defaultStorage(rt *runner.Runtime, dir string) Storage {
 	disk, err := newRootedStorageDisk(rt, dir)
 	if err == nil {

@@ -6,9 +6,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerEscape installs the two quoting functions. They touch nothing and are
-// not bound to a root: quoting is a string operation, and a script quotes an
-// argument whether it goes on to run anything.
+// registerEscape installs the two quoting functions, which need no root.
 func registerEscape(rt *runner.Runtime) {
 	// escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
 	rt.RegisterFunc("escapeshellarg", phpEscapeshellarg)
@@ -19,23 +17,15 @@ func registerEscape(rt *runner.Runtime) {
 	rt.RegisterFunc("escapeshellcmd", phpEscapeshellcmd)
 }
 
-// phpEscapeshellarg wraps an argument in single quotes, where nothing but a
-// single quote is special, and splices the quote itself out of the string and
-// back in escaped.
+// phpEscapeshellarg wraps an argument in single quotes and escapes an embedded quote.
 func phpEscapeshellarg(arg string) string {
 	return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
 }
 
-// shellMeta are the bytes escapeshellcmd escapes. They are the ones a shell
-// reads as syntax and never as text.
+// shellMeta are the bytes escapeshellcmd escapes, the ones a shell reads as syntax.
 const shellMeta = "#&;`|*?~<>^()[]{}$\\\x0a\xff"
 
-// phpEscapeshellcmd escapes the shell metacharacters in a whole command line.
-//
-// It escapes a quote only where that quote has no partner and a caller can
-// write escapeshellcmd("echo 'a b'") and keep the quoting they meant. That also
-// means the contents of a quoted argument stay live and this is not the
-// function to pass user input through; escapeshellarg is.
+// phpEscapeshellcmd escapes shell metacharacters, leaving a paired quote and its contents live.
 func phpEscapeshellcmd(command string) string {
 	var b strings.Builder
 	b.Grow(len(command))

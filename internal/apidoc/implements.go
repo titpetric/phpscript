@@ -12,15 +12,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// interfaceSet is the set reflectImplements tests a bound type against. It
-// holds two kinds of entry.
-//
-// runner.Throwable is the one contract of this module a script names, in a
-// catch clause and in instanceof, and the PHP spelling goes in the clause. The
-// rest are the standard library conventions a caller acts on: a value that
-// prints, reads, writes, closes, marshals or answers a request. Every other
-// interface of this module is a seam between two packages no script names, and
-// the empty interface holds every value.
+// interfaceSet lists every interface reflectImplements cites, each with the PHP name a script types.
 var interfaceSet = []struct {
 	typ reflect.Type
 	php string
@@ -39,13 +31,7 @@ var interfaceSet = []struct {
 	{reflect.TypeOf((*nethttp.RoundTripper)(nil)).Elem(), ""},
 }
 
-// reflectImplements cites every interface of interfaceSet the bound type
-// satisfies, holding to the ones no other match covers: runner.Throwable
-// embeds error, and a throwable cites Throwable alone.
-//
-// The type is the one a constructor returns, which is the value a script
-// holds, and a method set reached through a pointer counts only when the
-// constructor returns that pointer.
+// reflectImplements cites each interfaceSet entry t satisfies, dropping those another match implies.
 func reflectImplements(t reflect.Type) []Citation {
 	matched := []reflect.Type{}
 	for _, entry := range interfaceSet {

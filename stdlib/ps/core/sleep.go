@@ -12,12 +12,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Sleep`, registerSleep)
 }
 
-// registerSleep installs the two ways a script waits.
-//
-// Both end early when the script runs out of time or the client it answers
-// goes away: a sleep that ran on past either would be the one place nothing
-// could stop a script. Neither takes a context parameter. The injected one is
-// the script's; the binding reads it and the connection off the runtime.
+// registerSleep installs sleep and usleep, ending early when the script or client stops.
 func registerSleep(rt *runner.Runtime) {
 	// sleep pauses the script for $seconds and returns 0. A negative count
 	// throws, as it does in php. The wait ends early, still returning 0, when
@@ -44,10 +39,7 @@ func registerSleep(rt *runner.Runtime) {
 	})
 }
 
-// wait sleeps for d, or until either the client goes away or the script runs
-// out of time. Both, because they are different contexts: the client's is the
-// request a handler answers, and the script's own is what a time limit
-// cancels.
+// wait sleeps for d or until the client or script context ends.
 func wait(client, script context.Context, d time.Duration) {
 	if d <= 0 {
 		return

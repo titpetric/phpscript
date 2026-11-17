@@ -25,13 +25,7 @@ const (
 	tOp                 // operator or punctuation (value holds the exact text)
 )
 
-// token is a single lexical unit with source position for diagnostics.
-//
-// raw holds a value for string literals alone. val holds the decoded value the
-// runtime needs, but the decoding is lossy: it cannot tell `'$a'`
-// from `"\$a"`, and re-encoding the value picks one spelling for both. The
-// formatter rewrites files in place and it prints the literal from raw, which
-// is a slice of the source and costs no allocation.
+// token holds one lexical unit, raw keeping a string literal's source spelling for the formatter.
 type token struct {
 	kind tokKind
 	val  string
@@ -42,9 +36,7 @@ type token struct {
 
 func (t token) String() string { return fmt.Sprintf("%v(%q)@%d", t.kind, t.val, t.line) }
 
-// lexer turns PHP source into tokens, switching between inline-HTML mode and
-// PHP mode at <?php / ?> boundaries (the README requires file-parsing mode that
-// recognises php open tags; the closing tag is optional).
+// lexer reads PHP source into tokens, switching modes at <?php and ?> boundaries.
 type lexer struct {
 	src    string
 	pos    int
@@ -63,14 +55,10 @@ var multiCharOps = []string{
 	"<<", ">>", "&=", "|=", "^=",
 }
 
-// singleCharOps lists every one-byte operator. A constant and slicing it
-// (singleOpText below) produces a string header pointing into the binary's
-// read-only data. Emitting an operator token allocates nothing, where
-// `string(c)` allocated a fresh 1-byte string per token (rule 7).
+// singleCharOps lists every one-byte operator, sliced into singleOpText without allocating.
 const singleCharOps = "+-*/%.,;()[]{}=<>!&|^~?:@\\"
 
-// singleOpText[c] is the token text for the single-character operator c, or ""
-// when c does not start an operator. Built once at package scope (rule 7).
+// singleOpText holds the token text for each one-byte operator, "" for a byte that starts none.
 var singleOpText = func() [utf8.RuneSelf]string {
 	var out [utf8.RuneSelf]string
 	for i := 0; i < len(singleCharOps); i++ {
@@ -79,10 +67,7 @@ var singleOpText = func() [utf8.RuneSelf]string {
 	return out
 }()
 
-// multiOpsByFirst buckets multiCharOps by their first byte, longest first and
-// lexOperator compares against the two or three candidates that can match
-// and never walks the whole table. Longest-first ordering keeps the lexer from
-// cutting "===" into "==" and "=".
+// multiOpsByFirst buckets operators by first byte, longest first; a longer operator wins over its prefix.
 var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 	var out [utf8.RuneSelf][]string
 	for _, op := range multiCharOps {
@@ -96,32 +81,13 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 	return out
 }()
 
-// bytesPerToken estimates how many source bytes one token consumes, used to
-// presize the token slice (rule 6). Measured over the in-tree PHP fixtures the
-// ratio is 3.7 to 5.2 bytes per token (the lexer drops whitespace and comments and the
-// count is well below the tokenizer's). Four is the conservative end: it costs
-// a little slack on comment-heavy files and avoids the doubling, which copies
-// the whole slice, on dense ones.
+// bytesPerToken estimates the source bytes one token consumes, presizing the token slice.
 const bytesPerToken = 4
 
-// tokenPool recycles the token slice a parse walks.
-//
-// The slice is the largest single allocation the parser makes - a token is five
-// fields and a source file produces one per four bytes, and the whole slice
-// turns to garbage once the AST stands. model cannot hold a token, the type
-// stays unexported to it, and every read through p.toks[i] copies the struct
-// and aliases nothing in the array. The same backing array serves every parse
-// in the process.
-//
-// It holds *[]token and not []token because putting a slice in an
-// interface allocates the header; a pointer to one does not.
+// tokenPool recycles the token slice a parse walks, held as a pointer so Put allocates nothing.
 var tokenPool sync.Pool
 
-// takeTokens returns an empty token slice, recycled when one is free.
-//
-// A recycled slice keeps whatever capacity it grew to and the pool converges on
-// the largest file the process has parsed and later parses stop growing
-// altogether. The hint is only used when the pool is empty.
+// takeTokens returns an empty token slice from the pool, using hint only when the pool is empty.
 func takeTokens(hint int) []token {
 	if v := tokenPool.Get(); v != nil {
 		return (*v.(*[]token))[:0]
@@ -129,11 +95,7 @@ func takeTokens(hint int) []token {
 	return make([]token, 0, hint)
 }
 
-// releaseTokens returns a slice to the pool.
-//
-// It clears first. A token holds two strings, and those keep whole source files
-// alive: a pooled slice that kept them would trade an allocation saving for a
-// retention leak: the more expensive of the two.
+// releaseTokens clears a slice and returns it to the pool; the pooled slice holds no reference to the source file.
 func releaseTokens(toks []token) {
 	if cap(toks) == 0 {
 		return
@@ -179,8 +141,7 @@ func (l *lexer) emit(k tokKind, v string) {
 	l.tokens = append(l.tokens, token{kind: k, val: v, pos: l.pos, line: l.line})
 }
 
-// emitString emits a string literal, keeping the source spelling alongside the
-// decoded value.
+// emitString emits a string literal, keeping its source spelling alongside the decoded value.
 func (l *lexer) emitString(val string, start int) {
 	l.tokens = append(l.tokens, token{kind: tString, val: val, raw: l.src[start:l.pos], pos: l.pos, line: l.line})
 }
@@ -285,15 +246,7 @@ func (l *lexer) lexNumber() {
 	}
 }
 
-// scanNumber returns the end offset of the numeric literal starting at pos,
-// and whether that literal is a float. It covers PHP's spellings: hexadecimal,
-// binary and octal integers (both the 0o form and the legacy leading zero),
-// decimal integers, floats with a fractional part or an exponent, and the
-// underscore digit separator. numLit decides which base a prefix means;
-// this only decides where the literal ends.
-//
-// The lexer and the token_get_all tokenizer both call it and the two agree on
-// what one number token is.
+// scanNumber returns the end offset of the numeric literal at pos and whether the literal is a float.
 func scanNumber(src string, pos int) (end int, isFloat bool) {
 	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
 	// digit and no exponent and this matches a prefix ahead of anything else.
@@ -424,26 +377,12 @@ func (l *lexer) lexString(quote byte) error {
 	return fmt.Errorf("line %d: unterminated string", l.line)
 }
 
-// writeEscape decodes the escape sequence starting at the backslash under
-// l.pos, writes its value to b, and returns how many bytes follow the
-// backslash.
+// writeEscape decodes the escape at l.pos into b and returns the bytes following the backslash.
 func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 	return decodeEscape(l.src, l.pos, quote, b)
 }
 
-// decodeEscape decodes the escape sequence starting at the backslash at src[i],
-// writes its value to b, and returns how many bytes follow the backslash.
-//
-// The two quote styles have different rules, as they do in PHP. A single-quoted
-// literal recognises only `\\` and `\'`; every other backslash is literal
-// and `'C:\path'` and a single-quoted regex work. A
-// double-quoted literal recognises the C-style escapes plus the numeric forms
-// (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
-// not recognise.
-//
-// The lexer and the interpolation scanner both call it and a literal run
-// between two embedded expressions decodes the way a literal with no
-// interpolation does.
+// decodeEscape decodes the escape at src[i] into b by the rules of quote and returns its length.
 func decodeEscape(src string, i int, quote byte, b *strings.Builder) int {
 	next := src[i+1]
 	if quote == '\'' {
@@ -539,9 +478,7 @@ func octalRun(s string, limit int) int {
 	return n
 }
 
-// lexOperator emits one operator token, matching multi-character operators
-// greedily. Every token text comes from a package-level table and no operator
-// allocates.
+// lexOperator emits one operator token, matching multi-character operators greedily from a table.
 func (l *lexer) lexOperator() bool {
 	c := l.src[l.pos]
 	if c >= utf8.RuneSelf {

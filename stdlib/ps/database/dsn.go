@@ -6,12 +6,7 @@ import (
 	"strings"
 )
 
-// resolveSQLiteDSN anchors a relative sqlite file path to root and a DSN
-// written in a site's own configuration names a file under that site's tree
-// and never under the directory the server process runs in.
-// Memory databases, absolute paths and file: URIs name no such intent and
-// pass through unchanged, as does everything when there is no root to anchor
-// to, as a CLI run has.
+// resolveSQLiteDSN anchors a relative sqlite path under root, passing memory, absolute and file: DSNs through.
 func resolveSQLiteDSN(root, dsn string) string {
 	if root == "" || isSQLiteMemoryDSN(dsn) {
 		return dsn
@@ -66,17 +61,7 @@ func isSQLiteMemoryDSN(dsn string) bool {
 	return strings.EqualFold(values.Get("mode"), "memory")
 }
 
-// scriptSQLitePath reports the sqlite file path a DSN names, and whether it
-// names one that would resolve outside the application root.
-//
-// resolveSQLiteDSN passes an absolute path and a file: URI through untouched,
-// because an operator writing `config.yml` may point a connection at a real
-// path on the host. A script is not the operator: Database::register takes
-// its DSN from PHP and the same spelling there is a tenant naming a host path,
-// and opening the connection creates the file. Only the script-facing
-// registration consults this; a configured DSN keeps resolving as it did.
-//
-// A memory DSN names no file and is always allowed.
+// scriptSQLitePath reports the sqlite path a script DSN names and whether it lies outside root.
 func scriptSQLitePath(dsn string) (path string, outside bool) {
 	driver, rest := "mysql", dsn
 	if i := strings.Index(rest, "://"); i != -1 {

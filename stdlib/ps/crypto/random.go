@@ -62,9 +62,7 @@ func RegisterRandom(rt *runner.Runtime) {
 // randMax is PHP's getrandmax(), the upper bound of an argument-less rand().
 const randMax = 2147483647
 
-// uniformInt64 picks from [min, max] inclusive. The span max-min+1 overflows
-// int64 when the bounds cover most of the type's range and big.Int holds it;
-// rand.Int does the rejection sampling that keeps the pick unbiased.
+// uniformInt64 picks an unbiased value from [min, max] inclusive, the span held in a big.Int.
 func uniformInt64(name string, min, max int64) (int64, error) {
 	if min == max {
 		return min, nil

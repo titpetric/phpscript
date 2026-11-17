@@ -11,8 +11,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// shutdownGrace bounds how long a graceful shutdown waits for the requests in
-// flight. A script that ran out of time writes no more to them.
+// shutdownGrace bounds a graceful shutdown at one second for requests in flight.
 const shutdownGrace = time.Second
 
 // Server listens and answers, as net/http's Server does and as a
@@ -146,8 +145,7 @@ func (s *Server) Addr() string {
 	return s.bound
 }
 
-// take claims the running server, so that shutdown and close each stop it once
-// no matter how often a script calls them or which of them arrives first.
+// take claims the running server so shutdown and close stop it once.
 func (s *Server) take() (*nethttp.Server, chan struct{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

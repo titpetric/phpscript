@@ -17,20 +17,12 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// hostMux dispatches a request to the site that answers its Host. One process
-// serves more than one website through it: each site is its own router,
-// built from its own application root and its own configuration, and the Host
-// header is the only thing that selects between them.
-//
-// Matching is exact. A Host nobody claims gets 404 and never falls through
-// to some default site, because in a shared execution environment the wrong
-// answer is a request landing in another tenant's code.
+// hostMux routes a request to the site whose domain matches its Host exactly, answering 404 otherwise.
 type hostMux struct {
 	hosts map[string]http.Handler
 }
 
-// newHostMux returns a mux serving the given sites. The keys are domains as
-// configured, and normalizeHost reduces each key once, here.
+// newHostMux returns a mux over sites, normalizing each configured domain key once.
 func newHostMux(sites map[string]http.Handler) *hostMux {
 	hosts := make(map[string]http.Handler, len(sites))
 	for domain, handler := range sites {
@@ -48,10 +40,7 @@ func (m *hostMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler.ServeHTTP(w, r)
 }
 
-// normalizeHost reduces a Host header or a configured domain to the form the
-// two compare equal in: lower case, no port, no trailing dot. A client is free
-// to send any of "Example.COM", "example.com:8080" or the fully qualified
-// "example.com.", and all three name the same site.
+// normalizeHost lower-cases host, dropping its port, trailing dot and IPv6 brackets.
 func normalizeHost(host string) string {
 	host = strings.TrimSpace(host)
 	if hostname, _, err := net.SplitHostPort(host); err == nil {
@@ -63,8 +52,7 @@ func normalizeHost(host string) string {
 	return strings.ToLower(strings.TrimSuffix(host, "."))
 }
 
-// registerVirtualHosts wires one site per configured domain and puts a host mux
-// in front of them.
+// registerVirtualHosts wires one site per configured domain behind a host mux.
 func registerVirtualHosts(ctx context.Context, svc *Service, appConfig config.Config, globals *flags.Options, cover *coverageModule) error {
 	handler, modules, err := buildVirtualHosts(ctx, appConfig, globals, cover)
 	if err != nil {
@@ -77,10 +65,7 @@ func registerVirtualHosts(ctx context.Context, svc *Service, appConfig config.Co
 	return nil
 }
 
-// buildVirtualHosts returns the host mux serving every configured site and the
-// lifecycle modules the platform starts on their behalf. It builds every site
-// here, before the server starts and a broken configuration fails startup
-// and not one request.
+// buildVirtualHosts returns the host mux and site modules, refusing a broken configuration before startup.
 func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	if err := appConfig.CheckVirtualHosts(); err != nil {
 		return nil, nil, err
@@ -113,12 +98,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 	return newHostMux(sites), modules, nil
 }
 
-// newVirtualHost builds the router that serves one site and the lifecycle
-// modules the platform starts on its behalf.
-//
-// The site gets its own router because it owns its routes, its telemetry
-// and its databases. A registration here is invisible on another domain, and
-// the connections its scripts can name are only the ones its own env configured.
+// newVirtualHost builds one site's router and lifecycle modules, isolated from every other site.
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	router := newRouter()
 

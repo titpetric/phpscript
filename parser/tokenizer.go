@@ -166,8 +166,7 @@ var tokenNames = map[int]string{
 	T_NUM_STRING:               "T_NUM_STRING",
 }
 
-// tokenKeywords maps lowercase identifiers to their keyword token id. Anything
-// not listed is T_STRING (PHP treats true/false/null as T_STRING constants too).
+// tokenKeywords maps lowercase identifiers to their keyword id; anything else is T_STRING.
 var tokenKeywords = map[string]int{
 	"if": T_IF, "else": T_ELSE, "elseif": T_ELSEIF,
 	"foreach": T_FOREACH, "for": T_FOR, "while": T_WHILE, "as": T_AS,
@@ -232,10 +231,7 @@ func TokenIDs() map[string]int {
 	return out
 }
 
-// boxedInts holds pre-boxed int64 values so that emitting a token id or a line
-// number costs no allocation. The runtime only interns 0-255 itself
-// (runtime.staticuint64s); every T_* id is >= 256 and templates run past line
-// 255 and both would otherwise cost 8 bytes per token.
+// boxedInts holds pre-boxed int64s; emitting a token id or line costs no allocation.
 var boxedInts = func() [boxedIntMax]any {
 	var out [boxedIntMax]any
 	for i := range out {
@@ -253,8 +249,7 @@ func boxInt(v int) any {
 	return int64(v)
 }
 
-// boxedChars holds pre-boxed one-byte strings for the single-character tokens
-// ("(", ")", ";", ...), which are the most frequent tokens in any source file.
+// boxedChars holds pre-boxed one-byte strings for the most frequent single-character tokens.
 var boxedChars = func() [utf8.RuneSelf]any {
 	var out [utf8.RuneSelf]any
 	for i := range out {
@@ -263,11 +258,7 @@ var boxedChars = func() [utf8.RuneSelf]any {
 	return out
 }()
 
-// The tokenizer carves the [id, text, line] triples out of chunked backing
-// arrays. Chunks start small and double so that a two-line minitpl expression
-// does not pay for a large block, and a whole file amortises the per-token
-// allocation away. Each triple reaches PHP as a 3-element slice with
-// cap == len and a script cannot scribble past its own token.
+// tokenChunkMin and tokenChunkMax bound the doubling chunks that store token triples.
 const (
 	tokenChunkMin = 8
 	tokenChunkMax = 64
@@ -512,10 +503,7 @@ func (t *phpTokenizer) scanString(quote byte) {
 	t.emitArr(T_CONSTANT_ENCAPSED_STRING, t.src[start:t.pos], startLine)
 }
 
-// emitInterp writes the token sequence PHP produces for an interpolated
-// literal and advances past it. Simple syntax reports its pieces as the bare
-// tokens they are; complex syntax opens with T_CURLY_OPEN and then reports the
-// expression inside the braces as the ordinary PHP that it holds.
+// emitInterp writes simple interpolation as bare tokens and complex as T_CURLY_OPEN.
 func (t *phpTokenizer) emitInterp(parts []interpPart) {
 	t.emitChar('"')
 	t.advance() // opening quote
@@ -551,10 +539,7 @@ func (t *phpTokenizer) emitInterp(parts []interpPart) {
 	t.advance() // closing quote
 }
 
-// emitSubscript writes the one token (two for a negative number) that a
-// simple-syntax `$a[sub]` subscript is. A bare word there is a string key
-// and no constant, and PHP reports it as T_STRING; a number is
-// T_NUM_STRING, the id for "digits read as an array key".
+// emitSubscript writes a simple $a[sub] key: T_STRING for a word, T_NUM_STRING for digits.
 func (t *phpTokenizer) emitSubscript(sub string, line int) {
 	switch {
 	case sub == "":
@@ -570,9 +555,7 @@ func (t *phpTokenizer) emitSubscript(sub string, line int) {
 	}
 }
 
-// tokenizeFrom tokenizes PHP source that came from between the braces of a
-// {$...}, numbering its lines from line so a multi-line literal reports the
-// lines the file has, and not the ones the fragment has.
+// tokenizeFrom tokenizes a {$...} fragment, numbering its lines from line.
 func tokenizeFrom(src string, line int) []any {
 	tk := &phpTokenizer{src: src, line: line, inPHP: true}
 	return tk.run()
