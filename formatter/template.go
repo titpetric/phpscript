@@ -29,7 +29,7 @@ func alignTemplate(src string) string {
 	lines := strings.Split(src, "\n")
 	var tags []string
 	var scan phpScan
-	base := 0
+	base, phpNest := 0, 0
 	inPHP := false
 	for i, line := range lines {
 		line = strings.TrimSuffix(line, "\r")
@@ -38,19 +38,19 @@ func alignTemplate(src string) string {
 		case trimmed == "":
 			lines[i] = ""
 		case isPHPInline(trimmed):
-			// An inline block nests like any other: `if (...) { ?>` indents what
-			// follows and `<?php } ?>` closes back to the opening line's level.
+			// A template line that is PHP alone stays at the code's depth: a
+			// brace it opens nests the markup that follows.
 			code := phpCode(trimmed)
 			lead := leadingClosers(strings.TrimLeft(code, " \t"))
-			lines[i] = indentLine(base-lead+len(tags), trimmed)
+			lines[i] = indentLine(base+phpNest-lead, trimmed)
 			delta, closeAt := scan.code(code)
-			base += delta
+			phpNest += delta
 			if closeAt >= 0 {
 				rest := trimmed[len(trimmed)-len(code)+closeAt+2:]
 				tags = scanTags(stripPHP(rest), tags)
 			}
 		case startsPHP(trimmed):
-			lines[i] = indentLine(base+len(tags), trimmed)
+			lines[i] = indentLine(base+phpNest, trimmed)
 			delta, _ := scan.code(phpCode(trimmed))
 			base += delta
 			inPHP = true
@@ -77,11 +77,19 @@ func alignTemplate(src string) string {
 					tags = tags[:n-1]
 				}
 			}
-			lines[i] = indentLine(base+len(tags), trimmed)
+			lines[i] = indentLine(base+nestDepth(phpNest, len(tags)), trimmed)
 			tags = scanTags(html, tags)
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// nestDepth answers the deeper of the PHP and markup depths.
+func nestDepth(phpNest, html int) int {
+	if phpNest > html {
+		return phpNest
+	}
+	return html
 }
 
 // startsPHP reports whether s opens a PHP block.
