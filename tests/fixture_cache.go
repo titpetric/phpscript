@@ -86,7 +86,15 @@ func (f *Fixture) flatCaches(ctx context.Context) (*flatstack.IncludeCache, *fla
 		return flatstack.NewIncludeCache(), flatstack.NewExprCache()
 	}
 	w := currentWorker(ctx)
-	return w.flatIncludeFor(f.cacheRoot()), w.flatExpr
+	return w.flatIncludeFor(f.cacheRoot(), f), w.flatExpr
+}
+
+// cacheMode names the parse mode a fixture's caches hold: the two modes parse one body differently.
+func (f *Fixture) cacheMode() string {
+	if f.runnerOptions().GoRuntime() {
+		return runner.RuntimeGo
+	}
+	return runner.RuntimePHPScript
 }
 
 // acquireRuntime answers the runtime this run executes on, and whether that
@@ -150,7 +158,7 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 // fixture.
 func (f *Fixture) runtimeKey() string {
 	if f.runtimeKeyS == "" {
-		f.runtimeKeyS = fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+		f.runtimeKeyS = fmt.Sprintf("%s\x00%s\x00%v", f.cacheRoot(), f.Runtime, f.Options)
 	}
 	return f.runtimeKeyS
 }
@@ -196,11 +204,12 @@ func newWorker() *worker {
 // and a fixture and a repeat of it then read the program back without
 // building it again.
 func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *runner.IncludeCache {
-	if c, ok := w.include[root]; ok {
+	key := root + "\x00" + f.cacheMode()
+	if c, ok := w.include[key]; ok {
 		return c
 	}
 	c := runner.NewIncludeCache()
-	w.include[root] = c
+	w.include[key] = c
 	for _, tree := range f.precompileFS() {
 		runner.Precompiler{Root: tree, Includes: c, Exprs: expr, GoRuntime: f.runnerOptions().GoRuntime()}.Run()
 	}
@@ -208,12 +217,13 @@ func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *ru
 }
 
 // flatIncludeFor is includeFor for the bytecode runtime.
-func (w *worker) flatIncludeFor(root string) *flatstack.IncludeCache {
-	if c, ok := w.flatInclude[root]; ok {
+func (w *worker) flatIncludeFor(root string, f *Fixture) *flatstack.IncludeCache {
+	key := root + "\x00" + f.cacheMode()
+	if c, ok := w.flatInclude[key]; ok {
 		return c
 	}
 	c := flatstack.NewIncludeCache()
-	w.flatInclude[root] = c
+	w.flatInclude[key] = c
 	return c
 }
 

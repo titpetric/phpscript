@@ -39,6 +39,9 @@ func TestFixtureRunsMetadata(t *testing.T) {
 		{"php opted out", "runner:\n  php: false\n", true, false},
 		{"flatstack opted out", "runner:\n  flatstack: false\n", false, true},
 		{"both opted in", "runner:\n  flatstack: true\n  php: true\n", true, true},
+		{"go runtime", "runtime: go\n", true, false},
+		{"go runtime with php opted in", "runtime: go\nrunner:\n  php: true\n", true, true},
+		{"go runtime through options", "options:\n  runtime: go\n", true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -59,5 +62,26 @@ func TestFixtureRunsMetadata(t *testing.T) {
 				t.Error("Runs(runtime) = false, want true")
 			}
 		})
+	}
+}
+
+// TestFixtureRuntimeMetadata covers the runtime key, its merge over options and
+// the refusal of a name that is no mode.
+func TestFixtureRuntimeMetadata(t *testing.T) {
+	parse := func(metadata string) (*Fixture, error) {
+		src := "name: runtime\ndescription: runtime metadata\n" + metadata + "---\n<?php echo \"ok\";\n---\nok"
+		return ParseFixture([]byte(src), "runtime.phpt")
+	}
+
+	fx, err := parse("runtime: go\noptions:\n  runtime: phpscript\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fx.runnerOptions().GoRuntime() {
+		t.Errorf("runtime = %q, want the metadata key to win", fx.runnerOptions().Runtime)
+	}
+
+	if _, err := parse("runtime: php\n"); err == nil {
+		t.Error("a runtime naming no mode parsed")
 	}
 }

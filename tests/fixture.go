@@ -39,6 +39,7 @@ type Fixture struct {
 	Error       string          `yaml:"error"`   // optional: expected uncaught error substring
 	Stdin       string          `yaml:"stdin"`   // optional: top-level stdin contents
 	Options     runner.Options  `yaml:"options"` // optional: runtime options for both engines (memory_limit, ...)
+	Runtime     string          `yaml:"runtime"` // optional: the runtime namespace, phpscript or go
 	Root        string          `yaml:"root"`    // optional: include root, relative to the fixture's own directory
 	Serial      bool            `yaml:"serial"`  // optional: do not overlap this fixture with peers in its area
 	Runner      FixtureRunners  `yaml:"runner"`  // optional: runners the fixture opts out of
@@ -210,10 +211,12 @@ func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 	return nil
 }
 
-// runnerOptions returns the fixture's options: frontmatter with the
-// harness-owned fields filled in.
+// runnerOptions returns the fixture's options with the harness-owned fields filled in.
 func (f *Fixture) runnerOptions() runner.Options {
 	options := f.Options
+	if f.Runtime != "" {
+		options.Runtime = f.Runtime
+	}
 	// The php column executes the php cli binary and the runtime column
 	// speaks as the same SAPI: a fixture probing php_sapi_name() must read
 	// the same answer from both.

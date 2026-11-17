@@ -18,6 +18,7 @@ import (
 	yaml "github.com/goccy/go-yaml"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/runner"
 )
 
 //go:embed all:fixtures
@@ -219,6 +220,12 @@ func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	var f Fixture
 	if err := unmarshalHeader([]byte(parts[0]), &f); err != nil {
 		return nil, fmt.Errorf("yaml metadata unmarshal error: %w", err)
+	}
+
+	if f.Runtime != "" {
+		if err := (runner.Options{Runtime: f.Runtime}).Check(); err != nil {
+			return nil, err
+		}
 	}
 
 	if f.Name == "" {

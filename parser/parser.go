@@ -63,6 +63,7 @@ func parse(src, file string, opts Options) (*model.Program, error) {
 	p := &parser{
 		toks:      toks,
 		goRuntime: opts.GoRuntime,
+		goMode:    opts.GoRuntime,
 		spans:     make(map[model.Stmt]model.SourceSpan, len(toks)/16+8),
 	}
 	if file != "" {
@@ -102,6 +103,8 @@ type parser struct {
 	// goRuntime records that the file imported the go runtime, which binds go's
 	// builtin names for the rest of it. See goruntime.go.
 	goRuntime bool
+	// goMode records runner.runtime: go, which also reads catch clauses as go's.
+	goMode bool
 	// goPkgs maps the name an `import "net/http"` statement bound to the area
 	// that holds the package. Nil until a file writes one. See goimport.go.
 	goPkgs        map[string]string
@@ -908,9 +911,7 @@ func (p *parser) parseThrow() (model.Stmt, error) {
 	return &model.Throw{X: e}, nil
 }
 
-// parseTry parses `try { ... } catch (Type $var) { ... } [finally { ... }]`.
-// The VM has no exception class hierarchy and the parser keeps a catch type
-// filter for printing only; the first catch clause handles any error.
+// parseTry parses try/catch/finally; the catch type filters the clause.
 func (p *parser) parseTry() (model.Stmt, error) {
 	p.next() // try
 	body, err := p.parseBlock()
@@ -927,6 +928,9 @@ func (p *parser) parseTry() (model.Stmt, error) {
 		// Exception type filter: `Type`, `A|B` or a qualified `\Ns\Type`.
 		// The runtime ignores it, but PHP requires it and the parser keeps it.
 		catchType := p.parseTypeHint()
+		if p.goMode && catchType != "" && !isGoErrorType(catchType) {
+			return nil, fmt.Errorf("line %d: the go runtime catches error, %q names no type", catchLine, catchType)
+		}
 		// Optional bound variable: `catch (Exception $e)` or PHP8 `catch (Exception)`.
 		var name string
 		if p.cur().kind == tVar {

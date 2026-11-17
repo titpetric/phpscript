@@ -43,6 +43,50 @@ Each builtin behaves as go's. Where php has its own value in the same place, thi
 
 `new`, `recover`, `close` and the complex family stay unbound: php writes `new` and `catch` itself, and the rest need [channels](#no-channels) or a value php has no spelling for.
 
+## Errors
+
+Go has one failure value, `error`, and no class hierarchy. Under the go runtime `try`, `catch` and `throw` speak it:
+
+- `catch (error $e)` and `catch ($e)` are the two clauses, and an error matches both. `$e` holds the error the statement threw, a `%w` wrapper included, as `if err != nil` reads it.
+- `throw` takes an error: `throw errors.New("...")`, `throw fmt.Errorf("...")`, or a value a binding returned. Any other value raises the `TypeError` that reports `throw(): Argument #1 must be of type error, string given`.
+- A go binding that returns a non-nil error raises it, and `catch (error $e)` handles the call the way go wraps it.
+- The runtime installs no PHP throwable class. `Exception`, `RuntimeException`, `TypeError` and the rest name nothing, `catch (Exception $e)` fails the parse, and `new Exception` reports an undefined class.
+- `finally` runs as it does under the php runtime. `exit` and the time limit stay uncatchable under either mode.
+
+```php
+import "errors";
+import "fmt";
+
+try {
+    throw fmt.Errorf("open %s: %w", "db", errors.New("refused"));
+} catch (error $e) {
+    echo $e, "\n";   // open db: refused
+}
+```
+
+`import "errors"` installs `Runtime\Go\Errors`, holding `New`, and `fmt` holds `Errorf` beside the formatting calls. The php runtime installs its exception classes and reads `catch (Exception $e)`.
+
+## Output
+
+`echo` writes to the runtime's output under either namespace, and the open and close tags still mix HTML with evaluated code. The parser echoes the text between `?>` and the next `<?php` as it stands, line breaks and indentation included, and a `foreach` between two blocks repeats a row.
+
+```php
+ob_start();
+?>
+<ul>
+<?php foreach ($rows as $row) { ?>
+    <li><?php echo $row; ?></li>
+<?php } ?>
+</ul>
+<?php
+$list = ob_get_clean();
+echo $list;
+```
+
+The go runtime keeps php's output buffers for templates: `ob_start`, `ob_get_level`, `ob_get_contents`, `ob_get_clean`, `ob_end_clean`, `ob_end_flush` and `ob_get_flush` scope what `echo` writes, and the call that closes a buffer returns or writes its contents. `ob_start` accepts php's callback and chunk size and ignores both, because nothing transforms the buffered text.
+
+Under a server the output is the request's response writer. A handler echoes its body there. A second echo writes a fragment rendered into a string into the page. An echo before a throw has already begun the response. Outside a server the output is the process's standard output, where `print` and `println` write as well. `echo` reaches the response writer's own `WriteString`, which takes the string without a copy.
+
 ## Conversions
 
 A type name converts one value. php reads it through its own semantics first, where `"12"` becomes 12, and go's width truncates what comes out: `int8(300)` is 44 and `uint8(-1)` is 255. A call with no argument answers the type's zero value.

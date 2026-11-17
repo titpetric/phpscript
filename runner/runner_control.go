@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -205,19 +206,12 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	}
 
 	if err != nil && len(n.Catches) > 0 {
-		rootErr := err
-		for {
-			if unwrapped := errors.Unwrap(rootErr); unwrapped != nil {
-				rootErr = unwrapped
-				continue
-			}
-			break
-		}
+		caught := rt.catchError(err)
 
 		for _, c := range n.Catches {
-			if matchCatchType(c.Type, rootErr) {
+			if rt.matchCatch(c.Type, caught) {
 				if c.Var != "" {
-					scope.Set(c.Var, catchValue(rootErr))
+					scope.Set(c.Var, catchValue(caught))
 				}
 				val, fl, err = rt.exec(c.Body, scope)
 				break
@@ -279,6 +273,43 @@ func matchCatchType(declaredType string, rootErr error) bool {
 		}
 	}
 	return false
+}
+
+// catchError answers the error a clause sees: the root cause under php, the thrown error under go.
+func (rt *Runtime) catchError(err error) error {
+	if rt.GoRuntime() {
+		return err
+	}
+	for {
+		unwrapped := errors.Unwrap(err)
+		if unwrapped == nil {
+			return err
+		}
+		err = unwrapped
+	}
+}
+
+// matchCatch answers the clause under the runtime's own rules: go catches error.
+func (rt *Runtime) matchCatch(declaredType string, rootErr error) bool {
+	if !rt.GoRuntime() {
+		return matchCatchType(declaredType, rootErr)
+	}
+	want := strings.TrimPrefix(strings.TrimSpace(declaredType), "\\")
+	return want == "" || strings.EqualFold(want, "error")
+}
+
+// throwValue turns a thrown value into the error it travels as.
+func (rt *Runtime) throwValue(value any) error {
+	if thrown, ok := value.(error); ok {
+		return thrown
+	}
+	if rt.GoRuntime() {
+		return &TypeError{Name: "throw", Position: 1, Want: "error", Got: phpDebugType(value)}
+	}
+	if obj, ok := value.(*model.Object); ok {
+		return newObjectError(obj)
+	}
+	return fmt.Errorf("uncaught exception: %s", phpString(value))
 }
 
 // execSwitch evaluates the discriminant and runs matching case bodies with PHP

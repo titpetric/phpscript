@@ -31,6 +31,11 @@ func (p *parser) useGo(name string) {
 	}
 }
 
+// isGoErrorType reports whether a catch type names go's error.
+func isGoErrorType(name string) bool {
+	return strings.EqualFold(strings.TrimPrefix(strings.TrimSpace(name), "\\"), "error")
+}
+
 // goBound reports whether a bare name is a go builtin this file's imports bind.
 func (p *parser) goBound(name string) bool {
 	return p.goRuntime && modelutil.GoBuiltin(name)

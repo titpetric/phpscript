@@ -247,3 +247,28 @@ func TestParseFileOptionsGoRuntime(t *testing.T) {
 		t.Fatal("import parsed as a use statement without the mode")
 	}
 }
+
+// TestParseGoCatch covers the two clauses the runtime mode reads and the name it refuses.
+func TestParseGoCatch(t *testing.T) {
+	for _, src := range []string{
+		`<?php try { throw "x"; } catch (error $e) { echo $e; }`,
+		`<?php try { throw "x"; } catch (\error $e) { echo $e; }`,
+		`<?php try { throw "x"; } catch ($e) { echo $e; }`,
+	} {
+		if _, err := ParseFileOptions("x.php", src, Options{GoRuntime: true}); err != nil {
+			t.Errorf("parse %q: %v", src, err)
+		}
+	}
+	if _, err := ParseFileOptions("x.php", `<?php try {} catch (Exception $e) {}`, Options{GoRuntime: true}); err == nil {
+		t.Error("the go runtime parsed a catch clause naming Exception")
+	}
+	// A php runtime keeps the class clause, with or without the import.
+	for _, src := range []string{
+		`<?php try {} catch (Exception $e) {}`,
+		`<?php use Runtime\Go; try {} catch (Exception $e) {}`,
+	} {
+		if _, err := ParseFileOptions("x.php", src, Options{}); err != nil {
+			t.Errorf("php runtime parse %q: %v", src, err)
+		}
+	}
+}

@@ -25,7 +25,12 @@ var Set = bindings.For("fmt").
 	// Runtime\Go\Fmt\Sprintln concatenates $args with spaces between them and a newline behind.
 	Bind("Sprintln", gofmt.Sprintln).
 	// Runtime\Go\Fmt\Fprintf writes $args under $format to $w, a writer the script names.
-	Bind("Fprintf", gofmt.Fprintf)
+	Bind("Fprintf", gofmt.Fprintf).
+	// Runtime\Go\Fmt\Errorf returns an error holding $args formatted under $format.
+	Bind("Errorf", errorf)
+
+// errorf answers the error as a value: the invoker reads an error-typed slot as a failure.
+func errorf(format string, args ...any) any { return gofmt.Errorf(format, args...) }
 
 func init() {
 	Set.Install()

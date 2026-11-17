@@ -96,7 +96,7 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 | `time_limit`              |         `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
 | `concurrency_limit`       |         `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
 
-The `runtime` key selects the whole namespace. `phpscript` is the default and installs what `areas` names. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`. The parser reads every file as though it wrote `use Runtime\Go;`: go's builtins, `[]T` and `import "pkg"`. The configuration refuses a non-empty `areas` beside `runtime: go`.
+The `runtime` key selects the whole namespace. `phpscript` is the default and installs what `areas` names. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and registers no PHP throwable class: try/catch speaks go's `error`. The parser reads every file as though it wrote `use Runtime\Go;`: go's builtins, `[]T` and `import "pkg"`. The configuration refuses a non-empty `areas` beside `runtime: go`.
 
 ### Precompilation
 

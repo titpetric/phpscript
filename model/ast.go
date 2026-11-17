@@ -308,8 +308,8 @@ type Try struct {
 // Catch is one `catch (...) { ... }` clause. Var is the bound variable name
 // (without `$`); the runner binds the caught error to it so `echo $e` prints
 // it. Type is the declared filter, `Exception` or the union form `A|B`, which
-// decides whether this clause handles the error. PHP requires it: a catch
-// clause printed without one does not parse.
+// decides whether this clause handles the error. An empty Type is the implicit
+// clause, `catch ($e)`, which the go runtime reads as `catch (error $e)`.
 type Catch struct {
 	Type string
 	Var  string

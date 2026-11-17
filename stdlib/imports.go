@@ -8,6 +8,7 @@ package stdlib
 import (
 	_ "github.com/titpetric/phpscript/stdlib/go/database/sql"
 	_ "github.com/titpetric/phpscript/stdlib/go/encoding/json"
+	_ "github.com/titpetric/phpscript/stdlib/go/errors"
 	_ "github.com/titpetric/phpscript/stdlib/go/fmt"
 	_ "github.com/titpetric/phpscript/stdlib/go/io"
 	_ "github.com/titpetric/phpscript/stdlib/go/maps"

@@ -33,6 +33,15 @@ func TestRuntimeGoReplacesStandardLibrary(t *testing.T) {
 	if !rt.FunctionExists(`Runtime\Go\make`) {
 		t.Error("the go runtime installed no builtins")
 	}
+	for _, class := range []string{"Exception", "RuntimeException", "TypeError"} {
+		if _, ok := rt.LookupConstructor(class); ok {
+			t.Errorf("%s survived the go runtime", class)
+		}
+	}
+	rt.UseNamespace(`Runtime\Go\Errors`)
+	if !rt.FunctionExists(`Runtime\Go\Errors\New`) {
+		t.Error("the errors area installed no constructor")
+	}
 }
 
 // TestGoRuntimeServerConfig covers the testdata application's configuration

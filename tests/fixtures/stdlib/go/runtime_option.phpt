@@ -4,10 +4,7 @@ description: >
   Runtime\PX, and the parser reads a file as though it wrote use Runtime\Go;.
   The fixture writes an import and the go builtins with no use statement, and
   php cannot parse either, so only phpscript defines the expected output.
-runner:
-  php: false
-options:
-  runtime: go
+runtime: go
 ---
 <?php
 

@@ -156,6 +156,7 @@ The YAML metadata supports these fields:
 | `root`        |       no | Include root, relative to the fixture's own directory.                                                                 |
 | `serial`      |       no | Do not overlap the fixture with peers under `--parallel`.                                                              |
 | `options`     |       no | Runner options for both Go runtimes, spelled as the `runner` configuration block.                                      |
+| `runtime`     |       no | The runtime namespace, `phpscript` or `go`; it wins over `options.runtime`.                                            |
 | `request`     |       no | Request state the harness exposes as superglobals: `args`, `get`, `post`, `cookie`, `env`, `headers`, `stdin`, `body`. |
 | `response`    |       no | Response headers the run must have set.                                                                                |
 
@@ -321,7 +322,7 @@ runner:
   php: false
 ```
 
-`runner` accepts both `flatstack` and `php`, and an omitted key runs that runtime. A fixture cannot opt the default runtime out, because its output is what the expected-output section states.
+`runner` accepts both `flatstack` and `php`, and an omitted key runs that runtime. A fixture cannot opt the default runtime out, because its output is what the expected-output section states. `runtime: go` (or `options.runtime: go`) opts the php runner out, because php cannot run source written for the go runtime. `runner: {php: true}` is the only way back in.
 
 Opt out only where the runtime plays no part in the fixture: `php: false` for the three groups above, `flatstack: false` where a program the bytecode engine compiles should still not run there. Syntax the bytecode engine does not compile needs no opt-out: the harness compiles the program through the flat compiler before running, into the run's own cache so the run reuses the result, and reports the fixture as SKIP for that column. It does not delegate to the compatibility interpreter, which embedding does, because a fallback run would record the interpreter's result and cost under the flatstack name.
 

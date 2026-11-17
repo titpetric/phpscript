@@ -17,6 +17,7 @@ func TestSet(t *testing.T) {
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprintf("%.2f|%t|%q", 1.5, true, "a");`, Want: `1.50|true|"a"`},
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprint("a", 1, 2, "b");`, Want: "a1 2b"},
 		{Src: `use Runtime\Go; import "fmt"; echo fmt.Sprintln("a", "b");`, Want: "a b\n"},
+		{Src: `use Runtime\Go; import "fmt"; try { throw fmt.Errorf("failed: %d", 42); } catch (error $e) { echo $e; }`, Want: "failed: 42"},
 		// The area answers under its own name as well, as every area does.
 		{Src: `use Runtime\Go\Fmt; echo Fmt\Sprintf("%d", 7);`, Want: "7"},
 		// The default runtime installs none of it.
