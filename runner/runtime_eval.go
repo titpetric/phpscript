@@ -40,6 +40,15 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		// reaches. It answers what it wrote. See assignValue.
 		return rt.assignValue(a.Target, a.Op, a.Value, scope)
 	}
+	if v, ok := e.(*model.Var); ok {
+		// A lone variable is one scope read. Compiling it would build a
+		// closure chain to read the same map.
+		ident := varIdent(v.Name)
+		if v.Const {
+			ident = constIdent(v.Name)
+		}
+		return rt.resolveVar(v.Name, ident, scope)
+	}
 
 	ce, err := rt.compileExpr(e)
 	if err != nil {
