@@ -1,6 +1,6 @@
 # phpscript-go-runtime-server
 
-The same API as [`phpscript-http-bridge`](../phpscript-http-bridge/README.md),
+The same routes as [`phpscript-http-bridge`](../phpscript-http-bridge/README.md),
 written against the go runtime namespace. `phpscript.yml` sets
 `runner.runtime: go`, so the source writes no `use Runtime\Go;` line and every
 file reads `import "net/http"` and the go builtins directly.
@@ -17,9 +17,13 @@ kernel for a port. `TESTSERVER_WORKERS` defaults to 4 and `TESTSERVER_QUEUE` to
 
 The handlers take the raw `net/http` request and a writer: `$r->Method`,
 `$r->URL->Path`, `$r->URL->Query()->Get($name)`, `$r->PathValue($name)`,
-`$r->FormValue($name)`, `$w->Header()->Set($name, $value)`, `$w->Write($body)`.
-`/slow` uses `time.Sleep("100ms")` and `http.Aborted($r)` where the bridge uses
-`usleep` and `connection_aborted()`.
+`$r->FormValue($name)` and `$w->Header()->Set($name, $value)`. A handler writes
+its body with `echo`, which reaches the response writer. `/` is an HTML page
+mixing tags and evaluated code, with a fragment captured through
+`ob_start()` and `ob_get_clean()`. The JSON routes write with
+`json.NewEncoder($w)->Encode($body)`, which converts a php array the way
+`json_encode` does. `/slow` uses `time.Sleep("100ms")` and `http.Aborted($r)`
+where the bridge uses `usleep` and `connection_aborted()`.
 
 The runtime never falls back to php: `runtime: go` installs `Runtime\Go` and no
 area under `Runtime\PS` or `Runtime\PX`, so `phpinfo`, `getenv`, `intval` and

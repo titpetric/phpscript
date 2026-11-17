@@ -66,15 +66,43 @@ class Server {
 		return $mux;
 	}
 
+	// The route table is one template call: ob_start() captures the echoed
+	// fragment and the page echoes what it returned.
 	function index($w, $r) {
-		$w->Header()->Set("Content-Type", "text/plain; charset=utf-8");
-		$w->Write("phpscript go runtime test server\n\n");
-		$w->Write("GET  /             this page ('{\$}' anchors it)\n");
-		$w->Write("GET  /hello        a greeting\n");
-		$w->Write("GET  /users/{id}   reads a path value\n");
-		$w->Write("POST /echo         reports the request it was given\n");
-		$w->Write("GET  /slow         holds the connection, and notices if you leave\n");
-		$w->Write("GET  /info         reports the runtime\n");
+		$w->Header()->Set("Content-Type", "text/html; charset=utf-8");
+
+		$routes = array(
+			array("path" => "/", "what" => "this page, the root anchor"),
+			array("path" => "/hello", "what" => "a greeting, with an optional name"),
+			array("path" => "/users/{id}", "what" => "reads a path value"),
+			array("path" => "/echo", "what" => "reports the request it was given"),
+			array("path" => "/slow", "what" => "holds the connection, and notices if you leave"),
+			array("path" => "/info", "what" => "reports the runtime"),
+		);
+
+		ob_start();
+		?>
+		<ul>
+		<?php foreach ($routes as $route) { ?>
+			<li><code><?php echo $route["path"]; ?></code> - <?php echo $route["what"]; ?></li>
+		<?php } ?>
+		</ul>
+		<?php
+		$table = ob_get_clean();
+		?>
+		<!doctype html>
+		<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<title>phpscript go runtime test server</title>
+		</head>
+		<body>
+			<h1>phpscript go runtime test server</h1>
+			<p>Every route is a method on one class, mounted on a <code>net/http</code> mux. The root pattern is <code>GET /{$}</code>.</p>
+			<?php echo $table; ?>
+		</body>
+		</html>
+		<?php
 	}
 
 	function hello($w, $r) {
@@ -83,25 +111,23 @@ class Server {
 		if ($name === "") {
 			$name = "world";
 		}
-		$w->Write("hello " . $name . "\n");
+		echo "hello " . $name . "\n";
 	}
 
 	function showUser($w, $r) {
 		$w->Header()->Set("Content-Type", "application/json");
-		$body = json.Marshal(array("id" => $r->PathValue("id"), "path" => $r->URL->Path));
-		$w->Write($body . "\n");
+		json.NewEncoder($w)->Encode(array("id" => $r->PathValue("id"), "path" => $r->URL->Path));
 	}
 
 	function echoRequest($w, $r) {
 		$w->Header()->Set("Content-Type", "application/json");
-		$body = json.Marshal(array(
+		json.NewEncoder($w)->Encode(array(
 			"method" => $r->Method,
 			"path" => $r->URL->Path,
 			"query" => $r->URL->RawQuery,
 			"user_agent" => $r->UserAgent(),
 			"name" => $r->FormValue("name"),
 		));
-		$w->Write($body . "\n");
 	}
 
 	// The ticks finish either way: the work is the transaction that already
@@ -124,18 +150,17 @@ class Server {
 		}
 
 		$w->Header()->Set("Content-Type", "text/plain; charset=utf-8");
-		$w->Write("waited " . $ticks . " ticks, still connected\n");
+		echo "waited " . $ticks . " ticks, still connected\n";
 	}
 
 	function info($w, $r) {
 		$w->Header()->Set("Content-Type", "application/json");
-		$body = json.Marshal(array(
+		json.NewEncoder($w)->Encode(array(
 			"sapi" => "go",
 			"method" => $r->Method,
 			"path" => $r->URL->Path,
 			"host" => $r->Host,
 		));
-		$w->Write($body . "\n");
 	}
 
 	function run() {
