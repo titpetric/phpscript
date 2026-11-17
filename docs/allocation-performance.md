@@ -137,13 +137,20 @@ The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed a
 
 So the env stays for as long as expr-lang compiles anything; the per-compile cost of deriving it goes, one shared nature for all keys, with no reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: with no expr-lang compile there is no type env, no predicate collision and no bytecode to guard.
 
-### The per-submit done channel
+### The run on the caller's goroutine
 
-`Pool.Submit` keeps no free list of channels. That refusal holds: `Submit` answers false when the context ends first. That path cannot prove the entry is free, because the worker goes on running with the channel it holds. A channel the pool recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, never a slow one, and no test here catches it.
+`Pool.Submit` runs the job on the goroutine that submitted it, borrowing one of the pre-built runtimes. The pool starts no worker goroutine per run: the submitter blocks until a runtime is free and then runs the handler itself, on the request goroutine `net/http` already started. The `free` channel holds the idle runtimes, and `slots` holds workers plus queue so a full pool blocks the caller. The worker returns to the channel after `resetExecution`.
 
-What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel the pool signals its completion through, and a job living for the length of its run keeps one channel over every run it serves. The pool sends one buffered slot in place of closing it and a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: it drops a job submitted and not seen to finish, and never reuses it. `stdlib/ps/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
+The worker goroutine paid two costs: the context switches between the submitter and the worker, and the completion channel the submitter waited on. With the run on the caller's goroutine the call that submits it returns when the run ends. The pool reads no channel from a job.
 
-A `Submit` whose job lends no channel builds one, as before.
+The free list is still the channel itself, which keeps the old refusal: a run dropped before it takes a runtime never holds one, and a run once started lives to its end on the caller's goroutine. The caller sees a disconnect through `connection_aborted`, the same way a handler does.
+
+Measured on the go-runtime server, `GET /hello`, three ten-second runs:
+
+| Pool                          | Requests per second at concurrency 1 |
+|-------------------------------|--------------------------------------|
+| worker goroutine per run      | 18.1k, 18.5k, 18.9k                  |
+| run on the caller's goroutine | 20.0k, 20.5k, 20.5k                  |
 
 ### The closure engine
 

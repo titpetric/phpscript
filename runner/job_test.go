@@ -21,15 +21,3 @@ func TestJobFunc_Run(t *testing.T) {
 		t.Errorf("the job ran on %p, want the runtime it is handed", got)
 	}
 }
-
-// TestJobFuncSatisfiesJobAlone covers which of the three a bare function
-// answers: Job, and never DoneJob. A JobFunc lends no channel and Submit
-// builds one, and a type assertion deciding that has to read false here.
-func TestJobFuncSatisfiesJobAlone(t *testing.T) {
-	t.Parallel()
-	var job Job = JobFunc(func(*Runtime) {})
-
-	if _, ok := job.(DoneJob); ok {
-		t.Error("a JobFunc answers DoneJob, so Submit would read a channel it does not have")
-	}
-}
