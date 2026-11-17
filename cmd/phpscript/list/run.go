@@ -66,10 +66,14 @@ func runRuntime(out io.Writer, options runner.Options, args []string, bindings, 
 		if len(args) > 0 {
 			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))
 		}
-		if classes || api || asJSON {
-			return fmt.Errorf("list --bindings takes none of --classes, --api or --json")
+		if classes || api {
+			return fmt.Errorf("list --bindings takes none of --classes or --api")
 		}
-		fmt.Fprint(out, phplist.StdlibMarkdown(phplist.Stdlib(options)))
+		symbols := phplist.Stdlib(options)
+		if asJSON {
+			return writeJSON(out, symbols)
+		}
+		fmt.Fprint(out, phplist.StdlibMarkdown(symbols))
 		return nil
 	}
 	// --classes reports on the binary too. Its arguments are class names, never

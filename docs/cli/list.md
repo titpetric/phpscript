@@ -14,11 +14,12 @@ A `/...` sweep leaves out `.git`, `vendor` and `testdata` at any depth under the
 
 The Route column names the entry point a file declares: a `METHOD /path` annotation, `@startup` for a file the server runs before it listens, or `@schedule ...` for a clock or interval job. Files that are only included by others have neither.
 
-`--bindings` reports on the binary in place of a tree: the functions, classes, methods and constants this build registers, as a script would type them. It takes no path arguments.
+`--bindings` reports on the binary in place of a tree: the functions, classes, methods and constants this build registers, as a script would type them. It takes no path arguments. `--json` writes the rows as data, with `kind`, `name`, `signature` and `area`; a generator renders them into [Go imports](../reference/extensions/go-imports.md).
 
 ```bash
 phpscript list --bindings                     # Everything the runtime binds
 phpscript list --bindings | grep '| function' # Just the functions
+phpscript list --bindings --runtime=go --json # The go surface, as data
 ```
 
 The listing comes from the runtime itself: it reports what this build binds, not what a checked-in file says it binds; its counts agree with `phpscript info`. Two things are missing from it, and both need the binary's own Go source: the doc comment written next to each registration, and the PHP spelling of each parameter name. Signatures here hold reflected types and no parameter names, because reflection invents the names it reports (`$string1`, `$string2`). An invented name would read as the real one. [Implemented PHP APIs](../reference/extensions/implemented-apis.md) holds the annotated listing, written from the same reflection plus a scan of the source.
@@ -31,7 +32,7 @@ phpscript list --areas 'Runtime\PX'     # The overlay
 phpscript list --areas --json           # As data
 ```
 
-`--runtime` selects the namespace the listing reports, and defaults to `runner.runtime` from the configuration. `--runtime=go` reports `Runtime\Go` alone: the builtins, the classes and constants, and every package area an import can reach. The throwable classes still answer, because the language throws under either runtime.
+`--runtime` selects the namespace the listing reports, and defaults to `runner.runtime` from the configuration. `--runtime=go` reports `Runtime\Go` alone: the builtins, the classes and constants, and every package area an import can reach. No PHP throwable class answers, because the go runtime's errors are go's `error` and it has no exception class.
 
 ```bash
 phpscript list --bindings --runtime=go          # The go surface

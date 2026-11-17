@@ -30,7 +30,7 @@ The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdli
 
 The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the area of the same name under `Runtime\PS`. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
 
-`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, because a runtime with no binding still throws.
+`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, because a runtime with no binding still throws. `runner.runtime: go` is the one mount that installs neither: its errors are go's `error` and it names no throwable class.
 
 The [implemented API inventory](implemented-apis.md) groups every function and class by area.
 
@@ -86,26 +86,13 @@ That runtime installs `Runtime\PS` and no overlay. A deeper name narrows further
 
 A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects profiles, such as `secure` and `exec`, and the two compose.
 
-`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and every file reads as though it imported the namespace. The configuration refuses a non-empty `runner.areas` beside it. [The Go runtime](go-runtime.md) is the surface.
+`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and every file reads as though it imported the namespace. The configuration refuses a non-empty `runner.areas` beside it. The exception half differs with it: no PHP throwable class installs, and the `ob_*` output buffers do, because a template captures what `echo` writes and a go error needs no class. [The Go runtime](go-runtime.md) is the surface.
 
 ## Go's standard library, opt-in
 
-`Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)) and the areas below it map go's import paths:
+`Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)). Its other areas map go's import paths: `Runtime\Go\Strings` for `strings`, `Runtime\Go\Path` for `path`, `Runtime\Go\Net\HTTP` for `net/http`, `Runtime\Go\Encoding\JSON` for `encoding/json`, `Runtime\Go\Database\SQL` for `database/sql`, and the rest under the path's last segments.
 
-| Area                       | Go package      | Names                                                                              |
-|----------------------------|-----------------|------------------------------------------------------------------------------------|
-| `Runtime\Go\Strings`       | `strings`       | `Fields`, `Split`, `Contains`, `HasPrefix`, `Index`, `Repeat`, `Trim`              |
-| `Runtime\Go\Path`          | `path`          | `Base`, `Dir`, `Ext`, `Clean`, `Join`, `Match`                                     |
-| `Runtime\Go\Slices`        | `slices`        | `Contains`, `Index`, `Sort`, `Reverse`, `Max`, `Min`, `Compact`, `Concat`, `Equal` |
-| `Runtime\Go\Maps`          | `maps`          | `Keys`, `Values`, `Clone`, `Copy`, `Equal`, in the order the array keeps           |
-| `Runtime\Go\Fmt`           | `fmt`           | `Sprintf`, `Sprint`, `Sprintln`, `Fprintf`                                         |
-| `Runtime\Go\IO`            | `io`            | `ReadAll`, `ReadFull`, over a reader a binding answered with                       |
-| `Runtime\Go\Net\HTTP`      | `net/http`      | `Get`, `Head`, `NewRequest`, `StatusText`, `ServeMux`, `Server`, `Aborted`         |
-| `Runtime\Go\Os`            | `os`            | `Getenv`, `Stderr`                                                                 |
-| `Runtime\Go\Strconv`       | `strconv`       | `Atoi`, `Itoa`                                                                     |
-| `Runtime\Go\Time`          | `time`          | `Sleep`, with a string duration such as `"100ms"`                                  |
-| `Runtime\Go\Encoding\JSON` | `encoding/json` | `Marshal`, `Unmarshal`, `Valid`                                                    |
-| `Runtime\Go\Database\SQL`  | `database/sql`  | `Open` a connection the host registered, never a DSN from the script               |
+The [Go imports](go-imports.md#the-bindings) inventory lists every name each area binds, read off the runtime this build reports. `Time\Sleep` takes a string duration such as `"100ms"`, and `SQL\Open` takes a connection the host registered, never a DSN from the script.
 
 A script imports one by its name, and the alias calls the function:
 

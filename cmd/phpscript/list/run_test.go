@@ -50,6 +50,44 @@ func TestRunListsBindings(t *testing.T) {
 	}
 }
 
+// TestRunListsBindingsAsJSON covers --bindings --json: the rows a generator
+// renders into the go-imports page, under the field names it reads.
+func TestRunListsBindingsAsJSON(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	if err := run(&out, nil, true, false, false, true); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	var rows []map[string]any
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil {
+		t.Fatalf("decode: %v\n%s", err, out.String())
+	}
+	if len(rows) == 0 {
+		t.Fatal("the listing holds no rows")
+	}
+	for _, key := range []string{"kind", "name", "signature", "area"} {
+		if _, ok := rows[0][key]; !ok {
+			t.Errorf("a row holds no %q field", key)
+		}
+	}
+
+	var symbols []struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+		Area string `json:"area"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &symbols); err != nil {
+		t.Fatalf("decode symbols: %v", err)
+	}
+	for _, s := range symbols {
+		if s.Name == "strlen" && s.Kind == "function" && s.Area != "" {
+			return
+		}
+	}
+	t.Error("the listing omits strlen")
+}
+
 // TestRunListsClasses covers --classes: the registered classes as PHP class
 // definitions, the shape `go doc` prints a Go type in. The arguments are class
 // names and not paths, and asking about one answers about one.
