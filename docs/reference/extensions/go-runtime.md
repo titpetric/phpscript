@@ -2,7 +2,7 @@
 
 A binding is a Go function, and the values it takes and returns are Go's: a slice, a map, an integer of a stated width. `use Runtime\Go;` writes those values in php source. `make` allocates the slice a binding reads, `uint8($n)` stays a uint8 across an assignment and a return, and `len` counts either side's collection. The configuration key `runner.runtime: go` selects the namespace for the whole runtime, and no file writes the statement.
 
-The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. Two names beside them are this runtime's own: `getenv` answers `os.Getenv`'s string and `numcpu` answers `runtime.NumCPU`, with no import. The import also admits the `[]T` and `*T` types and the `pkg.Type` selector its imports spell, which php has no spelling for.
+The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. Two names beside them are this runtime's own: `getenv` answers `os.Getenv`'s string and `numcpu` answers `runtime.NumCPU`, with no import. The import also admits the `[]T` and `*T` types, the `pkg.Type` selector its imports spell, the `[...]` and `{...}` composite literals, and the `&x` and `*p` operators, which php has no spelling for.
 
 An import is the more specific name, and `min`, `max`, `copy` and `getenv` shadow php's functions of those names in the importing file. `\min([3, 1, 2])` is php's, the way `\strlen($s)` is php's whatever the file imported, and `MAKE()` reaches php, which folds a function's case where this binds one spelling.
 
@@ -135,6 +135,46 @@ php's own operators read the number the value holds: `==` and `<` compare numeri
 An unsigned value past `PHP_INT_MAX` prints what go prints. `echo`, `%d` and `%u` write `18446744073709551615`, and the integer domain clips: `(int)` and `intval()` answer `PHP_INT_MAX`, where `(float)` answers the float holding the value.
 
 `var_export` prints the conversion back, `int8(44)`, which reproduces the value in a file that imported the runtime. `echo`, `print_r` and `json_encode` print the number alone.
+
+## Composite literals
+
+`[...]` builds a slice and `{key: value}` a map, and a literal that names its element type builds the go value that type names. The inferred forms answer `[]any` and `map[string]any`:
+
+```php
+use Runtime\Go;
+
+$list = [1, 2, 3];                      // []any
+$user = {"name": "ada", "age": 36};     // map[string]any
+$names = []string{"ada", "grace"};      // []string
+$ages = map[string]int{"ada": 36};      // map[string]int64
+```
+
+The element type is a builtin type name. A typed literal narrows each entry as the conversion does, and `[]int8{300}` holds `int8(44)`. A class name holds `any`.
+
+`array()` is a parse error here, and a php `[key => value]` entry is one too: the braced form is the map. Indexing, assignment and `delete` read and write the container the literal built, and `delete` removes a map key as go's does.
+
+A literal is a full slice, and `append` answers the slice it grew. `$s = [1, 2]; append($s, 3);` leaves `$s` at two entries; `$s = append($s, 3)` keeps the third.
+
+## Pointers
+
+`&x` answers a pointer to the storage x names, and `*$p` reads it. An assignment through the pointer writes that storage, where an assignment to the value copies it:
+
+```php
+use Runtime\Go;
+
+$a = 1;
+$p = &$a;
+*$p = 2;
+echo $a;            // 2
+
+$b = $a;            // a copy
+$b = 3;
+echo $a;            // still 2
+```
+
+An element takes an address, `&$list[1]`, and a compound assignment writes through the pointer, `*$p += 1`. A binding's native `*T` dereferences to the value it holds.
+
+The operators arrive with the import, as the literals do. A php file keeps `&` as the by-reference marker and `*` as multiplication.
 
 ## Slices
 

@@ -21,8 +21,9 @@ The handlers take the raw `net/http` request and a writer: `$r->Method`,
 its body with `echo`, which reaches the response writer. `/` is an HTML page
 mixing tags and evaluated code, with a fragment captured through
 `ob_start()` and `ob_get_clean()`. The JSON routes write with
-`json.NewEncoder($w)->Encode($body)`, which converts a php array the way
-`json_encode` does. `/slow` uses `time.Sleep("100ms")` and `http.Aborted($r)`
+`json.NewEncoder($w)->Encode($body)`, over a `{key: value}` map literal that
+encodes as a JSON object. The root page builds its route table as a `[...]`
+slice of maps. `/slow` uses `time.Sleep("100ms")` and `http.Aborted($r)`
 where the bridge uses `usleep` and `connection_aborted()`.
 
 The methods carry go's type hints: `config(): array`, `mount():

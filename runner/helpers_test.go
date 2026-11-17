@@ -100,3 +100,46 @@ func TestHelperIndex(t *testing.T) {
 		}
 	}
 }
+
+// TestHelperGoLit covers the go runtime's composite literals: []any and
+// map[string]any by inference, and the typed slice and map by spelling.
+func TestHelperGoLit(t *testing.T) {
+	t.Parallel()
+	pairs := []model.ArrayItemValue{{Val: int64(1)}, {Val: int64(2)}, {Val: int64(3)}}
+	list, err := helperGoLit(false, "", "", pairs...)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if got, ok := list.([]any); !ok || len(got) != 3 || got[2] != int64(3) {
+		t.Errorf("[] literal = %#v, want []any{1, 2, 3}", list)
+	}
+
+	keyed := []model.ArrayItemValue{{Key: "a", Val: int64(1)}, {Key: "b", Val: int64(2)}}
+	byName, err := helperGoLit(true, "", "", keyed...)
+	if err != nil {
+		t.Fatalf("map: %v", err)
+	}
+	if got, ok := byName.(map[string]any); !ok || got["b"] != int64(2) {
+		t.Errorf("{} literal = %#v, want map[string]any", byName)
+	}
+
+	names, err := helperGoLit(false, "", "[]string", model.ArrayItemValue{Val: "ada"}, model.ArrayItemValue{Val: "grace"})
+	if err != nil {
+		t.Fatalf("[]string: %v", err)
+	}
+	if got, ok := names.([]string); !ok || got[1] != "grace" {
+		t.Errorf("[]string literal = %#v, want []string", names)
+	}
+
+	ages, err := helperGoLit(true, "string", "int", model.ArrayItemValue{Key: "ada", Val: int64(36)})
+	if err != nil {
+		t.Fatalf("map[string]int: %v", err)
+	}
+	if got, ok := ages.(map[string]int64); !ok || got["ada"] != 36 {
+		t.Errorf("map[string]int literal = %#v, want map[string]int64", ages)
+	}
+
+	if _, err := helperGoLit(false, "", "[]int8", model.ArrayItemValue{Val: int64(300)}); err != nil {
+		t.Fatalf("[]int8: %v", err)
+	}
+}

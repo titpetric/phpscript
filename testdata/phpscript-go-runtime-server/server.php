@@ -39,11 +39,11 @@ class Server {
 			$queue = 64;
 		}
 
-		return array(
-			"addr" => $addr,
-			"workers" => $workers,
-			"queue" => $queue,
-		);
+		return {
+			"addr": $addr,
+			"workers": $workers,
+			"queue": $queue,
+		};
 	}
 
 	// $this->index is the method read without parentheses, a callable bound to
@@ -66,14 +66,14 @@ class Server {
 	function index(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "text/html; charset=utf-8");
 
-		$routes = array(
-			array("path" => "/", "what" => "this page, the root anchor"),
-			array("path" => "/hello", "what" => "a greeting, with an optional name"),
-			array("path" => "/users/{id}", "what" => "reads a path value"),
-			array("path" => "/echo", "what" => "reports the request it was given"),
-			array("path" => "/slow", "what" => "holds the connection, and notices if you leave"),
-			array("path" => "/info", "what" => "reports the runtime"),
-		);
+		$routes = [
+			{"path": "/", "what": "this page, the root anchor"},
+			{"path": "/hello", "what": "a greeting, with an optional name"},
+			{"path": "/users/{id}", "what": "reads a path value"},
+			{"path": "/echo", "what": "reports the request it was given"},
+			{"path": "/slow", "what": "holds the connection, and notices if you leave"},
+			{"path": "/info", "what": "reports the runtime"},
+		];
 
 		ob_start();
 		?>
@@ -111,18 +111,18 @@ class Server {
 
 	function showUser(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
-		json.NewEncoder($w)->Encode(array("id" => $r->PathValue("id"), "path" => $r->URL->Path));
+		json.NewEncoder($w)->Encode({"id": $r->PathValue("id"), "path": $r->URL->Path});
 	}
 
 	function echoRequest(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
-		json.NewEncoder($w)->Encode(array(
-			"method" => $r->Method,
-			"path" => $r->URL->Path,
-			"query" => $r->URL->RawQuery,
-			"user_agent" => $r->UserAgent(),
-			"name" => $r->FormValue("name"),
-		));
+		json.NewEncoder($w)->Encode({
+			"method": $r->Method,
+			"path": $r->URL->Path,
+			"query": $r->URL->RawQuery,
+			"user_agent": $r->UserAgent(),
+			"name": $r->FormValue("name"),
+		});
 	}
 
 	// The ticks finish either way: the work is the transaction that already
@@ -150,12 +150,12 @@ class Server {
 
 	function info(http.ResponseWriter $w, *http.Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
-		json.NewEncoder($w)->Encode(array(
-			"sapi" => "go",
-			"method" => $r->Method,
-			"path" => $r->URL->Path,
-			"host" => $r->Host,
-		));
+		json.NewEncoder($w)->Encode({
+			"sapi": "go",
+			"method": $r->Method,
+			"path": $r->URL->Path,
+			"host": $r->Host,
+		});
 	}
 
 	function run(): void {

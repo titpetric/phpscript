@@ -14,6 +14,49 @@ import (
 // direct_operators.go, and the compiler's bindings and call plumbing in
 // compiled.go.
 
+// compileLitEntries compiles a literal's entries to one closure returning the evaluated pairs.
+func (dc *directCompiler) compileLitEntries(items []model.ArrayItem) (func(*Env) ([]model.ArrayItemValue, error), error) {
+	keys := make([]closure, len(items))
+	vals := make([]closure, len(items))
+	for i, it := range items {
+		if it.Key != nil {
+			key, err := dc.compile(it.Key)
+			if err != nil {
+				return nil, err
+			}
+			keys[i] = key
+		}
+		val, err := dc.compile(it.Val)
+		if err != nil {
+			return nil, err
+		}
+		vals[i] = val
+	}
+	pair := dc.h.Pair
+	return func(env *Env) ([]model.ArrayItemValue, error) {
+		out := make([]model.ArrayItemValue, len(vals))
+		for i, val := range vals {
+			// The key ahead of the value, entry by entry, which is the
+			// order php evaluates a literal in. A nil key is a
+			// list-style append.
+			var key any
+			if keys[i] != nil {
+				k, err := keys[i](env)
+				if err != nil {
+					return nil, err
+				}
+				key = k
+			}
+			v, err := val(env)
+			if err != nil {
+				return nil, err
+			}
+			out[i] = pair(key, v)
+		}
+		return out, nil
+	}, nil
+}
+
 func (dc *directCompiler) compileArgs(args []model.Expr) ([]closure, error) {
 	out := make([]closure, len(args))
 	for i, a := range args {
@@ -108,50 +151,32 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		}, nil
 
 	case *model.ArrayLit:
-		// The key and the value closures and no pair closure over them: a pair
-		// closure returns model.ArrayItemValue as an any, which boxes a
-		// four-word struct on the heap for the line below to unbox again. That
-		// is one allocation per entry of every array literal a script writes.
-		// The compiler builds the two slices here once.
-		keys := make([]closure, len(n.Items))
-		vals := make([]closure, len(n.Items))
-		for i, it := range n.Items {
-			if it.Key != nil {
-				key, err := dc.compile(it.Key)
-				if err != nil {
-					return nil, err
-				}
-				keys[i] = key
-			}
-			val, err := dc.compile(it.Val)
+		entries, err := dc.compileLitEntries(n.Items)
+		if err != nil {
+			return nil, err
+		}
+		fn := dc.h.Array
+		return func(env *Env) (any, error) {
+			items, err := entries(env)
 			if err != nil {
 				return nil, err
 			}
-			vals[i] = val
-		}
-		fn := dc.h.Array
-		pair := dc.h.Pair
-		return func(env *Env) (any, error) {
-			items := make([]model.ArrayItemValue, len(vals))
-			for i, val := range vals {
-				// The key ahead of the value, entry by entry, which is the
-				// order php evaluates a literal in. A nil key is a
-				// list-style append.
-				var key any
-				if keys[i] != nil {
-					k, err := keys[i](env)
-					if err != nil {
-						return nil, err
-					}
-					key = k
-				}
-				v, err := val(env)
-				if err != nil {
-					return nil, err
-				}
-				items[i] = pair(key, v)
-			}
 			return fn(items...), nil
+		}, nil
+
+	case *model.GoLit:
+		entries, err := dc.compileLitEntries(n.Items)
+		if err != nil {
+			return nil, err
+		}
+		fn := dc.h.GoLit
+		mapLit, keyType, valType := n.Map, n.KeyType, n.ValType
+		return func(env *Env) (any, error) {
+			items, err := entries(env)
+			if err != nil {
+				return nil, err
+			}
+			return fn(mapLit, keyType, valType, items...)
 		}, nil
 
 	case *model.Index:
@@ -280,6 +305,11 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		// An element, a property and every compound operator write storage a
 		// closure environment cannot name: the runtime stores through the node
 		// and answers what it wrote. See runner.assignValue.
+		return dc.markCall(n), nil
+
+	case *model.AddrOf, *model.Deref:
+		// A pointer reads and writes storage a closure environment cannot
+		// name: the runtime evaluates the node with the live scope.
 		return dc.markCall(n), nil
 
 	case *model.Include:

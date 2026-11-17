@@ -174,3 +174,148 @@ func goLitValue(arg model.Expr) (any, bool) {
 	}
 	return nil, false
 }
+
+// atGoSliceLit reports whether the tokens ahead open a typed slice literal.
+func (p *parser) atGoSliceLit() bool {
+	if !p.goRuntime || !p.isOp("[") || !p.isOpAt(1, "]") {
+		return false
+	}
+	i := 0
+	for p.isOpAt(i, "[") && p.isOpAt(i+1, "]") {
+		i += 2
+	}
+	if p.peek(i).kind != tIdent {
+		return false
+	}
+	i++
+	for p.isOpAt(i, ".") || p.isOpAt(i, "\\") {
+		i++
+		if p.peek(i).kind != tIdent {
+			return false
+		}
+		i++
+	}
+	return p.isOpAt(i, "{")
+}
+
+// parseGoListLiteral reads `[a, b]` as a slice, or `[]T{...}` as a typed one.
+func (p *parser) parseGoListLiteral() (model.Expr, error) {
+	if p.atGoSliceLit() {
+		return p.parseGoSliceLit()
+	}
+	if err := p.eatOp("["); err != nil {
+		return nil, err
+	}
+	items, err := p.parseGoLitItems("]", false)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GoLit{Items: items}, p.eatOp("]")
+}
+
+// parseGoSliceLit reads the type a slice literal names and its entries.
+func (p *parser) parseGoSliceLit() (model.Expr, error) {
+	dims := ""
+	for p.isOp("[") && p.isOpAt(1, "]") {
+		p.next()
+		p.next()
+		dims += "[]"
+	}
+	typ, err := p.parseGoLitType()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	items, err := p.parseGoLitItems("}", false)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GoLit{ValType: dims + typ, Items: items}, p.eatOp("}")
+}
+
+// parseGoMapLiteral reads `{key: value}` as a map with inferred types.
+func (p *parser) parseGoMapLiteral() (model.Expr, error) {
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	items, err := p.parseGoLitItems("}", true)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GoLit{Map: true, Items: items}, p.eatOp("}")
+}
+
+// parseGoMapTyped reads `map[K]V{...}` after the `map` keyword.
+func (p *parser) parseGoMapTyped() (model.Expr, error) {
+	if err := p.eatOp("["); err != nil {
+		return nil, err
+	}
+	key, err := p.parseGoLitType()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.eatOp("]"); err != nil {
+		return nil, err
+	}
+	val, err := p.parseGoLitType()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	items, err := p.parseGoLitItems("}", true)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GoLit{Map: true, KeyType: key, ValType: val, Items: items}, p.eatOp("}")
+}
+
+// parseGoLitType reads the type a composite literal names.
+func (p *parser) parseGoLitType() (string, error) {
+	name, absolute, err := p.parseQualifiedName(true)
+	if err != nil {
+		return "", err
+	}
+	if full, _, ok := p.goMember(name); ok {
+		return full, nil
+	}
+	if modelutil.GoType(name) {
+		return name, nil
+	}
+	return p.qualify(name, absolute), nil
+}
+
+// parseGoLitItems reads the entries of a go literal up to closeOp.
+func (p *parser) parseGoLitItems(closeOp string, mapForm bool) ([]model.ArrayItem, error) {
+	items := make([]model.ArrayItem, 0, 4)
+	for !p.isOp(closeOp) {
+		first, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		item := model.ArrayItem{Val: first}
+		if p.isOp(":") {
+			if !mapForm {
+				return nil, fmt.Errorf("line %d: a slice literal takes values and no keys", p.cur().line)
+			}
+			p.next()
+			val, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			item = model.ArrayItem{Key: first, Val: val}
+		} else if mapForm {
+			return nil, fmt.Errorf("line %d: a map literal entry reads key: value", p.cur().line)
+		}
+		items = append(items, item)
+		if p.isOp(",") {
+			p.next()
+			continue
+		}
+		break
+	}
+	return items, nil
+}

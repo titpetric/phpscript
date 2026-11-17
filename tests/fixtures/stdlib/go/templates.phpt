@@ -14,7 +14,7 @@ runner:
 ob_start();
 ?>
 <ul>
-<?php foreach (array("a", "b") as $item) { ?>
+<?php foreach (["a", "b"] as $item) { ?>
     <li><?php echo $item; ?></li>
 <?php } ?>
 </ul>

@@ -22,6 +22,34 @@ func TestGoImportKeepsItsSpelling(t *testing.T) {
 	}
 }
 
+// The go runtime's composite literals keep the source spelling: the bracketed
+// slice, the braced map and the typed forms beside them.
+func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n\nuse Runtime\\Go;\n\n$list = [1, 2, 3];\n$user = {\"name\": \"ada\"};\n$names = []string{\"ada\"};\n$ages = map[string]int{\"ada\": 36};\n$empty = [];\n$none = {};\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("formatting a go literal changed the source:\n%s\nwant:\n%s", out, in)
+	}
+}
+
+// The go runtime's `&` and `*` print as written, on a read and on an
+// assignment through the pointer.
+func TestGoPointerOperatorsKeepTheirSpelling(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n\nuse Runtime\\Go;\n\n$p = &$a;\n$v = *$p;\n*$p = 2;\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("formatting a go pointer changed the source:\n%s\nwant:\n%s", out, in)
+	}
+}
+
 // A file that writes the area name itself prints the import's spelling, the
 // way php's own `use` shortens a name the file imported.
 func TestGoImportShortensTheAreaName(t *testing.T) {

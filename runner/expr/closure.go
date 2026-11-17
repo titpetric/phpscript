@@ -36,6 +36,7 @@ type Helpers struct {
 	Str        func(v any) string
 	Pair       func(key, val any) model.ArrayItemValue
 	Array      func(items ...model.ArrayItemValue) *model.Array
+	GoLit      func(mapLit bool, keyType, valType string, items ...model.ArrayItemValue) (any, error)
 	Index      func(base, idx any) any
 	Cast       func(typ string, v any) any
 	Arith      func(op string, a, b any) (any, error)

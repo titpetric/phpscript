@@ -89,8 +89,9 @@ func (p *parser) parseAssign() (model.Expr, error) {
 		op := p.next().val
 		// `$a = &f()` / `$a = &$b`: PHP's assign-by-reference spelling. The
 		// parser keeps the marker as a Ref node (bind stays by value); consuming it
-		// here reaches the forms the unary parser's tVar guard cannot.
-		byRef := op == "=" && p.isOp("&")
+		// here reaches the forms the unary parser's tVar guard cannot. The go
+		// runtime reads the same `&` as the address-of operator.
+		byRef := op == "=" && p.isOp("&") && !p.goRuntime
 		if byRef {
 			p.next()
 		}
@@ -125,7 +126,7 @@ func (p *parser) assignExpr(target model.Expr, op string, value model.Expr, line
 // isLValue reports whether an assignment may target e.
 func isLValue(e model.Expr) bool {
 	switch modelutil.UnwrapParenthesized(e).(type) {
-	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp, *model.ListExpr:
+	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp, *model.ListExpr, *model.Deref:
 		return true
 	}
 	return false
@@ -265,6 +266,16 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		}
 		return p.newUnary(op, x, false), nil
 	}
+	// The go runtime reads `*` in prefix position as the dereference operator.
+	// php has no prefix `*`; a binary one reads past this level.
+	if p.goRuntime && p.isOp("*") {
+		p.next()
+		x, err := p.parseUnary()
+		if err != nil {
+			return nil, err
+		}
+		return &model.Deref{X: x}, nil
+	}
 	if p.isOp("!") || p.isOp("-") || p.isOp("+") || p.isOp("~") {
 		op := p.next().val
 		x, err := p.parseUnary()
@@ -291,6 +302,12 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		x, err := p.parseUnary()
 		if err != nil {
 			return nil, err
+		}
+		if p.goRuntime {
+			if !isLValue(x) {
+				return nil, fmt.Errorf("line %d: & takes the address of a variable", p.cur().line)
+			}
+			return &model.AddrOf{X: x}, nil
 		}
 		return &model.Ref{X: x}, nil
 	}
@@ -502,8 +519,14 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 			}
 			return p.newParen(e), nil
 		case "[":
+			if p.goRuntime {
+				return p.parseGoListLiteral()
+			}
 			return p.parseArrayLiteral("[", "]")
 		case "{":
+			if p.goRuntime {
+				return p.parseGoMapLiteral()
+			}
 			return p.parseArrayLiteral("{", "}")
 		}
 	}
@@ -548,9 +571,16 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		return p.parseIncludeExpr(t.val)
 	case "array":
 		if p.isOp("(") {
+			if p.goRuntime {
+				return nil, fmt.Errorf("line %d: the go runtime has no array(); write [] for a slice or {key: value} for a map", t.line)
+			}
 			return p.parseArrayLiteral("(", ")")
 		}
 		return p.newLit(nil), nil
+	case "map":
+		if p.goRuntime && p.isOp("[") {
+			return p.parseGoMapTyped()
+		}
 	}
 	name := t.val
 	// `http.NewRequest(...)` and `http.StatusOK` name a member of a package

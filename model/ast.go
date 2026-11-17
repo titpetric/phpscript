@@ -513,6 +513,15 @@ type ArrayLit struct {
 	Items []ArrayItem
 }
 
+// GoLit is a composite literal under the go runtime: `[a, b]` builds a slice,
+// `{k: v}` a map, and a typed literal names the element or key types.
+type GoLit struct {
+	Map     bool
+	KeyType string
+	ValType string
+	Items   []ArrayItem
+}
+
 // ArrayItem is one entry of an ArrayLit. Key is nil for list-style entries.
 type ArrayItem struct {
 	Key Expr
@@ -583,6 +592,16 @@ type New struct {
 // the node exists so the formatter prints the source back as written and the
 // linter can report the marker.
 type Ref struct {
+	X Expr
+}
+
+// AddrOf is the go runtime's `&x`: a pointer to the storage x names.
+type AddrOf struct {
+	X Expr
+}
+
+// Deref is the go runtime's `*p`: the value a pointer addresses.
+type Deref struct {
 	X Expr
 }
 
@@ -716,6 +735,12 @@ func (*Var) node() {}
 
 func (*ArrayLit) node() {}
 
+func (*GoLit) node() {}
+
+func (*AddrOf) node() {}
+
+func (*Deref) node() {}
+
 func (*Index) node() {}
 
 func (*PropAccess) node() {}
@@ -763,6 +788,12 @@ func (*Interp) expr() {}
 func (*Var) expr() {}
 
 func (*ArrayLit) expr() {}
+
+func (*GoLit) expr() {}
+
+func (*AddrOf) expr() {}
+
+func (*Deref) expr() {}
 
 func (*Index) expr() {}
 

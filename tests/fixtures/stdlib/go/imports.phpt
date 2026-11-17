@@ -20,7 +20,7 @@ import "encoding/json";
 echo fmt.Sprintf("%s=%d", "n", 42), "\n";
 echo http.StatusText(404), " ", http.StatusNotFound, " ", http.MethodPost, "\n";
 echo strings.ToUpper("go"), " ", strings.Index("chicken", "ken"), "\n";
-echo json.Marshal(["a" => 1, "b" => [2, 3]]), "\n";
+echo json.Marshal({"a": 1, "b": [2, 3]}), "\n";
 var_dump(json.Valid("{"));
 
 // The area answers under its own name too, as every area does.

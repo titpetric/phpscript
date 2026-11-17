@@ -40,6 +40,8 @@ func (p *printer) expr(e model.Expr) string {
 		return "$" + n.Name
 	case *model.ArrayLit:
 		return p.arrayLit(n)
+	case *model.GoLit:
+		return p.goLit(n)
 	case *model.Index:
 		if n.Index == nil {
 			return p.expr(n.Base) + "[]"
@@ -111,6 +113,10 @@ func (p *printer) expr(e model.Expr) string {
 		return p.expr(n.Callee) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.Ref:
 		return "&" + p.expr(n.X)
+	case *model.AddrOf:
+		return "&" + p.expr(n.X)
+	case *model.Deref:
+		return "*" + p.expr(n.X)
 	case *model.Cast:
 		return "(" + n.Type + ")" + p.expr(n.X)
 	case *model.Closure:
@@ -227,6 +233,36 @@ const (
 	// against arrayLitWidth.
 	tabWidth = 4
 )
+
+// goLit prints a go composite literal the way the source wrote it.
+func (p *printer) goLit(n *model.GoLit) string {
+	var b strings.Builder
+	switch {
+	case n.Map && n.KeyType != "":
+		b.WriteString("map[" + n.KeyType + "]" + n.ValType + "{")
+	case n.Map:
+		b.WriteString("{")
+	case n.ValType != "":
+		b.WriteString(n.ValType + "{")
+	default:
+		b.WriteString("[")
+	}
+	closing := "}"
+	if !n.Map && n.ValType == "" {
+		closing = "]"
+	}
+	for i, it := range n.Items {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		if it.Key != nil {
+			b.WriteString(p.expr(it.Key) + ": ")
+		}
+		b.WriteString(p.expr(it.Val))
+	}
+	b.WriteString(closing)
+	return b.String()
+}
 
 func (p *printer) arrayLit(n *model.ArrayLit) string {
 	if len(n.Items) == 0 {

@@ -38,6 +38,8 @@ func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, s
 		return rt.assignIndex(tgt, op, value, scope)
 	case *model.PropAccess:
 		return rt.assignProp(tgt, op, value, scope)
+	case *model.Deref:
+		return rt.assignDeref(tgt, op, value, scope)
 	}
 	rhs, err := rt.Eval(value, scope)
 	if err != nil {

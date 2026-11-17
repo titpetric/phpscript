@@ -40,6 +40,16 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		// reaches. It answers what it wrote. See assignValue.
 		return rt.assignValue(a.Target, a.Op, a.Value, scope)
 	}
+	if a, ok := e.(*model.AddrOf); ok {
+		return rt.evalAddrOf(a, scope)
+	}
+	if d, ok := e.(*model.Deref); ok {
+		v, err := rt.Eval(d.X, scope)
+		if err != nil {
+			return nil, err
+		}
+		return derefValue(v)
+	}
 	if v, ok := e.(*model.Var); ok {
 		// A lone variable is one scope read. Compiling it would build a
 		// closure chain to read the same map.

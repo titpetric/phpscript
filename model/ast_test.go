@@ -45,6 +45,9 @@ func TestNode(t *testing.T) {
 		"Cast":       &Cast{},
 		"AssignExpr": &AssignExpr{},
 		"ListExpr":   &ListExpr{},
+		"GoLit":      &GoLit{},
+		"AddrOf":     &AddrOf{},
+		"Deref":      &Deref{},
 	}
 	for name, node := range expressions {
 		if _, ok := node.(Expr); !ok {

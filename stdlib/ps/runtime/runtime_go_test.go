@@ -160,21 +160,21 @@ var_dump($w[0]);
 `, "0,3\n2,3\n0=a 1=b \n0;0;\n0;\nint8(44)\n")
 }
 
-// TestGoArrays covers the same builtins over php's own values: append writes
-// through the array handle a script holds, a null is go's empty slice,
-// and len is go's, which counts a string's bytes.
+// TestGoArrays covers the same builtins over the go runtime's literals: a
+// bracketed literal is a []any and append answers the slice it grew, a null
+// is go's empty slice, and len is go's, which counts a string's bytes.
 func TestGoArrays(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
 use Runtime\Go;
 
 $a = [1, 2];
-Go\append($a, 3);
-echo count($a), ":", implode(",", $a), "\n";
-$b = Go\append(null, "x");
-echo count($b), ":", implode(",", $b), "\n";
+$b = Go\append($a, 3);
+echo count($a), ":", count($b), ":", implode(",", $b), "\n";
+$c = Go\append(null, "x");
+echo count($c), ":", implode(",", $c), "\n";
 echo Go\len("héllo"), ",", Go\len([1, 2, 3]), ",", Go\len(null), "\n";
-`, "3:1,2,3\n1:x\n6,3,0\n")
+`, "2:3:1,2,3\n1:x\n6,3,0\n")
 }
 
 // TestGoConversions covers a builtin type's conversion: php reduces the value
@@ -194,8 +194,8 @@ var_dump(class_exists('Runtime\Go\int64'));
 }
 
 // TestGoCollections covers copy, delete and clear: copy stops at the shorter of
-// the two and converts into the element type, delete and clear read a php array
-// as well as a go collection, and a cleared slice keeps its length.
+// the two and converts into the element type, delete and clear read a go map,
+// and a cleared slice keeps its length.
 func TestGoCollections(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -205,15 +205,15 @@ $dst = Go\make("[]string", 2);
 echo Go\copy($dst, ["a", "b", "c"]), ":";
 foreach ($dst as $v) { echo $v; }
 echo "\n";
-$a = ["x" => 1, "y" => 2];
+$a = {"x": 1, "y": 2};
 Go\delete($a, "x");
-echo implode(",", array_keys($a)), "\n";
+echo count($a), ":", $a["y"], "\n";
 Go\clear($a);
 echo count($a), "\n";
 Go\clear($dst);
 foreach ($dst as $v) { echo "[", $v, "]"; }
 echo "\n";
-`, "2:ab\ny\n0\n[][]\n")
+`, "2:ab\n1:2\n0\n[][]\n")
 }
 
 // TestGoPrinting covers min, max, print, println and panic. go's print writes
