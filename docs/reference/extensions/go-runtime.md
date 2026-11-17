@@ -149,7 +149,7 @@ $names = []string{"ada", "grace"};      // []string
 $ages = map[string]int{"ada": 36};      // map[string]int64
 ```
 
-The element type is a builtin type name. A typed literal narrows each entry as the conversion does, and `[]int8{300}` holds `int8(44)`. A class name holds `any`. A type nests, and `[][]string`, `map[string][]int` and `[]map[string]int` build every level, converting each entry on the way in.
+The element type is a builtin type name. A typed literal narrows each entry as the conversion does, and `[]int8{300}` holds `int8(44)`. A class name holds `any`. A type nests, and `[][]string`, `map[string][]int` and `[]map[string]int` build every level, converting each entry on the way in. A braced entry elides the element type it repeats: `[][]string{{"a"}}` is `[][]string{[]string{"a"}}`. The formatter writes the type back. A dims-only literal takes its base type from the values: `[][]{{"a"}}` is `[][]string`.
 
 `array()` is a parse error here, and a php `[key => value]` entry is one too: the braced form is the map. Indexing, assignment and `delete` read and write the container the literal built, and `delete` removes a map key as go's does.
 

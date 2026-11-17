@@ -251,7 +251,12 @@ func TestGoLiteralParsing(t *testing.T) {
 		{"[]string{\"a\"}", false, "", "[]string", 1},
 		{"map[string]int{\"a\": 1}", true, "string", "int", 1},
 		{"[][]string{[]string{\"a\"}}", false, "", "[][]string", 1},
+		{"[][]string{{\"a\"}}", false, "", "[][]string", 1},
+		{"[][]{{\"a\"}}", false, "", "[][]", 1},
+		{"[]{1, 2}", false, "", "[]", 2},
 		{"map[string][]int{\"a\": [1]}", true, "string", "[]int", 1},
+		{"map[string][]int{\"a\": {1}}", true, "string", "[]int", 1},
+		{"map[string]map[string]int{\"a\": {\"b\": 1}}", true, "string", "map[string]int", 1},
 		{"[]map[string]int{{\"a\": 1}}", false, "", "[]map[string]int", 1},
 	} {
 		lit, ok := goLitExpr(t, test.src).(*model.GoLit)
@@ -264,7 +269,7 @@ func TestGoLiteralParsing(t *testing.T) {
 		}
 	}
 
-	for _, src := range []string{"array(1, 2)", "[1 => 2]", "{\"a\"}"} {
+	for _, src := range []string{"array(1, 2)", "[1 => 2]", "{\"a\"}", "[]any{{1}}", "map[string]any{\"a\": {1}}"} {
 		if _, err := Parse("<?php\nuse Runtime\\Go;\n$a = " + src + ";"); err == nil {
 			t.Errorf("%s parsed, want an error", src)
 		}

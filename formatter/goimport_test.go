@@ -50,6 +50,24 @@ func TestGoRuntimeFileFormats(t *testing.T) {
 	}
 }
 
+// TestGoInferredLiteralPrintsItsInnerType covers the dims-only literal: the
+// formatter writes the elided element type back.
+func TestGoInferredLiteralPrintsItsInnerType(t *testing.T) {
+	t.Parallel()
+	in := "<?php\n\nuse Runtime\\Go;\n\n$grid = [][]{{\"a\"}};\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `$grid = [][]{[]{"a"}};`) {
+		t.Fatalf("the inferred literal printed as:\n%s", out)
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("inferred literal is not idempotent: %v\nfirst: %q\nsecond: %q", err, out, again)
+	}
+}
+
 // The go runtime's `&` and `*` print as written, on a read and on an
 // assignment through the pointer.
 func TestGoPointerOperatorsKeepTheirSpelling(t *testing.T) {

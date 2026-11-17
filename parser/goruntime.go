@@ -184,6 +184,9 @@ func (p *parser) atGoSliceLit() bool {
 	for p.isOpAt(i, "[") && p.isOpAt(i+1, "]") {
 		i += 2
 	}
+	if p.isOpAt(i, "{") {
+		return true
+	}
 	if tok := p.peek(i); tok.kind == tIdent && tok.val == "map" && p.isOpAt(i+1, "[") {
 		return true
 	}
@@ -209,7 +212,7 @@ func (p *parser) parseGoListLiteral() (model.Expr, error) {
 	if err := p.eatOp("["); err != nil {
 		return nil, err
 	}
-	items, err := p.parseGoLitItems("]", false)
+	items, err := p.parseGoLitItems("]", false, "")
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +227,9 @@ func (p *parser) parseGoSliceLit() (model.Expr, error) {
 		p.next()
 		dims += "[]"
 	}
+	if p.isOp("{") {
+		return p.parseGoInferredDims(dims)
+	}
 	typ, err := p.parseGoLitType()
 	if err != nil {
 		return nil, err
@@ -231,11 +237,58 @@ func (p *parser) parseGoSliceLit() (model.Expr, error) {
 	if err := p.eatOp("{"); err != nil {
 		return nil, err
 	}
-	items, err := p.parseGoLitItems("}", false)
+	litType := dims + typ
+	items, err := p.parseGoLitItems("}", false, strings.TrimPrefix(litType, "[]"))
 	if err != nil {
 		return nil, err
 	}
-	return &model.GoLit{ValType: dims + typ, Items: items}, p.eatOp("}")
+	return &model.GoLit{ValType: litType, Items: items}, p.eatOp("}")
+}
+
+// parseGoInferredDims reads `[][]{...}` and infers the base type from values.
+func (p *parser) parseGoInferredDims(dims string) (model.Expr, error) {
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	items, err := p.parseGoInferredItems("}", len(dims)/2)
+	if err != nil {
+		return nil, err
+	}
+	return &model.GoLit{ValType: dims, Items: items}, p.eatOp("}")
+}
+
+// parseGoInferredItems reads entries depth levels from the base type.
+func (p *parser) parseGoInferredItems(closeOp string, depth int) ([]model.ArrayItem, error) {
+	items := make([]model.ArrayItem, 0, 4)
+	for !p.isOp(closeOp) {
+		var value model.Expr
+		if depth > 1 && p.isOp("{") {
+			if err := p.eatOp("{"); err != nil {
+				return nil, err
+			}
+			inner, err := p.parseGoInferredItems("}", depth-1)
+			if err != nil {
+				return nil, err
+			}
+			value = &model.GoLit{ValType: strings.Repeat("[]", depth-1), Items: inner}
+			if err := p.eatOp("}"); err != nil {
+				return nil, err
+			}
+		} else {
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			value = expr
+		}
+		items = append(items, model.ArrayItem{Val: value})
+		if p.isOp(",") {
+			p.next()
+			continue
+		}
+		break
+	}
+	return items, nil
 }
 
 // parseGoMapLiteral reads `{key: value}` as a map with inferred types.
@@ -243,7 +296,7 @@ func (p *parser) parseGoMapLiteral() (model.Expr, error) {
 	if err := p.eatOp("{"); err != nil {
 		return nil, err
 	}
-	items, err := p.parseGoLitItems("}", true)
+	items, err := p.parseGoLitItems("}", true, "")
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +322,7 @@ func (p *parser) parseGoMapTyped() (model.Expr, error) {
 	if err := p.eatOp("{"); err != nil {
 		return nil, err
 	}
-	items, err := p.parseGoLitItems("}", true)
+	items, err := p.parseGoLitItems("}", true, val)
 	if err != nil {
 		return nil, err
 	}
@@ -314,10 +367,10 @@ func (p *parser) parseGoLitType() (string, error) {
 }
 
 // parseGoLitItems reads the entries of a go literal up to closeOp.
-func (p *parser) parseGoLitItems(closeOp string, mapForm bool) ([]model.ArrayItem, error) {
+func (p *parser) parseGoLitItems(closeOp string, mapForm bool, elemType string) ([]model.ArrayItem, error) {
 	items := make([]model.ArrayItem, 0, 4)
 	for !p.isOp(closeOp) {
-		first, err := p.parseExpr()
+		first, err := p.parseGoLitValue(elemType, mapForm)
 		if err != nil {
 			return nil, err
 		}
@@ -327,7 +380,7 @@ func (p *parser) parseGoLitItems(closeOp string, mapForm bool) ([]model.ArrayIte
 				return nil, fmt.Errorf("line %d: a slice literal takes values and no keys", p.cur().line)
 			}
 			p.next()
-			val, err := p.parseExpr()
+			val, err := p.parseGoLitValue(elemType, false)
 			if err != nil {
 				return nil, err
 			}
@@ -343,4 +396,56 @@ func (p *parser) parseGoLitItems(closeOp string, mapForm bool) ([]model.ArrayIte
 		break
 	}
 	return items, nil
+}
+
+// parseGoLitValue reads one entry, eliding elemType at a braced one.
+func (p *parser) parseGoLitValue(elemType string, isKey bool) (model.Expr, error) {
+	if isKey || elemType == "" || !p.isOp("{") {
+		return p.parseExpr()
+	}
+	return p.parseGoElided(elemType)
+}
+
+// parseGoElided reads `{...}` under an element type it does not repeat.
+func (p *parser) parseGoElided(elemType string) (model.Expr, error) {
+	line := p.cur().line
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	if elem, ok := strings.CutPrefix(elemType, "[]"); ok {
+		items, err := p.parseGoLitItems("}", false, elem)
+		if err != nil {
+			return nil, err
+		}
+		return &model.GoLit{ValType: elemType, Items: items}, p.eatOp("}")
+	}
+	if keyName, valName, ok := splitGoLitMap(elemType); ok {
+		items, err := p.parseGoLitItems("}", true, valName)
+		if err != nil {
+			return nil, err
+		}
+		return &model.GoLit{Map: true, KeyType: keyName, ValType: valName, Items: items}, p.eatOp("}")
+	}
+	return nil, fmt.Errorf("line %d: a braced entry needs a slice or map element type, and %s is neither", line, elemType)
+}
+
+// splitGoLitMap splits a map[K]V spelling into its key and value types.
+func splitGoLitMap(name string) (keyName, valName string, ok bool) {
+	rest, ok := strings.CutPrefix(name, "map[")
+	if !ok {
+		return "", "", false
+	}
+	depth := 1
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 && i+1 < len(rest) {
+				return rest[:i], rest[i+1:], true
+			}
+		}
+	}
+	return "", "", false
 }

@@ -33,12 +33,16 @@ echo len($ages), ":", $ages["grace"], "\n";
 delete($ages, "ada");
 echo len($ages), ":", $ages["ada"] === null ? "gone" : "here", "\n";
 
-// A type nests: a slice of slices, a map of slices and a slice of maps each
-// convert their entries to the element type.
-$rows = [][]string{["a", "b"], ["c"]};
+// A type nests, and a braced entry elides the element type it repeats. Both
+// spellings build each level, converting every entry on the way in.
+$rows = [][]string{{"a", "b"}, {"c"}};
 echo $rows[0][1], $rows[1][0], "\n";
 
-$evens = map[string][]int{"evens": [2, 4]};
+// A dims-only literal takes its base type from the values.
+$grid = [][]{{"x"}, {"y", "z"}};
+echo $grid[0][0], $grid[1][1], "\n";
+
+$evens = map[string][]int{"evens": {2, 4}};
 echo len($evens["evens"]), ":", $evens["evens"][1], "\n";
 
 $users = []map[string]int{{"ada": 36}};
@@ -52,5 +56,6 @@ grace
 2:41
 1:gone
 bc
+xz
 2:4
 36

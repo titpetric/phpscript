@@ -49,6 +49,44 @@ func TestHelperGoLit(t *testing.T) {
 	}
 }
 
+// TestGoLitInfer covers the dims-only literal: `[][]{...}` takes its element
+// type from the values, and a mixed number list widens to float64.
+func TestGoLitInfer(t *testing.T) {
+	t.Parallel()
+	nums, err := helperGoLit(false, "", "[]",
+		model.ArrayItemValue{Val: int64(1)},
+		model.ArrayItemValue{Val: int64(2)},
+	)
+	if err != nil {
+		t.Fatalf("[]: %v", err)
+	}
+	if got, ok := nums.([]int64); !ok || got[1] != 2 {
+		t.Errorf("[]{1, 2} = %#v, want []int64", nums)
+	}
+
+	grid, err := helperGoLit(false, "", "[][]",
+		model.ArrayItemValue{Val: []string{"a", "b"}},
+		model.ArrayItemValue{Val: []string{"c"}},
+	)
+	if err != nil {
+		t.Fatalf("[][] : %v", err)
+	}
+	if got, ok := grid.([][]string); !ok || got[1][0] != "c" {
+		t.Errorf("[][] literal = %#v, want [][]string", grid)
+	}
+
+	mixed, err := helperGoLit(false, "", "[]",
+		model.ArrayItemValue{Val: int64(1)},
+		model.ArrayItemValue{Val: 2.5},
+	)
+	if err != nil {
+		t.Fatalf("mixed: %v", err)
+	}
+	if got, ok := mixed.([]float64); !ok || got[1] != 2.5 {
+		t.Errorf("mixed number list = %#v, want []float64", mixed)
+	}
+}
+
 // TestGoLitNested covers the typed forms that nest: a slice of slices, a map
 // of slices and a slice of maps, each converted entry by entry.
 func TestGoLitNested(t *testing.T) {

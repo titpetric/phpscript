@@ -18,7 +18,101 @@ func helperGoLit(mapLit bool, keyType, valType string, items ...model.ArrayItemV
 	if mapLit {
 		return goLitMap(keyType, valType, items)
 	}
+	if goLitDimsOnly(valType) {
+		return goLitInfer(items)
+	}
 	return goLitSlice(valType, items)
+}
+
+// goLitDimsOnly reports whether valType is `[]` nesting with no base name.
+func goLitDimsOnly(valType string) bool {
+	if valType == "" {
+		return false
+	}
+	for rest := valType; rest != ""; {
+		next, ok := strings.CutPrefix(rest, "[]")
+		if !ok {
+			return false
+		}
+		rest = next
+	}
+	return true
+}
+
+// goLitInfer builds the slice whose element type its values name.
+func goLitInfer(items []model.ArrayItemValue) (any, error) {
+	values := make([]any, len(items))
+	elem := anyGoType
+	for i, it := range items {
+		value := goLitTyped(it.Val)
+		values[i] = value
+		if value == nil {
+			continue
+		}
+		kind := reflect.TypeOf(value)
+		if elem == anyGoType {
+			elem = kind
+			continue
+		}
+		elem = goLitUnify(elem, kind)
+	}
+	out := reflect.MakeSlice(reflect.SliceOf(elem), 0, len(values))
+	for _, value := range values {
+		out = reflect.Append(out, goLitReflect(elem, value))
+	}
+	return out.Interface(), nil
+}
+
+// goLitTyped converts an inferred []any into the slice its values name.
+func goLitTyped(v any) any {
+	list, ok := v.([]any)
+	if !ok {
+		return v
+	}
+	pairs := make([]model.ArrayItemValue, len(list))
+	for i, item := range list {
+		pairs[i] = model.ArrayItemValue{Val: goLitTyped(item)}
+	}
+	out, err := goLitInfer(pairs)
+	if err != nil {
+		return v
+	}
+	return out
+}
+
+// goLitUnify answers the type two literal values share, any for none.
+func goLitUnify(a, b reflect.Type) reflect.Type {
+	if a == b {
+		return a
+	}
+	if a.Kind() == reflect.Slice && b.Kind() == reflect.Slice {
+		return reflect.SliceOf(goLitUnify(a.Elem(), b.Elem()))
+	}
+	if a.Kind() == reflect.Map && b.Kind() == reflect.Map {
+		return reflect.MapOf(goLitUnify(a.Key(), b.Key()), goLitUnify(a.Elem(), b.Elem()))
+	}
+	if goLitInt(a) && goLitInt(b) {
+		return int64GoType
+	}
+	if goLitNumber(a) && goLitNumber(b) {
+		return float64GoType
+	}
+	return anyGoType
+}
+
+// goLitInt reports whether t is an integer width.
+func goLitInt(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	}
+	return false
+}
+
+// goLitNumber reports whether t is an integer or float width.
+func goLitNumber(t reflect.Type) bool {
+	return goLitInt(t) || t.Kind() == reflect.Float32 || t.Kind() == reflect.Float64
 }
 
 // goLitSlice builds the slice a list literal names.
