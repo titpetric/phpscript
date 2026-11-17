@@ -25,10 +25,10 @@ mixing tags and evaluated code, with a fragment captured through
 `json_encode` does. `/slow` uses `time.Sleep("100ms")` and `http.Aborted($r)`
 where the bridge uses `usleep` and `connection_aborted()`.
 
-The methods carry type hints: `config(): array`, `mount():
-\Runtime\Go\Net\HTTP\ServeMux`, `void` on every handler and
-`\Runtime\Go\Net\HTTP\Request` on the request parameter. The parser keeps a
-hint and the formatter prints it back, and no engine enforces one.
+The methods carry go's type hints: `config(): array`, `mount():
+http.ServeMux`, `http.ResponseWriter` and `*http.Request` on the handler
+parameters, `void` on every handler. The parser keeps a hint and the formatter
+prints it back, and no engine enforces one.
 
 The runtime never falls back to php: `runtime: go` installs `Runtime\Go` and no
 area under `Runtime\PS` or `Runtime\PX`, so `phpinfo`, `intval` and

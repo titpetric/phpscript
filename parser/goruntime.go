@@ -48,7 +48,12 @@ func (p *parser) atGoSlice() bool {
 	if !p.goRuntime || !p.isOp("[") || !p.isOpAt(1, "]") {
 		return false
 	}
-	return p.peek(2).kind == tIdent || p.isOpAt(2, "[") || p.isOpAt(2, "\\")
+	return p.peek(2).kind == tIdent || p.isOpAt(2, "[") || p.isOpAt(2, "\\") || p.isOpAt(2, "*")
+}
+
+// atGoPointer reports whether a type position opens go's `*T` pointer type.
+func (p *parser) atGoPointer() bool {
+	return p.goRuntime && p.isOp("*")
 }
 
 // atGoMake reports whether the call ahead reads `make([]`, the one place a

@@ -1160,11 +1160,23 @@ func (p *parser) parseTypeHint() string {
 			take()
 			continue
 		}
+		// `*T` is go's pointer type, written the way go's source writes it.
+		if p.atGoPointer() {
+			take()
+			continue
+		}
 		if p.cur().kind != tIdent {
 			return b.String()
 		}
 		take()
 		for p.isOp("\\") {
+			take()
+			if p.cur().kind == tIdent {
+				take()
+			}
+		}
+		// A go-runtime file spells an imported name pkg.Type, as go's source does.
+		if p.goRuntime && p.isOp(".") {
 			take()
 			if p.cur().kind == tIdent {
 				take()
@@ -1366,7 +1378,7 @@ func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 			fd.Static = isStatic
 			p.spans[fd] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			cd.Methods = append(cd.Methods, fd)
-		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?") || p.atGoSlice():
+		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?") || p.atGoSlice() || p.atGoPointer():
 			// Property declared without `var`, with or without a type hint
 			// (`protected $stack = array();`, `private ?string $dir = null;`,
 			// `public []int64 $counts;` where the file imported go's types).
