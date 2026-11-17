@@ -2,9 +2,9 @@
 
 A binding is a Go function, and the values it takes and returns are Go's: a slice, a map, an integer of a stated width. `use Runtime\Go;` writes those values in php source. `make` allocates the slice a binding reads, `uint8($n)` stays a uint8 across an assignment and a return, and `len` counts either side's collection. The configuration key `runner.runtime: go` selects the namespace for the whole runtime, and no file writes the statement.
 
-The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. The import also admits the `[]T` type, which php has no spelling for.
+The import binds go's builtin functions and type names, which [godoc](https://pkg.go.dev/builtin) documents: `make`, `append`, `len`, `cap`, `copy`, `delete`, `clear`, `min`, `max`, `panic`, `print`, `println`, and go's type names for booleans, strings and numbers. They answer bare for the rest of the file, and qualified as `Go\make` or `Runtime\Go\make` wherever the alias reaches. Two names beside them are this runtime's own: `getenv` answers `os.Getenv`'s string and `numcpu` answers `runtime.NumCPU`, with no import. The import also admits the `[]T` type, which php has no spelling for.
 
-An import is the more specific name, and `min`, `max` and `copy` shadow php's functions of those names in the importing file. `\min([3, 1, 2])` is php's, the way `\strlen($s)` is php's whatever the file imported, and `MAKE()` reaches php, which folds a function's case where this binds one spelling.
+An import is the more specific name, and `min`, `max`, `copy` and `getenv` shadow php's functions of those names in the importing file. `\min([3, 1, 2])` is php's, the way `\strlen($s)` is php's whatever the file imported, and `MAKE()` reaches php, which folds a function's case where this binds one spelling.
 
 php's own `use Runtime\Go;` imports a name and no function with it: php aliases `Go\make()` onto `Runtime\Go\make()` and leaves a bare `min()` at php's. Binding the bare names is this runtime's addition, on the precedent of php's `use function Acme\min;`, which makes the short name the imported one and leaves `\min` for php's. phpscript reads the plain `use` alone; `use function Runtime\Go\min;` imports nothing here.
 
@@ -12,7 +12,7 @@ The names arrive with the import, or with `runner.runtime: go` for every file, a
 
 ## The configuration key
 
-`runner.runtime` takes `phpscript` or `go`, with `phpscript` the default. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and parses every file as though it wrote `use Runtime\Go;`: the builtins, the `[]T` type and the [import statement](go-imports.md). Under it, `strlen`, `phpinfo`, `getenv` and the rest of php's surface answer as undefined names. The configuration refuses a non-empty `runner.areas` beside `go`.
+`runner.runtime` takes `phpscript` or `go`, with `phpscript` the default. `go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and parses every file as though it wrote `use Runtime\Go;`: the builtins, the `[]T` type and the [import statement](go-imports.md). Under it, `strlen`, `phpinfo` and the rest of php's surface answer as undefined names. The configuration refuses a non-empty `runner.areas` beside `go`.
 
 ```yaml
 runner:
@@ -40,6 +40,8 @@ Each builtin behaves as go's. Where php has its own value in the same place, thi
 | `min`, `max`                | Values, never an array. `\min([3, 1, 2])` is php's.          |
 | `panic($value)`             | Throws a `RuntimeException` reading `panic: ` and the value. |
 | `print`, `println`          | Write to the script's output.                                |
+| `getenv($name)`             | The process environment, "" for a name it does not hold.     |
+| `numcpu()`                  | The logical CPUs the process can use.                        |
 
 `new`, `recover`, `close` and the complex family stay unbound: php writes `new` and `catch` itself, and the rest need [channels](#no-channels) or a value php has no spelling for.
 

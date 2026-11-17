@@ -15,31 +15,26 @@
 import "net/http";
 import "encoding/json";
 import "os";
-import "strconv";
 import "time";
 import "fmt";
 
 class Server {
-	function env_int($name, $fallback) {
-		$raw = os.Getenv($name);
-		if ($raw === "") {
-			return $fallback;
-		}
-		return strconv.Atoi($raw);
-	}
-
-	function config() {
-		$addr = os.Getenv("TESTSERVER_ADDR");
+	// An unset counter reads as int("")'s zero, and the check after it names the default.
+	function config(): array {
+		$addr = getenv("TESTSERVER_ADDR");
 		if ($addr === "") {
 			$addr = "127.0.0.1:8099";
 		}
 
-		$workers = $this->env_int("TESTSERVER_WORKERS", 4);
+		$workers = int(getenv("TESTSERVER_WORKERS"));
 		if ($workers < 1) {
-			$workers = 4;
+			$workers = numcpu();
+		}
+		if ($workers < 2) {
+			$workers = 2;
 		}
 
-		$queue = $this->env_int("TESTSERVER_QUEUE", 64);
+		$queue = int(getenv("TESTSERVER_QUEUE"));
 		if ($queue < 1) {
 			$queue = 64;
 		}
@@ -53,7 +48,7 @@ class Server {
 
 	// $this->index is the method read without parentheses, a callable bound to
 	// this object, and handle() registers it.
-	function mount() {
+	function mount(): \Runtime\Go\Net\HTTP\ServeMux {
 		$mux = new http.ServeMux;
 
 		// '{$}' anchors the root; a bare 'GET /' is a ServeMux subtree.
@@ -68,7 +63,7 @@ class Server {
 
 	// The route table is one template call: ob_start() captures the echoed
 	// fragment and the page echoes what it returned.
-	function index($w, $r) {
+	function index($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		$w->Header()->Set("Content-Type", "text/html; charset=utf-8");
 
 		$routes = array(
@@ -105,7 +100,7 @@ class Server {
 		<?php
 	}
 
-	function hello($w, $r) {
+	function hello($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		$w->Header()->Set("Content-Type", "text/plain; charset=utf-8");
 		$name = $r->URL->Query()->Get("name");
 		if ($name === "") {
@@ -114,12 +109,12 @@ class Server {
 		echo "hello " . $name . "\n";
 	}
 
-	function showUser($w, $r) {
+	function showUser($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array("id" => $r->PathValue("id"), "path" => $r->URL->Path));
 	}
 
-	function echoRequest($w, $r) {
+	function echoRequest($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array(
 			"method" => $r->Method,
@@ -132,7 +127,7 @@ class Server {
 
 	// The ticks finish either way: the work is the transaction that already
 	// committed, and only the response nobody waits for is dropped.
-	function slow($w, $r) {
+	function slow($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		http.IgnoreUserAbort();
 
 		$ticks = 0;
@@ -153,7 +148,7 @@ class Server {
 		echo "waited " . $ticks . " ticks, still connected\n";
 	}
 
-	function info($w, $r) {
+	function info($w, \Runtime\Go\Net\HTTP\Request $r): void {
 		$w->Header()->Set("Content-Type", "application/json");
 		json.NewEncoder($w)->Encode(array(
 			"sapi" => "go",
@@ -163,7 +158,7 @@ class Server {
 		));
 	}
 
-	function run() {
+	function run(): void {
 		$config = $this->config();
 
 		$http = new http.Server($config["addr"], $this->mount(), $config["workers"], $config["queue"]);

@@ -189,9 +189,9 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | Kind     | Name                                     | Signature                  |
 |----------|------------------------------------------|----------------------------|
 | function | [`Getenv`](https://pkg.go.dev/os#Getenv) | `Getenv(string): string`   |
-| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x2602c8be120}`         |
-| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x2602c8be060}`         |
-| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x2602c8be0c0}`         |
+| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x2208d46c40c0}`        |
+| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x2208d46c4000}`        |
+| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x2208d46c4060}`        |
 | class    | [`File`](https://pkg.go.dev/os#File)     | `new Runtime\Go\Os\File()` |
 
 ### `Runtime\Go\Path` (`path`)
@@ -270,6 +270,7 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | function | `delete`  | `delete(mixed, mixed): void`        |
 | function | `float32` | `float32(mixed ...): mixed`         |
 | function | `float64` | `float64(mixed ...): mixed`         |
+| function | `getenv`  | `getenv(string): string`            |
 | function | `int`     | `int(mixed ...): mixed`             |
 | function | `int16`   | `int16(mixed ...): mixed`           |
 | function | `int32`   | `int32(mixed ...): mixed`           |
@@ -279,6 +280,7 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | function | `make`    | `make(string, mixed ...): mixed`    |
 | function | `max`     | `max(mixed ...): mixed`             |
 | function | `min`     | `min(mixed ...): mixed`             |
+| function | `numcpu`  | `numcpu(): int`                     |
 | function | `panic`   | `panic(mixed): void`                |
 | function | `print`   | `print(mixed ...): void`            |
 | function | `println` | `println(mixed ...): void`          |
