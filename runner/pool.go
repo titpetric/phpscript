@@ -97,8 +97,8 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	}
 
 	// The slot bounds waiting runs the way the queue did: workers run and queue
-	// more wait, and a fuller pool blocks the caller. The ready slot is taken
-	// without a select, which is the path an unsaturated pool answers on.
+	// more wait, and a fuller pool blocks the caller. The fast path takes a
+	// ready slot without a select, which is the path an idle pool answers on.
 	select {
 	case p.slots <- struct{}{}:
 	default:
