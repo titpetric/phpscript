@@ -149,7 +149,7 @@ $names = []string{"ada", "grace"};      // []string
 $ages = map[string]int{"ada": 36};      // map[string]int64
 ```
 
-The element type is a builtin type name. A typed literal narrows each entry as the conversion does, and `[]int8{300}` holds `int8(44)`. A class name holds `any`.
+The element type is a builtin type name. A typed literal narrows each entry as the conversion does, and `[]int8{300}` holds `int8(44)`. A class name holds `any`. A type nests, and `[][]string`, `map[string][]int` and `[]map[string]int` build every level, converting each entry on the way in.
 
 `array()` is a parse error here, and a php `[key => value]` entry is one too: the braced form is the map. Indexing, assignment and `delete` read and write the container the literal built, and `delete` removes a map key as go's does.
 
@@ -172,7 +172,7 @@ $b = 3;
 echo $a;            // still 2
 ```
 
-An element takes an address, `&$list[1]`, and a compound assignment writes through the pointer, `*$p += 1`. A binding's native `*T` dereferences to the value it holds.
+An element takes an address, `&$list[1]`. A property takes one, `&$obj->field`. A compound assignment writes through the pointer, `*$p += 1`. A binding's native `*T` dereferences to the value it holds.
 
 The operators arrive with the import, as the literals do. A php file keeps `&` as the by-reference marker and `*` as multiplication.
 

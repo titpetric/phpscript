@@ -55,8 +55,46 @@ func (rt *Runtime) evalAddrOf(n *model.AddrOf, scope *Scope) (any, error) {
 				return assignGoIndex(base, key, func(any) (any, error) { return v, nil })
 			},
 		}, nil
+	case *model.PropAccess:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return nil, err
+		}
+		name, err := rt.propName(tgt, scope)
+		if err != nil {
+			return nil, err
+		}
+		if obj, ok := base.(*model.Object); ok {
+			return &Pointer{
+				get: func() (any, error) { return obj.Props[name], nil },
+				set: func(v any) error { obj.SetProp(name, v); return nil },
+			}, nil
+		}
+		return &Pointer{
+			get: func() (any, error) { return readGoField(base, name) },
+			set: func(v any) error {
+				return assignGoField(base, name, func(any) (any, error) { return v, nil })
+			},
+		}, nil
 	}
 	return nil, fmt.Errorf("& takes the address of a variable, not a %T", n.X)
+}
+
+// readGoField answers a field of a binding's native Go struct.
+func readGoField(base any, name string) (any, error) {
+	rv := reflect.ValueOf(base)
+	if !rv.IsValid() || (rv.Kind() == reflect.Pointer && rv.IsNil()) {
+		return nil, fmt.Errorf("%q is not an object property", name)
+	}
+	object := reflect.Indirect(rv)
+	if object.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("%q is not an object property", name)
+	}
+	field := fieldByNameFold(object, name)
+	if !field.IsValid() || !field.CanInterface() {
+		return nil, fmt.Errorf("%q is not a readable object property", name)
+	}
+	return field.Interface(), nil
 }
 
 // derefValue answers `*$p` for a script pointer or a binding's native one.

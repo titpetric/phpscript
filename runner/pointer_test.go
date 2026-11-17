@@ -68,6 +68,47 @@ echo $list[1], "|", *$q, "\n";
 	}
 }
 
+// TestGoPointerProperty covers `&$obj->prop`: a pointer to a class property
+// writes the property, as go's `&s.f` writes the field.
+func TestGoPointerProperty(t *testing.T) {
+	t.Parallel()
+	src := `<?php
+class User {
+	public $age = 1;
+}
+$u = new User;
+$p = &$u->age;
+*$p = 2;
+echo $u->age, "|", *$p, "\n";
+`
+	prog, err := parser.ParseFileOptions("main.php", src, parser.Options{GoRuntime: true})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	var out strings.Builder
+	rt := New(&out, Options{Runtime: "go"})
+	rt.UpdateFilename("main.php")
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got, want := out.String(), "2|2\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+// TestReadGoField covers a field of a binding's native struct.
+func TestReadGoField(t *testing.T) {
+	t.Parallel()
+	type row struct{ Count int64 }
+	if got, err := readGoField(row{Count: 3}, "count"); err != nil || got != int64(3) {
+		t.Fatalf("readGoField = %#v, %v, want 3", got, err)
+	}
+	if _, err := readGoField(int64(1), "count"); err == nil {
+		t.Fatal("a scalar answered a field read")
+	}
+}
+
 // TestGoPointerNative covers the dereference of a binding's own Go pointer,
 // which the type hints pass around as *T.
 func TestGoPointerNative(t *testing.T) {

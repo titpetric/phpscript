@@ -32,6 +32,17 @@ echo len($ages), ":", $ages["grace"], "\n";
 
 delete($ages, "ada");
 echo len($ages), ":", $ages["ada"] === null ? "gone" : "here", "\n";
+
+// A type nests: a slice of slices, a map of slices and a slice of maps each
+// convert their entries to the element type.
+$rows = [][]string{["a", "b"], ["c"]};
+echo $rows[0][1], $rows[1][0], "\n";
+
+$evens = map[string][]int{"evens": [2, 4]};
+echo len($evens["evens"]), ":", $evens["evens"][1], "\n";
+
+$users = []map[string]int{{"ada": 36}};
+echo $users[0]["ada"], "\n";
 ---
 3:3
 3
@@ -40,3 +51,6 @@ echo len($ages), ":", $ages["ada"] === null ? "gone" : "here", "\n";
 grace
 2:41
 1:gone
+bc
+2:4
+36

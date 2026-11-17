@@ -250,6 +250,9 @@ func TestGoLiteralParsing(t *testing.T) {
 		{"{}", true, "", "", 0},
 		{"[]string{\"a\"}", false, "", "[]string", 1},
 		{"map[string]int{\"a\": 1}", true, "string", "int", 1},
+		{"[][]string{[]string{\"a\"}}", false, "", "[][]string", 1},
+		{"map[string][]int{\"a\": [1]}", true, "string", "[]int", 1},
+		{"[]map[string]int{{\"a\": 1}}", false, "", "[]map[string]int", 1},
 	} {
 		lit, ok := goLitExpr(t, test.src).(*model.GoLit)
 		if !ok {
@@ -298,6 +301,11 @@ func TestGoPointerParsing(t *testing.T) {
 	target := mustParse(t, "<?php\nuse Runtime\\Go;\n*$p = 2;").Stmts[1].(*model.Assign).Target
 	if _, ok := target.(*model.Deref); !ok {
 		t.Errorf("*$p = 2 assigns through a %T", target)
+	}
+
+	// go takes the address of storage alone: a call answers no address.
+	if _, err := Parse("<?php\nuse Runtime\\Go;\n$p = &f();"); err == nil {
+		t.Error("&f() parsed, want an error")
 	}
 
 	// The operators arrive with the go runtime: a php file keeps `&` as the

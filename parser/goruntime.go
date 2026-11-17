@@ -184,6 +184,9 @@ func (p *parser) atGoSliceLit() bool {
 	for p.isOpAt(i, "[") && p.isOpAt(i+1, "]") {
 		i += 2
 	}
+	if tok := p.peek(i); tok.kind == tIdent && tok.val == "map" && p.isOpAt(i+1, "[") {
+		return true
+	}
 	if p.peek(i).kind != tIdent {
 		return false
 	}
@@ -273,19 +276,41 @@ func (p *parser) parseGoMapTyped() (model.Expr, error) {
 	return &model.GoLit{Map: true, KeyType: key, ValType: val, Items: items}, p.eatOp("}")
 }
 
-// parseGoLitType reads the type a composite literal names.
+// parseGoLitType reads the name, [] nesting or map[K]V a literal names.
 func (p *parser) parseGoLitType() (string, error) {
+	dims := ""
+	for p.isOp("[") && p.isOpAt(1, "]") {
+		p.next()
+		p.next()
+		dims += "[]"
+	}
+	if tok := p.peek(0); tok.kind == tIdent && tok.val == "map" && p.isOpAt(1, "[") {
+		p.next()
+		p.next()
+		key, err := p.parseGoLitType()
+		if err != nil {
+			return "", err
+		}
+		if err := p.eatOp("]"); err != nil {
+			return "", err
+		}
+		val, err := p.parseGoLitType()
+		if err != nil {
+			return "", err
+		}
+		return dims + "map[" + key + "]" + val, nil
+	}
 	name, absolute, err := p.parseQualifiedName(true)
 	if err != nil {
 		return "", err
 	}
 	if full, _, ok := p.goMember(name); ok {
-		return full, nil
+		return dims + full, nil
 	}
 	if modelutil.GoType(name) {
-		return name, nil
+		return dims + name, nil
 	}
-	return p.qualify(name, absolute), nil
+	return dims + p.qualify(name, absolute), nil
 }
 
 // parseGoLitItems reads the entries of a go literal up to closeOp.

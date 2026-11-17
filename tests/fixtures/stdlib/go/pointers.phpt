@@ -24,7 +24,19 @@ $list = [1, 2];
 $q = &$list[1];
 *$q += 1;
 echo $list[1], "\n";
+
+// A property takes one too, as go's `&s.f` does.
+class Counter
+{
+	public $hits = 1;
+}
+
+$c = new Counter;
+$h = &$c->hits;
+*$h += 1;
+echo $c->hits, "\n";
 ---
 2|2
 2|5
 3
+2
