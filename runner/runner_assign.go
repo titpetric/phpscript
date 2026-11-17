@@ -47,10 +47,16 @@ func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, s
 
 	switch tgt := modelutil.UnwrapParenthesized(target).(type) {
 	case *model.Var:
-		cur, _ := scope.Get(tgt.Name)
-		next, err := applyAssignOp(op, cur, rhs)
-		if err != nil {
-			return nil, err
+		// A plain assignment writes rhs and reads no current value: the map
+		// lookup is the cost a `$name = ...` in a handler paid per request.
+		next := rhs
+		if op != "" && op != "=" && op != "[]=" {
+			cur, _ := scope.Get(tgt.Name)
+			var err error
+			next, err = applyAssignOp(op, cur, rhs)
+			if err != nil {
+				return nil, err
+			}
 		}
 		rt.setVar(scope, tgt.Name, next)
 		return next, nil
