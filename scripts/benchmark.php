@@ -90,6 +90,15 @@ function teardown() {
 	}
 }
 
+// vanilla_port reads the port a vanilla profile binds, or the fallback.
+function vanilla_port($name, $fallback) {
+	$port = getenv($name);
+	if ($port === false || $port === "") {
+		return $fallback;
+	}
+	return $port;
+}
+
 // environments describes each test environment: its directory, how it
 // starts, and where its address comes from once it has one.
 function environments() {
@@ -117,13 +126,13 @@ function environments() {
 		"php-vanilla-apache" => array(
 			"kind" => "compose",
 			"profile" => "apache",
-			"port" => "8098",
+			"port" => vanilla_port("VANILLA_PORT", "8098"),
 			"containers" => "phpscript-php-vanilla-apache",
 		),
 		"php-vanilla-nginx" => array(
 			"kind" => "compose",
 			"profile" => "nginx",
-			"port" => "8099",
+			"port" => vanilla_port("VANILLA_NGINX_PORT", "8099"),
 			"containers" => "phpscript-php-vanilla-nginx phpscript-php-vanilla-fpm",
 		),
 	);
@@ -392,7 +401,8 @@ function start_logged($environment, $settings, $log) {
 // it. The other environments run at nice -n -20, and a default-priority server
 // on a shared box loses the CPU for milliseconds at a time.
 function start_compose($environment, $settings) {
-	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
+	$ports = "VANILLA_PORT=" . vanilla_port("VANILLA_PORT", "8098") . " VANILLA_NGINX_PORT=" . vanilla_port("VANILLA_NGINX_PORT", "8099");
+	$prefix = $ports . " VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
 	$compose = $prefix . "docker compose -f testdata/php-vanilla/compose.yml --profile " . $environment["profile"];
 
 	// Recorded before the stack comes up, and a profile that half starts is
