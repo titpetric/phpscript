@@ -55,22 +55,32 @@ func TestClosingTagPreservedAroundInlineHTML(t *testing.T) {
 	}
 }
 
-func TestPHPReopensForClosingBraceAfterInlineHTML(t *testing.T) {
+// TestInlinePHPBlockIsKept covers a line that opens and closes PHP: the tags,
+// the code between and the text around them are template markup. The line
+// stays as written.
+func TestInlinePHPBlockIsKept(t *testing.T) {
 	t.Parallel()
 	in := "<?php\nif ($ok) { ?>inline<?php }\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "inline<?php\n}") {
-		t.Fatalf("closing brace emitted outside PHP:\n%s", out)
+	if out != in {
+		t.Fatalf("an inline PHP block changed:\n%q\nwant:\n%q", out, in)
 	}
-	if _, err := parser.Parse(out); err != nil {
-		t.Fatalf("formatted output does not parse: %v\n%s", err, out)
+}
+
+// TestTemplateLinesKeepTheirSpelling covers the three-line template: every
+// line opens and closes PHP, and the file formats to itself.
+func TestTemplateLinesKeepTheirSpelling(t *testing.T) {
+	t.Parallel()
+	in := "<?php foreach ($items as $item) { ?>\n    <li><?php echo $item; ?></li>\n<?php } ?>\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
 	}
-	again, err := formatter.Source(out)
-	if err != nil || again != out {
-		t.Fatalf("mixed-content output is not idempotent: %v\nfirst: %q\nsecond: %q", err, out, again)
+	if out != in {
+		t.Fatalf("template lines changed:\n%q\nwant:\n%q", out, in)
 	}
 }
 

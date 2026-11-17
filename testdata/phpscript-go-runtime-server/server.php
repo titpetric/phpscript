@@ -30,7 +30,6 @@ class Server {
 		if ($workers < 1) {
 			$workers = numcpu();
 		}
-
 		if ($workers < 2) {
 			$workers = 2;
 		}
@@ -77,30 +76,14 @@ class Server {
 		];
 
 		ob_start();
-
 		?>
 		<ul>
-		<?php
-		foreach ($routes as $route) {
-
-			?>
-			<li><code><?php
-			echo $route["path"];
-
-			?>
-</code> - <?php
-			echo $route["what"];
-
-			?>
-</li>
-		<?php
-		}
-
-		?>
+		<?php foreach ($routes as $route) { ?>
+			<li><code><?php echo $route["path"]; ?></code> - <?php echo $route["what"]; ?></li>
+		<?php } ?>
 		</ul>
 		<?php
 		$table = ob_get_clean();
-
 		?>
 		<!doctype html>
 		<html lang="en">
@@ -111,10 +94,7 @@ class Server {
 		<body>
 			<h1>phpscript go runtime test server</h1>
 			<p>Every route is a method on one class, mounted on a <code>net/http</code> mux. The root pattern is <code>GET /{$}</code>.</p>
-			<?php
-		echo $table;
-
-		?>
+			<?php echo $table; ?>
 		</body>
 		</html>
 		<?php
@@ -126,7 +106,6 @@ class Server {
 		if ($name === "") {
 			$name = "world";
 		}
-
 		echo "hello " . $name . "\n";
 	}
 

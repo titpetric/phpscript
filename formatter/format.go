@@ -29,6 +29,13 @@ func Source(src string) (string, error) {
 	if !strings.HasPrefix(src, "<?php") {
 		return src, nil
 	}
+	// A line that opens and closes PHP is template markup: the tag pair, the
+	// code between and the text around them are the page it renders. The
+	// printer rewrites statements. Such a line, and with it the template,
+	// stays as written.
+	if hasInlinePHPBlock(src) {
+		return src, nil
+	}
 	prog, err := parseSource(src)
 	if err != nil {
 		return "", err
@@ -42,6 +49,17 @@ func Source(src string) (string, error) {
 	}
 	out = strings.ReplaceAll(out, "\r\n", "\n")
 	return strings.ReplaceAll(out, "\r", "\n"), nil
+}
+
+// hasInlinePHPBlock reports whether a line holds both tags of a PHP block.
+func hasInlinePHPBlock(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		open := strings.Contains(line, "<?php") || strings.Contains(line, "<?=")
+		if open && strings.Contains(line, "?>") {
+			return true
+		}
+	}
+	return false
 }
 
 // parseSource reads src as php, and as a go runtime file when php refuses it.
