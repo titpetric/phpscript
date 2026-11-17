@@ -31,6 +31,10 @@ var Set = bindings.For("net/http").
 	Bind("NewRequest", gohttp.NewRequest).
 	// Runtime\Go\Net\HTTP\StatusText returns the text of status code $code, or the empty string.
 	Bind("StatusText", gohttp.StatusText).
+	// Runtime\Go\Net\HTTP\Error answers $w with status $code and the text of $msg.
+	Bind("Error", gohttp.Error).
+	// Runtime\Go\Net\HTTP\NotFound answers $w with net/http's 404 text.
+	Bind("NotFound", gohttp.NotFound).
 	// Runtime\Go\Net\HTTP\CanonicalHeaderKey returns $s in the canonical spelling of a header name.
 	Bind("CanonicalHeaderKey", gohttp.CanonicalHeaderKey).
 	// Runtime\Go\Net\HTTP\DetectContentType reports the MIME type the first bytes of $data name.

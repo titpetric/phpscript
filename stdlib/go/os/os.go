@@ -18,7 +18,11 @@ var Set = bindings.For("os").
 	// Runtime\Go\Os\Getenv returns the value of environment variable $key, or "" for a name the process does not hold.
 	Bind("Getenv", goos.Getenv).
 	// Runtime\Go\Os\Stderr is the process standard error stream.
-	Bind("Stderr", goos.Stderr)
+	Bind("Stderr", goos.Stderr).
+	// Runtime\Go\Os\Stdout is the process standard output stream.
+	Bind("Stdout", goos.Stdout).
+	// Runtime\Go\Os\Stdin is the process standard input stream.
+	Bind("Stdin", goos.Stdin)
 
 func init() {
 	Set.Install()
