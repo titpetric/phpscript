@@ -97,13 +97,18 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	}
 
 	// The slot bounds waiting runs the way the queue did: workers run and queue
-	// more wait, and a fuller pool blocks the caller.
+	// more wait, and a fuller pool blocks the caller. The ready slot is taken
+	// without a select, which is the path an unsaturated pool answers on.
 	select {
 	case p.slots <- struct{}{}:
-	case <-done:
-		return false
-	case <-p.stop:
-		return false
+	default:
+		select {
+		case p.slots <- struct{}{}:
+		case <-done:
+			return false
+		case <-p.stop:
+			return false
+		}
 	}
 	defer func() { <-p.slots }()
 
@@ -114,13 +119,19 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	}
 	p.closing.RUnlock()
 
+	// The ready worker takes the same fast path: a pool under its worker count
+	// has one waiting for every submit.
 	var worker *poolWorker
 	select {
 	case worker = <-p.free:
-	case <-done:
-		return false
-	case <-p.stop:
-		return false
+	default:
+		select {
+		case worker = <-p.free:
+		case <-done:
+			return false
+		case <-p.stop:
+			return false
+		}
 	}
 
 	job.Run(worker.rt)
