@@ -4,6 +4,8 @@ import (
 	"io/fs"
 	"testing"
 	"testing/fstest"
+
+	"github.com/titpetric/pdo/client"
 )
 
 // TestDatabaseMigrate covers the handle a script holds on a schema: the
@@ -28,7 +30,7 @@ func TestDatabaseMigrate(t *testing.T) {
 	}
 
 	var project string
-	if err := migrations.database.GetContext(t.Context(), &project,
+	if err := client.NewClient(migrations.database).Get(t.Context(), &project,
 		"SELECT DISTINCT project FROM migrations"); err != nil {
 		t.Fatalf("reading the migration record: %v", err)
 	}
@@ -89,7 +91,7 @@ func TestDatabaseMigrate_Run(t *testing.T) {
 	}
 
 	var tables []string
-	if err := migrations.database.SelectContext(t.Context(), &tables,
+	if err := client.NewClient(migrations.database).Select(t.Context(), &tables,
 		"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'sessions') ORDER BY name"); err != nil {
 		t.Fatalf("reading the schema back: %v", err)
 	}

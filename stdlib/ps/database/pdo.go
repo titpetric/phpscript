@@ -14,5 +14,5 @@ type QueryLogEntry = client.QueryLogEntry
 
 // newBridge opens a client over pool, leaving the observer to the caller.
 func newBridge(pool *DB) *Bridge {
-	return client.NewBridge(pool.DB)
+	return client.NewBridge(pool)
 }

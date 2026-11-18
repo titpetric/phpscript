@@ -111,20 +111,20 @@ func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
 		t.Errorf("MaxOpenConnections = %d, want 10", got)
 	}
 
-	first, err := db.Connx(t.Context())
+	first, err := db.Conn(t.Context())
 	if err != nil {
-		t.Fatalf("Connx: %v", err)
+		t.Fatalf("Conn: %v", err)
 	}
 	defer first.Close()
-	second, err := db.Connx(t.Context())
+	second, err := db.Conn(t.Context())
 	if err != nil {
-		t.Fatalf("Connx: %v", err)
+		t.Fatalf("Conn: %v", err)
 	}
 	defer second.Close()
 
 	for _, connection := range []*Conn{first, second} {
 		var journalMode string
-		if err := connection.GetContext(t.Context(), &journalMode, "PRAGMA journal_mode"); err != nil {
+		if err := connection.QueryRowContext(t.Context(), "PRAGMA journal_mode").Scan(&journalMode); err != nil {
 			t.Fatalf("PRAGMA journal_mode: %v", err)
 		}
 		if journalMode != "wal" {
@@ -132,7 +132,7 @@ func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
 		}
 
 		var busyTimeout int
-		if err := connection.GetContext(t.Context(), &busyTimeout, "PRAGMA busy_timeout"); err != nil {
+		if err := connection.QueryRowContext(t.Context(), "PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
 			t.Fatalf("PRAGMA busy_timeout: %v", err)
 		}
 		if busyTimeout != 5000 {

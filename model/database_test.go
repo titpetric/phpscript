@@ -20,8 +20,8 @@ func TestDatabaseProvider(t *testing.T) {
 	typ := reflect.TypeOf((*DatabaseProvider)(nil)).Elem()
 
 	want := map[string]string{
-		"Open":    "func(context.Context, ...string) (*sqlx.DB, error)",
-		"Connect": "func(context.Context, ...string) (*sqlx.DB, error)",
+		"Open":    "func(context.Context, ...string) (*sql.DB, error)",
+		"Connect": "func(context.Context, ...string) (*sql.DB, error)",
 	}
 	if got := typ.NumMethod(); got != len(want) {
 		t.Errorf("DatabaseProvider declares %d methods, want %d", got, len(want))
