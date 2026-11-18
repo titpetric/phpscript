@@ -6,13 +6,14 @@ import (
 )
 
 // TestResponse_Headers covers the whole header set a script walks with foreach.
-// A PHP array holds one value per key and Headers() joins a header sent more
-// than once with ", " and drops neither: Set-Cookie arrives twice on a login
-// response, and a script reading the array has to see both.
+// A PHP array holds one value per key; Headers() joins repeated headers into a
+// comma-separated value, dropping neither. Set-Cookie arrives twice on a login
+// response. A script reading the array must see both.
 //
 // Header() answers one name case-insensitively through net/http's canonical
-// form. This returns the map as the response holds it and the keys are the
-// canonical spellings and a script indexes them the way a browser prints them.
+// form. This returns the map as the response holds it. The keys are the
+// canonical spellings. A script indexes them with the spelling a browser
+// prints.
 func TestResponse_Headers(t *testing.T) {
 	t.Parallel()
 	header := nethttp.Header{}
@@ -48,9 +49,9 @@ func TestResponse_Headers(t *testing.T) {
 	}
 }
 
-// TestResponseStatusAndOK covers how a script branches on an outcome. OK() is
-// true only for a 2xx that arrived and a 404 and a transport failure are both
-// false, and Status() reports 0 for a request that got no response at all.
+// TestResponseStatusAndOK covers script branching on an outcome. OK() is
+// true only for a 2xx that arrived. A 404 or a transport failure is false.
+// Status() reports 0 for a request that got no response at all.
 func TestResponseStatusAndOK(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -78,7 +79,7 @@ func TestResponseStatusAndOK(t *testing.T) {
 	}
 }
 
-// TestResponseBodyAndErr covers the two fields a script reads a failed request
+// TestResponseBodyAndErr covers both fields a script reads a failed request
 // through. Only parallel() produces a failed response and Err() is empty on
 // everything send() returns. The body is a string the script can print
 // whatever the status.
@@ -102,7 +103,7 @@ func TestResponseBodyAndErr(t *testing.T) {
 }
 
 // TestResponseJSON covers decoding the body into arrays and scalars. A body
-// that is not JSON throws and a script never reads a zero value it would then
+// that is not JSON throws. A script never reads a zero value it would then
 // treat as data.
 func TestResponseJSON(t *testing.T) {
 	t.Parallel()

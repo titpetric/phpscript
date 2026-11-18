@@ -13,7 +13,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/auth"
 )
 
-// bcryptLine is one stored hash of "hunter2hunter2", written by
+// bcryptLine holds a stored hash of "hunter2hunter2", written by
 //
 //	php -r 'echo password_hash("hunter2hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
 //
@@ -21,10 +21,10 @@ import (
 // can succeed against.
 const bcryptLine = "admin:$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"
 
-// run executes source against a runtime whose stores resolve inside root, and
-// answers what the script printed. It mounts the whole standard library,
+// run executes source on a runtime whose stores resolve inside root, and
+// returns the script's printed output. It mounts the whole standard library,
 // because the assertions read var_dump and the registration under test is the
-// one stdlib.RegisterFS performs.
+// registration stdlib.RegisterFS performs.
 func run(t *testing.T, root, source string) (string, error) {
 	t.Helper()
 
@@ -74,8 +74,8 @@ var_dump($users->authenticate("admin", "wrong"));
 		t.Fatalf("run: %v (output %q)", err, out)
 	}
 
-	// The id is the one crypto.ULIDFrom computes for the name, and `echo
-	// $user` prints the username with no method call, through the record's
+	// The id is the value crypto.ULIDFrom computes for the name, and `echo
+	// $user` prints the username without a method call, through the record's
 	// String.
 	want := "bool(true)\n4CD5VEBDA10GAVVT88QN6YW5EZ admin\nNULL\n"
 	if out != want {
@@ -84,11 +84,11 @@ var_dump($users->authenticate("admin", "wrong"));
 }
 
 // TestRegisterRoot covers the boundary a virtual host rests on: a path a
-// script names resolves inside the application root and no spelling climbs out
-// of it, which is the rule every filesystem binding follows.
+// script names resolves inside the application root. No spelling climbs out,
+// which is the rule every filesystem binding follows.
 //
-// It installs the area directly, and not through stdlib.RegisterFS, because
-// what is under test is the registration this package performs.
+// It installs the area directly, outside stdlib.RegisterFS, because
+// the registration this package performs is the subject.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
 
@@ -122,9 +122,9 @@ echo $users->authenticate("admin", "hunter2hunter2");
 	}
 }
 
-// TestRegisterMissingFile covers a tree with no user database. The store
-// constructs and a default one cannot fail a site that has no login at all,
-// and exists() is the question that answers for it.
+// TestRegisterMissingFile covers a tree without a user database. The store
+// constructs. A default store cannot fail a site that has no login at all.
+// exists() is the question that answers for it.
 func TestRegisterMissingFile(t *testing.T) {
 	t.Parallel()
 

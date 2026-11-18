@@ -10,10 +10,10 @@ import (
 
 // TestRegisterInstallsEveryImportedArea covers the wiring the blank imports
 // do. Each binding package contributes its installer through
-// runner.RegisterBinding in its init() and importing this package is what puts
-// the area in the binary and Register is what puts it on a runtime. A package
-// dropped from the import list would leave its names undefined and break no
-// other test; this test names one per area.
+// runner.RegisterBinding in its init(). Importing this package puts the area
+// in the binary, and Register puts it on a runtime. A package dropped from the
+// import list would leave its names undefined and break no other test. This
+// test names a package for each area.
 func TestRegisterInstallsEveryImportedArea(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -64,8 +64,8 @@ func TestRegisterInstallsEveryImportedArea(t *testing.T) {
 
 // TestRegisterInstallsTheThrowableClasses covers the classes a PHP library
 // throws. They are not a binding area: registerExceptions runs on every mount,
-// whatever the profile narrowed, because a script that cannot construct
-// InvalidArgumentException fails on the throw and never on the condition.
+// whatever the profile narrowed. A script that cannot construct
+// InvalidArgumentException fails on the throw, not on the condition.
 func TestRegisterInstallsTheThrowableClasses(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

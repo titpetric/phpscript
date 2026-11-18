@@ -13,11 +13,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/http"
 )
 
-// TestRegister covers the four classes the binding installs. A script reaches
-// them by name and this test constructs each one from PHP, and the same path
-// refuses the arguments with no useful default: HTTP\Server holds the runtime
-// the constructor closed over and a refusal from Go reaches the script as a
-// throw.
+// TestRegister covers every class the binding installs. A script reaches
+// the classes by name. This test constructs each class from PHP. The same path
+// refuses arguments without a useful default: HTTP\Server holds the runtime the
+// constructor captured. A refusal from Go reaches the script as a throw.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -55,8 +54,8 @@ try {
 }
 
 // TestClient_Post covers the one-line POST a script writes where PHP has
-// curl_setopt. The body is optional and a form POST with no payload is the same
-// call with the argument left off, and an HTTP error status does not throw: the
+// curl_setopt. The body is optional; a form POST with an empty payload is the
+// same call with the argument left off. An HTTP error status does not throw: the
 // script reads $response->status().
 func TestClient_Post(t *testing.T) {
 	t.Parallel()
@@ -101,10 +100,10 @@ func TestClient_Post(t *testing.T) {
 	}
 }
 
-// newMux builds a router over a runtime that has declared the named PHP
-// handlers, and returns it with the buffer the script and its handlers echo
-// into. A handler has to be a PHP callable and a caller declares the functions
-// in a script and names them by string.
+// newMux builds a router on a runtime that has declared the named PHP
+// handlers. It returns the router with the buffer the script and its handlers
+// echo into. A handler must be a PHP callable; a caller declares the functions
+// in a script and names them as strings.
 func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 	t.Helper()
 
@@ -123,9 +122,9 @@ func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 	return http.NewMux(rt), &out
 }
 
-// TestNewMux covers the router a Go host builds directly. It starts with no
-// routes and a request before any handle() reaches net/http's own 404 and never
-// a nil dereference.
+// TestNewMux covers the router a Go host builds directly. It starts without
+// routes. A request before any handle() reaches net/http's own 404. It does not
+// dereference nil.
 func TestNewMux(t *testing.T) {
 	t.Parallel()
 	mux, _ := newMux(t, `<?php`)
@@ -141,8 +140,8 @@ func TestNewMux(t *testing.T) {
 }
 
 // TestMux_Handle covers describing a route. handle() resolves the handler as it
-// records the route and a name nothing declares is an error there and not a 500
-// on the first request that arrives. It refuses an empty pattern outright.
+// records the route. A name nothing declares is an error at that point. A later
+// request does not see a 500. It refuses an empty pattern outright.
 func TestMux_Handle(t *testing.T) {
 	t.Parallel()
 	mux, _ := newMux(t, `<?php function ping($w, $r) { $w->write("pong"); }`)
@@ -171,8 +170,8 @@ func TestMux_Handle(t *testing.T) {
 
 // TestMux_ServeHTTP covers answering one request, the path a Go host takes when
 // it mounts a script's router without the script listening on anything. The two
-// net/http values reach the handler and what it echoes becomes the response.
-// The mux answers a throw with a 500.
+// net/http values reach the handler; the echo becomes the response. The mux
+// answers a throw with a 500.
 func TestMux_ServeHTTP(t *testing.T) {
 	t.Parallel()
 	mux, _ := newMux(t, `<?php

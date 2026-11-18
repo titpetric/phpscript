@@ -10,17 +10,16 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// IndexPath is where the generated doc index sits, relative to the module
-// root. `atkins test:introspection` writes it and the embed below reads it.
+// IndexPath names the generated doc index, relative to the module root.
+// `atkins test:introspection` writes the index. The embed below reads it.
 const IndexPath = "internal/apidoc/godoc.json"
 
-// A shipped binary holds no Go source tree, and the two things a scan of one
-// recovers are a doc comment and the PHP spelling of a parameter name. The
-// pipeline generates the index at build time and the binary embeds it, the way
-// it embeds `config/config.yml` and the helpdocs examples. What a class, a
-// property and a method document travels with the binary; what a class holds,
-// and what type each member holds, stays a question for reflection against
-// the live runtime.
+// A shipped binary holds no Go source tree. A scan of the binary recovers two things:
+// a doc comment and the PHP spelling of a parameter name. The pipeline
+// generates the index at build time, and the binary embeds it, as it embeds
+// `config/config.yml` and the helpdocs examples. Documentation for a class, a
+// property, a method travels with the binary. Class contents and member types
+// remain questions for reflection against the live runtime.
 //
 //go:embed godoc.json
 var indexJSON []byte
@@ -33,8 +32,8 @@ var (
 // Docs is the source text of the registered surface, the half of a listing
 // reflection cannot answer.
 type Docs struct {
-	// Classes is what each registered class documents, by the PHP name a
-	// script types. Two class names bound to one Go type document
+	// Classes holds each registered class's documentation, keyed by the PHP
+	// name a script types. Two class names bound to one Go type document
 	// separately, which the SPL exception names and Exception do.
 	Classes map[string]*SymbolDocs `json:"classes,omitempty"`
 
@@ -43,22 +42,20 @@ type Docs struct {
 	Types map[string]*TypeDocs `json:"types,omitempty"`
 }
 
-// SymbolDocs is what one declaration says: its doc comment and the PHP
-// spelling of the parameters it takes.
+// SymbolDocs holds one declaration's source text: its doc comment and PHP parameter spelling.
 type SymbolDocs struct {
 	Comment []string `json:"comment,omitempty"`
 	Params  []string `json:"params,omitempty"`
 }
 
-// TypeDocs is the source text of one Go type's members, by Go name.
+// TypeDocs holds a Go type's member source text, keyed by Go name.
 type TypeDocs struct {
 	Fields  map[string][]string    `json:"fields,omitempty"`
 	Methods map[string]*SymbolDocs `json:"methods,omitempty"`
 }
 
 // Embedded returns the doc index this binary embeds. An unreadable index
-// answers an empty one, and every class then reports what reflection sees and
-// no prose.
+// answers an empty one. Every class then reports only the reflection view.
 func Embedded() *Docs {
 	embeddedOnce.Do(func() {
 		embedded = &Docs{}
@@ -71,8 +68,8 @@ func Embedded() *Docs {
 }
 
 // ScanDocs builds the doc index for the classes rt registers, reading the Go
-// source tree at root. The index holds the registered surface and no more: a
-// comment on a type no constructor returns reaches no listing.
+// source tree at root. The index holds the registered surface alone. A comment
+// on a type no constructor returns reaches no listing.
 func ScanDocs(rt *runner.Runtime, root string) (*Docs, error) {
 	src, err := scan(root)
 	if err != nil {
@@ -93,12 +90,12 @@ func ScanDocs(rt *runner.Runtime, root string) (*Docs, error) {
 }
 
 // scanType records the source text of the bound Go type's members, for the
-// members the class publishes and no others.
+// published members alone.
 //
 // The scan of the module tree answers for a type this module declares. The Go
 // distribution answers for a type the standard library declares, which
 // HTTP\Request and Time both bind: the module scan indexes a method by bare
-// type name and a namesake here would answer for net/http's.
+// type name. A namesake here would answer for net/http's.
 func (d *Docs) scanType(c Class, src *sources) {
 	if c.GoType == "" {
 		return
@@ -164,8 +161,7 @@ func (d *Docs) Apply(classes []Class) {
 	}
 }
 
-// paramNames lists the PHP spelling of each parameter, the half of a signature
-// reflection has to invent.
+// paramNames lists each parameter's PHP spelling, the half of a signature reflection invents.
 func paramNames(params []Param) []string {
 	if len(params) == 0 {
 		return nil
@@ -177,9 +173,9 @@ func paramNames(params []Param) []string {
 	return names
 }
 
-// renameParams spells the reflected parameters the way the source declares
-// them. A count that disagrees means the index predates the signature and the
-// reflected names stand: renaming by position would move a name onto another
+// renameParams applies the source spellings to the reflected parameters. A
+// count that disagrees means the index predates the signature. The reflected
+// names stand. Renaming by position would move a name onto another
 // argument.
 func renameParams(params []Param, names []string) {
 	if len(params) != len(names) {
@@ -190,8 +186,7 @@ func renameParams(params []Param, names []string) {
 	}
 }
 
-// prune drops the empty entries, which keeps the generated file to the source
-// text that exists.
+// prune drops empty entries, keeping the generated file to source text that exists.
 func (d *Docs) prune() {
 	for name, entry := range d.Classes {
 		if len(entry.Comment) == 0 && len(entry.Params) == 0 {

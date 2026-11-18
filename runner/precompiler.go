@@ -30,7 +30,7 @@ type Precompiler struct {
 	Exprs *ExprCache
 
 	// Workers bounds how many files the pass parses at once. Zero is GOMAXPROCS,
-	// which is the parallelism the machine has for work that is all CPU.
+	// the parallelism available for work that is all CPU.
 	Workers int
 
 	// GoRuntime parses every file as though it imported Runtime\Go.
@@ -51,10 +51,10 @@ func (p Precompiler) Run() int {
 	}
 
 	// This measures the cost and estimates nothing. A parsed program is a
-	// graph of nodes with no single size to add up, and the number worth
-	// reporting is what the process holds because of the pass. Both reads
-	// follow a collection and the figure is live heap on each side and never
-	// whatever the collector has yet to sweep.
+	// graph of nodes. No single size adds up. The number worth reporting is the
+	// memory the process holds because of the pass. Both reads follow a
+	// collection. The figure is live heap on each side, and leaves out whatever
+	// the collector has yet to sweep.
 	before := liveHeap()
 	defer func() { p.Includes.Account(liveHeap() - before) }()
 
@@ -111,7 +111,7 @@ func (p Precompiler) sources() []string {
 	return files
 }
 
-// compile parses one file into the caches, reporting false when it does not parse.
+// compile parses one file into the caches, reporting false when it fails.
 func (p Precompiler) compile(name string) bool {
 	src, err := fs.ReadFile(p.Root, name)
 	if err != nil {

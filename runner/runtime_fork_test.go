@@ -10,8 +10,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// forkParent returns a runtime that has run src, holding the declarations a
-// fork replays.
+// forkParent returns a runtime that has run src, holding the declarations.
 func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -26,9 +25,9 @@ func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	return rt, &out
 }
 
-// TestRuntime_Fork covers what a fork holds and what it does not. It holds the
-// symbols the tree declared and the same function is callable on the child. The
-// execution state stays behind: a fork runs safely on a separate goroutine.
+// TestRuntime_Fork covers a fork's contents. It holds the symbols the tree
+// declared, and the same function is callable on the child. The execution state
+// stays behind: a fork runs safely on a separate goroutine.
 func TestRuntime_Fork(t *testing.T) {
 	t.Parallel()
 	parent, _ := forkParent(t, `<?php function twice($n) { return $n * 2; } $x = 7;`)
@@ -56,8 +55,8 @@ func TestRuntime_Fork(t *testing.T) {
 // TestRuntime_DeclaredPrograms covers the table a host replays onto forks it
 // builds itself. Fork does it already and this is for a host managing its own.
 //
-// It answers a copy and a caller walking it while the runtime includes another
-// file is not reading the map the include writes.
+// It answers a copy. A caller walking the copy while the runtime includes
+// another file is not reading the map the include writes.
 func TestRuntime_DeclaredPrograms(t *testing.T) {
 	t.Parallel()
 	parent, _ := forkParent(t, `<?php function once() { return 1; }`)
@@ -77,10 +76,10 @@ func TestRuntime_DeclaredPrograms(t *testing.T) {
 	}
 }
 
-// TestRuntime_SetPreparer covers how a fork gets its bindings. A binding is
-// almost always a closure over its registering runtime and a copied
-// entry would read and write the parent from inside the child; the preparer is
-// the host saying how to install them again.
+// TestRuntime_SetPreparer covers a fork's path to its bindings. A binding is
+// almost always a closure over the registering runtime. A copied entry would
+// read and write the parent from inside the child. The preparer is the host
+// saying how to install them again.
 func TestRuntime_SetPreparer(t *testing.T) {
 	t.Parallel()
 	parent, _ := forkParent(t, `<?php $noop = 1;`)
@@ -149,8 +148,7 @@ func TestRuntime_InvokeClosure(t *testing.T) {
 	}
 }
 
-// TestForkReplaysImportedAreas covers a constant an opt-in area installs after
-// the parent froze its standard library.
+// TestForkReplaysImportedAreas covers an opt-in constant installed after the parent froze.
 func TestForkReplaysImportedAreas(t *testing.T) {
 	var parentOut strings.Builder
 	parent := runner.New(&parentOut, runner.Options{Runtime: runner.RuntimeGo})

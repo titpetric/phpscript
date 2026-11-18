@@ -4,10 +4,10 @@ import (
 	"testing"
 )
 
-// TestRuneOffsetsByteOffset covers the conversion regexp2 needs and RE2 does
-// not, the one part of the offset work an ASCII fixture cannot see: rune
+// TestRuneOffsetsByteOffset covers a conversion regexp2 needs and RE2 does not.
+// The conversion is the part of the offset work an ASCII fixture cannot see: rune
 // index and byte offset are the same number until the subject holds a
-// multibyte character and a missing conversion looks correct everywhere else.
+// multibyte character. A missing conversion looks correct everywhere else.
 func TestRuneOffsetsByteOffset(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -48,8 +48,8 @@ func TestRuneOffsetsByteOffset(t *testing.T) {
 			if got := offsets.byteOffset(len(test.want) + 5); got != len(test.subject) {
 				t.Errorf("byteOffset past end = %d, want %d", got, len(test.subject))
 			}
-			// A group that never matched stays negative and never becomes an
-			// offset into the subject.
+			// An unmatched group stays negative. It does not become an offset
+			// into the subject.
 			if got := offsets.byteOffset(-1); got != -1 {
 				t.Errorf("byteOffset(-1) = %d, want -1", got)
 			}
@@ -70,8 +70,8 @@ func TestRuneOffsetsASCIIKeepsNoTable(t *testing.T) {
 }
 
 // TestFindIndexReportsByteOffsets covers the conversion where it matters: the
-// backtracking engine reports rune indexes, and a script reading
-// PREG_OFFSET_CAPTURE has to see the byte offsets PHP reports. The lookahead
+// backtracking engine reports rune indexes. A script reading
+// PREG_OFFSET_CAPTURE must see the byte offsets PHP reports. The lookahead
 // forces the pattern onto that engine; the plain one stays on RE2. Both
 // engines have to agree.
 func TestFindIndexReportsByteOffsets(t *testing.T) {

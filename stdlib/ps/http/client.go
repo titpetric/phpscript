@@ -17,16 +17,16 @@ import (
 )
 
 // DefaultTimeout is how long a client waits for a response when the script did
-// not say. A request with no deadline at all is the one failure mode a script
-// cannot recover from and no spelling turns it off.
+// not say. A request without a deadline is the failure mode a script cannot
+// recover from. No spelling turns the timeout off.
 const DefaultTimeout = 30 * time.Second
 
-// maxResponseBody caps a response body at 32 MiB, keeping a hostile server from the heap.
+// maxResponseBody caps a body at 32 MiB, keeping a hostile server off the heap.
 const maxResponseBody = 32 << 20 // 32 MiB
 
 // Client is the PHP-visible HTTP\Client. The net/http client is a named
-// unexported field and no embedded one and a script reaches the methods
-// below alone, and no other net/http export.
+// unexported field and embeds nothing. A script reaches only the methods
+// below, never another net/http export.
 type Client struct {
 	client  *nethttp.Client
 	base    string
@@ -39,8 +39,7 @@ type Client struct {
 // that follows redirects.
 //
 // $timeout is in seconds and covers the whole request. The client sends
-// $headers with every request it makes, and a header set on a request replaces
-// the client's. $insecure disables certificate verification, which is for a
+// $headers with each request. A header set on a request replaces the client's. $insecure disables certificate verification, which is for a
 // test server and not for a service. An unrecognised key throws.
 func NewClient(ctx context.Context, options any) (*Client, error) {
 	config := clientConfig{Timeout: DefaultTimeout, FollowRedirects: true}
@@ -62,9 +61,9 @@ func NewClient(ctx context.Context, options any) (*Client, error) {
 			case "headers":
 				config.Headers, err = toHeaders(value)
 			default:
-				// An unknown key is an error and no value quietly ignored and a
-				// typo fails where the script wrote it, ahead of a request
-				// going out without it.
+				// An unknown key is an error. No value is quietly ignored. A
+				// typo fails where the script wrote it, before a request goes
+				// out.
 				err = fmt.Errorf("HTTP\\Client: unknown option %q", toString(key))
 			}
 			return err == nil
@@ -110,7 +109,7 @@ type clientConfig struct {
 }
 
 // Send sends $request and returns the response. A transport failure or a
-// timeout throws; an HTTP error status does not and check $response->status().
+// timeout throws. An HTTP error status does not; check $response->status().
 func (c *Client) Send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("HTTP\\Client: send expects an HTTP\\Request")
@@ -141,11 +140,11 @@ func (c *Client) Post(ctx context.Context, url string, body ...string) (*Respons
 }
 
 // Parallel sends every request in $requests at once and returns the responses
-// under the same keys. The call takes as long as the slowest request.
+// keyed the same way. The call takes as long as the slowest request.
 // $requests is an array of HTTP\Request keyed by a name the script chooses,
 // each bounded by the client's timeout.
 //
-// One request failing does not fail the others and does not throw: that
+// One request failing does not fail the others and does not throw. That
 // response reports $response->ok() as false and $response->err() as the
 // reason. A script sees every outcome. A throw means the argument is no
 // array of requests.
@@ -174,8 +173,8 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 			response, err := c.send(ctx, request)
 			if err != nil {
 				// Parallel reports a failure on the response and returns no
-				// error and one unreachable host does not hide the results of
-				// every other request in the batch.
+				// error. One unreachable host does not hide the results of the
+				// other requests in the batch.
 				response = &Response{err: err.Error()}
 			}
 			mu.Lock()
@@ -207,8 +206,8 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 	}
 	defer response.Body.Close()
 
-	// send reads the body here and exposes no stream, because a script has no
-	// way to close one: PHP's request ends and whatever it did not read would
+	// send reads the body here and exposes no stream. A script has no way to
+	// close a stream: PHP's request ends, and whatever it did not read would
 	// leak the connection.
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBody))
 	if err != nil {
@@ -249,7 +248,7 @@ func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethtt
 	return prepared, nil
 }
 
-// toRequestMap reads the Parallel argument, a PHP array or a Go map of requests.
+// toRequestMap reads the Parallel argument, a PHP array or Go map of requests.
 func toRequestMap(requests any) (map[string]*nethttp.Request, error) {
 	switch value := requests.(type) {
 	case nil:

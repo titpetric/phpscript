@@ -1,6 +1,6 @@
 package runner
 
-// Delta is what one install did to a runtime's symbol tables.
+// Delta records one install's effect on a runtime's symbol tables.
 type Delta struct {
 	// Funcs are the functions the install defined.
 	Funcs []string

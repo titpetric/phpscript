@@ -85,7 +85,7 @@ for ($i = 0; $i < 3; $i++) {
 		t.Fatalf("run with --cover --split: %v\n%s", errRun, stdout.String())
 	}
 	// Without -v the folder summary is the whole answer on stdout: the run
-	// reports what it measured per folder and not per fixture.
+	// reports its measurement per folder; fixture rows stay out.
 	for _, want := range []string{"| Path ", "| Files ", "| Lines ", "| suite "} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("stdout is missing %q from the folder summary:\n%s", want, stdout.String())
@@ -128,9 +128,9 @@ for ($i = 0; $i < 3; $i++) {
 }
 
 // TestRunCommandCoverConflicts holds the flag contract this command owns:
-// coverage counts one run per fixture and run refuses the benchmark loops, and
-// a report mode owns stdout and it refuses --json with one. The mode
-// vocabulary itself belongs to internal/flags, which every command shares.
+// coverage counts one run per fixture and run refuses the benchmark loops.
+// A report mode owns stdout, and refuses --json with a report mode. The mode
+// vocabulary belongs to internal/flags, which all commands share.
 func TestRunCommandCoverConflicts(t *testing.T) {
 	t.Parallel()
 	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
@@ -146,7 +146,7 @@ func TestRunCommandCoverConflicts(t *testing.T) {
 
 // coverReportSuite writes the fixture tree the report-mode tests share: an
 // include with a called and an uncalled function, a class with a called and an
-// uncalled method, and a prelude at the invocation root, which the include
+// uncalled method, plus a prelude at the invocation root, which the include
 // union resolves outside the fixture's directory.
 func coverReportSuite(t *testing.T) {
 	t.Helper()
@@ -253,10 +253,10 @@ func reportLine(t *testing.T, report, prefix string) string {
 	return ""
 }
 
-// TestRunCommandCoverFunc covers --cover=func: every declaration reports under
-// its file and start line, methods under Class::name, top-level code as {main},
-// the prelude under the path the include union served it from, and neither the
-// fixture tables nor any .phpt row reaches stdout.
+// TestRunCommandCoverFunc covers --cover=func: every declaration reports at its
+// file and start line, methods under Class::name, top-level code as {main}, the
+// prelude at the path the include union served it from. Neither fixture tables
+// nor any .phpt row reaches stdout.
 func TestRunCommandCoverFunc(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Cover: test.CoverFunc, Include: "prelude.php"})
@@ -269,7 +269,7 @@ func TestRunCommandCoverFunc(t *testing.T) {
 		"prelude.php:3:":             "prelude_helper 100.0%",
 		"prelude.php:1:":             "{main} 100.0%",
 		// The interface file holds no runnable code; its coverage is the
-		// adjusted 0/0 with no line left uncovered.
+		// adjusted 0/0, leaving no line uncovered.
 		"suite/lib/contract.php:1:": "{main} 100.0%",
 	} {
 		got := reportLine(t, report, prefix)
@@ -298,8 +298,7 @@ func TestRunCommandCoverFunc(t *testing.T) {
 	}
 }
 
-// TestRunCommandCoverFile covers --cover=file: one row per source file with a
-// statement-weighted percentage, and no fixture rows.
+// TestRunCommandCoverFile covers --cover=file: one row per source, statement-weighted, no fixtures.
 func TestRunCommandCoverFile(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Cover: test.CoverFile, Include: "prelude.php"})
@@ -320,9 +319,9 @@ func TestRunCommandCoverFile(t *testing.T) {
 	}
 }
 
-// TestRunCommandFolderSummary covers what a run without -v prints: one row per
-// folder resolved from the arguments, with the two coverage counts, and no
-// fixture table at all.
+// TestRunCommandFolderSummary covers the output of a run without -v: one row
+// per folder resolved from the arguments, with the two coverage counts. It
+// holds no fixture table.
 func TestRunCommandFolderSummary(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Cover: test.CoverLine, Include: "prelude.php"})
@@ -350,8 +349,8 @@ func TestRunCommandFolderSummary(t *testing.T) {
 }
 
 // TestRunCommandFolderSummaryVerbose covers the other half of the same switch:
-// -v restores the fixture tables, adds a coverage column to each, and drops
-// to a per-file report under every folder that loaded a PHP file.
+// -v restores the fixture tables, adds a coverage column to each, then drops
+// to a per-file report for every folder that loaded a PHP file.
 func TestRunCommandFolderSummaryVerbose(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Cover: test.CoverLine, Include: "prelude.php", Verbose: true})
@@ -376,8 +375,8 @@ func TestRunCommandFolderSummaryVerbose(t *testing.T) {
 }
 
 // TestRunCommandFolderSummaryWithoutCover covers the summary a run prints when
-// it measured no coverage: the same one row per folder, without the two
-// coverage columns.
+// it measured no coverage: the same row per folder, without the two coverage
+// columns.
 func TestRunCommandFolderSummaryWithoutCover(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Include: "prelude.php"})

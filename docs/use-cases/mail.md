@@ -1,8 +1,8 @@
 # Mail bindings
 
-`mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells one and cannot read one back.
+`mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells a server and cannot read one back.
 
-That split is the whole design. Connection settings are operator configuration, the same way database credentials are. The [`mail` block](../configuration.md#mail-servers) holds them and they reach a script only as a name it may construct against.
+That split is the whole design. Connection settings are operator configuration, the same way database credentials are. The [`mail` block](../configuration.md#mail-servers) holds them. They reach a script only as a name it may construct against.
 
 Both bindings are part of the standard library. A script includes nothing to reach them.
 
@@ -28,7 +28,7 @@ $campaigns = new Mail("marketing");
 $campaigns->send("list@example.com", "Newsletter", "Issue 1");
 ```
 
-Use `mail()` when one server is all the application has, and `Mail` when it sends transactional and bulk mail through different relays, which is the usual reason to have two.
+Use `mail()` when the application keeps a single server. Use `Mail` when it sends transactional and bulk mail through different relays, the usual reason to have two.
 
 ## HTML and a Reply-To
 
@@ -55,9 +55,9 @@ The arguments decide the shape of the message:
 | set     | set     | `multipart/alternative`: the text part first, the HTML part last |
 | empty   | set     | one `text/html` part                                             |
 
-Both parts of a multipart message, and a lone HTML part, are UTF-8 and quoted-printable and a long line or a non-ASCII character reaches the relay as 7-bit lines of 76 characters at most. Write the text part by hand. A text-only client, a screen reader set to plain text and a spam filter read it, and stripping the tags from the HTML drops every link target.
+Both parts of a multipart message are UTF-8 and quoted-printable. A lone HTML part is as well. A long line or a non-ASCII character reaches the relay as 7-bit lines of 76 characters at most. Write the text part by hand. A text-only client, a screen reader set to plain text, a spam filter: each reads it. Stripping the tags from the HTML drops every link target.
 
-`$reply_to` is one address, with or without a display name. The binding strips CR and LF from it as from every header and a header smuggled in behind a line break leaves one malformed address, and the call throws before delivery:
+`$reply_to` takes one address, with or without a display name. The binding strips CR and LF from it as from all headers. A header smuggled in behind a line break leaves one malformed address, and the call throws before delivery:
 
 ```php
 try {
@@ -69,7 +69,7 @@ try {
 }
 ```
 
-A plain-text message with a Reply-To passes `""` for `$html`. `mail()` takes neither argument: it keeps PHP's three, and PHP's `$additional_headers` stays unsupported.
+A plain-text message with a Reply-To passes `""` for `$html`. `mail()` takes neither argument: it keeps PHP's three arguments. PHP's `$additional_headers` stays unsupported.
 
 ## Configuring the servers
 
@@ -90,7 +90,7 @@ mail:
     from: Marketing <marketing@example.com>
 ```
 
-`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. With both `username` and `password`, the relay authenticates; with neither, a local mailhog accepts the unauthenticated connection. `from` may hold a display name, in which case the bare address becomes the envelope sender.
+`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. Given both `username` and `password`, the relay authenticates. Given neither, a local mailhog accepts the unauthenticated connection. `from` may hold a display name, in which case the bare address becomes the envelope sender.
 
 The full key reference, including `insecure` and the STARTTLS rules, is in [Mail servers](../configuration.md#mail-servers).
 
@@ -109,7 +109,7 @@ try {
 
 Failing at startup means a typo surfaces on the request that introduced it, ahead of the first delivery and of a job nobody watches.
 
-Delivery throws too and wrap `send()` when the request should survive an unreachable mail server:
+Delivery throws too. Wrap `send()` when the request should survive an unreachable mail server:
 
 ```php
 $mail = new Mail;
@@ -121,7 +121,7 @@ try {
 }
 ```
 
-This is where `mail()` diverges from PHP, which answers `false` and says nothing about why. The binding queues no message and retries no delivery: a delivery either happened or it threw, and what to do about it belongs to the application.
+Here `mail()` diverges from PHP, which answers `false` and reports no reason. The binding queues no message and retries no delivery. A delivery either happened or it threw; the response belongs to the application.
 
 ## What a script cannot do
 
@@ -136,7 +136,7 @@ var_dump($mail->password);       // NULL
 var_dump($mail->host);           // NULL
 ```
 
-The object holds no properties and a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key and no `env` entry, `getenv()` never reaches them.
+The object holds no properties. A property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. No call lists the configured servers either, because naming what exists is itself a disclosure. The settings are a configuration key; `env` holds none. `getenv()` never reaches them.
 
 The constructor refuses the settings in place of a name and accepts nothing quietly:
 
@@ -149,7 +149,7 @@ new Mail(array("host" => "mail.example.com", "password" => "secret"));
 
 ## One server per site
 
-Under [virtual hosting](virtual-hosting.md), each site's `mail` block is its own. A site that declares any server gets only the ones it named and it cannot reach a relay another site configured:
+Under [virtual hosting](virtual-hosting.md), each site owns its `mail` block. A site that declares any server gets only the servers it named. It cannot reach a relay another site configured:
 
 ```yaml
 # /srv/shop/phpscript.yml
@@ -159,13 +159,13 @@ mail:
     from: orders@shop.example
 ```
 
-A site that declares no `mail` block inherits the operator's servers, and `mail:` with nothing under it means no servers at all and a site says it sends none.
+A site that declares no `mail` block inherits the operator's servers. `mail:` with nothing beneath it means no servers at all; the site says it sends none.
 
-The map replaces wholesale. Under a single unnamed block, a site setting only `host` and `from` kept the operator's `username` and `password` and authenticated as the operator.
+The map replaces wholesale. A single unnamed block used to merge. A site setting only `host` and `from` kept the operator's `username` and `password` while authenticating as the operator.
 
 ## Sending by something other than SMTP
 
-SMTP is the default transport. The model is separate from it: An embedding host swaps it without touching name resolution or the rules above:
+SMTP is the default transport. The model is separate: an embedding host swaps it without touching name resolution or the rules above:
 
 ```go
 provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, body string) error {
@@ -174,8 +174,8 @@ provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, bo
 options.Mail = provider
 ```
 
-A `Deliver` reads the three parts of a plain-text message and a provider built over one refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's own `model.MailProvider`, whose `Send` is plain text: it sends the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`, as `mail.Provider` and `mail.Memory` do.
+A `Deliver` reads three parts of a plain-text message. A provider built on that interface refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's `model.MailProvider`, whose `Send` is plain text. It sends the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`. `mail.Provider` and `mail.Memory` do.
 
 `mail.NewMemory(names...)` is a provider that queues messages and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name. Each queued `mail.Message` holds the HTML part and the Reply-To as the script sent them.
 
-See [Go bindings](bindings.md) for how a host installs these.
+See [Go bindings](bindings.md), which covers host installation.

@@ -14,8 +14,8 @@ func (p *printer) expr(e model.Expr) string {
 		return ""
 	case *model.Lit:
 		// A parsed string literal keeps its source spelling: single quotes do
-		// not interpolate and do not escape a double quote, as
-		// makes them the readable choice for HTML and for regular expressions.
+		// not interpolate and do not escape a double quote, which makes them
+		// readable for HTML and regular expressions.
 		// A literal holding a carriage return is the exception, because the
 		// output has its line endings normalised, which would edit the value.
 		if _, ok := n.Value.(string); ok && n.Raw != "" && !strings.Contains(n.Raw, "\r") {
@@ -23,15 +23,15 @@ func (p *printer) expr(e model.Expr) string {
 		}
 		return p.lit(n.Value)
 	case *model.Interp:
-		// An interpolated literal prints from its source for the same reason a
-		// plain one does, and with more at stake: rebuilding it from the parts
-		// would pick one spelling for `"$a"`, `"${a}"` and `"{$a}"`, and would
-		// re-escape the text runs by the printer's choice.
+		// An interpolated literal prints from its source for the same reason as
+		// a plain one, with more at stake. Rebuilding it from the parts
+		// would pick one spelling for `"$a"`, `"${a}"` or `"{$a}"`. It would
+		// also re-escape the text runs by the printer's choice.
 		return n.Raw
 	case *model.Var:
 		if n.Const {
 			// A constant of an imported go package prints as the source wrote
-			// it; every other name prints as it stands. See goimport.go.
+			// it; any other name prints as written. See goimport.go.
 			if member, ok := p.goName(n.Name); ok {
 				return member
 			}
@@ -73,7 +73,7 @@ func (p *printer) expr(e model.Expr) string {
 		return p.expr(n.Base) + "->" + p.member(n.Method) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.New:
 		// The parser names an anonymous class itself; the name is not the
-		// source spelling. Printing it would rewrite a working file into one
+		// source spelling. Printing it would rewrite a working file to one
 		// that does not parse. Refusing the file leaves it untouched, and the
 		// unsupported list is for that.
 		if n.Decl != nil {
@@ -216,19 +216,18 @@ func (p *printer) args(args []model.Expr) string {
 const (
 	// arrayLitInlineItems is the largest number of key/value pairs an array
 	// literal keeps on one line. Past that the printer expands the literal one
-	// entry per line, the way gofmt expands a struct literal, because a row of
-	// three or more pairs is where a single line stops being readable and
-	// stops diffing well. A list of values without keys is not a record and
-	// the printer expands one only where it does not fit.
+	// entry per line, the way gofmt expands a struct literal, because three or
+	// more pairs in a row stop a single line being readable and diffing well.
+	// A list of values without keys is not a record. The printer expands one
+	// only when it does not fit.
 	arrayLitInlineItems = 2
 
-	// arrayLitWidth is how wide an array literal may be, counted from its own
-	// indent and not from the start of the line: the printer writes the
+	// arrayLitWidth is how wide an array literal may be, counted from the
+	// literal's indent, not from the start of the line: the printer writes the
 	// statement around the literal and this code cannot see that width.
 	arrayLitWidth = 100
 
-	// tabWidth is the column width a hard tab counts as when measuring a line
-	// against arrayLitWidth.
+	// tabWidth is the column width a hard tab counts as against arrayLitWidth.
 	tabWidth = 4
 )
 

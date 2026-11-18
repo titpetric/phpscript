@@ -12,10 +12,10 @@ import (
 )
 
 // TestReportArgs covers the invocation the provenance comment names.
-// reportArgs builds it from the run's own options and never hardcodes it and
-// the committed report says which job wrote it and a reader can run the same
-// command. The flags come out in one order and a regenerated report differs
-// only where a result differs.
+// reportArgs builds it from the run's options and hardcodes nothing. The
+// committed report names the job that wrote the report. A reader can run the
+// same command. Flags come out in one order. A regenerated report then differs
+// only in the results that changed.
 func TestReportArgs(t *testing.T) {
 	t.Parallel()
 	if got := strings.Join(reportArgs(Options{}, nil), " "); got != "test" {
@@ -36,7 +36,7 @@ func TestReportArgs(t *testing.T) {
 		t.Errorf("reportArgs = %q, want %q", got, want)
 	}
 
-	// A parallelism of one is the default and says nothing and a report taken
+	// A parallelism of one is the default and says nothing. A report taken
 	// without the flag does not claim it.
 	if got := strings.Join(reportArgs(Options{Parallel: 1}, nil), " "); got != "test" {
 		t.Errorf("--parallel 1 reconstructs as %q, want \"test\"", got)
@@ -44,8 +44,8 @@ func TestReportArgs(t *testing.T) {
 }
 
 // TestWriteReportHeader covers the opening of a generated report: the title,
-// the command that produced it, and the sentence saying a table below is a
-// compatibility report and no record of what phpscript last printed.
+// the command that produced the report, and the sentence describing a table
+// below as a compatibility report. It records no output from the last phpscript run.
 func TestWriteReportHeader(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
@@ -122,8 +122,8 @@ func TestTeeResultTable(t *testing.T) {
 		t.Errorf("the sinks disagree:\n%s\nagainst:\n%s", terminal.String(), markdown.String())
 	}
 
-	// A tee of nothing is the shape a run with no sink at all takes, and every
-	// call has to be a no-op and never a nil dereference.
+	// A tee of nothing matches a run that has no sink. Every call must do
+	// nothing and must not dereference nil.
 	empty := teeResultTable{}
 	empty.writeGroup("arrays", nil)
 	empty.writeResult(&fixtureRun{Result: &tests.TestResult{Passed: true}})

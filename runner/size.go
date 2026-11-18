@@ -8,10 +8,10 @@ import (
 
 // Size is a byte count written the way a php.ini size is: a bare number of
 // bytes, or a number with an M suffix for megabytes. ParseSize refuses PHP's
-// K and G shorthands and a configuration file says what it means in one of
-// two spellings and no other form parses.
+// K and G shorthands. A configuration file states the size in one of two
+// spellings; no other form parses.
 //
-// The zero value means no limit, as 0 does in php.ini.
+// The zero value means no limit, like 0 in php.ini.
 type Size int64
 
 // megabyte is the M suffix multiplier, 1024*1024 as in php.ini.
@@ -50,7 +50,7 @@ func ParseSize(s string) (Size, error) {
 // Bytes returns the limit as a byte count, zero for no limit.
 func (s Size) Bytes() int64 { return int64(s) }
 
-// Exceeds reports whether n is over the limit, which a zero Size is not.
+// Exceeds reports whether n is over the limit. A zero Size sets no limit, and nothing exceeds it.
 func (s Size) Exceeds(n int64) bool { return s > 0 && n > int64(s) }
 
 // String writes the size back in the spelling it reads in: megabytes for a

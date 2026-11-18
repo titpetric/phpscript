@@ -4,13 +4,13 @@ import (
 	"io"
 )
 
-// Output redirection. The runtime writes all script output through Output() and
-// a capture returns something else from there: push a writer, and everything
+// Output redirection. The runtime writes all script output through Output();
+// a capture returns something else from there. Push a writer, and everything
 // echo would emit lands in it until the matching pop.
 //
 // The stack is here because Output() is the runtime's own writer, and nothing
-// here reads the captured text. stdlib/ps/compat builds PHP's ob_* family on top
-// of it, and pushes the buffers a script reads back.
+// here reads the captured text. stdlib/ps/compat builds PHP's ob_* family on
+// top. It pushes the buffers a script reads back.
 
 // PushOutput redirects script output to w until the matching PopOutput. Pushes
 // nest: the innermost writer receives the output.

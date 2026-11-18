@@ -4,14 +4,12 @@ import (
 	"io/fs"
 	"testing"
 	"testing/fstest"
-
-	"github.com/titpetric/pdo/client"
 )
 
 // TestDatabaseMigrate covers the handle a script holds on a schema: the
-// connection it runs the SQL on, the filesystem it reads the files off, and the
-// project mig records applied files under. Running the same set twice applies
-// each file once, because mig reads its own record to decide and a deployment
+// connection it runs the SQL on, the filesystem it reads the files from, plus
+// the project mig records applied files under. Running the same set twice
+// applies each file once: mig reads its record to decide; a deployment
 // that migrates on every process start does not replay the schema.
 func TestDatabaseMigrate(t *testing.T) {
 	t.Parallel()
@@ -30,8 +28,8 @@ func TestDatabaseMigrate(t *testing.T) {
 	}
 
 	var project string
-	if err := client.NewClient(migrations.database).Get(t.Context(), &project,
-		"SELECT DISTINCT project FROM migrations"); err != nil {
+	if err := migrations.database.QueryRowContext(t.Context(),
+		"SELECT DISTINCT project FROM migrations").Scan(&project); err != nil {
 		t.Fatalf("reading the migration record: %v", err)
 	}
 	if project != "shop" {
@@ -40,9 +38,9 @@ func TestDatabaseMigrate(t *testing.T) {
 }
 
 // TestDatabaseMigrate_Load covers the glob a script names its migrations with.
-// A script writes the pattern relative to itself and the handle joins in the
-// runtime work directory and takes the leading "./" off; what the pattern
-// matched is what mig records and the spelling has to settle to one form.
+// A script writes the pattern relative to itself; the handle joins it to the
+// runtime work directory and takes the leading "./" off. mig records the
+// matched files. The spelling must settle into a single form.
 func TestDatabaseMigrate_Load(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -90,9 +88,21 @@ func TestDatabaseMigrate_Run(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
+	rows, err := migrations.database.QueryContext(t.Context(),
+		"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'sessions') ORDER BY name")
+	if err != nil {
+		t.Fatalf("reading the schema back: %v", err)
+	}
+	defer rows.Close()
 	var tables []string
-	if err := client.NewClient(migrations.database).Select(t.Context(), &tables,
-		"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'sessions') ORDER BY name"); err != nil {
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("scanning a table name: %v", err)
+		}
+		tables = append(tables, name)
+	}
+	if err := rows.Err(); err != nil {
 		t.Fatalf("reading the schema back: %v", err)
 	}
 	if len(tables) != 2 || tables[0] != "sessions" || tables[1] != "users" {
@@ -108,8 +118,8 @@ func TestDatabaseMigrate_Run(t *testing.T) {
 	}
 }
 
-// newLiveMigrate returns a migration handle over an in-memory sqlite and the
-// given script filesystem. It holds the pool to one connection, because a
+// newLiveMigrate returns a migration handle for an in-memory sqlite and the
+// given script filesystem. It holds the pool to one connection: a
 // second connection to ":memory:" opens a second database and would find no
 // schema. The blank import in provider_test.go registers the driver. It
 // compiles into this same test binary.

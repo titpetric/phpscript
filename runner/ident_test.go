@@ -5,9 +5,9 @@ import (
 )
 
 // TestVarIdent covers the slot spelling of a PHP variable. `$this` keeps the
-// bare name and every other variable takes the `v_` prefix and a variable and
-// a bare constant of the same spelling are two slots: `define("x", 1); echo x;`
-// reads one, `echo $x;` reads the other.
+// bare name; other variables take the `v_` prefix. A variable maps to one
+// slot; a bare constant of the same spelling maps to another:
+// `define("x", 1); echo x;` reads one, `echo $x;` reads the other.
 func TestVarIdent(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -25,9 +25,9 @@ func TestVarIdent(t *testing.T) {
 	}
 }
 
-// TestConstIdent covers the slot spelling of a bare name. The prefix is the
-// one resolveVar reads to tell an unresolved constant from a variable nothing
-// set, where the variable is null and the constant is a lookup.
+// TestConstIdent covers the slot spelling of a bare name. resolveVar reads the
+// prefix to tell an unresolved constant from a variable nothing set: the
+// variable is null, the constant is a lookup.
 func TestConstIdent(t *testing.T) {
 	t.Parallel()
 	if got, want := constIdent("PHP_EOL"), constIdentPrefix+"PHP_EOL"; got != want {

@@ -30,10 +30,10 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		ret   flow
 		retOK bool
 	)
-	// PHP's two loop semantics. `as &$v` binds the element and a body that
-	// assigns to the target edits the source; `as $v` binds a copy and it does
-	// not. Only a *model.Array accepts a write-back or a copy; a collection
-	// a binding returned belongs to the host and not to the script.
+	// PHP's two loop semantics. `as &$v` binds the element; a body that
+	// assigns to the target edits the source. `as $v` binds a copy, which
+	// edits nothing. Only a *model.Array accepts a write-back or a copy. A
+	// collection a binding returned belongs to the host.
 	//
 	// The copy happens only when the body actually assigns through the target,
 	// because phpscript has no refcount to defer it with: an unconditional copy
@@ -65,9 +65,9 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		if err != nil {
 			return false
 		}
-		// The write-back happens before the switch reads the flow: a reference
-		// makes the element live and a body that assigns and then breaks or
-		// returns has still edited the source.
+		// The write-back happens before the switch reads the flow. A reference
+		// makes the element live. A body that assigns, then breaks or returns,
+		// has still edited the source.
 		if writable != nil {
 			if updated, readErr := rt.readLValue(valTarget, scope); readErr == nil {
 				writable.Set(k, updated)
@@ -102,10 +102,10 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		// Native Go collections (e.g. a []Record returned by a forwarded
 		// method) are iterable too: slices/arrays by integer index, maps by
 		// key. The walk is model's, where a []byte reads as the string it
-		// holds and iterates zero times, as a string does.
+		// holds. A []byte iterates zero times, as a string does.
 		//
 		// A source no shape above matched iterates zero times too, as PHP's
-		// foreach over a non-array does: it warns and continues.
+		// foreach across a non-array does: it warns and continues.
 		modelutil.RangeValues(src, iter)
 	}
 
@@ -154,7 +154,7 @@ func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
 	return nil, flowNormal, nil
 }
 
-// execDoWhile runs the body at least once, with continue falling through to the check.
+// execDoWhile runs the body once, continue falling through to the check.
 func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error) {
 	for {
 		val, fl, err := rt.exec(n.Body, scope)
@@ -220,7 +220,7 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	return val, fl, err
 }
 
-// matchCatchType reports whether a catch clause's type handles rootErr, a union taking any alternative.
+// matchCatchType reports whether a catch type handles rootErr, a union any alternative.
 func matchCatchType(declaredType string, rootErr error) bool {
 	declaredType = strings.TrimSpace(declaredType)
 	if declaredType == "" {
@@ -264,7 +264,7 @@ func (rt *Runtime) catchError(err error) error {
 	}
 }
 
-// matchCatch answers the clause under the runtime's own rules: go catches error.
+// matchCatch answers the clause by the runtime's rules: go catches error.
 func (rt *Runtime) matchCatch(declaredType string, rootErr error) bool {
 	if !rt.GoRuntime() {
 		return matchCatchType(declaredType, rootErr)

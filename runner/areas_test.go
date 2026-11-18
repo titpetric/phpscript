@@ -7,7 +7,7 @@ import (
 )
 
 // TestRegisterArea covers the area registry: a named area reaches the mask it
-// registered under, a nil installer never lands, and an empty name files under
+// registered with, a nil installer never lands, and an empty name files under
 // the unnamed area.
 func TestRegisterArea(t *testing.T) {
 	const area Profile = 1 << 61
@@ -27,8 +27,7 @@ func TestRegisterArea(t *testing.T) {
 	}
 }
 
-// TestAreasInstallOverlayLast covers the order: a Runtime\PX area installs after
-// every Runtime\PS area that registered after it.
+// TestAreasInstallOverlayLast covers the order: Runtime\PX installs after later Runtime\PS areas.
 func TestAreasInstallOverlayLast(t *testing.T) {
 	const area Profile = 1 << 60
 	RegisterProfileArea(`Runtime\PX\Test\Over`, area, func(*Runtime) {})
@@ -41,8 +40,8 @@ func TestAreasInstallOverlayLast(t *testing.T) {
 }
 
 // TestInNamespace covers the prefix test every selection runs: a name is in its
-// own namespace and in each one above it, the match ignores case and a leading
-// separator, and a longer first segment is outside.
+// own namespace and in the namespaces above it. The match ignores case and
+// leading separators; a longer first segment is outside.
 func TestInNamespace(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -65,8 +64,8 @@ func TestInNamespace(t *testing.T) {
 }
 
 // TestSelectAreas covers the default runtime's selection: a namespace keeps the
-// areas below it, an empty list keeps all, and the match ignores case and a
-// leading separator.
+// areas beneath it. An empty list keeps all. The match ignores case and leading
+// separators.
 func TestSelectAreas(t *testing.T) {
 	t.Parallel()
 	all := []Area{{Name: `Runtime\PS\Core\Strings`}, {Name: `Runtime\PS\Http`}, {Name: `Runtime\PX\Dates`}, {Name: `Runtime\PSX\Other`}}
@@ -117,7 +116,7 @@ func TestCheckAreas(t *testing.T) {
 	}
 }
 
-// TestSelectNone covers Runtime\None: it selects no area, whatever else the
+// TestSelectNone covers Runtime\None. It selects no area, whatever else the
 // list names, and CheckAreas accepts it as a root.
 func TestSelectNone(t *testing.T) {
 	areas := []Area{{Name: `Runtime\PS\Core\Strings`}, {Name: `Runtime\PS\Files`}}

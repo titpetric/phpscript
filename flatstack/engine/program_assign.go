@@ -69,7 +69,7 @@ func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 	}
 }
 
-// storeTop writes the stack value to a destructuring target and names kind in a rejection.
+// storeTop writes the stack value to a destructuring target, naming kind on rejection.
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
@@ -232,7 +232,7 @@ func (c *compiler) coalesceIndex(target *model.Index, co *model.Coalesce, keep b
 	return nil
 }
 
-// coalesceProp compiles `$o->p ??= b` with the receiver run once into a hidden slot.
+// coalesceProp compiles `$o->p ??= b`, running the receiver once.
 func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, keep bool, path string) error {
 	recvSlot := c.slot(fmt.Sprintf("\x00assign-recv-%d", len(c.program.code)))
 	if err := c.expr(target.Base, path+".target.base"); err != nil {
@@ -256,7 +256,7 @@ func (c *compiler) coalesceProp(target *model.PropAccess, co *model.Coalesce, ke
 	return nil
 }
 
-// assignExprValue compiles an assignment used as a value, pushing what it wrote.
+// assignExprValue compiles an assignment used as a value, pushing the value it wrote.
 func (c *compiler) assignExprValue(node *model.AssignExpr, path string) error {
 	if node.Op == "" || node.Op == "=" {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)

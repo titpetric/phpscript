@@ -16,7 +16,7 @@ import (
 // at the point that installs them, and only a callable that never had a
 // registration point still pays the constructor per call.
 
-// invoker is one callable's pre-bound dispatch, with call taking the calling runtime.
+// invoker holds a callable's pre-bound dispatch; call takes the calling runtime.
 type invoker struct {
 	call     func(rt *Runtime, args []any) (any, error)
 	wantsCtx bool
@@ -113,7 +113,7 @@ func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) 
 	}
 }
 
-// fastInvoker returns a direct call for a covered signature and nil for the rest.
+// fastInvoker returns a direct call for a covered signature, nil otherwise.
 func fastInvoker(ft reflect.Type, fn any) func([]any) (any, error) {
 	switch f := fn.(type) {
 	case func(...any) (any, error):
@@ -231,7 +231,7 @@ func fastInvoker(ft reflect.Type, fn any) func([]any) (any, error) {
 	return nil
 }
 
-// funcEntry is one function-table slot, holding its invoker built on first dispatch.
+// funcEntry holds a function-table slot, with its invoker built on first dispatch.
 type funcEntry struct {
 	fn    any
 	inv   invoker

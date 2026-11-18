@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestParseSize covers the two spellings a size takes, and the rejection of
-// the php.ini shorthands that are not among them: a size ParseSize cannot
-// read is an error, and never a guess.
+// TestParseSize covers the two spellings a size takes, plus the rejection of
+// the php.ini shorthands outside the two spellings. A size ParseSize cannot read
+// is an error. It guesses nothing.
 func TestParseSize(t *testing.T) {
 	t.Parallel()
 	valid := map[string]int64{
@@ -41,8 +41,7 @@ func TestParseSize(t *testing.T) {
 	}
 }
 
-// TestSizeExceeds pins the meaning of the zero value: no limit, as in
-// php.ini and nothing is ever over it.
+// TestSizeExceeds pins the zero value as no limit, which no value exceeds.
 func TestSizeExceeds(t *testing.T) {
 	t.Parallel()
 	limit, err := runner.ParseSize("1M")
@@ -59,14 +58,14 @@ func TestSizeExceeds(t *testing.T) {
 	if unlimited.Exceeds(1 << 40) {
 		t.Error("the zero size is a limit")
 	}
-	// An unknown Content-Length is negative, and no limit can be over it.
+	// An unknown Content-Length is negative. No limit exceeds it.
 	if limit.Exceeds(-1) {
 		t.Error("a limit exceeds an unknown length")
 	}
 }
 
-// TestSizeYAML covers reading a size out of a configuration file, spelled the
-// way php.ini writes it, and writing it back.
+// TestSizeYAML covers reading a size from a configuration file, spelled as
+// php.ini writes the value, plus writing it back.
 func TestSizeYAML(t *testing.T) {
 	t.Parallel()
 	var opts runner.Options
@@ -89,9 +88,9 @@ func TestSizeYAML(t *testing.T) {
 }
 
 // TestSize_UnmarshalYAML covers the decoder hook by itself. Quoted or bare is
-// the same size, because a document naming 8M means the bytes either way, and a
-// refused spelling leaves the field at the value it already held and never
-// zeroes it and a bad document cannot read as "no limit".
+// the same size, since a document naming 8M means the bytes either way. A
+// refused spelling leaves the field at the value it already held; it does not
+// zero the field. A bad document cannot read as "no limit".
 func TestSize_UnmarshalYAML(t *testing.T) {
 	t.Parallel()
 	for _, text := range []string{`"8M"`, "8M", " 8M ", `'8M'`, "8388608"} {
@@ -115,9 +114,8 @@ func TestSize_UnmarshalYAML(t *testing.T) {
 }
 
 // TestSize_MarshalYAML covers the spelling MarshalYAML writes a size back in,
-// which is the one it reads best in: a whole number of megabytes keeps the
-// suffix and a configuration file a process rewrites still says 8M and not
-// 8388608. Every spelling round trips to the same byte count.
+// the form it reads best. A whole number of megabytes keeps the suffix; a
+// configuration file a process rewrites still says 8M and not 8388608. Every spelling round trips to the same byte count.
 func TestSize_MarshalYAML(t *testing.T) {
 	t.Parallel()
 	written := map[string]string{

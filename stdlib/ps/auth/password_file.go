@@ -15,27 +15,26 @@ import (
 )
 
 // DefaultPasswordFile is the file a PasswordFile reads when the script names
-// none. The name is apache's, because the format is: a file written by
-// htpasswd works unchanged, and an operator who has one does not have to learn
-// a second spelling.
+// none. Its name is apache's, because the format is: a file written by
+// htpasswd works unchanged. An operator who has such a file need not learn a
+// second spelling.
 const DefaultPasswordFile = ".htpasswd"
 
 // PasswordFile authenticates against an apache-format password file: one
 // `username:hash` per line, in the application root.
 //
-// It holds the path alone. Every call reads the file and drops the
-// parse on return and a hash stays a local the way a decrypted mail credential
-// does (docs/security.md, "Credentials a script cannot spell"), and an edited
-// file takes effect at the next login with nothing to invalidate. One small
-// file read against a key derivation costing milliseconds leaves no cache
-// worth its staleness.
+// It holds the path alone. Every call reads the file and drops the parse on
+// return; a hash stays local, as a decrypted mail credential does
+// (docs/security.md, "Credentials a script cannot spell"). An edited file takes
+// effect at the next login; no cache goes stale. A key derivation costs
+// milliseconds. One small file read leaves no cache worth its staleness.
 type PasswordFile struct {
 	path string
 }
 
 // NewPasswordFileRoot returns the store Auth\Storage\PasswordFile constructs,
 // with the path resolved against the root and unable to climb out. A file that
-// is not there is no error; the constructor refuses an unreadable one.
+// is missing is no error; the constructor refuses an unreadable one.
 func NewPasswordFileRoot(rt *runner.Runtime, dir string, paths ...string) (*PasswordFile, error) {
 	name := DefaultPasswordFile
 	if len(paths) > 0 && paths[0] != "" {
@@ -50,7 +49,7 @@ func NewPasswordFileRoot(rt *runner.Runtime, dir string, paths ...string) (*Pass
 }
 
 // DefaultPasswordFileRoot returns the user store `new Session\Manager` takes
-// when the script names none. It skips the validating parse, which the first
+// by default. It skips the validating parse, which the first
 // Authenticate or Users call performs, and refuses only an unopenable file or
 // a directory in its place.
 func DefaultPasswordFileRoot(rt *runner.Runtime, dir string) (*PasswordFile, error) {
@@ -75,8 +74,8 @@ func DefaultPasswordFileRoot(rt *runner.Runtime, dir string) (*PasswordFile, err
 }
 
 // NewPasswordFile is the constructor a Go host calls. It takes the path as
-// given, because a host chooses it and no root confines it; a path a script
-// names resolves through NewPasswordFileRoot.
+// given. A host chooses that path; no root confines it. A path a script names
+// resolves through NewPasswordFileRoot.
 func NewPasswordFile(path string) (*PasswordFile, error) {
 	if path == "" {
 		return nil, errors.New("password file path is empty")
@@ -91,9 +90,9 @@ func NewPasswordFile(path string) (*PasswordFile, error) {
 
 // Authenticate reports the user $key names when $secret is theirs.
 //
-// A missing user and a wrong password are one answer, separable by time alone:
-// a key the file does not hold costs no derivation. Rate limiting bounds what
-// that is worth, see docs/reference/extensions/hashing.md.
+// A missing user gets the same answer as a wrong password, separable by time
+// alone: a key the file does not hold costs no derivation. Rate limiting bounds
+// the value of that; see docs/reference/extensions/hashing.md.
 func (p *PasswordFile) Authenticate(ctx context.Context, key, secret string) (User, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -111,10 +110,10 @@ func (p *PasswordFile) Authenticate(ctx context.Context, key, secret string) (Us
 	return newUser(key), nil
 }
 
-// Exists reports whether there is a user database to ask: the password file
-// is there, and at least one of its lines is an account. A file of comments
-// and blank lines alone answers false and a login page says there are no
-// accounts where a form refusing every password would name no cause.
+// Exists reports whether a user database exists: the password file is present,
+// with at least one account among its lines. A file of comments and blank lines
+// alone answers false. A login page then says there are no accounts; a
+// form refusing every password names no cause.
 func (p *PasswordFile) Exists() (bool, error) {
 	info, err := os.Stat(p.path)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -134,12 +133,11 @@ func (p *PasswordFile) Exists() (bool, error) {
 	return len(entries) > 0, nil
 }
 
-// Users is every record in the file, ordered by username.
+// Users returns all records in the file, ordered by username.
 //
-// It holds no hash and a script may keep it: everything above here sees a
-// table of two columns, and the third column never leaves this package. A
-// caller writes the rows into its own table and rebuilds it when the file
-// changes.
+// It holds no hash; a script may keep it. The code above sees a table of two
+// columns, and the third column stays in this package. A caller writes the rows
+// into its table and rebuilds that table when the file changes.
 func (p *PasswordFile) Users(ctx context.Context) ([]User, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -185,7 +183,7 @@ func (p *PasswordFile) read() (map[string]string, error) {
 			return nil, errors.New("line 1: a utf-8 byte order mark precedes the first username; save the file without one")
 		}
 		text = strings.TrimSpace(text)
-		// A comment is apache's `#` and a blank line is a blank line.
+		// A comment is apache's `#`; a blank line stays blank.
 		if text == "" || strings.HasPrefix(text, "#") {
 			continue
 		}

@@ -12,9 +12,8 @@ import (
 )
 
 // DefaultRuntimeConfig is the `config/config.yml` compiled into the binary.
-// Every default is in that file and nowhere else and the decoder reads a
-// file passed with -f on top of this one and that file only has to name what
-// it changes.
+// That file holds every default alone. The decoder reads a file passed with -f
+// on top. That file only names what changes.
 //
 //go:embed "config.yml"
 var DefaultRuntimeConfig []byte
@@ -39,10 +38,10 @@ type Config struct {
 	// directory something else.
 	DocumentRoot string `yaml:"document_root"`
 
-	// Autoindex answers a directory that has no index page with a listing of
-	// what it holds, the way nginx's autoindex does. The default is off,
-	// because publishing every file below the document root is a decision a
-	// site makes and not one it should arrive at by leaving an index.html out.
+	// Autoindex answers a directory lacking an index page by listing the
+	// contents, as nginx's autoindex does. The default is off. Publishing every
+	// file below the document root is a decision a site makes; a site should
+	// not arrive at it by leaving an index.html out.
 	Autoindex bool `yaml:"autoindex"`
 
 	// VirtualHost is the list of sites this server routes by domain. Each
@@ -130,7 +129,7 @@ func New() Config {
 	return result
 }
 
-// NewTestConfig returns New with a kernel-picked port, no logging and no recorder.
+// NewTestConfig returns New with a kernel-picked port, no logging, no recorder.
 func NewTestConfig() Config {
 	result := New()
 	result.Server.Addr = "127.0.0.1:0"
@@ -139,8 +138,8 @@ func NewTestConfig() Config {
 	return result
 }
 
-// Value is the configuration a pointer holds, and the zero configuration for a
-// nil one and no command repeats the nil check.
+// Value returns the configuration a pointer holds, and the zero configuration
+// for a nil pointer. No command repeats the nil check.
 func Value(c *Config) Config {
 	if c == nil {
 		return Config{}

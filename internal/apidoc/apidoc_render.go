@@ -95,7 +95,7 @@ func selectPackage(funcs []Func, pkg string) []Func {
 	return out
 }
 
-// renderPackage writes one package's functions, subdivided by area when it holds more than one.
+// renderPackage writes one package's functions, subdivided by area.
 func renderPackage(b *strings.Builder, funcs []Func) {
 	areas := map[string][]Func{}
 	names := []string{}
@@ -127,7 +127,7 @@ func renderFuncs(b *strings.Builder, funcs []Func) {
 		b.WriteString("```php\n")
 		writeComment(b, f.Comment, "")
 		// A Class::method name is not declarable with the function keyword;
-		// Signature cites it the way a script calls it.
+		// Signature cites the name as a script calls it.
 		fmt.Fprintf(b, "%s\n", f.Signature())
 		b.WriteString("```\n\n")
 	}
@@ -158,7 +158,7 @@ func renderClass(b *strings.Builder, c Class) {
 	}
 }
 
-// writeComment writes a doc comment as a line comment, or a docblock when multiline.
+// writeComment writes a doc comment as line comments, or a docblock when multiline.
 func writeComment(b *strings.Builder, lines []string, indent string) {
 	switch len(lines) {
 	case 0:
@@ -173,8 +173,8 @@ func writeComment(b *strings.Builder, lines []string, indent string) {
 	}
 }
 
-// Signature renders the function as a script would declare it. A Class::method
-// name takes no function keyword.
+// Signature renders the function as a script would declare the function. A
+// Class::method name takes no function keyword.
 func (f Func) Signature() string {
 	if strings.Contains(f.Name, "::") {
 		return fmt.Sprintf("%s(%s): %s", f.Name, paramList(f.Params), f.Returns)

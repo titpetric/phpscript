@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-// Load reads filename over the embedded defaults, through the same overlay a
-// virtual host and a test suite get. An empty filename is the defaults alone.
+// Load reads filename on top of the embedded defaults, through the same overlay a
+// virtual host or a test suite gets. An empty filename is the defaults alone.
 func Load(filename string) (Config, error) {
 	base := New()
 	if filename == "" {

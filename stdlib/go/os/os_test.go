@@ -6,7 +6,7 @@ import (
 	"github.com/titpetric/phpscript/internal/gotest"
 )
 
-// TestRegister covers Getenv over a name the process holds and one it does not.
+// TestRegister covers Getenv for a held name and for a missing one.
 func TestRegister(t *testing.T) {
 	t.Setenv("PHPSCRIPT_GO_OS", "value")
 	gotest.Run(t, `Runtime\Go\Os`, []gotest.Case{

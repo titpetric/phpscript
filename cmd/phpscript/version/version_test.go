@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-// TestInfo covers the sentinel the four fields hold. A build with no ldflags
-// behind it fills Commit, CommitTime and Branch with "unknown", and a line
-// reading "Commit: unknown" is noise and Run prints each of the three only
-// when it holds something else. The version line is always printed, because
+// TestInfo covers the sentinel each field holds. A build without ldflags
+// fills Commit, CommitTime and Branch with "unknown". A line reading
+// "Commit: unknown" is noise. Run prints each field only when it holds
+// something else. The version line is always printed, because
 // "dev" is itself the report of an unreleased binary.
 func TestInfo(t *testing.T) {
 	out := render(t, Info{Version: "dev", Commit: "unknown", CommitTime: "unknown", Branch: "unknown"})
@@ -52,7 +52,7 @@ func TestRun(t *testing.T) {
 		t.Errorf("the commit was printed past twelve characters:\n%s", out)
 	}
 
-	// Run prints a short commit whole: the cut is a ceiling and no padding.
+	// Run prints a short commit whole: the cut is a ceiling. It adds no padding.
 	short := render(t, Info{Version: "1.4.0", Commit: "4d681de", CommitTime: "unknown", Branch: "unknown"})
 	if !strings.Contains(short, "  Commit:      4d681de\n") {
 		t.Errorf("a short commit was not printed whole:\n%s", short)
@@ -60,9 +60,9 @@ func TestRun(t *testing.T) {
 }
 
 // TestNewCommand covers where the command reads its figures from. Build is a
-// package variable main fills before it builds any command and the Run closure
-// reads it at call time and takes no argument for it: build information
-// describes the binary, and neither the configuration nor a flag holds it.
+// package variable main fills before it builds any command. The Run closure
+// reads it at call time and takes no argument for it. Build information
+// describes the binary; the configuration or a flag cannot supply it.
 func TestNewCommand(t *testing.T) {
 	command := NewCommand(nil, nil)
 
@@ -90,7 +90,7 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// render runs Run over one Info and returns what it printed.
+// render runs Run on one Info and returns the printed output.
 func render(t *testing.T, info Info) string {
 	t.Helper()
 
@@ -101,7 +101,7 @@ func render(t *testing.T, info Info) string {
 	})
 }
 
-// captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
+// captureStdout runs fn with os.Stdout on a pipe and returns the captured output.
 // Run prints through the package-level fmt and the file descriptor is the only
 // place to read its output from.
 func captureStdout(t *testing.T, fn func()) string {

@@ -10,11 +10,11 @@ import (
 
 // AcceptsHTML reports whether an Accept header explicitly names HTML.
 //
-// Explicitly, and no wildcard. "*/*" is what curl and fetch() send and it
-// matches every type there is and reading it as a request for HTML would put a
-// website's error page in front of every program that talks to the server. Only
-// text/html and application/xhtml+xml, written out and not weighted to zero,
-// count; so does neither a "text/*" wildcard nor an absent header.
+// Explicit HTML only. "*/*" is the header curl and fetch() send; it matches
+// every type, and reading it as a request for HTML would put a website's error
+// page in front of every program that talks to the server. Only text/html and
+// application/xhtml+xml count, written out and not weighted to zero. A "text/*"
+// wildcard and an absent header do not count either.
 func AcceptsHTML(accept string) bool {
 	for _, entry := range strings.Split(accept, ",") {
 		mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(entry))
@@ -24,8 +24,8 @@ func AcceptsHTML(accept string) bool {
 		if mediaType != "text/html" && mediaType != "application/xhtml+xml" {
 			continue
 		}
-		// A range the client weighted to zero is one it refuses, which is the
-		// spelling for "anything but this".
+		// The client refuses a range weighted to zero; that spelling means
+		// "anything but this".
 		if weight, ok := params["q"]; ok {
 			if q, err := strconv.ParseFloat(weight, 64); err == nil && q <= 0 {
 				continue
@@ -37,8 +37,8 @@ func AcceptsHTML(accept string) bool {
 }
 
 // WantsErrorPage reports whether a request is a browser navigation, the only
-// kind of request a site's HTML error page answers. A HEAD request is never
-// one. Sec-Fetch-Dest decides it, and a client that sends none falls to Accept.
+// request kind a site's HTML error page answers. A HEAD request never
+// qualifies. Sec-Fetch-Dest decides; an absent header falls to Accept.
 func WantsErrorPage(r *http.Request) bool {
 	if r.Method == http.MethodHead {
 		return false
@@ -55,7 +55,7 @@ func WantsErrorPage(r *http.Request) bool {
 type statusCoder interface{ GetCode() int }
 
 // StatusFor resolves the HTTP status a finished script ends on, given whatever
-// error it returned. Zero means nothing chose one and the host's default stands.
+// error it returned. Zero means no code won; the host's default stands.
 //
 // Only an exception code in the 4xx or 5xx range counts as a status; anything
 // else is an application code and the request failed with a 500. exit() and
@@ -82,8 +82,8 @@ func (c Context) Answered(body []byte) bool {
 }
 
 // WriteResponse flushes one response: the staged headers, the status and the
-// body. A status of zero writes none, leaving net/http its 200. So does one
-// outside 100 to 999, which net/http panics on.
+// body. A status of zero writes none, leaving net/http its 200. A status
+// outside 100 to 999 writes none as well; net/http panics on it.
 func (c Context) WriteResponse(w http.ResponseWriter, status int, body []byte) {
 	for name, values := range c.response {
 		w.Header()[name] = values
@@ -156,12 +156,12 @@ func parseStatusLine(header string) (int, bool) {
 
 // HTTPResponseCode implements PHP http_response_code([$response_code]).
 //
-// With no argument it reports the status this response will send, and with
-// one it stages that status and reports the one it replaced.
+// Called with no argument, it reports the status this response will send. With
+// an argument it stages that status and reports the status it replaced.
 //
 // PHP answers false while nothing has set a status, and true for the first one
 // set. On a web SAPI neither happens: a request starts out answering 200, and
-// only the command line, or a host that named no SAPI, starts without one.
+// only the command line, or a host naming no SAPI, starts with none.
 func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 	previous := c.ResponseStatus()
 	if previous == 0 && sapi != "" && sapi != "cli" {
@@ -175,7 +175,7 @@ func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 	if len(opts) > 0 {
 		code = int(toInt(opts[0]))
 	}
-	// A zero, a null and a false are not a status. PHP treats the call as the
+	// A zero, a null, or a false is not a status. PHP treats the call as the
 	// reporting one, which is all any of them amounts to here.
 	if code == 0 {
 		if previous == 0 {

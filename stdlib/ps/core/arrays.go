@@ -16,7 +16,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Arrays`, registerArrays)
 }
 
-// registerArrays installs the array shims, taking any collection and returning []any where keys drop.
+// registerArrays installs the array shims, taking any collection and returning []any.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
 	// count returns the number of elements in $array; non-array values count as 0.
@@ -49,8 +49,8 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
-	// array_merge merges the given arrays into one; it renumbers integer keys
-	// and later string keys overwrite earlier ones.
+	// array_merge merges the given arrays into a single array. It renumbers
+	// integer keys; later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
 	// reset returns the first value of $array, or false for an empty array;
 	// there is no internal pointer here and this is the value without the
@@ -74,8 +74,8 @@ func registerArrays(rt *runner.Runtime) {
 		return out
 	})
 	// array_slice returns up to $length elements of $array starting at
-	// $offset, a negative $offset counting from the end and a negative
-	// $length stopping that many short of it; it reindexes integer keys from
+	// $offset. A negative $offset counts from the end. A negative $length stops
+	// that many short of it. It reindexes integer keys from
 	// zero unless $preserve_keys is true, and keeps string keys either way.
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	// array_splice removes $length elements of $array at $offset, inserts
@@ -84,16 +84,16 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("array_splice", phpArraySplice)
 	// array_shift removes the first element of $array and returns it,
 	// renumbering the integer keys from zero and leaving string keys alone;
-	// an empty array returns null and a value that is not a script array is
-	// an error.
+	// an empty array returns null. A value that is not a script array is an
+	// error.
 	rt.RegisterFunc("array_shift", phpArrayShift)
 	// array_unshift prepends the given values to $array and returns the new
 	// element count, renumbering the integer keys from zero and leaving
 	// string keys alone; a value that is not a script array is an error.
 	rt.RegisterFunc("array_unshift", phpArrayUnshift)
 	// array_pop removes the last element of $array and returns it, leaving
-	// the remaining keys alone; an empty array returns null and a
-	// value that is not a script array is an error.
+	// the remaining keys alone; an empty array returns null. A value that is
+	// not a script array is an error.
 	rt.RegisterFunc("array_pop", phpArrayPop)
 	// array_push appends the given values to $array at the next integer keys
 	// and returns the new element count; a value that is not a script array
@@ -131,9 +131,9 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("array_key_exists", phpArrayKeyExists)
 	// array_filter returns the elements of $array for which $callback is
 	// truthy, preserving the keys; without a $callback it filters the values
-	// on their own truthiness, and $mode selects what the callback receives
-	// (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the
-	// key).
+	// on their own truthiness. $mode selects the callback input:
+	// ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the
+	// key.
 	rt.RegisterFunc("array_filter", func(array any, options ...any) (*model.Array, error) {
 		var fn func(...any) (any, error)
 		if len(options) > 0 && options[0] != nil {
@@ -164,8 +164,8 @@ func registerArrays(rt *runner.Runtime) {
 		return phpArrayReduce(fn, array, carry)
 	})
 	// array_column returns the $column_key value of every row of $array,
-	// keyed by each row's $index_key when the call passes one; a null
-	// $column_key selects the whole row and it skips rows missing the column.
+	// keyed by each row's $index_key when the call names an $index_key. A null
+	// $column_key selects the whole row, skipping rows missing the column.
 	rt.RegisterFunc("array_column", phpArrayColumn)
 	// array_flip returns $array with its keys and values exchanged; it skips a
 	// value that is neither an integer nor a string, as in PHP, but without
@@ -185,13 +185,13 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("range", phpRange)
 }
 
-// The array_filter $mode values, PHP's own: 1 passes the value and key, 2 the key.
+// The array_filter $mode values: 1 passes value and key, 2 the key.
 const (
 	arrayFilterUseBoth = int64(1)
 	arrayFilterUseKey  = int64(2)
 )
 
-// arrayHasKey looks up a normalised key in any collection, walking an unknown map type.
+// arrayHasKey looks up a normalised key in any collection, walking unknown maps.
 func arrayHasKey(array any, key any) (any, bool) {
 	want := phpval.Key(key)
 	switch a := array.(type) {
@@ -224,7 +224,7 @@ func phpArrayKeyExists(key, array any) bool {
 	return ok
 }
 
-// phpArrayFilter keeps the elements fn accepts and their keys, a nil fn keeping truthy ones.
+// phpArrayFilter keeps elements fn accepts, a nil fn keeping truthy ones.
 func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model.Array, error) {
 	n, _ := modelutil.LenValues(array)
 	out := model.NewArraySize(n)
@@ -364,7 +364,7 @@ func phpArraySum(array any) any {
 	return sum
 }
 
-// phpCompact builds a map from the calling scope, omitting names that do not exist.
+// phpCompact builds a map from the calling scope, omitting missing names.
 func phpCompact(ctx context.Context, names ...string) map[string]any {
 	out := make(map[string]any, len(names))
 	scope, ok := runner.ScopeFromContext(ctx)

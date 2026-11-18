@@ -77,15 +77,15 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 // sourceName names the file the runtime reads, keeping the whole path for __DIR__.
 func (f *Fixture) sourceName() string {
 	name := fsName(filepath.ToSlash(f.Path))
-	// A .php fixture is already a file the runtime can open, under a name it
-	// reads back from __FILE__. Only a .phpt needs one invented for it.
+	// A .php fixture is already a file the runtime can open, with a name the
+	// runtime reads back from __FILE__. Only a .phpt needs an invented name.
 	if path.Ext(name) == ".php" {
 		return name
 	}
 	return name + ".php"
 }
 
-// fsName turns a caller-spelled path into an fs.FS path, keeping the fixture's folder.
+// fsName turns a caller-spelled path into an fs.FS path.
 func fsName(p string) string {
 	p = path.Clean(p)
 	p = strings.TrimPrefix(p, "/")
@@ -133,8 +133,8 @@ func (f *Fixture) Coverage() *coverage.Collector {
 	return f.coverage
 }
 
-// RootDir returns the directory a fixture's includes resolve against and the
-// php runner executes in: the one holding it, or the one it named with `root:`.
+// RootDir returns the directory a fixture's includes resolve in and the php
+// runner runs in: the fixture's folder, or the folder named with `root:`.
 func (f *Fixture) RootDir() string {
 	dir := filepath.Dir(f.Path)
 	if f.Root == "" {
@@ -203,10 +203,10 @@ func (f *Fixture) runnerOptions() runner.Options {
 		options.RootFS = os.DirFS(f.RootDir())
 	}
 	if f.appRoot != "" {
-		// The fixture directory answers first and a fixture's own relative
-		// include keeps meaning what it always meant; the application root
-		// answers second, for the prelude include, the files it pulls in, and
-		// the autoload folder, which all sit outside every fixture directory.
+		// The fixture directory answers first. A fixture's relative include
+		// keeps its meaning. The application root answers second, for the
+		// prelude include, the files it pulls in, and the autoload folder.
+		// Those sit outside every fixture directory.
 		options.RootFS = unionFS{os.DirFS(f.RootDir()), os.DirFS(f.appRoot)}
 	}
 	if options.RootFS == nil {

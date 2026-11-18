@@ -10,7 +10,7 @@ type styleScan struct {
 	quote        byte
 }
 
-// Keep is what a semicolon ending a declaration line would break.
+// Keep names the token a semicolon ending a declaration line would break.
 var keepSemicolon = map[string]bool{
 	"function": true, "abstract": true, "interface": true, "class": true,
 	"namespace": true, "public": true, "private": true, "protected": true,

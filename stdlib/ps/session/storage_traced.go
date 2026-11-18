@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// tracedStorage records a span per session store operation without ever recording the session ID.
+// tracedStorage records a span per session store operation, never the session ID.
 type tracedStorage struct {
 	storage Storage
 	backend string

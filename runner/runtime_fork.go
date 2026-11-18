@@ -8,10 +8,10 @@ import (
 
 // This file is how more than one goroutine reaches PHP.
 //
-// A Runtime is one execution: its frames, its compiled-expression memo, its Go
-// method cache, its output and its statics are all unguarded, because a script
-// is one program on one goroutine. Sharing one across goroutines is no race
-// to reason about but a concurrent map write.
+// A Runtime covers one execution: its frames, its compiled-expression memo, its
+// Go method cache, its output and its statics are all unguarded. A script runs
+// one program on one goroutine. Sharing a runtime across goroutines is no race
+// to reason about, only a concurrent map write.
 //
 // A fork is a second Runtime with the same symbols and the same caches. Its
 // frames, output and statics start empty. Where a VM with threads would keep a
@@ -21,11 +21,10 @@ import (
 // microseconds. The frames are only one of the six things a split must cover.
 //
 // A fork holds nothing a program wrote: globals, statics, constants a script
-// defined, output. It holds what a host installed and what the tree declared.
-// That is sound here because a phpscript function is a
-// function of its arguments - there is no `global` statement (docs/design.md)
-// and no request state unless a host seeds it - so two forks running the same
-// declaration answer the same thing.
+// defined, output. It holds host-installed symbols and the tree's declarations.
+// This is sound: a phpscript function depends only on its arguments. There is
+// no `global` statement (docs/design.md), and request state exists only when a
+// host seeds it. Two forks running the same declaration answer the same thing.
 
 // Fork returns a runtime that runs the same symbols as this one, writes to w
 // and shares its parse and bytecode caches. It holds no part of an execution
@@ -44,13 +43,13 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child.Env = rt.Env
 	child.SetContext(rt.host)
 
-	// The bindings, installed and never copied.
+	// The bindings, installed and not copied.
 	//
-	// A binding is almost always a closure over its registering runtime -
-	// header() reads that runtime's request, ignore_user_abort sets
-	// that runtime's flag - so a copied entry would read and write the parent
-	// from inside the child. The host says how to install them and the child
-	// gets its own.
+	// A binding is almost always a closure over the runtime that registered
+	// it: header() reads that runtime's request, and ignore_user_abort sets
+	// that runtime's flag. A copied entry would then read and write the parent
+	// from inside the child. The host says how to install the bindings; the
+	// child gets its own.
 	//
 	// Fork copies the entries first all the same, for a host that registered a
 	// stateless function by hand and set no preparer; the install overwrites
@@ -70,10 +69,10 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	for name, decl := range rt.interfaces {
 		child.interfaces[name] = decl
 	}
-	// The constants a host froze, which excludes the ones a script defined.
-	// FreezeStdlib is where a host says which is which; without it the fork
-	// takes the whole table as the host's, which is the table a fork taken
-	// before any script ran has anyway.
+	// The constants a host froze, excluding the ones a script defined.
+	// FreezeStdlib lets a host distinguish the two; a fork that omits it takes
+	// the whole table as the host's. That is the table a fork taken before any
+	// script ran holds anyway.
 	source := rt.frozenConsts
 	if source == nil {
 		source = rt.constants
@@ -85,27 +84,26 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 		child.prepare = rt.prepare
 		rt.prepare(child)
 	}
-	// The child installs what the parent imported: a worker answers the same names and constants.
+	// The child installs everything the parent imported: a worker answers the same names and constants.
 	for area := range rt.imported {
 		child.UseNamespace(area)
 	}
 	child.FreezeStdlib()
 
-	// The autoloaders, the one piece of script state a fork does hold. They
-	// are how a name becomes a declaration. A fork exists to run the same
-	// symbols: without them a class the parent had not needed yet is
-	// unresolvable on the child and a handler that is the first to name one
-	// answers 500 where the same line at script level works. Parent and child
-	// share what they capture - composer's ClassLoader is an object - and read
-	// it the way a handler reads `$this`, and the call itself runs on the child,
-	// because Runtime.autoload resolves the callable against the runtime doing
-	// the autoloading. The child records the file each one includes and every
-	// worker includes it once.
+	// The autoloaders, the sole piece of script state a fork does hold. They
+	// turn a name into a declaration. A fork exists to run the same symbols.
+	// Lacking autoloaders, a class the parent had not needed yet is
+	// unresolvable on the child. A handler that names one first answers 500,
+	// where the same line at script level works. Parent and child share what
+	// they capture - composer's ClassLoader is an object - and read it as a
+	// handler reads `$this`. The call itself runs on the child, because Runtime.autoload
+	// resolves the callable against the runtime doing the autoloading. The
+	// child records the included file for each; every worker includes it once.
 	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
 	child.classSources = append(child.classSources, rt.classSources...)
 
-	// The declarations the tree contributed, replayed and never copied and
-	// the fork's own tables record where each one came from.
+	// The declarations the tree contributed, replayed and not copied; the
+	// fork's tables record where each came from.
 	for program, filename := range rt.hoisted {
 		_ = child.hoistOnce(program, filename)
 	}
@@ -113,8 +111,8 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 		child.markIncluded(name)
 	}
 
-	// A fork is where a host function that captured the parent would be wrong,
-	// and userFns is rebuilt by the hoist above and never copied.
+	// A fork exposes a host function that captured the parent as wrong;
+	// userFns is rebuilt by the hoist above and not copied.
 	return child
 }
 
@@ -135,8 +133,7 @@ func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
 	return rt.invokeEntry(entry, args, nil)
 }
 
-// DeclaredPrograms answers the programs whose declarations this runtime holds,
-// by the filename each hoists under.
+// DeclaredPrograms answers programs this runtime declares, by hoisting filename.
 func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 	out := make(map[*model.Program]string, len(rt.hoisted))
 	for program, filename := range rt.hoisted {
@@ -145,14 +142,14 @@ func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 	return out
 }
 
-// SetPreparer records how a host installs its bindings, for Fork to replay.
+// SetPreparer records the host's binding installer, for Fork to replay.
 func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding
 // its arguments alone.
 //
-// It runs on whichever runtime the caller has and never gets the closure's
-// defining scope: Captures has to be false for the result to mean anything. A
+// It runs on the caller's runtime and does not get the closure's defining scope:
+// Captures must be false for the result to mean anything. A
 // fresh statics bag per call is the other half: two goroutines running the same
 // declaration accumulate into nothing shared.
 func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) {

@@ -12,10 +12,10 @@ import (
 // registerStreams installs the file-handle functions over *os.File handles.
 func registerStreams(rt *runner.Runtime, r root) {
 	// fopen opens $filename in $mode and returns a handle, or false on
-	// failure; php://output is the script's own output stream, php://input the
-	// raw request body (stdin under the cli SAPI), php://memory and php://temp
-	// a buffer the script owns, and fopen refuses a mode that can write
-	// outside writable_paths.
+	// failure. php://output is the script's output stream. php://input is the
+	// raw request body, stdin in the cli SAPI. php://memory and php://temp are
+	// buffers the script owns. fopen refuses a mode that can write outside
+	// writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {
@@ -54,8 +54,7 @@ func registerStreams(rt *runner.Runtime, r root) {
 		return f, nil
 	})
 	// fwrite takes any writer, not just a handle fopen() produced: STDOUT and
-	// STDERR are the process's own streams. A binding may pass PHP its own
-	// io.Writer.
+	// STDERR are the process streams. A binding may pass PHP another io.Writer.
 	rt.RegisterFunc("fwrite", func(stream io.Writer, s string) any {
 		if stream == nil {
 			return false
@@ -85,9 +84,9 @@ func registerStreams(rt *runner.Runtime, r root) {
 		return false
 	})
 	// stream_get_contents reads $stream whole, or $maxlength bytes from
-	// $offset; a negative or absent one of either reads the rest from where the
-	// handle sits. It takes any reader, as fwrite takes any writer: STDIN is
-	// one.
+	// $offset. A negative or absent value reads the rest from the current
+	// position. It takes any reader, as fwrite takes any writer; STDIN
+	// qualifies.
 	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, bounds ...any) (string, error) {
 		length, offset := streamBounds(bounds)
 		if seeker, ok := stream.(io.Seeker); ok && offset >= 0 {
@@ -121,7 +120,7 @@ type inputStream struct {
 	io.Reader
 }
 
-// inputSource answers php://input from a staged body, else stdin under the cli SAPI.
+// inputSource answers php://input from a staged body, else stdin.
 func inputSource(rt *runner.Runtime) io.Reader {
 	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {
 		return bytes.NewReader(c.RawBody())
@@ -134,12 +133,12 @@ func inputSource(rt *runner.Runtime) io.Reader {
 	return bytes.NewReader(nil)
 }
 
-// openMode maps a PHP fopen mode onto os.OpenFile flags, ignoring the "b" suffix.
+// openMode maps a PHP fopen mode onto os.OpenFile flags.
 func openMode(name, mode string) (*os.File, error) {
 	switch strings.TrimSuffix(mode, "b") {
 	case "r":
-		// Read only, as PHP documents it. A handle opened with "r" cannot
-		// write, which is also what lets writable_paths leave it alone.
+		// Read only, as PHP documents. A handle opened with "r" cannot write.
+		// That mode lets writable_paths leave the path alone.
 		return os.OpenFile(name, os.O_RDONLY, 0)
 	case "r+":
 		return os.OpenFile(name, os.O_RDWR, 0)
@@ -150,7 +149,7 @@ func openMode(name, mode string) (*os.File, error) {
 	}
 }
 
-// writes reports whether an fopen mode can change the file, which only "r" cannot.
+// writes reports whether an fopen mode can change the file; only "r" cannot.
 func writes(mode string) bool {
 	return strings.TrimSuffix(mode, "b") != "r"
 }

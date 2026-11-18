@@ -8,8 +8,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
-// TestLinked covers the gate on what a binding may bind: a package this build
-// links answers, and a package it does not refuses, whatever go holds.
+// TestLinked covers the gate on the packages a binding may bind: a package
+// this build links answers; a package it does not refuses, whatever go holds.
 func TestLinked(t *testing.T) {
 	t.Parallel()
 	for _, path := range []string{"net/http", "encoding/json", "database/sql", "strings", "slices", "fmt"} {
@@ -17,8 +17,8 @@ func TestLinked(t *testing.T) {
 			t.Errorf("%s is bound and does not read as linked", path)
 		}
 	}
-	// A package the standard library holds and this build does not link, an
-	// internal tree, and a module path.
+	// A package the standard library holds that this build does not link. An
+	// internal tree, a module path.
 	for _, path := range []string{
 		"net/rpc", "go/ast", "testing", "runtime/trace",
 		"internal/abi", "crypto/internal/fips140", "github.com/titpetric/gozero",
@@ -30,7 +30,7 @@ func TestLinked(t *testing.T) {
 }
 
 // TestLinkedPackages covers the list itself: sorted for reading, free of the
-// trees no binding reaches, and a copy the caller cannot write through.
+// trees no binding reaches, a copy the caller cannot write through.
 func TestLinkedPackages(t *testing.T) {
 	t.Parallel()
 	list := bindings.LinkedPackages()

@@ -1,14 +1,14 @@
 // Package mail registers the mail bindings: the mail() function and the Mail
 // class, both of which send through a server the host configured and named.
 //
-// A script names a server. It does not spell one: no binding accepts a host, a
-// username or a password, and no method reads one back out of the object a
-// binding returns. A model.MailProvider the host builds from its configuration
+// A script names a server. It does not spell a server: no binding accepts a
+// host, a username or a password; no method reads the server back out of the
+// object a binding returns. A model.MailProvider the host builds from its configuration
 // holds the credentials, reads them at the moment of a delivery and returns
 // the outcome alone.
 //
-// SMTP is the protocol the package speaks, not the subject it models and it
-// names the conversation in provider.go and nothing a script types.
+// SMTP is the protocol; the subject it models is mail. It names the conversation
+// in provider.go, never anything a script types.
 package mail
 
 import (
@@ -77,7 +77,7 @@ func serverName(names []any) (string, error) {
 	return name, nil
 }
 
-// send delivers a message and records its recipient, subject and size once on the span.
+// send delivers a message and records recipient, subject and size on the span.
 func send(ctx context.Context, servers model.MailProvider, message Message) (err error) {
 	span := telemetry.StartSpan(ctx, "mail", telemetry.KindExternal)
 	span.SetAttribute("server", message.Server)
@@ -131,9 +131,9 @@ type Mail struct {
 	provider model.MailProvider
 }
 
-// Send sends an email through the server this client names, as
-// `$mail->send($to, $subject, $body, $html, $reply_to)` with the last two
-// optional. It throws, sending nothing, when $reply_to is not one address.
+// Send sends an email via the server this client names:
+// `$mail->send($to, $subject, $body, $html, $reply_to)`, with the last two
+// optional. It throws, sending nothing, when $reply_to is not a single address.
 func (m *Mail) Send(ctx context.Context, recipient, subject, body, html, reply_to string) error {
 	replyTo, err := replyAddress(reply_to)
 	if err != nil {

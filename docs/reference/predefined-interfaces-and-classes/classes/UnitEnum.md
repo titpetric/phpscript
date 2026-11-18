@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Interface the engine applies to every enumeration.
+Interface the engine applies to each enumeration.
 
 PHP rejects `implements UnitEnum` on a user-defined class, and an enum cannot override `cases()`: the engine supplies the implementation. The name exists so a parameter can name it as a type.
 
@@ -28,6 +28,6 @@ public static function cases(): array
 
 ## Status
 
-- phpscript has no `UnitEnum`. The name is not declared.
-- Enumerations are unavailable: `enum` is not a keyword here, with no enum for the engine to apply the interface to.
-- Declare class constants and check a value against them. The runtime checks a class constant where a script reads it, and resolves `Class::NAME`.
+- phpscript lacks `UnitEnum`; the name is not declared.
+- Enumerations are unavailable: `enum` is not a keyword here; the engine has no enum to apply the interface to.
+- Declare class constants and check a value against the constants. The runtime checks a class constant where a script reads the constant, and resolves `Class::NAME`.

@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestUnmarshal covers the one decoder every configuration reaches: a
+// TestUnmarshal covers the single decoder every configuration reaches: a
 // document names the keys it sets, the value it holds arrives typed, and the
-// decoder passes over a key the struct does not declare.
+// decoder passes a key the struct does not declare.
 func TestUnmarshal(t *testing.T) {
 	t.Parallel()
 	var result struct {
@@ -35,8 +35,8 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-// TestUnmarshalError covers what a malformed document answers: an error, and
-// not a zero value a caller would serve under.
+// TestUnmarshalError covers a malformed document, which answers an error. A
+// zero value would be wrong for a caller to serve under.
 func TestUnmarshalError(t *testing.T) {
 	t.Parallel()
 	var result map[string]any

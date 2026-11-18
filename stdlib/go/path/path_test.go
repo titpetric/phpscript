@@ -6,8 +6,8 @@ import (
 	"github.com/titpetric/phpscript/internal/gotest"
 )
 
-// TestRegister covers the lexical functions through a script, including the one
-// that answers a Go error as a thrown exception.
+// TestRegister covers the lexical functions through a script, including the
+// function that answers a Go error as a thrown exception.
 func TestRegister(t *testing.T) {
 	gotest.Run(t, `Runtime\Go\Path`, []gotest.Case{
 		{Src: `use Runtime\Go\Path; echo Path\Base("/a/b.txt"), Path\Dir("/a/b.txt"), Path\Ext("/a/b.txt");`, Want: "b.txt/a.txt"},

@@ -1,6 +1,6 @@
 package model
 
-// stdClass is PHP's empty class, kept as a package value so a script may shadow it.
+// stdClass is PHP's empty class, a package value a script may shadow.
 var stdClass = &Class{Name: "stdClass"}
 
 // StdClass returns the class every stdClass instance shares.

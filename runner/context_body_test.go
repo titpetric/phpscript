@@ -84,8 +84,8 @@ func TestRawBodyOverLimitIsDropped(t *testing.T) {
 }
 
 // TestPostMaxSize covers a body larger than post_max_size. PHP does not parse
-// one at all and a script sees empty superglobals; the decode reports the
-// reason to the host, the one place that reads it.
+// such a body; a script sees empty superglobals. The decode reports the reason to the
+// host, the only reader.
 func TestPostMaxSize(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t,
@@ -147,7 +147,7 @@ func TestPostMaxSizeUnknownLength(t *testing.T) {
 }
 
 // runCtxOptions is runCtx for the cases that need the runtime built with
-// specific options, or set up before Register puts the request onto it.
+// specific options, or prepared before Register puts the request on the runtime.
 func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup func(*runner.Runtime), src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -193,9 +193,9 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 	}
 }
 
-// TestContext_SetRawBody covers what php://input answers for a host that built
-// its Context by hand, with no *http.Request behind it. The bytes are the body
-// and no form to decode and the request fields stay as the host wrote them.
+// TestContext_SetRawBody covers what php://input returns for a host that built
+// its Context by hand, holding no *http.Request. The bytes are the body; no form
+// exists to decode. The request fields stay as the host wrote them.
 func TestContext_SetRawBody(t *testing.T) {
 	t.Parallel()
 	ctx := runner.NewContext()

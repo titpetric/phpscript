@@ -8,7 +8,7 @@ import (
 )
 
 // TestAppendJSONValueMatchesEncodingJSON holds the scalar shapes the appender
-// writes itself to encoding/json's own bytes: a value it writes has to come out
+// writes itself to encoding/json's own bytes: a value it writes must come out
 // byte for byte as json.Marshal writes it, escapes, HTML characters and
 // non-ASCII included, or the two spellings of json_encode disagree.
 func TestAppendJSONValueMatchesEncodingJSON(t *testing.T) {
@@ -49,8 +49,8 @@ func TestAppendJSONValueMatchesEncodingJSON(t *testing.T) {
 }
 
 // phpValues answers the value shapes a script passes to the encoder: the
-// collections, nested inside each other, and the keys that decide between a
-// JSON array and a JSON object.
+// collections, nested inside each other, plus the keys that decide between a
+// JSON array or a JSON object.
 func phpValues() []any {
 	list := model.NewArray()
 	list.Set(int64(0), "a")
@@ -95,9 +95,9 @@ func phpValues() []any {
 // TestAppendJSONValueMatchesTheConvertedTree holds the collection appender to
 // the bytes the jsonEncodeValue tree encodes to.
 //
-// The appender is what the encoder and json_encode() write through. The
-// tree is what encoding/json walks on the indent path and the two spellings of
-// one document have to agree character for character: the list-or-object
+// The appender holds the bytes the encoder and json_encode() write. The tree
+// holds the path encoding/json walks on the indent route. Both spellings of
+// one document must agree character for character: the list-or-object
 // decision, the order of the keys, an int key's spelling and the escapes.
 func TestAppendJSONValueMatchesTheConvertedTree(t *testing.T) {
 	t.Parallel()
@@ -116,7 +116,7 @@ func TestAppendJSONValueMatchesTheConvertedTree(t *testing.T) {
 	}
 }
 
-// rowList builds the shape a JSON API answers with: a list of keyed rows.
+// rowList builds the shape a JSON API answers with: a keyed row list.
 func rowList(rows int) *model.Array {
 	list := model.NewArraySize(rows)
 	for i := range rows {
@@ -141,9 +141,9 @@ func TestAppendJSON(t *testing.T) {
 	}
 }
 
-// BenchmarkAppendJSONValue measures the walk over a list of keyed rows, which
-// is the response shape an API answers with and the one where the walk pays a
-// per-collection cost once per row and not once per document.
+// BenchmarkAppendJSONValue measures the walk across a list of keyed rows, the
+// response shape an API answers with. That shape makes the walk pay a
+// per-collection cost once per row, not once per document.
 func BenchmarkAppendJSONValue(b *testing.B) {
 	list := rowList(64)
 	buf := make([]byte, 0, 8192)

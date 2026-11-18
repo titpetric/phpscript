@@ -3,14 +3,13 @@
 // methods such as Time.Format, Time.Add, Duration.Minutes and Location.String
 // reach a script through the runtime's normal Go-value method dispatch.
 //
-// Two consequences of dispatching to Go's own methods are worth stating, since
-// no wrapper is there to soften them:
+// Two consequences of dispatching to Go's own methods are worth stating:
 //
 //   - A duration argument is nanoseconds when written as an integer and
 //     $t->add(86400) advances by 86.4 microseconds. The runtime coerces a
 //     string to a time.Duration and $t->add("24h") is the spelling that means
-//     what a PHP author reading time()+86400 expects.
-//   - A method Go declares with two or more results returns a PHP list, read with
+//     the value a PHP author reading time()+86400 expects.
+//   - A method Go declares with two results or more returns a PHP list, read with
 //     list($year, $week) = $t->iso_week(). The short [$a, $b] = spelling does
 //     not parse in this runtime.
 package time
@@ -32,14 +31,13 @@ type clock struct {
 	location *stdtime.Location
 }
 
-// Register installs DateTime package functions and the Time, Time\Duration and
-// Time\Location value classes on rt.
+// Register installs DateTime functions and the Time, Duration and Location classes.
 func Register(rt *runner.Runtime) {
 	c := &clock{location: stdtime.Local}
 
-	// The layouts worth naming, under Go's own names for them. A layout is an
-	// ordinary string and a script can write any of them out; a constant spells
-	// the one a script uses by default and nobody has to remember it.
+	// The layouts worth naming, under Go's own names. A layout is an ordinary
+	// string. A script can write any of them out. A constant spells the default
+	// layout. Nobody must remember it.
 	// TIME_RFC3339 is the only layout here that holds the offset and it
 	// survives a round trip through a database column or a JSON payload. A
 	// namespaced constant does not parse in this runtime and the Time\ prefix

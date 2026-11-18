@@ -24,7 +24,7 @@ func TestFillRect(t *testing.T) {
 }
 
 // TestCopyPixels covers the copy a decoded image takes when wrap cannot draw
-// on it, including the offset: copyPixels reads src from at and a source whose
+// on it, including the offset: copyPixels reads src from `at`. A source whose
 // bounds do not start at the origin lands at the destination's origin.
 func TestCopyPixels(t *testing.T) {
 	t.Parallel()
@@ -59,8 +59,8 @@ func TestResample(t *testing.T) {
 	}
 }
 
-// TestDrawable covers the alias the handle declares its image with and the
-// type a host reads off Underlying is the one this package writes into.
+// TestDrawable covers the alias the handle declares its image with, plus the
+// type a host reads off Underlying: the type this package writes into.
 func TestDrawable(t *testing.T) {
 	t.Parallel()
 	var d Drawable = image.NewRGBA(image.Rect(0, 0, 1, 1))

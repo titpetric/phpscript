@@ -27,7 +27,7 @@ const (
 	UploadErrCantWrite = 7
 )
 
-// collectUploads copies each file part to a temp file and records it on the context.
+// collectUploads copies each file part to a temp file, recording it.
 func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 	if r.MultipartForm == nil {
 		return
@@ -49,7 +49,7 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 	_ = r.MultipartForm.RemoveAll()
 }
 
-// saveUpload writes one file part to a temp file, reporting failure as a PHP error code.
+// saveUpload writes a file part to a temp file, reporting a PHP error.
 func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 	upload := &UploadedFile{
 		Name:     uploadBaseName(header.Filename),
@@ -91,7 +91,7 @@ func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 	return upload
 }
 
-// uploadBaseName strips a client-sent directory from name, cutting on both separators.
+// uploadBaseName strips a client-sent directory from name, cutting at either separator.
 func uploadBaseName(name string) string {
 	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
 		name = name[i+1:]
@@ -115,7 +115,7 @@ func (c Context) Cleanup() {
 // IsUpload reports whether path is the temporary file of a part of this
 // request. It backs is_uploaded_file() and move_uploaded_file(), which in PHP
 // refuse any path the request did not produce. A path the script has already
-// moved away drops out of that set and the copy has to still be there.
+// moved away drops out of that set; the copy must still be there.
 func (c Context) IsUpload(path string) bool {
 	c.decodeForm()
 	for _, files := range c.files() {
@@ -129,7 +129,7 @@ func (c Context) IsUpload(path string) bool {
 	return false
 }
 
-// uploadKeys is the key set of a $_FILES entry, in the order PHP writes it.
+// uploadKeys is a $_FILES entry's key set, in PHP's write order.
 var uploadKeys = [...]string{"name", "full_path", "type", "tmp_name", "error", "size"}
 
 // uploadValue reads one key of a $_FILES entry off file.

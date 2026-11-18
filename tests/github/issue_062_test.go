@@ -9,10 +9,10 @@ import (
 //
 // https://github.com/titpetric/phpscript/issues/62
 //
-// {tail...} registered and never matched, because nothing turned it into
-// chi's wildcard, and the bare /* matched with no name to export the tail
-// under. {tail...} is the one spelling; chi takes * and publishes the
-// value under "*", which the exporter maps back to the declared name.
+// {tail...} registered but never matched, since nothing turned it into chi's
+// wildcard; the bare /* matched without a name to export the tail under.
+// {tail...} is the only spelling; chi takes * and publishes the value under
+// "*", which the exporter maps back to the declared name.
 func Test_Issue062(t *testing.T) {
 	t.Parallel()
 	routes := map[string]string{

@@ -5,13 +5,12 @@ import (
 	"testing"
 )
 
-// superglobals is the closed set the language defines, in the order Range
-// visits them.
+// superglobals is the closed set the language defines, in Range's order.
 var superglobals = []string{"_COOKIE", "_ENV", "_FILES", "_GET", "_POST", "_REQUEST", "_SERVER", "_SESSION"}
 
 // TestAutoGlobals_Set covers which names claim a fixed field. The language
-// closes the set and a name outside the set reports false and the caller
-// stores the variable the way it stores every other one.
+// closes the set. A name outside the set reports false; the caller stores
+// the variable as it stores any other.
 func TestAutoGlobals_Set(t *testing.T) {
 	t.Parallel()
 	for _, name := range superglobals {
@@ -32,7 +31,7 @@ func TestAutoGlobals_Set(t *testing.T) {
 }
 
 // TestAutoGlobals_Lookup covers the two false answers a read has. A name
-// outside the set is not a superglobal, and one in the set that nothing bound
+// outside the set is not a superglobal. A name in the set that nothing bound
 // is unset; both let the caller fall through to globals and constants.
 func TestAutoGlobals_Lookup(t *testing.T) {
 	t.Parallel()
@@ -64,8 +63,8 @@ func TestAutoGlobals_Lookup(t *testing.T) {
 }
 
 // TestAutoGlobals_Range covers the visit order and the skip. Range visits
-// every bound field once in the order the struct declares the fields, and
-// skips an unset one and a request that bound three superglobals registers
+// every bound field once, in the order the struct declares the fields. It
+// skips an unset field. A request that bound three superglobals registers
 // three.
 func TestAutoGlobals_Range(t *testing.T) {
 	t.Parallel()
@@ -168,8 +167,8 @@ func TestAutoGlobals_Reset(t *testing.T) {
 
 // TestAutoGlobals_Claims covers the question a lazy binder asks: whether a
 // name belongs to the closed superglobal set at all, bound or not, which
-// Lookup cannot answer because an unset superglobal and a plain variable both
-// read false there.
+// Lookup cannot answer: an unset superglobal reads false there; a plain
+// variable does too.
 func TestAutoGlobals_Claims(t *testing.T) {
 	var globals AutoGlobals
 	for _, name := range []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "_REQUEST", "_FILES", "_SESSION"} {

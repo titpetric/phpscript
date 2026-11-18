@@ -1,10 +1,10 @@
 # phpscript - A custom PHP-flavoured runtime written in Go
 
-This is a PHP interpreter written in Go, with a bytecode backend beside it and a built-in HTTP server. It runs a subset of the language and of the standard library - `phpscript list --bindings` prints the bindings this build holds, and `phpscript info` counts them - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it won't build and [the language reference](./docs/reference/README.md) for what it does not run yet.
+This is a PHP interpreter written in Go, with a bytecode backend and an HTTP server built in. It runs a subset of the language and of the standard library. `phpscript list --bindings` prints the bindings this build holds, and `phpscript info` counts those bindings. The parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for the rejected features and [the language reference](./docs/reference/README.md) for the unimplemented ones.
 
 ## One API, six runtimes
 
-One set of endpoints written six ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `2f756154` by `scripts/benchmark.php`:
+One set of endpoints written six ways, each in a directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `2f756154` by `scripts/benchmark.php`:
 
 | Runtime                                                                                                                | `/hello`               | p90 us | p99 us |
 |------------------------------------------------------------------------------------------------------------------------|------------------------|--------|--------|
@@ -15,7 +15,7 @@ One set of endpoints written six ways, each its own directory under `testdata/`,
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                                          | 2429 req/s, 383 us/req | 496    | 900    |
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                                         | 2128 req/s, 446 us/req | 514    | 860    |
 
-Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
+Each directory's README explains the numbers and the per-request cost of the stack. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
 
 ```sh
 BENCH_TARGETS="goserver bridge goruntime service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
@@ -41,11 +41,11 @@ scripts/benchmark.php
 
 ## Current state
 
-`.phpt` fixtures settle behaviour: each one starts by running the source through real `php`, and `phpscript test --matrix ./tests/...` checks the runtime against that output on both engines and on `php` itself. The [test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md) come out of that run and hold every fixture, its area and the three columns. A table copied into this page goes stale the moment an area grows, as this one did.
+`.phpt` fixtures settle behaviour: each starts by running the source through real `php`, and `phpscript test --matrix ./tests/...` checks runtime output against `php` output on both engines and on `php` itself. The [test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md) come out of that run and hold every fixture, its area and three columns. A table copied into this page goes stale the moment an area grows, as this one did.
 
-The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row lists the cognitive complexity and the line count beside the percentage and a low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
+The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row lists the cognitive complexity and the line count next to the percentage. A low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
 
-Those five documents change on every run and `.gitignore` holds them: `atkins gen` writes them and `atkins publish` attaches them to the release, where the links above resolve to.
+Those five documents change on every run; `.gitignore` holds them. `atkins gen` writes the set, and `atkins publish` attaches it to the release, where the links above resolve.
 
 ## Building a docker image
 

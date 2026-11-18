@@ -8,8 +8,8 @@ var byRefArgs = map[string]map[int]bool{
 	"parse_str":             {1: true},
 
 	// The exit status of a command. exec's $output is not here: the caller and
-	// the binding share one array and the binding appends into the one the
-	// caller passed and reaches the same observable result. An integer has no
+	// the binding share one array. The binding appends into the caller's array
+	// and reaches the same observable result. An integer has no
 	// such route back.
 	"exec":     {2: true},
 	"system":   {1: true},

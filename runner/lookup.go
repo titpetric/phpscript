@@ -28,7 +28,7 @@ type LookupError struct {
 	// Symbol is the name the host passed, as it spelled it.
 	Symbol string
 
-	// Candidates holds what the name matched when it matched too much. Every
+	// Candidates holds the matches when the name matched too much. Any
 	// other reason leaves it empty, which separates "there is no such
 	// function" from "say which one".
 	Candidates []string
@@ -37,8 +37,8 @@ type LookupError struct {
 	Reason string
 }
 
-// Error names the symbol and the reason, and lists what the name matched when
-// it matched too much and a host reads which spelling to use.
+// Error names the symbol and the reason. It lists the matches when the name
+// matched too much; a host then reads which spelling to use.
 func (e *LookupError) Error() string {
 	if len(e.Candidates) == 0 {
 		return fmt.Sprintf("lookup %s: %s", e.Symbol, e.Reason)
@@ -46,7 +46,7 @@ func (e *LookupError) Error() string {
 	return fmt.Sprintf("lookup %s: %s: %s", e.Symbol, e.Reason, strings.Join(e.Candidates, ", "))
 }
 
-// lookup is the type-erased half of Lookup, one body shared by every instantiation.
+// lookup is the type-erased half of Lookup, one body shared by all instantiations.
 func (rt *Runtime) lookup(symName string, typ reflect.Type) (reflect.Value, error) {
 	if typ == nil || typ.Kind() != reflect.Func {
 		return reflect.Value{}, &LookupError{Symbol: symName, Reason: "T is not a function type"}
@@ -62,8 +62,8 @@ func (rt *Runtime) lookup(symName string, typ reflect.Type) (reflect.Value, erro
 	}
 	entry, ok := rt.lookupEntry(name)
 	if !ok {
-		// Resolution found the declaration and hoisting installed it and a miss
-		// here is the runtime disagreeing with itself and no bad name.
+		// Resolution found the declaration and hoisting installed it. A miss
+		// here means the runtime disagrees with itself.
 		return reflect.Value{}, &LookupError{Symbol: symName, Reason: "resolved to " + name + ", which is not in the function table"}
 	}
 
@@ -132,14 +132,14 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	if err := rt.hoistOnce(sources[0].program, sources[0].path); err != nil {
 		return "", err
 	}
-	// The file counts as included from here. Its declarations are live and an
-	// application that require_once's it must not declare them a second time;
-	// without this the application that owns it could not load the tree a
+	// The file counts as included from here. Its declarations are live; an
+	// application that require_once's it must not declare them a second time.
+	// Without this marker the owning application could not load the tree a
 	// handler binds out of.
 	//
-	// What it costs is the file's top-level code, which a later require_once
-	// now skips. A file that declares handlers and also does work at include
-	// time takes its require before the lookup and never after.
+	// The cost is the file's top-level code, which a later require_once now
+	// skips. A file that declares handlers and also works at include time
+	// takes its require before the lookup, never after.
 	rt.markIncluded(sources[0].path)
 	return found, nil
 }
@@ -147,18 +147,18 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 // symbolTable indexes the tree's free functions by full name and trailing segment chain.
 type symbolTable struct {
 	// sources says which file a declared name reads from. More than one file
-	// can hold a name: the tree is the whole source root and not one program,
-	// and nothing has refused the second declaration yet, and reporting both is
-	// more use than picking one.
+	// can hold a name, because the tree is the whole source root, larger than
+	// one program. No check has refused the second declaration yet, and
+	// reporting both is more use than picking one.
 	sources map[string][]symbolSource
 
 	// exact answers a name spelled in full.
 	exact map[string][]string
 
-	// suffix answers a trailing segment chain and `main` and `Handler\main`
-	// both reach `App\Handler\main`. The whole name is not a key here; exact
-	// holds that, and keeping them apart is what lets a tree declaring both
-	// `main` and `App\Handler\main` answer the first without a tie.
+	// suffix answers a trailing segment chain. `main`, `Handler\main` reach
+	// `App\Handler\main`. The whole name is not a key here; exact holds that.
+	// Keeping them apart lets a tree declaring `main` and `App\Handler\main`
+	// answer the first without a tie.
 	suffix map[string][]string
 }
 
@@ -183,8 +183,9 @@ func (rt *Runtime) symbolIndex() *symbolTable {
 			if !ok || decl.Class != "" {
 				continue
 			}
-			// table.index fills the name maps the first time a spelling arrives,
-			// and a name two files declare is one entry in each and two sources.
+			// table.index fills the name maps the first time a spelling
+			// arrives. A name two files declare becomes one entry in each,
+			// with two sources.
 			if _, seen := table.sources[decl.Name]; !seen {
 				table.index(decl.Name)
 			}
@@ -196,7 +197,7 @@ func (rt *Runtime) symbolIndex() *symbolTable {
 	return table
 }
 
-// index records a name under its full spelling and every trailing segment chain.
+// index records a name's full spelling and each trailing segment chain.
 func (t *symbolTable) index(name string) {
 	folded := strings.ToLower(name)
 	t.exact[folded] = append(t.exact[folded], name)
@@ -235,7 +236,7 @@ func (rt *Runtime) scanTree() {
 	Precompiler{Root: rt.opts.RootFS, Includes: rt.includeCache, GoRuntime: rt.opts.GoRuntime()}.Run()
 }
 
-// matchSymbols returns names spelling symName in full, else those with it as a trailing segment.
+// matchSymbols returns names spelling symName in full, else trailing-segment matches.
 func matchSymbols(names []string, symName string) []string {
 	var exact []string
 	for _, name := range names {
@@ -257,7 +258,7 @@ func matchSymbols(names []string, symName string) []string {
 	return suffix
 }
 
-// resultShape holds the type a signature's value lands in and whether it takes an error.
+// resultShape holds a signature's value type and whether it takes an error.
 type resultShape struct {
 	value reflect.Type
 	err   bool
@@ -305,7 +306,7 @@ func lookupArgs(typ reflect.Type, in []reflect.Value) []any {
 	return args
 }
 
-// phpArg widens a predeclared numeric value to int64 or float64 and keeps a named type intact.
+// phpArg widens a predeclared numeric to int64 or float64, keeping a named type.
 func phpArg(v reflect.Value) any {
 	if !v.IsValid() {
 		return nil
@@ -418,7 +419,7 @@ func convertSlice(want reflect.Type, value any) (reflect.Value, error) {
 	return out, nil
 }
 
-// convertMap walks a PHP array into a typed map, rendering each key in the target's kind.
+// convertMap walks a PHP array into a typed map, keys in its kind.
 func convertMap(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil

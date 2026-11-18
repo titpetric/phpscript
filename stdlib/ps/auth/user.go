@@ -4,20 +4,20 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/crypto"
 )
 
-// User is one record a store answers with, and the whole of what an
-// authentication returns: a key to store, and a name to print.
+// User is a record a store answers with. An authentication returns the whole
+// record: a key to store, a name to print.
 //
-// The two methods are the spellings a record already has elsewhere. GetID is
-// what a table's model answers and a user reaching a column reads like any
-// other row; String is what a string context calls and `echo $user` prints the
-// username and a `string` parameter takes it without a cast
+// The two methods are the spellings a record already has elsewhere. GetID
+// answers as a table's model answers; a user reaching a column reads like any
+// other row. String answers a string context: `echo $user` prints the username;
+// `string` parameters accept the value as it stands
 // (internal/phpval.GoString takes a fmt.Stringer).
 type User interface {
 	GetID() string
 	String() string
 }
 
-// user is the record a store with no stored key answers with.
+// user is the record a store answers with when it holds no key.
 type user struct {
 	username string
 	id       string
@@ -31,7 +31,7 @@ func newUser(username string) user {
 // GetID is the primary key, 26 characters of Crockford base32.
 func (u user) GetID() string { return u.id }
 
-// String returns the username, the text the record renders as in a string context.
+// String returns the username, the text the record renders as.
 func (u user) String() string { return u.username }
 
 var _ User = user{}

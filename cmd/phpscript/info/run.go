@@ -27,7 +27,7 @@ type Options struct {
 }
 
 // NewCommand returns the `info` command. The shared -v lists every bound
-// function, class and method under the summary.
+// function, class and method below the summary.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "info",
@@ -47,8 +47,8 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	stdlib.RegisterFS(rt, ".")
 	// The request-aware functions (header, http_response_code, getallheaders)
 	// come from a request's own Register and not from stdlib.Register. Without
-	// this the counts here are short of what `phpscript list --bindings` and
-	// the generated reference report, and the three disagree about the same
+	// this, the counts here fall short of `phpscript list --bindings` and the
+	// generated reference report. All three then disagree about the same
 	// runtime.
 	runner.NewContext().Register(rt)
 	fmt.Fprintln(os.Stdout, "# phpscript")

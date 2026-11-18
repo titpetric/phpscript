@@ -12,12 +12,12 @@ import (
 type middlewareKey struct{}
 
 // TestBindingContextDerivesFromTheRequest covers the chain a binding's context
-// resolves through while a request is live: the frame and the environment from
-// the value's own fields, the active span from the session chain, and a
-// middleware value, with the cancellation, from the request. A span started
-// from the binding context lands on the session's trace and nests below the
-// active region and a database call inside a traced request stays under the
-// request's own span.
+// resolves through while a request is live. The frame and environment come from
+// the value's fields; the active span comes from the session chain; a middleware
+// value plus the cancellation come from the request. A span started from the
+// binding context lands on the session's trace and nests below the active
+// region. A database call inside a traced request stays below the request's
+// span.
 func TestBindingContextDerivesFromTheRequest(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -88,8 +88,8 @@ func TestBindingContextDerivesFromTheRequest(t *testing.T) {
 }
 
 // TestBindingContextIgnoreUserAbortDetaches covers the handler that asked to
-// finish: the binding context keeps the request's values and drops its
-// cancellation and a disconnect ends no binding work.
+// finish. The binding context keeps the request's values, drops its
+// cancellation. A disconnect ends no binding work.
 func TestBindingContextIgnoreUserAbortDetaches(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

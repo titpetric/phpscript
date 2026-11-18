@@ -11,16 +11,16 @@ import (
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
 // Mail configures the mail servers mail() and `new Mail($name)` send
-// through, keyed by the name a script names; "default" is what a script
-// naming none gets.
+// through, keyed by the name a script names; "default" serves a script naming
+// none.
 //
-// The credentials stay here: a script cannot spell a host or a password or
-// read one back. A site declaring a mail block gets the servers it
-// named and not the operator's, which docs/configuration.md records.
+// The credentials stay here; no script can spell a host or a password or
+// read one back. A site declaring a mail block gets the servers it named, and
+// inherits none from the operator; docs/configuration.md records this.
 type Mail map[string]mail.Config
 
 // Check reports a configured server mail cannot leave through, walking the
-// names in sorted order and not in map order.
+// names in sorted order, never in map order.
 func (m Mail) Check(filename string) error {
 	names := make([]string, 0, len(m))
 	for name := range m {
@@ -37,12 +37,12 @@ func (m Mail) Check(filename string) error {
 }
 
 // CheckMailDeclaration rejects a flat mail block before the typed decode
-// reaches it, and says where to move it.
+// reaches it. It says where to move the block.
 //
 // It reads the generic map because that is the only place the difference is
 // still visible: the decoder can only report that a string is not a struct,
-// which names neither the key nor the fix. The walk takes keys and names in a
-// fixed order and the same file fails on the same line.
+// naming no key or fix. The walk takes keys and names in a fixed order, and
+// the same file fails on the same line.
 func CheckMailDeclaration(filename string, declared map[string]any) error {
 	servers, ok := declared["mail"].(map[string]any)
 	if !ok {

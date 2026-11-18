@@ -10,8 +10,9 @@ import (
 )
 
 // TestFlatstackBitwiseOperators proves the bitwise operators compile to
-// bytecode and never reaches the interpreter fallback. A fixture cannot tell
-// the two apart when they agree, and every case asserts Supports first.
+// bytecode. The run never reaches the interpreter fallback. A fixture cannot
+// tell the two versions apart when they agree. Every case asserts Supports
+// first.
 func TestFlatstackBitwiseOperators(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -67,8 +68,8 @@ func TestFlatstackBitwiseOperators(t *testing.T) {
 			}
 			var output strings.Builder
 			runtime := flatstack.New(&output, flatstack.Options{})
-			// ArithmeticError is a stdlib class registration; without it the
-			// catch clause has no name to match.
+			// ArithmeticError is a stdlib class registration. Without the
+			// registration, the catch clause has no name to match.
 			stdlib.Register(runtime)
 			if err := runtime.Run(program); err != nil {
 				t.Fatalf("run: %v", err)

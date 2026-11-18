@@ -40,7 +40,7 @@ type goMethodInfo struct {
 	direct func(base any, args []any) (any, bool, error)
 }
 
-// resolveGoMethod finds a method by exact, folded or underscore-free name, planning the call once.
+// resolveGoMethod finds a method by exact, folded or underscore-free name.
 func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	t := rv.Type()
 	index := -1
@@ -123,7 +123,7 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 	}
 }
 
-// callGoMethod invokes a Go method and calls scopeFor only to inject a context parameter.
+// callGoMethod invokes a Go method, calling scopeFor to inject a context.
 func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor func() *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -185,7 +185,7 @@ func methodCallError(err error, method string) error {
 	return err
 }
 
-// throwableMethod answers PHP's Throwable methods over any Go error, a concrete method winning.
+// throwableMethod answers PHP's Throwable methods for any Go error, a concrete method winning.
 func throwableMethod(base any, method string) (any, bool) {
 	err, ok := base.(error)
 	if !ok {
@@ -231,7 +231,7 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 	return reflect.Value{}
 }
 
-// goFieldInfo holds a field's index chain and whether the name resolved to an exported field.
+// goFieldInfo holds a field's index chain and whether Go exports it.
 type goFieldInfo struct {
 	index []int
 	found bool

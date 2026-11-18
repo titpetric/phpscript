@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// TestPool covers the two numbers NewPool takes, which are its contract: the
-// worker count is the parallelism and the queue depth is the backpressure and
-// a caller can read both back off the pool it holds.
+// TestPool covers the two numbers NewPool takes, the pool's contract: the
+// worker count is the parallelism; the queue depth is the backpressure. A
+// caller can read both back off the pool it holds.
 //
-// Zero workers is GOMAXPROCS, the parallelism the machine has for work that is
-// all CPU, and zero queue is DefaultQueue.
+// Zero workers is GOMAXPROCS, the parallelism available for work that is all
+// CPU; zero queue is DefaultQueue.
 func TestPool(t *testing.T) {
 	rt := New(io.Discard, Options{})
 
@@ -37,9 +37,9 @@ func TestPool(t *testing.T) {
 	}
 }
 
-// TestPool_Submit covers running work on a worker and waiting for it. Each run
-// gets a forked runtime and never the pool's own and two submits never share
-// one set of frames.
+// TestPool_Submit covers running work on a worker and waiting for it. Every run
+// gets a forked runtime, not the pool's own; two submits never share one set of
+// frames.
 func TestPool_Submit(t *testing.T) {
 	t.Parallel()
 	parent := New(io.Discard, Options{})
@@ -61,7 +61,7 @@ func TestPool_Submit(t *testing.T) {
 		t.Error("the run was handed the runtime the pool was forked from")
 	}
 
-	// A context that has already ended drops the run, and never starts it.
+	// A context that has already ended drops the run without starting it.
 	ended, cancel := context.WithCancel(context.Background())
 	cancel()
 	before := ran.Load()
@@ -71,9 +71,8 @@ func TestPool_Submit(t *testing.T) {
 	}
 }
 
-// TestPool_Close covers the pool refusing work after Close, and a second Close
-// being harmless, because a host shutting down may reach it from more than one
-// place.
+// TestPool_Close covers the pool refusing work after Close. A second Close is
+// harmless; a host shutting down may reach Close from more than one place.
 func TestPool_Close(t *testing.T) {
 	t.Parallel()
 	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)

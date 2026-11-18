@@ -14,8 +14,8 @@ import (
 // 1. Its rules in order:
 //
 //	arrays          the shorter is smaller, an array beats any scalar
-//	array vs bool   the array's emptiness is its truth, and both read as bool
-//	null vs string  the null becomes "" and both compare as strings
+//	array vs bool   the array's emptiness is the truth value; both read as bool
+//	null vs string  the null becomes "", both compare as strings
 //	bool or null    Compare casts both sides to bool
 //	instances       the same class compares property by property
 //	numbers         a number and a numeric string compare numerically
@@ -42,7 +42,7 @@ func Compare(x, y any) int {
 		return isObject(x, 1)
 	}
 
-	// null against a string is the one pairing PHP does not decide on
+	// The null/string pair is the one pairing PHP does not decide on
 	// truthiness: the null becomes "" and null is less than "a" but equal to "".
 	if x == nil {
 		if s, ok := y.(string); ok {
@@ -77,7 +77,7 @@ func Compare(x, y any) int {
 	return strings.Compare(String(x), String(y))
 }
 
-// comparableArray returns v as an *Array when v is an array or a Go collection.
+// comparableArray returns an *Array when v is an array or Go collection.
 func comparableArray(v any) (*model.Array, bool) {
 	switch x := v.(type) {
 	case *model.Array:
@@ -93,7 +93,7 @@ func comparableArray(v any) (*model.Array, bool) {
 	return nil, false
 }
 
-// compareArrays orders two arrays by length, then member by member over the left array's keys.
+// compareArrays orders two arrays by length, then by the left array's keys.
 func compareArrays(x, y *model.Array) int {
 	if x.Len() != y.Len() {
 		return compareBools(x.Len() > y.Len(), y.Len() > x.Len())
@@ -155,7 +155,7 @@ func isBoolish(v any) bool {
 	return ok
 }
 
-// toBool is PHP's truthiness: "", "0", 0 and 0.0 are false, other scalars true.
+// toBool is PHP's truthiness: empty strings, 0 and 0.0 are false.
 func toBool(v any) bool {
 	switch x := v.(type) {
 	case nil:
@@ -186,7 +186,7 @@ func compareBools(x, y bool) int {
 	}
 }
 
-// phpNum is a value in PHP's numeric domain: an int64 when it fits, a float64 otherwise.
+// phpNum is PHP's numeric domain: int64 when it fits, float64 otherwise.
 type phpNum struct {
 	i       int64
 	f       float64
@@ -202,7 +202,7 @@ func (n phpNum) float() float64 {
 	return n.f
 }
 
-// phpNumeric returns v as a number, counting a numeric string as one.
+// phpNumeric returns v as a number, counting a numeric string too.
 func phpNumeric(v any) (phpNum, bool) {
 	switch x := v.(type) {
 	case int:
@@ -245,7 +245,7 @@ func numericString(s string) (phpNum, bool) {
 	return phpNum{f: f, text: text}, true
 }
 
-// scanNumeric reports whether s is a PHP numeric literal, and whether it spells a plain integer.
+// scanNumeric reports whether s is a PHP numeric literal and a plain integer.
 func scanNumeric(s string) (isInt, ok bool) {
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {

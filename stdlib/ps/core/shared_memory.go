@@ -11,8 +11,7 @@ import (
 
 type sharedMemoryKey struct{}
 
-// SharedMemory is a thread-safe in-memory key-value and atomic counter store
-// exposed as SharedMemory to scripts.
+// SharedMemory is a thread-safe in-memory key-value and atomic counter store.
 type SharedMemory struct {
 	mu       sync.Mutex
 	data     map[string]string
@@ -54,7 +53,7 @@ func RegisterSharedMemory(rt *runner.Runtime) {
 	rt.RegisterInfo("SharedMemory", sharedMemoryInfo)
 }
 
-// sharedMemoryInfo reports the store the runtime registers for phpinfo(), nil when it registers none.
+// sharedMemoryInfo reports the phpinfo() store, nil when unregistered.
 func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {
 	store, _ := rt.Context().Value(sharedMemoryKey{}).(*SharedMemory)
 	if store == nil {

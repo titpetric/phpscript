@@ -15,11 +15,11 @@ func init() {
 func registerStrings(rt *runner.Runtime) {
 	// strlen returns the length of $str in bytes; mb_strlen counts characters.
 	rt.RegisterFunc("strlen", func(str string) int64 { return int64(len(str)) })
-	// strtoupper returns $string with A-Z mapped up and every other byte left
-	// alone; mb_strtoupper converts non-ASCII letters too.
+	// strtoupper returns $string with A-Z mapped up; any other byte stays
+	// unchanged. mb_strtoupper converts non-ASCII letters too.
 	rt.RegisterFunc("strtoupper", asciiUpper)
-	// strtolower returns $string with A-Z mapped down and every other byte
-	// left alone; mb_strtolower converts non-ASCII letters too.
+	// strtolower returns $string with A-Z mapped down; any other byte stays
+	// unchanged. mb_strtolower converts non-ASCII letters too.
 	rt.RegisterFunc("strtolower", asciiLower)
 	// trim strips whitespace, or the bytes listed in $characters, from both
 	// ends of $string; "a..z" in the list is the range between the two.
@@ -32,8 +32,8 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("ltrim", phpTrim(trimLeft, defaultTrimChars))
 
 	// substr returns the part of $string from byte $offset for $length bytes;
-	// a negative $offset counts from the end and a negative $length stops
-	// that many bytes before it. mb_substr counts characters.
+	// a negative $offset counts from the end. A negative $length stops that
+	// many bytes before the end. mb_substr counts characters.
 	rt.RegisterFunc("substr", phpSubstr)
 	// strpos returns the byte offset of the first $needle in $haystack, or
 	// false when it does not occur; a negative $offset counts from the end of
@@ -55,15 +55,15 @@ func registerStrings(rt *runner.Runtime) {
 	// describe.
 	rt.RegisterFunc("substr_count", phpSubstrCount)
 	// substr_replace returns $string with the bytes from $offset for $length
-	// replaced by $replace; a negative $offset counts from the end and a
-	// negative $length is a distance from it. Array arguments are not
+	// replaced by $replace; a negative $offset counts from the end. A
+	// negative $length is a distance from the end. Array arguments are not
 	// supported.
 	rt.RegisterFunc("substr_replace", phpSubstrReplace)
-	// ucfirst returns $string with a leading a-z mapped up and every other
-	// first byte left alone; mb_ucfirst converts non-ASCII letters too.
+	// ucfirst returns $string with a leading a-z mapped up; any other first
+	// byte stays unchanged. mb_ucfirst converts non-ASCII letters too.
 	rt.RegisterFunc("ucfirst", phpUcfirst)
-	// lcfirst returns $string with a leading A-Z mapped down and every other
-	// first byte left alone; mb_lcfirst converts non-ASCII letters too.
+	// lcfirst returns $string with a leading A-Z mapped down; any other first
+	// byte stays unchanged. mb_lcfirst converts non-ASCII letters too.
 	rt.RegisterFunc("lcfirst", phpLcfirst)
 	// ucwords returns $string with the first ASCII letter of every word
 	// uppercased, where $separators separates the words and defaults to "
@@ -81,13 +81,13 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("str_starts_with", phpStrStartsWith)
 	// str_ends_with reports whether $haystack ends with $needle.
 	rt.RegisterFunc("str_ends_with", phpStrEndsWith)
-	// strrev returns $string with its bytes in reverse order and a multi-byte
+	// strrev returns $string with its bytes in reverse order. A multi-byte
 	// character comes out as its bytes in reverse.
 	rt.RegisterFunc("strrev", phpStrrev)
-	// str_split returns $string cut into chunks of $length bytes, the last one
-	// shorter when the string does not divide evenly and a chunk boundary may
-	// fall inside a multi-byte character. An empty string returns an empty
-	// array.
+	// str_split returns $string cut into chunks of $length bytes. The last
+	// chunk is shorter when the string does not divide evenly. A chunk
+	// boundary may fall inside a multi-byte character. An empty string
+	// returns an empty array.
 	rt.RegisterFunc("str_split", phpStrSplit)
 	rt.SetConst("FNM_PATHNAME", int64(fnmPathname))
 	rt.SetConst("FNM_NOESCAPE", int64(fnmNoescape))
@@ -101,8 +101,8 @@ func registerStrings(rt *runner.Runtime) {
 	rt.SetConst("STR_PAD_LEFT", int64(strPadLeft))
 	rt.SetConst("STR_PAD_BOTH", int64(strPadBoth))
 	// str_pad returns $string padded with $pad_string to $length characters
-	// on the side $pad_type selects; a $length below the current one is a
-	// no-op.
+	// on the side $pad_type selects; a $length below the current one changes
+	// nothing.
 	rt.RegisterFunc("str_pad", phpStrPad)
 	// strstr returns $haystack from the first occurrence of $needle to the
 	// end, or false when it does not occur; there is no $before_needle
@@ -162,7 +162,7 @@ func phpCRC32(str string) int64 {
 	return int64(^crc)
 }
 
-// crc32NativeThreshold is where the table loop stops beating crc32.ChecksumIEEE.
+// crc32NativeThreshold marks the size where the table loop stops beating crc32.ChecksumIEEE.
 const crc32NativeThreshold = 256
 
 // phpSubstr implements substr with PHP's negative offset and length semantics, counting bytes.

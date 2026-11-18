@@ -24,18 +24,18 @@ func TestRegisterRequest(t *testing.T) {
 	}
 }
 
-// runRequest runs src against a request a host assembled by hand, and returns
-// the request together with what the script echoed.
+// runRequest runs src on a request a host assembled by hand, and returns
+// the request with the script's echoed output.
 //
-// The order is the one every host uses: the host registers the standard library
-// once, then seeds the request. These functions resolve the request at call
-// time and registration cannot have captured it.
+// Every host uses the same order: it registers the standard library once, then
+// seeds the request. These functions resolve the request at call time and
+// registration cannot have captured it.
 func runRequest(t *testing.T, request runner.Context, src string, bindings ...func(*runner.Runtime)) string {
 	t.Helper()
 	return runRequestSAPI(t, request, "", src, bindings...)
 }
 
-// runRequestSAPI is runRequest under a named SAPI, for the functions that
+// runRequestSAPI is runRequest with a named SAPI, for the functions that
 // answer differently on a web request than they do on the command line.
 func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string, bindings ...func(*runner.Runtime)) string {
 	t.Helper()
@@ -55,10 +55,10 @@ func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string, bind
 	return out.String()
 }
 
-// TestGetAllHeadersReadsTheRequest covers the three spellings of one function.
+// TestGetAllHeadersReadsTheRequest covers three spellings of a function.
 // Ported code calls getallheaders, get_all_headers or
-// apache_request_headers depending on its target server and
-// all three answer the same array.
+// apache_request_headers depending on its target server. Each answers the
+// same array.
 func TestGetAllHeadersReadsTheRequest(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()
@@ -77,10 +77,10 @@ echo count($headers) . " " . $headers["X-Token"] . " " . $headers["Accept"];
 	}
 }
 
-// TestRequestFunctionsAreInertWithoutARequest covers the cli SAPI and a fixture
-// that seeds no request. PHP's own cli SAPI accepts header() and does nothing
-// with it and a script written for the web runs on the command line without
-// being rewritten.
+// TestRequestFunctionsAreInertWithoutARequest covers the cli SAPI, plus a
+// fixture that seeds no request. PHP's own cli SAPI accepts header() and does
+// nothing with the call. A script written for the web runs on the command line
+// without being rewritten.
 func TestRequestFunctionsAreInertWithoutARequest(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -106,8 +106,8 @@ var_export(setrawcookie("session", "abc"));
 }
 
 // TestHeaderStagesTheResponse covers the two shapes header() takes. A
-// "Name: value" pair stages a header, and a status line such as
-// "HTTP/1.0 404 Not Found" holds a status with no name and no value and it
+// "Name: value" pair stages a header; a status line such as
+// "HTTP/1.0 404 Not Found" holds a status with an empty name and value, and
 // stages the status it names.
 func TestHeaderStagesTheResponse(t *testing.T) {
 	t.Parallel()
@@ -138,9 +138,10 @@ header("HTTP/1.1 418 I am a teapot");
 	}
 }
 
-// TestHTTPResponseCode covers PHP's two answers. Called with a status it stages
-// it and returns the one it replaced; called with none it reports the status
-// the response will send and a template can branch on it.
+// TestHTTPResponseCode covers PHP's two answers. Called with a status, it
+// stages that status and returns the previous one. When the call names no
+// status, it reports the status the response will send. A template can branch
+// on it.
 //
 // On a web SAPI a request starts out answering 200 and there is always a
 // previous number to return.
@@ -160,9 +161,9 @@ echo " " . http_response_code();
 	}
 }
 
-// TestHTTPResponseCodeOffTheWeb covers the two answers php reserves for a run
-// that has chosen no status: false while nothing has staged one, and true for
-// the first one, there being no previous number to report. That happens on the
+// TestHTTPResponseCodeOffTheWeb covers both answers php reserves for a run that
+// chose no status: false while nothing has staged a status, and true
+// for the first, there being no previous number to report. That happens on the
 // command line and on a Go host that named no SAPI.
 func TestHTTPResponseCodeOffTheWeb(t *testing.T) {
 	t.Parallel()
@@ -179,9 +180,9 @@ var_dump(http_response_code());
 }
 
 // TestSetCookie covers the header both the positional and the array call stage.
-// The value is url-encoded as PHP's setcookie() encodes it and a space is a
-// plus, and an expiry of 0 stages no Expires attribute: the cookie dies with
-// the browser session.
+// The value is url-encoded as PHP's setcookie() does; a space becomes a plus,
+// and an expiry of 0 stages no Expires attribute: the cookie dies with the
+// browser session.
 func TestSetCookie(t *testing.T) {
 	t.Parallel()
 	expires := time.Unix(1700000000, 0).UTC().Format(nethttp.TimeFormat)
@@ -240,9 +241,9 @@ func TestSetCookie(t *testing.T) {
 }
 
 // TestSetCookieOptionsFromBinding covers the options bag another binding
-// built: the array form is a collection whatever shape holds it. A map
-// reaches the header the way the array a literal writes does. The keys fold,
-// as php's do: it takes "Expires" for the option it refuses "bogus" for.
+// built: the array form is a collection, whatever shape holds the bag. A map
+// reaches the header the way a literal array does. The keys fold, as php's do:
+// it takes "Expires" for the option it refuses "bogus" for.
 func TestSetCookieOptionsFromBinding(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()
@@ -269,9 +270,9 @@ func TestSetCookieOptionsFromBinding(t *testing.T) {
 }
 
 // TestSetRawCookie covers the spelling that writes the value as it stands. A
-// value with a space or a semicolon is the caller's to handle and the
-// encoder does nothing with it and a script holding a pre-encoded value keeps
-// it byte for byte.
+// value with a space or a semicolon is the caller's to handle; the encoder
+// does nothing with the value. A script holding a pre-encoded value keeps it
+// byte for byte.
 func TestSetRawCookie(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()
@@ -294,9 +295,8 @@ func TestSetRawCookie(t *testing.T) {
 }
 
 // TestSetCookieStagesSeveralCookies covers the header that arrives more than
-// once. Each call appends and a login response that sets a session and a
-// preference sends two Set-Cookie headers and never one that replaced the
-// other.
+// once. Each call appends. A login response that sets a session, plus a
+// preference, sends two Set-Cookie headers; neither replaces the other.
 func TestSetCookieStagesSeveralCookies(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()

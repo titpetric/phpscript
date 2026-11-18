@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 )
 
-// Row is one line of a func or file report: the location column go tool cover
-// -func prints, the symbol charged, and the statements counted against it.
+// Row holds one line of a func or file report: the location column go tool
+// cover -func prints, the symbol charged, and the statements counted for it.
 type Row struct {
 	File    string
 	Line    int
@@ -18,8 +18,8 @@ type Row struct {
 	Total   int
 }
 
-// Percent returns the row's statement-weighted coverage. A symbol with no
-// runnable statement reads as 100, never as a zero dragging the average down.
+// Percent returns the row's statement-weighted coverage. A symbol lacking a
+// runnable statement returns 100, which leaves the average accurate.
 func (r Row) Percent() float64 {
 	if r.Total == 0 {
 		return 100
@@ -30,7 +30,7 @@ func (r Row) Percent() float64 {
 // FuncRows charges each profile block to the innermost declaration span
 // containing its start line. A block inside no declaration is the file's
 // top-level code, reported as {main}, the name PHP uses for that scope, at the
-// first such line. files names every registered file and one holding nothing
+// first such line. files names every registered file; one holding nothing
 // runnable still reports a row.
 func FuncRows(blocks []ProfileBlock, funcs []FuncSpan, files []string) []Row {
 	type key struct {
@@ -93,8 +93,8 @@ func FuncRows(blocks []ProfileBlock, funcs []FuncSpan, files []string) []Row {
 	return out
 }
 
-// FileRows reports one row per registered source file. A file with no runnable
-// statement stays in the report at its adjusted percentage.
+// FileRows reports one row per registered source file. A file lacking a
+// runnable statement stays in the report at its adjusted percentage.
 func FileRows(blocks []ProfileBlock, files []string) []Row {
 	rows := map[string]*Row{}
 	row := func(file string) *Row {
@@ -137,7 +137,7 @@ func SortRows(rows []Row) {
 }
 
 // WriteReport prints rows the way go tool cover -func does: location, symbol
-// and percent columns, and a statement-weighted total line that downstream
+// and percent columns, plus a statement-weighted total line that downstream
 // consumers recognize by name and skip.
 func WriteReport(w io.Writer, rows []Row) error {
 	tw := tabwriter.NewWriter(w, 0, 8, 1, '\t', 0)

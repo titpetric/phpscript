@@ -22,7 +22,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestAborted covers a nil request, a live one and one whose client has gone.
+// TestAborted covers a nil request, a live one and a gone client.
 func TestAborted(t *testing.T) {
 	if aborted(nil) {
 		t.Error("a nil request reported aborted")

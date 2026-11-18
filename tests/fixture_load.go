@@ -39,14 +39,14 @@ func testPHPFS() fs.FS {
 	return phpFS
 }
 
-// fixtureArea is one area's fixtures in discovery order, with its governing suite.
+// fixtureArea is one area's fixtures in discovery order, with its suite.
 type fixtureArea struct {
 	Name     string
 	Fixtures []*Fixture
 	Suite    *Suite
 }
 
-// isFixturePath reports whether name is a .phpt or a _test.php with its .txt.
+// isFixturePath reports whether name is a .phpt or a paired _test.php.
 func isFixturePath(name string) bool {
 	if strings.HasSuffix(name, ".phpt") {
 		return true
@@ -83,7 +83,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		if golden {
 			expected, err := fixturesFS.ReadFile(goldenOutput(p))
 			if err != nil {
-				// No expected output beside the body means a php file in
+				// No expected output next to the body means a php file in
 				// the tree, and no fixture.
 				return nil
 			}
@@ -113,7 +113,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 			// A suite that declares no prelude leaves the app root unset:
 			// the area's own directory is the fixture's include root
 			// already, and naming it twice would layer the same filesystem
-			// over itself. A suite that declares one names that directory as
+			// over itself. Any suite that declares one names that directory as
 			// the app root. The prelude resolves there.
 			fx.SetDatabase(suite.Provider())
 			fx.SetMail(suite.Mail())
@@ -159,19 +159,19 @@ func errorChainContains(err error, substr string) bool {
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
 // GoldenSuffix and GoldenOutputSuffix name the second fixture form: a php file
-// the runtimes execute, and the output beside it they must match.
+// the runtimes execute, plus the output file they must match.
 //
-// The body is an ordinary file and no section of a document and php runs it
-// where it lies and __FILE__ and __DIR__ read back its own path.
-// A person can also run the body by hand, which a .phpt cannot. The form
-// holds no frontmatter: a fixture needing one declares a .phpt.
+// The body is an ordinary file, not a section of a document: php executes the
+// body where it lies; `__FILE__` and `__DIR__` read back its path. A person can also run
+// the body by hand, a .phpt cannot. The form holds no frontmatter: a fixture
+// needing one declares a .phpt.
 const (
 	GoldenSuffix       = "_test.php"
 	GoldenOutputSuffix = "_test.txt"
 )
 
-// ParseGolden builds a fixture from a _test.php body and the _test.txt beside
-// it. It takes both as they are, with no section to parse out of either.
+// ParseGolden builds a fixture from a `_test.php` body and its `_test.txt`
+// output. It takes both unchanged and parses no section out of either.
 func ParseGolden(body, expected []byte, path string) *Fixture {
 	return &Fixture{
 		Name:     strings.TrimSuffix(filepath.Base(path), GoldenSuffix),
@@ -181,7 +181,7 @@ func ParseGolden(body, expected []byte, path string) *Fixture {
 	}
 }
 
-// goldenOutput names the expected-output file beside a _test.php body.
+// goldenOutput names the expected-output file for a `_test.php` body.
 func goldenOutput(path string) string {
 	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
 }
@@ -192,8 +192,8 @@ func unmarshalHeader(data []byte, target any) error {
 }
 
 // ParseFixture reads a .phpt document: the yaml header, the php body and the
-// expected output, separated by the two --- lines. The optional path is what the
-// fixture reports itself as, since the bytes hold no name.
+// expected output, separated by the two --- lines. The optional path names the
+// fixture, since the bytes hold no name.
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	parts := strings.SplitN(normalized, "\n---\n", 3)
@@ -334,7 +334,7 @@ func parseArgs(raw any, path string) []string {
 			argv = append(argv, fmt.Sprint(arg))
 		}
 	case map[string]any:
-		// Map representation e.g. args: {name: Alice} -> ["script", "Alice"] or values sorted by key
+		// Map representation: args {name: Alice} maps to ["script", "Alice"].
 		var keys []string
 		for k := range v {
 			keys = append(keys, k)

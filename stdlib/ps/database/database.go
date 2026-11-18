@@ -12,7 +12,7 @@ import (
 
 // Database adds request tracing to the database binding.
 type Database struct {
-	// bridge is the client every method below runs its statement through. It
+	// bridge is the client every method below uses to run its statement. It
 	// stays out of the exported field set for the same reason IsReadonly is a
 	// boundary at all: an exported field is a property a script reads, and
 	// `$db->bridge->query()` would answer with a client that checks nothing.
@@ -31,10 +31,10 @@ type Database struct {
 	// pinning and the result accessors stay available, since a read-only
 	// transaction is a read.
 	//
-	// The restriction is a boundary for the code holding this client, and no
-	// sandbox around the script: the script that set it can unset it. A
-	// connection that must not write belongs to a database user without the
-	// grant to. This flag marks the code that must not write.
+	// The restriction is a boundary for the code holding this client. The
+	// boundary does not sandbox the script: the script that set it can unset it.
+	// Any connection that must not write belongs to a database user without
+	// the grant to. This flag marks the code that must not write.
 	IsReadonly bool
 
 	// transaction is the span Begin opens and Commit or Rollback ends. One
@@ -44,9 +44,9 @@ type Database struct {
 
 type databaseSpanKey struct{}
 
-// ErrReadOnly is what a refusal by a read-only client matches with errors.Is.
-// The runtime surfaces the refusal to PHP as a thrown exception and a script
-// catches it like any other database error.
+// ErrReadOnly matches a refusal by a read-only client through errors.Is. The
+// runtime surfaces the refusal to PHP as a thrown exception. A script catches
+// it like any other database error.
 var ErrReadOnly = errors.New("database is read-only")
 
 // readOnlyError names the statement a read-only client refused, matching ErrReadOnly.
@@ -115,12 +115,12 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 
 // Get returns the first result row, or false when the query matches no rows.
 //
-// A row is a native map: foreach walks it, $row["col"] indexes it and
-// unset($row["col"]) takes a column out. A map holds no column order; a script
+// A row is a native map: foreach walks the row, a column name indexes it.
+// unset() takes a column out. A map holds no column order; a script
 // that needs one names its columns in the SELECT and indexes them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
-	// Rows reach PHP as the bridge produced them, a map[string]any per row and
-	// a []map[string]any per result set, with no copy into a
+	// Rows reach PHP as the bridge produced them. Each row is a map[string]any;
+	// each result set is a []map[string]any, without a copy into a
 	// *model.Array; the copy cost two allocations plus an interface box per
 	// column on every row of every query, and the bridge's map had already
 	// lost the column order the copy would have fixed.
@@ -170,7 +170,7 @@ func (b *Database) Close(ctx context.Context) (any, error) {
 	return b.bridge.Close(ctx)
 }
 
-// Begin starts a transaction and opens the span measuring it. The span stays
+// Begin starts a transaction and opens the span measuring the transaction. The span stays
 // open until Commit or Rollback ends it.
 func (b *Database) Begin(ctx context.Context) (any, error) {
 	if b.transaction == nil {
@@ -218,7 +218,7 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 	return b.bridge.RowsAffected(ctx)
 }
 
-// observe records the query, bound values, transaction depth and error onto the call's span.
+// observe records query, bound values, transaction depth and error on the span.
 func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	span := databaseSpan(ctx)
 	span.SetAttribute("query", entry.Query)
@@ -288,7 +288,7 @@ func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	return err
 }
 
-// name qualifies a method with the client's PHP variable so a trace tells clients apart.
+// name qualifies a method with the client's PHP variable for a clear trace.
 func (b *Database) name(method string) string {
 	if b.ID == "" {
 		return method
@@ -301,7 +301,7 @@ func (b *Database) span(ctx context.Context, method string) *telemetry.Span {
 	return telemetry.StartSpan(ctx, b.name(method), telemetry.KindDatabase)
 }
 
-// withSpan starts a database span, returning a context holding it and its closer.
+// withSpan starts a database span, returning a context and its closer.
 func (b *Database) withSpan(ctx context.Context, method string) (context.Context, func()) {
 	span := b.span(ctx, method)
 	if span == nil {

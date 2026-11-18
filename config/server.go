@@ -18,12 +18,12 @@ type Server struct {
 	Modules []string `yaml:"modules"`
 
 	// PidFile is the file the server records its process id in, and the one
-	// -s reload reads it back from. Empty writes none. The path resolves
+	// -s reload reads it back from. Empty writes none. Its path resolves
 	// against the working directory and-s needs the same -w.
 	PidFile string `yaml:"pid_file"`
 }
 
-// Options returns the platform options this block describes, with no recorder
+// Options returns the platform options this block describes, without a recorder
 // configured. Callers want Config.PlatformOptions, which adds one.
 func (s Server) Options() *PlatformOptions {
 	return &PlatformOptions{

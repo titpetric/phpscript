@@ -22,7 +22,7 @@ type fixtureMetrics struct {
 	GCRuns      uint32
 }
 
-// fixtureRun aggregates one fixture's outcome over its runs, with DisplayPath for reports and Label for tables.
+// fixtureRun aggregates one fixture's runs, holding DisplayPath and Label.
 type fixtureRun struct {
 	Result      *tests.TestResult
 	DisplayPath string
@@ -34,7 +34,7 @@ type fixtureRun struct {
 	fixtureMetrics
 }
 
-// label returns what a table cell should show for the run.
+// label returns the text a table cell shows for the run.
 func (r *fixtureRun) label() string {
 	if r.Label != "" {
 		return r.Label
@@ -131,7 +131,7 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, o
 	return runs
 }
 
-// gcCycles returns completed GC cycles through runtime/metrics, which does not stop the world.
+// gcCycles returns completed GC cycles through runtime/metrics, no stop-the-world.
 func gcCycles() uint64 {
 	sample := [1]metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
 	metrics.Read(sample[:])

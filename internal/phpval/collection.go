@@ -7,9 +7,8 @@ import (
 
 // Strings returns a collection's values as strings in order.
 //
-// Every caller is a string context - implode and str_replace - so an element
-// with no string form is the error StringContext reports, and no spelling
-// invented for it.
+// Every caller is a string context - implode and str_replace. An element
+// lacking a string form returns the error StringContext reports.
 func Strings(a any) ([]string, error) {
 	if parts, ok := a.([]string); ok {
 		return parts, nil
@@ -18,8 +17,8 @@ func Strings(a any) ([]string, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	// One captured struct and no two captured variables: each variable a
-	// closure captures by reference is its own heap allocation. This runs
+	// One captured struct, never two captured variables: each variable a
+	// closure captures by reference costs a separate heap allocation. This runs
 	// under implode. The field holds the refused value as its concrete type,
 	// and the happy path stores nothing.
 	state := struct {
@@ -40,8 +39,9 @@ func Strings(a any) ([]string, error) {
 	return state.out, nil
 }
 
-// Values returns a collection's values in order, and a []any as it stands:
-// callers only read it, and the shims that do not (array_splice) copy first.
+// Values returns a collection's values in order. A []any comes back as it
+// stands: callers only read it. The shims that do not (array_splice) copy
+// first.
 func Values(a any) []any {
 	if vals, ok := a.([]any); ok {
 		return vals

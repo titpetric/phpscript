@@ -17,10 +17,9 @@ func streamRoot(t *testing.T) string {
 	return root
 }
 
-// TestFreadAdvancesTheHandle covers the read half against what php prints:
-// fread returns at most $length bytes, the handle advances by what it
-// returned, and a read at the end answers with the empty string and a loop
-// reading to the end terminates.
+// TestFreadAdvancesTheHandle covers the read half against php's output: fread
+// returns at most $length bytes; the handle advances by the byte count; a read
+// at the end answers the empty string. A loop reading to the end terminates.
 func TestFreadAdvancesTheHandle(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
@@ -52,10 +51,10 @@ fclose($f);`)
 	}
 }
 
-// TestFseekMovesByWhence covers the three SEEK_* values and their
-// constants. PHP numbers them 0, 1 and 2, as Go's io package does, and
-// fseek passes the argument through as it arrives; a translation table here
-// would be a second numbering to keep in step.
+// TestFseekMovesByWhence covers the SEEK_* values and their constants. PHP
+// uses 0, 1 and 2, exactly as Go's io package does. fseek passes the
+// argument through as it arrives; a translation table here would be a second
+// numbering to keep in step.
 func TestFseekMovesByWhence(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
@@ -107,9 +106,8 @@ fclose($f);`)
 }
 
 // TestFeofOnAnUnseekableHandle covers php://input and php://output, which
-// take no seek: feof answers false for them and a script draining the
-// request body with a feof loop would spin, and stream_get_contents is the
-// call for that.
+// take no seek: feof answers false for both. A script draining the request
+// body with a feof loop would spin; stream_get_contents is the call for that.
 func TestFeofOnAnUnseekableHandle(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php

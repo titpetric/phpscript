@@ -7,10 +7,10 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestDirectCompile covers the node dispatcher: a literal is its own value, a
+// TestDirectCompile covers the node dispatcher: a literal holds its value, a
 // ternary takes the branch its condition picks, an index resolves through the
-// Index helper, and an expression shape outside the vocabulary is a compile
-// error and never a silent nil.
+// Index helper. An expression shape outside the vocabulary is a compile error.
+// The vocabulary admits no silent nil.
 func TestDirectCompile(t *testing.T) {
 	t.Parallel()
 	helpers := &Helpers{
@@ -61,9 +61,9 @@ func TestDirectCompile(t *testing.T) {
 }
 
 // TestDirectCompileCall covers call compilation. A plain global call resolves
-// its name in the base env and records it in Calls so Eval installs it; a
-// namespaced name and a call with a global fallback dispatch through
-// __func and the runtime's resolution ladder answers both spellings.
+// its name in the base env and records it in Calls so Eval installs the
+// function. A namespaced name, or a call with a global fallback, dispatches
+// through __func, and the runtime's resolution ladder answers both spellings.
 func TestDirectCompileCall(t *testing.T) {
 	t.Parallel()
 	plain := &model.Call{Name: "greet", Args: []model.Expr{&model.Lit{Value: "ada"}}}

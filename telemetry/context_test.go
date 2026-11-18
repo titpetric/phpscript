@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestSourceValue covers what a foreign context value answers for the two
-// span-source keys: the values the WithSpan wrappers attach, and a false for
-// an empty location and the caller falls down its parent chain the way an
+// TestSourceValue covers the values a foreign context value returns for the
+// two span-source keys: the values the WithSpan wrappers attach, plus a false
+// for an empty location. The caller falls down its parent chain the way an
 // unwrapped context does.
 func TestSourceValue(t *testing.T) {
 	t.Parallel()
@@ -38,10 +38,10 @@ func (c carrierThrough) Value(key any) any {
 }
 
 // TestSpanSource covers the source location a span records. PHP has no lexical
-// scope a Go caller can read and the interpreter publishes the file and line of
-// the statement it runs into the context a binding runs under. The write drops
-// an empty filename and a line at or below zero and a span never records a
-// location of "" or 0 as though a PHP frame had published it.
+// scope a Go caller can read; the interpreter publishes the file and line of
+// the statement it runs into the context a binding runs in. The write drops
+// an empty filename or a line at zero or below. No span records a
+// location of "" or 0 as if a PHP frame published it.
 func TestSpanSource(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -89,8 +89,8 @@ func TestSpanSource(t *testing.T) {
 }
 
 // TestWithSpanFilename covers the location reaching a span. A binding
-// instruments without naming a file and every span started from that context
-// records the file the interpreter published and the line beside it.
+// instruments without naming a file; every span started from that context
+// records the file and line number the interpreter published.
 func TestWithSpanFilename(t *testing.T) {
 	t.Parallel()
 	tracer := newRecordingTracer(t)

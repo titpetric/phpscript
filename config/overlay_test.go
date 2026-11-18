@@ -10,10 +10,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
-// TestOverlay covers the layering every phpscript.yml gets: a file names what
-// it changes and inherits the rest. A missing file is an error with no fall
-// back to base, because a tree served under settings nobody wrote is the
-// failure mode worth avoiding.
+// TestOverlay covers the layering every phpscript.yml gets: a file names its
+// changes and inherits the rest. A missing file is an error; it does not fall
+// back to base. A tree served under settings nobody wrote is the failure mode
+// worth avoiding.
 func TestOverlay(t *testing.T) {
 	t.Parallel()
 	base := config.New()
@@ -59,9 +59,9 @@ func TestOverlay(t *testing.T) {
 	})
 }
 
-// TestOverlayBytes covers Overlay over source a caller already read. The build
-// compiles a fixture tree into the test binary and the bytes arrive from an
-// fs.FS with no path on disk; filename is only what errors name.
+// TestOverlayBytes covers Overlay applied to source a caller already read. The
+// build compiles a fixture tree into the test binary; the bytes arrive from an
+// fs.FS holding no path on disk. The filename names errors alone.
 func TestOverlayBytes(t *testing.T) {
 	t.Parallel()
 	base := config.New()
@@ -76,8 +76,8 @@ func TestOverlayBytes(t *testing.T) {
 		if err.Error() != want {
 			t.Errorf("err = %q, want %q", err.Error(), want)
 		}
-		// The keys the file named come back beside the refusal and a caller
-		// reporting it can say what else the file set.
+		// The declared map holds every key the file named. A caller can report
+		// what else it set.
 		if _, ok := declared["server"]; !ok {
 			t.Errorf("declared = %+v, want it to name server", declared)
 		}
@@ -137,8 +137,8 @@ func TestOverlayBytes(t *testing.T) {
 	})
 }
 
-// TestDeclares covers telling a setting a file named from one it inherited
-// through Overlay. Validation reads it for keys whose inherited value is legal
+// TestDeclares covers telling a named setting from an inherited one with
+// Overlay. Validation reads it for keys whose inherited value is legal
 // and whose declared value is not: a site may inherit the operator's telemetry
 // path, and may not name it.
 func TestDeclares(t *testing.T) {

@@ -10,9 +10,9 @@ import (
 )
 
 // TestFlatstackCompilesClosures covers the anonymous-function forms the compiler
-// lowers. Every case asserts Supports before it checks the output, because a
-// fallback to the interpreter would produce the same output and hide a compiler
-// that quietly stopped handling the form.
+// lowers. Every case asserts Supports before it checks the output. A fallback
+// to the interpreter would produce the same output and hide a compiler that
+// quietly stopped handling the form.
 func TestFlatstackCompilesClosures(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -31,8 +31,8 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "a,bb,ccc",
 		},
 		{
-			// Creating the closure value reads the capture, and a later write
-			// to the captured variable never reaches it.
+			// Creating the closure value reads the capture. A later write to
+			// the captured variable never reaches it.
 			name:   "use captures a snapshot",
 			source: `<?php $m = 3; $f = function ($x) use ($m) { return $x * $m; }; $m = 10; echo implode(",", array_map($f, array(1, 2)));`,
 			want:   "3,6",
@@ -75,17 +75,17 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "12",
 		},
 		{
-			// The jump over a closure created inside a try does not leave the
-			// handler the try armed, and the try holding the call catches one
-			// that throws.
+			// The jump past a closure created inside a try does not leave the
+			// handler the try armed. The try holding the call catches one that
+			// throws.
 			name:   "created and throwing inside a try",
 			source: `<?php try { $f = function () { throw new Exception("boom"); }; echo implode(",", array_map($f, array(1))); } catch (Exception $e) { echo "caught:", $e->getMessage(); }`,
 			want:   "caught:boom",
 		},
 		{
 			// usort() has the caller's variables bound while it runs its
-			// comparator. The comparator installs its own binding for the calls
-			// it makes, and has to leave the caller's in place on the way out.
+			// comparator. The comparator installs a binding for the calls it
+			// makes. It must leave the caller's binding in place on the way out.
 			name:   "a comparator does not overwrite the caller's variables",
 			source: `<?php $a = 1; $b = 2; $n = array(3, 1, 2); usort($n, function ($a, $b) { return $a - $b; }); echo $a, $b, implode(",", $n);`,
 			want:   "121,2,3",
@@ -122,7 +122,7 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 }
 
 // TestFlatstackRejectsClosureForms pins the closure forms that keep going to the
-// interpreter. Each one needs something a compiled frame does not have: a
+// interpreter. Each form needs something a compiled frame does not have: a
 // reference cell for the enclosing variable, an expression evaluated on the
 // missing-argument path, or the caller's scope itself.
 func TestFlatstackRejectsClosureForms(t *testing.T) {

@@ -100,7 +100,7 @@ func (c Context) autoGlobal(name string) any {
 	return nil
 }
 
-// lazyArray renders a superglobal that build assembles and no decode fills.
+// lazyArray renders a superglobal that build assembles, and decodes nothing.
 func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 	if c.decode == nil {
 		return mapmap.New(arraySource{build()})
@@ -108,7 +108,7 @@ func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 	return mapmap.New(mapmap.Lazy(func() mapmap.Source { return arraySource{build()} }))
 }
 
-// lazyInput renders one decoded input as a view that parses on the first read.
+// lazyInput renders a decoded input as a view parsing on first read.
 func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]string) *mapmap.MapMap {
 	if c.decode == nil {
 		return mapmap.New(arraySource{superglobal(decoded(), flat())})
@@ -118,7 +118,7 @@ func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]s
 	}))
 }
 
-// arraySource reads a *model.Array as a mapmap source with no copy into a second shape.
+// arraySource reads a *model.Array as a mapmap source, copying nothing.
 type arraySource struct{ array *model.Array }
 
 // Get answers the entry under key.
@@ -150,10 +150,10 @@ func (s arraySource) Range(fn func(key string, value any) bool) bool {
 	return done
 }
 
-// ServerMap renders $_SERVER as a view over the request, with no array built.
+// ServerMap renders $_SERVER as a view of the request, without building an array.
 //
-// A read goes to the source. ServerMap seeds the two times because PHP answers
-// them as numbers and every other name as a string.
+// A read goes to the source. ServerMap seeds the two times: PHP answers them as
+// numbers, and all other names as strings.
 func (c Context) ServerMap() *mapmap.MapMap {
 	src := c.ServerSource
 	if src == nil {
@@ -183,7 +183,7 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 
 // requestArrayInto renders $_REQUEST as a copy of query, form, cookie and path values.
 func (c Context) requestArrayInto(arr *model.Array) *model.Array {
-	// Through the accessors, because $_REQUEST is the four merged and reading
+	// Through the accessors, because $_REQUEST merges all four and reading
 	// it means a read of each: the fields hold nothing until a decode fills
 	// them.
 	for _, source := range []*model.Array{
@@ -200,7 +200,7 @@ func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	return arr
 }
 
-// superglobal returns the decoded record, falling back to the flat map a host set.
+// superglobal returns the decoded record, falling back to the host's flat map.
 func superglobal(vars *model.Array, flat map[string]string) *model.Array {
 	if vars != nil {
 		return vars

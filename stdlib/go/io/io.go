@@ -1,6 +1,6 @@
-// Package io binds the readers of go's io package under the Runtime\Go\IO
-// area. A script reaches them with `import "io";` and calls
-// `io.ReadAll($body)` over a body `Runtime\Go\Net\HTTP` answered with.
+// Package io binds the readers of go's io package as the Runtime\Go\IO area. A
+// script imports `io`; a call such as `io.ReadAll($body)` reads a body
+// `Runtime\Go\Net\HTTP` answered.
 package io
 
 import (
@@ -13,9 +13,8 @@ import (
 // Namespace is the area the import installs.
 const Namespace = modelutil.GoNamespace + `\IO`
 
-// Set is what the package binds. A go reader is a value a binding answered
-// with, never one a script built, and the write half of the package takes a
-// writer no script holds.
+// Set holds the package bindings. A go reader comes from a binding. A script
+// cannot build such a value. The write half takes a writer no script holds.
 var Set = bindings.For("io").
 	// Runtime\Go\IO\ReadAll reads $reader to the end and returns the bytes as a string.
 	Bind("ReadAll", goio.ReadAll).
@@ -26,7 +25,7 @@ func init() {
 	Set.Install()
 }
 
-// readFull reads count bytes of reader, as io.ReadFull does over a buffer scripts cannot name.
+// readFull reads count bytes, as io.ReadFull does on an unnamed buffer.
 func readFull(reader goio.Reader, count int) ([]byte, error) {
 	buf := make([]byte, count)
 	n, err := goio.ReadFull(reader, buf)

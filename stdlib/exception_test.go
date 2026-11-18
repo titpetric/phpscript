@@ -8,13 +8,12 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestException covers the one Go type behind every PHP throwable. Class
-// records the name the script constructed and get_class() can answer it and a
-// catch clause can filter on it, and no subclass relation joins two of them:
-// phpscript has no inheritance. The constructor returns a pointer,
-// and the instance a script holds is addressable and `$e->message = "..."`
-// writes to it; the nil error is what keeps `new Exception` from throwing
-// where a script constructs one.
+// TestException covers the single Go type behind every PHP throwable. Class
+// records the name the script constructed. get_class() answers that name; a
+// catch clause filters on it. No subclass relation joins two instances:
+// phpscript has no inheritance. The constructor returns a pointer; the instance
+// a script holds is addressable. `$e->message = "..."` writes to it. The nil
+// error keeps `new Exception` from throwing where a script constructs one.
 func TestException(t *testing.T) {
 	t.Parallel()
 	exception, err := stdlib.NewException("boom", 7)
@@ -35,9 +34,9 @@ func TestException(t *testing.T) {
 }
 
 // TestException_ThrowableClass covers the name a catch clause filters on. An
-// exception naming no class is PHP's base Exception and a value built as a
-// zero struct is still catchable; the SPL and Error class names are the same
-// Go type with a different name recorded and each answers its own.
+// exception naming no class is PHP's base Exception. A zero-struct value is
+// still catchable. The SPL and Error class names share the Go type with a
+// different name recorded; each answers its own.
 func TestException_ThrowableClass(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -60,8 +59,8 @@ func TestException_ThrowableClass(t *testing.T) {
 }
 
 // TestException_GetCode covers the accessor behind getCode(). PHP's default
-// code is 0 and an exception constructed with no code answers zero and a
-// script comparing against it needs no null check.
+// code is 0. An exception constructed without a code answers zero. A script
+// comparing that value needs no null check.
 func TestException_GetCode(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -86,8 +85,8 @@ func TestException_GetCode(t *testing.T) {
 }
 
 // TestException_GetMessage covers the accessor behind getMessage(). It reads
-// the field and a message a script replaced is the one that comes back, and an
-// exception constructed with no message answers an empty string.
+// the field. A message a script replaced comes back, and an exception
+// constructed without a message answers an empty string.
 func TestException_GetMessage(t *testing.T) {
 	t.Parallel()
 	exception, err := stdlib.NewException("", 0)
@@ -105,9 +104,9 @@ func TestException_GetMessage(t *testing.T) {
 }
 
 // TestException_Error covers the error interface. A thrown exception reaching a
-// Go caller is an ordinary error holding the message alone and a host wraps it
-// with %w and errors.As finds it again: the class the script named is on the
-// value and never in the text.
+// Go caller is an ordinary error holding the message alone. A host wraps it with
+// %w, and errors.As finds it again. The class the script named is on the value,
+// never in the text.
 func TestException_Error(t *testing.T) {
 	t.Parallel()
 	exception := &stdlib.Exception{Message: "connection refused", Code: 7, Class: "RuntimeException"}

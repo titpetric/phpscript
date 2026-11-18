@@ -1,15 +1,15 @@
 // Command list-apis generates docs/reference/extensions/implemented-apis.md.
 // It builds the same runtime the phpscript CLI runs, reading doc comments and
-// parameter names from the Go source tree it runs in. The listing names what a
-// script sees. Run it from the module root:
+// parameter names from the Go source tree it runs in. The listing names the
+// script-visible surface. Run it from the module root:
 //
 //	go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
 //	go run ./scripts/list-apis --index
 //
-// The atkins test:introspection job does both. --index writes the doc index
+// The atkins test:introspection job writes the listing and the index. --index writes the doc index
 // `phpscript list --classes` reads out of the binary, at the path
-// apidoc.IndexPath names. The command opens that file itself, because a shell
-// redirection would truncate the file the compiler is about to embed.
+// apidoc.IndexPath names. The command opens that file; a shell redirection
+// would truncate the file the compiler is about to embed.
 package main
 
 import (
@@ -41,8 +41,8 @@ func main() {
 
 // generate writes the listing for the tree at root, the whole of the command,
 // kept apart from main for a test to assert the wiring: the listing names the
-// script-visible surface, and a runtime built with one installer missing
-// publishes a reference that omits a whole area.
+// script-visible surface; a runtime built with one installer missing publishes
+// a reference that omits a whole area.
 func generate(out io.Writer, root string) error {
 	owned := stdlib.Owners(stdlib.Areas(stdlib.All))
 	doc, err := apidoc.GenerateAreas(listRuntime(root), root, apidoc.Owners{Funcs: owned.Funcs, Classes: owned.Classes})
@@ -54,7 +54,7 @@ func generate(out io.Writer, root string) error {
 }
 
 // writeIndex writes the doc index for the tree at root to apidoc.IndexPath
-// below it, and reports the path it wrote on out.
+// beneath the root, and reports the path it wrote on out.
 func writeIndex(out io.Writer, root string) error {
 	docs, err := apidoc.ScanDocs(listRuntime(root), root)
 	if err != nil {

@@ -5,9 +5,9 @@ import (
 )
 
 // TestUploadedFile covers the shape a $_FILES entry exposes. Name is the base
-// name and FullPath the path the client sent, which a directory upload uses to
-// say where in its own tree a file sat; both are the client's word and TmpName
-// is the only path on this host.
+// name; FullPath is the path the client sent, used by a directory upload to
+// report where in its tree a file sat. Both are the client's word; TmpName is
+// the only path on this host.
 func TestUploadedFile(t *testing.T) {
 	t.Parallel()
 	file := &UploadedFile{

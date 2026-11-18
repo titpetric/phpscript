@@ -75,9 +75,9 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 	}
 }
 
-// The scanner walks in path order and a failure in the first file must not stop
-// the second from running: the jobs of one tree are independent, and the
-// returned error joins every failure the run met.
+// The scanner walks in path order. A failure in the first file must not stop the
+// second: jobs of one tree are independent. The returned error joins every
+// failure the run met.
 func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
 	t.Parallel()
 	root := fstest.MapFS{
@@ -182,13 +182,13 @@ func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
 	}
 }
 
-// TestStartupBindsRoutes pins the wiring in both orders a host runs it: a
-// @startup job in testdata/bind routes the service through
+// TestStartupBindsRoutes pins the wiring in both orders a host runs. The @startup
+// job in testdata/bind routes the service through
 // Runtime\Router::Bind, before the first request either way.
 //
-// Start before mount is what the platform does, every module starting a step
-// ahead of any mounting. The job binds before the router exists. Mount before
-// start is what a virtual host does, holding its own router.
+// The platform starts before it mounts, every module starting a step ahead of
+// any mounting. The job binds before the router exists. A virtual host mounts
+// before it starts, holding a private router.
 func TestStartupBindsRoutes(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

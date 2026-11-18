@@ -7,10 +7,10 @@ import (
 )
 
 // TestNodeChunkKeepsPointerIdentity covers the property the chunked allocator
-// has to hold: every node leaves the chunk once and keeps its own address and a
-// map keyed by model.Expr tells two nodes apart. A chunk reset or reused would
-// make two expressions share an address, and the compiled-expression cache in
-// runner would answer one with the other's code.
+// must hold: every node leaves the chunk once and keeps one address; a map keyed
+// by model.Expr tells two nodes apart. A chunk reset or reused would make two
+// expressions share an address, and the compiled-expression cache in runner
+// would answer one with the other's code.
 func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 	t.Parallel()
 	var chunk nodeChunk[model.Lit]
@@ -30,7 +30,7 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 		nodes = append(nodes, node)
 	}
 
-	// Writing through one node never reaches another and a field set on a
+	// Writing through a single node never reaches another; a field set on a
 	// later node does not rewrite an earlier one in the same array.
 	for i, node := range nodes {
 		if node.Value != int64(i) {
@@ -52,7 +52,7 @@ func TestNodeChunkGrows(t *testing.T) {
 		t.Errorf("the first chunk is %d, want %d", chunk.size, nodeChunkMin)
 	}
 
-	// Drain the first block and one node past it, which carves the second.
+	// Drain the first block, plus one node past it, to carve the second.
 	for range nodeChunkMin {
 		chunk.new()
 	}
@@ -68,10 +68,10 @@ func TestNodeChunkGrows(t *testing.T) {
 	}
 }
 
-// TestScratchTakesExactlySized covers what the shared stack buys: one
-// exactly-sized allocation per list and a slice of call arguments has cap
-// equal to len and never the slack appending would leave. An empty list
-// answers nil, matching what appending to a nil slice produced.
+// TestScratchTakesExactlySized covers the gain from the shared stack: one
+// exactly-sized allocation per list. A slice of call arguments has cap equal to
+// len; appending would leave no slack. An empty list answers nil, matching the
+// result of appending to a nil slice.
 func TestScratchTakesExactlySized(t *testing.T) {
 	t.Parallel()
 	var stack scratch[model.Expr]
@@ -130,8 +130,8 @@ func TestScratchIsReentrant(t *testing.T) {
 }
 
 // TestScratchDropsOnFailure covers the error path: a parse that gave up
-// abandons what it pushed and the next list starts from the mark the caller
-// above it holds and never inherits the elements of the one that failed.
+// abandons the entries it pushed. The next list starts from the mark the caller above
+// it holds; it does not inherit the elements of the failed one.
 func TestScratchDropsOnFailure(t *testing.T) {
 	t.Parallel()
 	var stack scratch[model.Expr]
@@ -152,7 +152,7 @@ func TestScratchDropsOnFailure(t *testing.T) {
 	}
 }
 
-// TestNodeChunkBacksTheParser covers the allocator against a real parse: two
+// TestNodeChunkBacksTheParser covers the allocator on a real parse: two
 // parses of the same source build separate nodes and an AST cached by pointer
 // never answers with another program's.
 func TestNodeChunkBacksTheParser(t *testing.T) {

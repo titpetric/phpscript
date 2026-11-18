@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// AreaRow is one binding area: the namespace that names a group of functions,
+// AreaRow holds one binding area: the namespace that names a group of functions,
 // classes and constants, with the count installing it defines.
 type AreaRow struct {
 	Area      string   `json:"area"`
@@ -18,8 +18,7 @@ type AreaRow struct {
 	Replaces  []string `json:"replaces,omitempty"`
 }
 
-// Areas lists the binding areas in install order, narrowed to the runtime and
-// the namespaces named.
+// Areas lists binding areas in install order, narrowed to runtime and namespaces.
 func Areas(options runner.Options, namespaces ...string) []AreaRow {
 	selected := options.SelectedAreas()
 	rows := []AreaRow{}

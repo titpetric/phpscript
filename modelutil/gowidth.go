@@ -63,7 +63,7 @@ func GoInt(v any) (int64, bool) {
 }
 
 // GoClipInt reads a typed integer as php's int, clipping an unsigned value
-// past PHP_INT_MAX at PHP_INT_MAX: go's conversion answers -1 there and the
+// past PHP_INT_MAX at PHP_INT_MAX: go's conversion answers -1 for that input; the
 // float php holds it in reduces to 0.
 func GoClipInt(v any) (int64, bool) {
 	w, typed := model.GoWidthOf(v)
@@ -83,9 +83,9 @@ func GoUint(v any) (uint64, bool) {
 	return uint64(n), ok
 }
 
-// GoStep applies ++ or -- at a typed value's width, and reports whether the
-// value held one. The step wraps where go's does: int8(127) steps up to
-// int8(-128), where php's int reaches a float at its own limit.
+// GoStep applies ++ or -- at a typed value's width and reports whether the
+// value had a width. The step wraps where go's does: int8(127) steps up to
+// int8(-128); php's int reaches a float at its limit.
 func GoStep(v any, delta int64) (any, bool) {
 	w, typed := model.GoWidthOf(v)
 	if !typed {
@@ -97,7 +97,7 @@ func GoStep(v any, delta int64) (any, bool) {
 	return w.Narrow(toInt(v) + delta), true
 }
 
-// A value past PHP_INT_MAX reaches php as the float that holds it.
+// A value past PHP_INT_MAX reaches php as a float.
 func widenUnsigned(u uint64) any {
 	if u > math.MaxInt64 {
 		return float64(u)

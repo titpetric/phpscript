@@ -6,16 +6,16 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// RedeclareError is a second declaration of a function name that is already
-// taken. PHP treats it as a fatal error; this runtime has one error path and
-// declareFunc returns it as a catchable RuntimeException. It reaches a Go
-// host as an error from Run.
+// RedeclareError is a second declaration of a function name already taken. PHP
+// treats it as a fatal error. This runtime has a single error path, and
+// declareFunc returns the error as a catchable RuntimeException. It reaches a
+// Go host as an error from Run.
 //
-// A named type and no bare error, because the two runtimes have to agree on
-// it. A compile failure normally means the bytecode engine does not cover some
-// form yet and the interpreter runs the program; this is a verdict on the
-// program, which the interpreter would reach too and flatstack raises it and
-// falls back to no second opinion.
+// A named type, not a bare error: the two runtimes have to agree on the type.
+// A compile failure normally means the bytecode engine does not cover some
+// form yet. The interpreter runs the program. This error is a verdict on the
+// program, which the interpreter would reach too. flatstack raises the error
+// and decides alone.
 type RedeclareError struct {
 	// Name is the function as a script spells it.
 	Name string
@@ -46,23 +46,23 @@ func (e *RedeclareError) Error() string {
 	return message + fmt.Sprintf(" in %s on line %d", e.At.File, e.At.Line)
 }
 
-// GetMessage and GetCode are what a script reads off the caught value.
+// GetMessage and GetCode supply the values a script reads off the caught value.
 func (e *RedeclareError) GetMessage() string { return e.Error() }
 
 // GetCode answers PHP's zero, since there is no error number to report.
 func (e *RedeclareError) GetCode() int { return 0 }
 
-// ThrowableClass names Exception, php having no class for a redeclaration.
+// ThrowableClass names Exception, because php has no class for a redeclaration.
 func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 
-// declareFunc records a declaration and refuses a name an earlier declaration or binding took.
+// declareFunc records a declaration and refuses a name already taken.
 func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	if previous, ok := rt.funcSites[name]; ok {
 		return &RedeclareError{Name: name, At: site, Previous: previous}
 	}
-	// A name the runtime already answers to, with no site recorded for it, is
-	// one of the bindings stdlib registered. PHP refuses those too, and says
-	// less about them: there is no earlier declaration to point at.
+	// A name the runtime already answers to has no recorded site; a binding
+	// stdlib registered owns it. PHP refuses those too. It says less about
+	// them: there is no earlier declaration to point at.
 	if _, taken := rt.lookupFunc(name); taken {
 		return &RedeclareError{Name: name, At: site, Builtin: true}
 	}
@@ -70,7 +70,7 @@ func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	return nil
 }
 
-// declSite reads the source span a program recorded, the line absent when it holds none.
+// declSite reads the source span a program recorded, zero when absent.
 func declSite(prog *model.Program, stmt model.Stmt, filename string) FuncSite {
 	return FuncSite{File: filename, Line: prog.SourceSpans[stmt].Start}
 }

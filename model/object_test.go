@@ -6,8 +6,8 @@ import (
 )
 
 // TestObject covers constructing an instance and reading a property back.
-// NewObject takes the class and leaves Props unallocated and the first SetProp
-// is what builds the map.
+// NewObject takes the class and leaves Props unallocated; the first SetProp
+// builds the map.
 func TestObject(t *testing.T) {
 	t.Parallel()
 	class := &Class{Name: "Invoice", Fields: []Field{{Name: "total"}}}
@@ -37,7 +37,7 @@ func TestObject(t *testing.T) {
 }
 
 // TestObject_SetID covers the name a constructed object records. The runtime
-// writes the receiving variable there and a value printed back names its
+// writes the receiving variable there. A value printed back names its
 // assignment site.
 func TestObject_SetID(t *testing.T) {
 	t.Parallel()
@@ -58,12 +58,11 @@ func TestObject_SetID(t *testing.T) {
 }
 
 // TestObject_Names covers the order PHP reads properties back in: the declared
-// fields in declaration order, then what the script added, in the order it
-// added it. json_encode, print_r, the (array) cast and foreach all read this.
+// fields in declaration order, then the fields the script added, in the order
+// added. json_encode, print_r, the (array) cast and foreach all read this.
 //
 // A property written straight into Props bypasses the record and sorts after
-// the rest and a missed SetProp degrades to a stable order and never a random
-// one.
+// the rest. A missed SetProp degrades to a stable order, the same on every run.
 func TestObject_Names(t *testing.T) {
 	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}, {Name: "currency"}}}
@@ -84,8 +83,8 @@ func TestObject_Names(t *testing.T) {
 }
 
 // TestObject_DeleteProp covers unset on a property. A declared field assigned
-// again lands back in its declared position, and SetProp appends a dynamic one,
-// and the order survives the round trip the way PHP's does.
+// again lands back in its declared position. SetProp appends a dynamic field,
+// and the order survives the round trip as PHP's does.
 func TestObject_DeleteProp(t *testing.T) {
 	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}
@@ -113,8 +112,7 @@ func TestObject_DeleteProp(t *testing.T) {
 	}
 }
 
-// TestObject_Range covers walking the properties in Names order, and stopping
-// where fn answers false.
+// TestObject_Range covers walking properties in Names order and stopping on false.
 func TestObject_Range(t *testing.T) {
 	t.Parallel()
 	obj := NewObject(&Class{Fields: []Field{{Name: "a"}, {Name: "b"}, {Name: "c"}}})

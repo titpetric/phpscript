@@ -70,7 +70,7 @@ func (rt *Runtime) ownEnv() {
 	}
 }
 
-// SetConst registers a PHP constant. A constant is visible in every scope,
+// SetConst registers a PHP constant. A constant is visible in all scopes,
 // unlike a global, which PHP confines to the global scope.
 func (rt *Runtime) SetConst(name string, val any) {
 	if rt.constsShared && rt.frozenConsts != nil {
@@ -91,7 +91,7 @@ func (rt *Runtime) Const(name string) (any, bool) {
 	return v, ok
 }
 
-// entrypointConst answers __FILE__ and __DIR__ for source with no file, never as table constants.
+// entrypointConst answers __FILE__ and __DIR__ for source lacking a file, not from constants.
 func (rt *Runtime) entrypointConst(name string) (any, bool) {
 	if rt.entrypoint == "" {
 		return nil, false
@@ -109,8 +109,8 @@ func (rt *Runtime) entrypointConst(name string) (any, bool) {
 func (rt *Runtime) RegisterFunc(name string, fn any) {
 	// This invalidates no entry: evaluation environments resolve the table per
 	// call (see installFunc), the direct compiler reads no type env, the entry
-	// builds its invoker on first dispatch and a re-registration is a fresh
-	// entry with a fresh invoker.
+	// builds its invoker on first dispatch. A re-registration is a fresh entry
+	// with a fresh invoker.
 	rt.funcs[name] = &funcEntry{fn: fn}
 }
 
@@ -271,8 +271,8 @@ func (rt *Runtime) ClassExists(name string, autoload bool) (bool, error) {
 	return rt.hasClass(name), nil
 }
 
-// MethodExists reports whether a declared PHP class has a method by that name.
-// It answers only for interpreted classes, never a host-backed one.
+// MethodExists reports whether a declared PHP class has a method of the same name.
+// It answers only for interpreted classes, and not for host-backed classes.
 func (rt *Runtime) MethodExists(class, method string) bool {
 	decl, ok := rt.lookupClass(strings.TrimPrefix(class, "\\"))
 	if !ok {
@@ -299,9 +299,9 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 			return c, true
 		}
 	}
-	// stdClass answers last so a script that declares its own shadows it,
-	// and from outside the table so that clearing the table between runs does
-	// not take it away. See model.StdClass.
+	// stdClass answers last. A script's declaration shadows it. It lives
+	// outside the table; clearing the table between runs leaves it in place.
+	// See model.StdClass.
 	if strings.EqualFold(name, "stdClass") {
 		return model.StdClass(), true
 	}

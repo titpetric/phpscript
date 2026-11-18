@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestTrack covers what an install reports: a name it defines, a name it
-// registers over, and a constant, a class and a function apart.
+// TestTrack covers the report of an install: a name it defines, a name it
+// registers on top, a constant, a class, a function apart.
 func TestTrack(t *testing.T) {
 	t.Parallel()
 	rt := New(nil, Options{})

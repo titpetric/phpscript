@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// InterfaceViolation is one method an interface names and a class declaring
-// `implements` did not declare.
+// InterfaceViolation names a method an interface requires that a declaring
+// class omits.
 //
-// Decl is the class declaration the violation came from and a caller holding
-// the program's source spans can report the class's line.
+// Decl is the class declaration the violation came from. A caller holding the
+// program's source spans can report the class's line.
 type InterfaceViolation struct {
 	Decl      *ClassDecl
 	Class     string
@@ -24,14 +24,14 @@ func (v InterfaceViolation) String() string {
 }
 
 // InterfaceContractError is the failure both backends raise for a violated
-// contract. It reaches a script as a RuntimeException and a `catch
+// contract. It reaches a script as a RuntimeException. A `catch
 // (RuntimeException $e)` written around an include takes it.
 type InterfaceContractError struct {
 	Violations []InterfaceViolation
 }
 
-// Error lists every violation, one per line and a class missing three methods
-// produces one error and not three.
+// Error lists every violation, one on each line. A class missing three methods
+// produces one error, not three.
 func (e *InterfaceContractError) Error() string {
 	parts := make([]string, 0, len(e.Violations))
 	for _, v := range e.Violations {

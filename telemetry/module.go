@@ -4,13 +4,13 @@ import (
 	"context"
 )
 
-// Module observes the PHP interpreter and records what it reports onto the
-// trace of the request that is running: the scoreboard state, the entrypoint
-// it resolved to, and one span per include, call or template.
+// Module observes the PHP interpreter and records its reports onto the trace
+// of the running request: the scoreboard state, the entrypoint it resolved to,
+// plus one span per include, call or template.
 //
-// This is no recorder. The host platform registers one, and the tracing
-// middleware that recorder installs puts a trace in the request context; this
-// type writes onto it and no more. So interpreter work shows up on the
+// This is no recorder. The host platform registers a recorder; the tracing
+// middleware it installs puts a trace in the request context. This type writes
+// onto that trace only. So interpreter work shows up on the
 // platform's debug front end without phpscript mounting one.
 type Module struct {
 	tracer *Tracer
@@ -31,9 +31,9 @@ func (m *Module) Snapshot() Snapshot {
 	return m.tracer.Snapshot()
 }
 
-// TrackLifecycle records work that did not arrive over the network, such as a
-// @startup file, as its own trace. There is no request to record onto and
-// this is the one place the observer starts a trace and never writes to one.
+// TrackLifecycle records work that stays off the network, such as a @startup
+// file, as a separate trace. No request exists to record onto. This is the
+// only place the observer starts a trace. It writes no span to that trace.
 func (m *Module) TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error {
 	return m.tracer.Observe(ctx, name, func(ctx context.Context) error {
 		trace := TraceFromContext(ctx)
@@ -59,7 +59,7 @@ func (m *Module) Trace(ctx context.Context, message string, kind ...Kind) *Span 
 }
 
 // UpdateFilename records the PHP entrypoint of the running request. Included
-// files do not replace it: the entrypoint is the file the request resolved to.
+// files do not replace that: the entrypoint is the file the request resolved to.
 func (m *Module) UpdateFilename(ctx context.Context, filename string) {
 	if filename == "" {
 		return

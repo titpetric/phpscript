@@ -37,7 +37,7 @@ func (e *objectError) ThrowableClass() string {
 	return e.object.Class.Name
 }
 
-// Value returns the thrown object a catch clause binds, never the wrapper.
+// Value returns the thrown object a catch clause binds.
 func (e *objectError) Value() any { return e.object }
 
 // catchValue returns a thrown instance's object, and err itself for everything else.

@@ -12,9 +12,9 @@ import (
 
 // TestIncludeFunc covers the resolver a host installs for include and require.
 // The resolver keeps the runner free of a file system: the hook answers with a
-// parsed program and a host serving scripts out of anything at all resolves
-// the path itself. An error it reports is the include failing, and nothing
-// falls back to reading a file.
+// parsed program. A host serving scripts out of anything at all resolves the
+// path itself. An error it reports is the include failing. No fallback reads
+// a file.
 func TestIncludeFunc(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -64,9 +64,9 @@ func TestIncludeFunc(t *testing.T) {
 
 // TestRuntime_RegisterInclude covers a host reimplementing one include target
 // in Go. composer's generated vendor/autoload.php is the case it exists for:
-// the script sees the hook's value where PHP would see the file's, and the
-// runner never parses the file beside it. The hook runs when the script
-// includes the path and not before and the PHP semantics hold.
+// the script sees the hook's value where PHP would see the file's. The runner
+// never parses the neighbouring file. The hook runs when the script includes
+// the path and not before, and the PHP semantics hold.
 func TestRuntime_RegisterInclude(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -126,9 +126,9 @@ func TestRuntime_RegisterInclude(t *testing.T) {
 // lowercased, its namespace separators read as directories, and class.php
 // looked for under each include_path entry in order.
 //
-// It answers nil for a class it cannot find, because a failed autoload is not
-// an error in PHP: the next loader in the queue gets its turn, and the call
-// that needed the class reports it missing.
+// It answers nil for a class it cannot find. A failed autoload is not an error
+// in PHP: the next loader in the queue gets its turn. The call that needed the
+// class reports it missing.
 func TestRuntime_SPLAutoload(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
@@ -153,7 +153,7 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 		t.Error("the class the included file declares is not defined")
 	}
 
-	// SPLAutoload searches the second entry too and the list is a list.
+	// SPLAutoload also searches the second entry. The list is a list.
 	if err := rt.SPLAutoload("Widget"); err != nil {
 		t.Fatalf("SPLAutoload(Widget): %v", err)
 	}
@@ -171,9 +171,9 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 }
 
 // TestRuntime_UnregisterAutoloader covers how PHP matches a loader for
-// removal: by the function, object and method it names and not by identity,
-// because each `array($this, "loadClass")` a script writes is a fresh array
-// and comparing those would never remove anything.
+// removal: by the function, object and method it names. Identity plays no
+// part. The `array($this, "loadClass")` value a script writes is a fresh
+// array; comparing those would remove nothing.
 func TestRuntime_UnregisterAutoloader(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

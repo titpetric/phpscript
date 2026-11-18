@@ -8,8 +8,8 @@ import (
 )
 
 // TestTest covers the block `phpscript test` reads out of `config.yml`. A fixture
-// tree sets its defaults in a file and a suite says what it needs and the
-// command line is not repeating it on every invocation.
+// tree sets its defaults in a file; a suite states its needs. The command
+// line does not repeat either on every invocation.
 func TestTest(t *testing.T) {
 	t.Parallel()
 	block := config.New().Test
@@ -65,10 +65,10 @@ func TestTest_Validate(t *testing.T) {
 	}
 }
 
-// TestTestSuite covers the three things one phpscript.yml over a directory of
-// fixtures records: the suite root, the configuration the fixtures below run
-// under, and the keys the file itself named. A caller reads the last one to
-// tell a setting the suite named from one it inherited.
+// TestTestSuite covers three records one phpscript.yml keeps for a directory of
+// fixtures: the suite root, the configuration the fixtures run under, plus the
+// keys the file named. A caller reads the last to tell a suite-named setting
+// from an inherited one.
 func TestTestSuite(t *testing.T) {
 	t.Parallel()
 	suite, err := config.LoadTestSuite("suites/db", "suites/db/phpscript.yml",
@@ -130,9 +130,9 @@ func TestLoadTestSuite(t *testing.T) {
 		for _, key := range []string{"parallel", "cache", "skip_php"} {
 			source := []byte("test:\n  " + key + ": " + runKeyValue(key) + "\n")
 
-			// A file at or above the invocation root is the run's own and sets
-			// them. One discovered below it governs a folder: two folders
-			// answering differently would leave the run with no answer at all.
+			// A file in the invocation root or a parent belongs to the run.
+			// It sets these keys. A file discovered below governs a folder: two
+			// folders answering differently would leave the run no answer.
 			if _, err := config.LoadTestSuite(".", "phpscript.yml", source, base, false); err != nil {
 				t.Fatalf("%s from the run's own file: %v", key, err)
 			}

@@ -3,7 +3,7 @@
 // these; preg_* presents the PCRE surface. docs/bindings-regexp.md walks the
 // binding from here to its fixtures.
 //
-// The constructors return *regexp.Regexp itself and no facade. Every
+// The constructors return the *regexp.Regexp value directly. Every
 // exported method of that type is a regexp operation and publishing the whole
 // method set is the binding: $rx->find_string($s), $rx->split($s, -1),
 // $rx->replace_all_string($s, $repl). The runtime publishes the type as Regexp,
@@ -26,7 +26,7 @@ func init() {
 
 // Register installs the regexp compilation classes.
 //
-// Each is its package function behind a closure that names the argument: the
+// Each compiles as its package function behind a closure that names the argument: the
 // generated reference publishes that name as the PHP signature.
 func Register(rt *runner.Runtime) {
 	// Regexp\Compile compiles $expr as an RE2 expression and throws when it

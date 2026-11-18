@@ -64,8 +64,8 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 		t.Fatalf("traces = %+v", traces)
 	}
 
-	// A routed request groups by its pattern and /users/1 and /users/2 are one
-	// row in the statistics and never two.
+	// A routed request groups by its pattern. /users/1 and /users/2 become a
+	// single row in the statistics, never two.
 	trace := traces[0]
 	if trace.Name != "GET /users/{id}" || trace.HTTP.Route != "/users/{id}" {
 		t.Fatalf("trace = %+v", trace)
@@ -135,8 +135,8 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 		t.Fatalf("traces = %+v", traces)
 	}
 
-	// Startup work did not arrive over the network and it lands on a
-	// background trace, and no request without a method.
+	// Startup work arrives outside the network and lands on a background
+	// trace. A request lacking a method lands there too.
 	trace := traces[0]
 	if trace.Name != "@startup boot.php" || trace.HTTP != nil || TraceHost(trace) != BackgroundHost {
 		t.Fatalf("trace = %+v", trace)
@@ -158,7 +158,7 @@ func TestInstrumentationWithoutATraceDoesNothing(t *testing.T) {
 		t.Fatalf("span = %+v, want nil without a trace", span)
 	}
 
-	// Every method tolerates it and a binding can instrument
+	// Every method tolerates the value; a binding can instrument
 	// unconditionally.
 	span.SetAttribute("key", "value")
 	span.RecordError(errors.New("ignored"))

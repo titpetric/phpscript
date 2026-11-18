@@ -10,13 +10,13 @@ import (
 )
 
 // TestTokenizerConstants covers the T_* ids token_get_all() reports arriving as
-// constants, every one of them.
+// constants, without exception.
 //
-// A script branches on a token by name, and a name that is not a constant reads
-// as null and comparing a token against null is a branch that never runs. The
-// binding registers every id the tokenizer can emit for that reason, and not
-// the handful one caller happened to need. They are constants and no globals.
-// They resolve inside a function or a method too.
+// A script branches on a token by name. A name that is not a constant reads as
+// null. Comparing a token against null is a branch that does not run. The
+// binding registers every id the tokenizer can emit, more than any caller
+// needs. They are constants, not globals. They resolve inside a
+// function or a method too.
 func TestTokenizerConstants(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -40,7 +40,7 @@ func TestTokenizerConstants(t *testing.T) {
 }
 
 // TestTokenName covers reading an id back as its registered name. A
-// token_get_all() result prints as that name, which a reader recognises. An id
+// token_get_all() result prints as that name, a name a reader recognises. An id
 // the tokenizer never emits answers "UNKNOWN", php's own wording for one.
 func TestTokenName(t *testing.T) {
 	t.Parallel()

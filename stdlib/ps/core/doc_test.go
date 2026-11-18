@@ -9,13 +9,12 @@ import (
 )
 
 // TestCoreAreasRegisterThemselves covers the wiring the package documents:
-// every file contributes its own area from its own init() and adding, moving or
-// dropping an area needs no edit to another file. Importing the package is what
-// installs them, the way a program imports a database/sql driver.
+// every file contributes an area from its `init()`; adding, moving or dropping
+// an area needs no edit to another file. Importing the package installs the
+// areas, as a program imports a database/sql driver.
 //
-// One name per file names the area behind it. A file whose init() stopped
-// running, or whose registration moved out from under it, takes its name with
-// it and fails here.
+// Each file names its area with one name. A file whose `init()` stopped
+// running, or whose registration moved, takes its name with it, failing here.
 func TestCoreAreasRegisterThemselves(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

@@ -14,9 +14,9 @@ import (
 
 // TestCommandsBindWithGlobals binds every command the way decorate does: the
 // global flags first, then the command's own. pflag panics on a name declared
-// twice on one set and a command that reuses a global's name fails here and
-// never in a run of that command. A command package binding on its own flag
-// set never meets the globals and cannot see the clash.
+// twice on one set. A command that reuses a global's name fails here, not in a
+// run of that command. A command package binding on a private flag set never
+// meets the globals and cannot see the clash.
 func TestCommandsBindWithGlobals(t *testing.T) {
 	t.Parallel()
 	for _, command := range commands() {
@@ -133,8 +133,7 @@ func TestRunToolPrefix(t *testing.T) {
 	}
 }
 
-// TestWithToolsReplacesBuiltin pins that a discovered test tool replaces the
-// built-in and withTools appends a new tool.
+// TestWithToolsReplacesBuiltin pins a discovered tool replacing the built-in, withTools appending.
 func TestWithToolsReplacesBuiltin(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -157,10 +156,10 @@ func TestWithToolsReplacesBuiltin(t *testing.T) {
 	}
 }
 
-// TestDecorate covers what a command gets for free. decorate binds the shared
-// flags onto it and wraps its Run with the work they imply and no command
-// package repeats either, and a command naming no usage takes the examples
-// registered under its name.
+// TestDecorate covers the work a command gets for free. decorate binds the
+// shared flags onto the command. It wraps the command's Run with the work
+// those flags imply; no command package repeats either step. A command naming
+// no usage takes the examples registered by its name.
 func TestDecorate(t *testing.T) {
 	t.Parallel()
 	globals := &flags.Options{}

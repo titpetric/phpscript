@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// TestWait covers the wait sleep() and usleep() share, and the two ways it ends
-// early.
+// TestWait covers the wait that sleep() and usleep() share, plus the ways it
+// ends early.
 //
-// A sleep that ran past a cancelled context would be the one place nothing
-// could stop a script and both contexts end it: the client's ends when the
-// client goes away, and the script's own when it runs out of time. A duration
-// at or below zero returns without arming a timer.
+// A sleep that ran past a cancelled context would leave one place nothing
+// could stop a script. Both contexts end the wait. The client's ends when the
+// client goes away; the script's own ends when it runs out of time. A duration
+// of zero or less returns without arming a timer.
 func TestWait(t *testing.T) {
 	t.Parallel()
 	const forever = 30 * time.Second
@@ -44,8 +44,7 @@ func TestWait(t *testing.T) {
 	}
 }
 
-// TestWaitRunsTheClockDown covers the other half: with neither context
-// cancelled the wait lasts its full duration.
+// TestWaitRunsTheClockDown covers a wait neither context cancels, lasting its full duration.
 func TestWaitRunsTheClockDown(t *testing.T) {
 	t.Parallel()
 	const d = 20 * time.Millisecond

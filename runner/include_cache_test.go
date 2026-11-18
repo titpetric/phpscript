@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestIncludeCache covers storing a parsed program under its cleaned path. The
+// TestIncludeCache covers storing a parsed program at the cleaned path. The
 // cache treats a parsed program as immutable: hoisting copies declarations into
-// per-runtime maps and statement execution only reads the tree and every caller
+// per-runtime maps, statement execution only reads the tree. Every caller
 // shares one program.
 func TestIncludeCache(t *testing.T) {
 	t.Parallel()
@@ -41,8 +41,8 @@ func TestIncludeCache(t *testing.T) {
 
 // TestNewIncludeCacheWithCapacity covers the bound that keeps a long-running
 // process from growing one entry per path it ever included. A capacity of zero
-// or less reads as the default and a host passing an unset value gets the
-// bound and never an unbounded map.
+// or less reads as the default; a host passing an unset value gets the bound,
+// never an unbounded map.
 func TestNewIncludeCacheWithCapacity(t *testing.T) {
 	t.Parallel()
 	cache := NewIncludeCacheWithCapacity(2)
@@ -65,8 +65,8 @@ func TestNewIncludeCacheWithCapacity(t *testing.T) {
 
 // TestIncludeCache_Account covers the heap a precompile pass reports adding.
 // The total reads zero until a pass runs, as a lazily filled cache reports: a
-// request names each file in it. Account drops a negative figure and a
-// miscounted pass cannot credit the total.
+// request names each file in it. Account drops a negative figure. A miscounted
+// pass cannot credit the total.
 func TestIncludeCache_Account(t *testing.T) {
 	t.Parallel()
 	cache := NewIncludeCache()

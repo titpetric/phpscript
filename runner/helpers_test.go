@@ -7,8 +7,8 @@ import (
 )
 
 // TestHelperConcat covers `.`, which renders both operands the way PHP renders
-// them in a string context and a concatenation of an int and a bool spells
-// them as echo spells them.
+// them in a string context. A concatenation of an int with a bool spells them
+// as echo spells them.
 func TestHelperConcat(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -28,7 +28,7 @@ func TestHelperConcat(t *testing.T) {
 }
 
 // TestHelperArray covers `array()` and `[...]`: an unkeyed item takes the next
-// integer index, a keyed one lands under its normalised key, and the two
+// integer index, a keyed one lands at its normalised key, and the two
 // interleave the way PHP interleaves them.
 func TestHelperArray(t *testing.T) {
 	t.Parallel()
@@ -59,10 +59,10 @@ func TestHelperArray(t *testing.T) {
 	}
 }
 
-// TestHelperIndex covers `base[idx]` over every container a script can index. A
+// TestHelperIndex covers `base[idx]` over any container a script can index. A
 // missing key answers nil, PHP's forgiving access, and raises nothing. A string
-// offset is the byte at that position and it agrees with strlen and with the
-// offsets strpos reports, and a negative offset counts from the end.
+// offset is the byte at that position. It agrees with strlen and the offsets
+// strpos reports. A negative offset counts from the end.
 func TestHelperIndex(t *testing.T) {
 	t.Parallel()
 	array := model.NewArray()

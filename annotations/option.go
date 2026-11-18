@@ -10,9 +10,9 @@ import (
 	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
 )
 
-// Option configures how the scanner finds annotated PHP files and runs them. The
-// same options apply to Route and Startup: both scan one source tree and run
-// PHP files out of it.
+// Option configures how the scanner finds annotated PHP files and runs those
+// files. The same options apply to Route and Startup: both scan a source tree
+// and run PHP files from it.
 type Option func(*config)
 
 // config is the settings shared by Route and Startup.
@@ -33,12 +33,12 @@ type config struct {
 }
 
 // ErrorPageFunc renders a host's own page for an error response and reports
-// whether it did. status is the status the endpoint ended on and notes is what
-// went wrong, empty unless the endpoint failed.
+// whether it did. status is the status the endpoint ended on; notes describes
+// the failure, empty unless the endpoint failed.
 //
 // A routed endpoint is a file outside the document root and it has no error
 // page to find; the host that owns the document root supplies one of these. A
-// false answer, and a nil func, leave the response to the endpoint.
+// false answer or a nil func leaves the response to the endpoint.
 type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool
 
 // moduleName returns base with the configured module suffix appended.
@@ -57,15 +57,14 @@ func newConfig(options ...Option) config {
 	return cfg
 }
 
-// WithRootDir grants annotated PHP files access to the project directory,
-// backing filesystem functions like fopen().
+// WithRootDir grants annotated PHP files the project directory, backing filesystem functions like fopen().
 func WithRootDir(dir string) Option {
 	return func(c *config) {
 		c.rootDir = dir
 	}
 }
 
-// WithOutput sets where a startup job writes its output. Routed endpoints write
+// WithOutput sets the output writer for a startup job. Routed endpoints write
 // to the HTTP response instead, and ignore this.
 func WithOutput(out io.Writer) Option {
 	return func(c *config) {
@@ -87,7 +86,7 @@ func WithFlatstack(enabled bool) Option {
 	}
 }
 
-// WithObservers attaches runtime observers to every annotated PHP file.
+// WithObservers attaches runtime observers to each annotated PHP file.
 func WithObservers(observers ...runner.Observer) Option {
 	return func(c *config) {
 		for _, observer := range observers {
@@ -98,8 +97,7 @@ func WithObservers(observers ...runner.Observer) Option {
 	}
 }
 
-// WithRuntimeFunc registers fn to customize each runtime once it holds the
-// standard library and the request context.
+// WithRuntimeFunc registers fn to customize each runtime after the stdlib loads.
 func WithRuntimeFunc(fn RuntimeFunc) Option {
 	return func(c *config) {
 		if fn != nil {
@@ -116,7 +114,7 @@ func WithExprCache(cache *runner.ExprCache) Option {
 }
 
 // WithIncludeCache sets a shared include cache, which belongs to one source
-// tree: include paths resolve against one filesystem root.
+// tree: include paths resolve under one filesystem root.
 func WithIncludeCache(cache *runner.IncludeCache) Option {
 	return func(c *config) {
 		c.includeCache = cache
@@ -131,16 +129,15 @@ func WithModuleSuffix(suffix string) Option {
 	}
 }
 
-// WithErrorPages lets a host answer a routed endpoint's error response with its
-// own page. Startup and scheduled jobs answer to nobody and ignore it.
+// WithErrorPages lets a host answer a routed endpoint's error response with a
+// host page. Startup and scheduled jobs answer to nobody and ignore it.
 func WithErrorPages(fn ErrorPageFunc) Option {
 	return func(c *config) {
 		c.errorPages = fn
 	}
 }
 
-// WithCoverage counts the statements annotated PHP files execute, into an
-// aggregator that outlives the runs.
+// WithCoverage counts statements annotated PHP files execute into an aggregator outliving the runs.
 func WithCoverage(aggregator *coverage.Aggregator) Option {
 	return func(c *config) {
 		c.coverage = aggregator

@@ -11,10 +11,10 @@ import (
 // `Class::$property` and the `self::` / `static::` spellings of both.
 //
 // A static member belongs to the class, not to an instance, and has no
-// receiver to hang off the object model in value.go. A method runs against a
+// receiver to hang off the object model in value.go. A method runs in a
 // scope holding its class alone; the Runtime keeps one bag of properties per
 // class (see Runtime.classStatics), and composer's `self::$registeredLoaders`
-// is observable from every instance and from a later static call.
+// is observable from any instance and from a later static call.
 
 // resolveClassName returns the class self or static names, refusing parent at runtime.
 func resolveClassName(class string, scope *Scope) (string, error) {
@@ -48,7 +48,7 @@ func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 	return scope
 }
 
-// staticBag returns a class's live static storage, seeded from its defaults on first access.
+// staticBag returns a class's live static storage, seeded from its defaults.
 func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, error) {
 	if bag, ok := rt.classStatics[class.Name]; ok {
 		return bag, nil
@@ -91,7 +91,7 @@ func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, er
 // staticsKey is the scope slot holding a closure frame's function-static table.
 const staticsKey = "__statics__"
 
-// staticVarBag returns one `static $x` statement's storage and whether an earlier call left values.
+// staticVarBag returns a `static $x` statement's storage and earlier values.
 func (rt *Runtime) staticVarBag(n *model.StaticVar, scope *Scope) (map[string]any, bool) {
 	if v, ok := scope.Get(staticsKey); ok {
 		if table, ok := v.(map[*model.StaticVar]map[string]any); ok {
@@ -164,8 +164,8 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 		}
 		// This reads the host table by exact name alone, one map lookup on
 		// the common path, where lookupFunc's case-insensitive fallback
-		// scans the whole function table on every miss, which every call to a
-		// PHP static method would be.
+		// scans the whole function table on every miss, the cost of every PHP
+		// static call.
 		if entry, ok := rt.funcs[name+"::"+method]; ok {
 			return rt.invokeEntry(entry, args, scope)
 		}
@@ -195,7 +195,7 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 	}
 }
 
-// invokeStatic runs a method with no `$this`, binding `__class__` so `self::` resolves.
+// invokeStatic runs a method without `$this`, binding `__class__` so `self::` resolves.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)

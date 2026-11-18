@@ -36,7 +36,7 @@ type printer struct {
 	// afterComment records a comment as the last thing written and a
 	// declaration can follow its documentation without a blank line between.
 	afterComment bool
-	// collapseBlank drops the source blank line above a call written directly
+	// collapseBlank drops the source blank line above the call written directly
 	// under an assignment, which reads as one setup and run unit.
 	collapseBlank bool
 	// goRuntime spells statements without semicolons and members in lowerCamelCase.
@@ -91,7 +91,7 @@ func (p *printer) blank() {
 	}
 }
 
-// stmts prints a statement list without leading or trailing blank lines, keeping one source blank.
+// stmts prints a statement list, collapsing blank runs and trimming the ends.
 func (p *printer) stmts(stmts []model.Stmt) {
 	// A block opens with no leading blank line, whatever the source did
 	// between the brace and the first statement.
@@ -105,7 +105,7 @@ func (p *printer) stmts(stmts []model.Stmt) {
 	}
 }
 
-// body prints a block's statements one level in, then the comments left before its closing line.
+// body prints a block's statements a level in, then comments before its close.
 func (p *printer) body(stmts []model.Stmt, end int) {
 	p.depth++
 	p.stmts(stmts)
@@ -132,7 +132,7 @@ func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	return isDecl(next) || isFuncDecl(prev)
 }
 
-// isAssignCall reports a call written directly under an assignment.
+// isAssignCall reports a call that sits directly inside an assignment.
 func isAssignCall(prev, next model.Stmt) bool {
 	_, assigned := prev.(*model.Assign)
 	return assigned && isCallStmt(next)

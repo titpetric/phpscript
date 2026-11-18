@@ -4,8 +4,8 @@ package model
 // method table keyed by method name.
 //
 // Statics are the declarations of `static $name = expr` properties; their
-// values stay in the runtime (one bag per class, created on first access) so
-// that every instance and every static call observes the same storage.
+// values stay in the runtime (one bag per class, created on first access); all
+// instances and static calls observe the same storage.
 type Class struct {
 	Name string
 	// Implements is every interface name the declaration listed, plus the names
@@ -18,7 +18,7 @@ type Class struct {
 	Methods    map[string]*FuncDecl
 }
 
-// declares reports whether name is one of the class's declared fields.
+// declares reports whether name is a declared field of the class.
 func (c *Class) declares(name string) bool {
 	for _, field := range c.Fields {
 		if field.Name == name {

@@ -1,9 +1,9 @@
 // Package helpdocs renders `phpscript --help`.
 //
-// The long help is a document and no flag dump: what the tool is, the
-// commands, the flags every command shares, and per command its own flags and
-// a table of worked examples. An agent reading it should not have to run nine
-// commands to find out what the tenth accepts.
+// The long help is a document, not a flag dump: the tool's purpose, the
+// commands, the flags every command shares, plus each command's flags with a
+// table of worked examples. An agent reading it should not have to run nine
+// commands to learn the tenth's options.
 //
 // The examples are markdown, one file per command, embedded from this
 // directory. A terminal gets them through the same box-drawing table the rest
@@ -28,7 +28,7 @@ var docs embed.FS
 // FS returns the embedded example documents, named example.<command>.md.
 func FS() fs.FS { return docs }
 
-// Command is one entry of the long help: the name a user types, what it does,
+// Command is an entry of the long help: the name a user types, its purpose,
 // and the flags it defines beyond the shared set.
 type Command struct {
 	Name  string
@@ -37,7 +37,7 @@ type Command struct {
 }
 
 // Examples returns the rendered example document for one command, or the empty
-// string where no document exists. A command's cli.Usage hook returns it and
+// string when no document exists. A command's cli.Usage hook returns it.
 // `phpscript test --help` prints the same table the long help does.
 func Examples(name string, markdown bool) string {
 	src, err := fs.ReadFile(docs, "example."+name+".md")
@@ -94,7 +94,7 @@ func commandTable(w io.Writer, commands []Command, markdown bool) {
 	t.Flush()
 }
 
-// flagTable writes one flag set as a table in the shape the rest of the tool prints.
+// flagTable writes one flag set as the table the tool prints.
 func flagTable(w io.Writer, fs *FlagSet, markdown bool) {
 	t := table.New(w, markdown,
 		table.Column{Title: "Flag"},
@@ -145,7 +145,7 @@ func Render(w io.Writer, src string, markdown bool) error {
 	return nil
 }
 
-// tableAt returns the markdown table at lines[i] and its end, nil when none starts there.
+// tableAt returns the markdown table at lines[i], or nil.
 func tableAt(lines []string, i int) ([][]string, int) {
 	if !isRow(lines, i) || !isSeparator(lines, i+1) {
 		return nil, i

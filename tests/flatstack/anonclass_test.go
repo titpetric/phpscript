@@ -12,8 +12,8 @@ import (
 // TestFlatstackRejectsAnonymousClass pins the anonymous class as a form the
 // compiler declines. The bytecode names a class where an anonymous class
 // holds a declaration, and the whole program goes to the interpreter instead;
-// this asserts the rejection and not the output, because a fixture cannot
-// tell a fallback from a compiled run that agreed with it.
+// this asserts the rejection and not the output; a fixture cannot tell a
+// fallback from a compiled run that agreed with it.
 func TestFlatstackRejectsAnonymousClass(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php $o = new class { public function f() { return 1; } }; echo $o->f();`)
@@ -29,8 +29,8 @@ func TestFlatstackRejectsAnonymousClass(t *testing.T) {
 	}
 }
 
-// The rejection is a fallback and no failure: the program still runs and
-// produces what the interpreter produces.
+// The rejection is a fallback, not a failure: the program still runs and
+// produces the interpreter's output.
 func TestFlatstackFallsBackForAnonymousClass(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php

@@ -15,7 +15,7 @@ import (
 )
 
 // BenchmarkRequestCycle measures one request's runtime turnaround on a
-// reused runtime: session reset, superglobal registration, and a script
+// reused runtime: session reset, superglobal registration, plus a script
 // that reads them. Request parsing (FromRequest) sits outside the loop -
 // it belongs to the HTTP layer, outside the runtime cycle this instruments.
 func BenchmarkRequestCycle(b *testing.B) {
@@ -42,7 +42,7 @@ func BenchmarkRequestCycle(b *testing.B) {
 }
 
 // BenchmarkRequestCycleTraced is BenchmarkRequestCycle with an oida recorder
-// attached and a script shaped like a real controller: one constructor and a
+// attached, plus a script shaped like a real controller: one constructor, a
 // method call loop, about thirty spans per request. The delta against the
 // untraced benchmark is the observer's whole cost - span construction,
 // recording, and the per-call name builds the observer guard skips otherwise.
@@ -92,8 +92,8 @@ echo $n, ":", $_GET["q"];`)
 	}
 }
 
-// BenchmarkRequestCycleSvc is the traced benchmark's script with no observer
-// attached: the control that isolates what recording ~30 spans costs.
+// BenchmarkRequestCycleSvc is the traced benchmark's script with no
+// observer: the control that isolates the cost of recording ~30 spans.
 func BenchmarkRequestCycleSvc(b *testing.B) {
 	prog, err := parser.Parse(`<?php
 class Svc {

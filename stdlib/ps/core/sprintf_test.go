@@ -6,7 +6,7 @@ import (
 
 // TestPhpSprintfCoercesArguments pins the part of sprintf a fixture cannot
 // reach from the other side: that phpval converts an argument before the
-// renderer writes it, and never passes it to a Go formatter that reports its
+// renderer writes it. That value never reaches a Go formatter that reports its
 // type back.
 func TestPhpSprintfCoercesArguments(t *testing.T) {
 	t.Parallel()
@@ -44,8 +44,7 @@ func TestPhpSprintfCoercesArguments(t *testing.T) {
 	}
 }
 
-// TestPhpSprintfErrors pins the class each malformed format raises. A script's
-// catch clause names that class.
+// TestPhpSprintfErrors pins the class each malformed format raises, as catch names it.
 func TestPhpSprintfErrors(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -6,11 +6,11 @@ import (
 )
 
 // TestStrtr covers both spellings of strtr. Three arguments replace bytes
-// positionally and stop at the shorter of the two tables and a $to shorter
+// positionally, stopping at the shorter of the two tables; a $to shorter
 // than $from leaves the uncovered bytes alone. Two arguments replace
-// substrings, longest key first and the result is independent of the order the
-// pairs appear in and a replacement never rewrites its own output:
-// ["a" => "b", "b" => "c"] over "abc" is "bcc" and never "ccc".
+// substrings, longest key first. The result is independent of the order the
+// pairs appear in. A replacement never rewrites its output:
+// ["a" => "b", "b" => "c"] over "abc" is "bcc", never "ccc".
 func TestStrtr(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -27,12 +27,12 @@ echo strtr("hello", "abc", "x"), "\n";`)
 }
 
 // TestStrrpos covers the offset argument, which means two different things by
-// its sign. A positive offset skips that many leading bytes and the search
+// its sign. A positive offset skips that many leading bytes; the search
 // runs over the rest. A negative one caps where the match may start, counted
 // back from the end. The result is still a position in the whole string:
-// -5 over "hello world" finds the "o" at 4 and not the one at 7.
+// -5 over "hello world" finds the "o" at 4 and skips the "o" at 7.
 //
-// A needle that does not occur is false and never -1, because a caller
+// A needle that does not occur is false, not -1. A caller
 // compares the miss with === false.
 func TestStrrpos(t *testing.T) {
 	t.Parallel()
@@ -45,10 +45,10 @@ var_dump(strrpos("hello world", "o"), strrpos("hello world", "o", 5), strrpos("h
 	}
 }
 
-// TestFilterVar covers the three validators this runtime implements, which
-// each answer the typed value or false and never the input: "42" validates to
-// the int 42 and a caller can use the result directly. filter_var trims the
-// value first, and a float spelling fails the integer validator and leaves the
+// TestFilterVar covers three validators this runtime implements: each
+// answers the typed value or false; the input never comes back. "42" validates to
+// the int 42; a caller can use the result directly. filter_var trims the
+// value first; a float spelling fails the integer validator and leaves the
 // value whole.
 //
 // An unknown filter passes the value through, as FILTER_DEFAULT does.
@@ -72,9 +72,9 @@ var_dump(filter_var("passed through"));`)
 	}
 }
 
-// TestDefineDefinedConstant covers the three functions a script defines its own
-// constants through. define answers true, defined answers for a name nothing
-// defines, and constant reads one back by name and a script reaches a constant
+// TestDefineDefinedConstant covers three functions a script uses to
+// define constants. define answers true; defined answers for a name nothing
+// defines; constant reads one back by name. A script reaches a constant
 // whose name it computed.
 func TestDefineDefinedConstant(t *testing.T) {
 	t.Parallel()
@@ -90,8 +90,8 @@ var_dump(constant("GREETING"));`)
 }
 
 // TestPlatformIntegerConstants covers the constants a library branches on
-// before it does anything else. The integer limits are the 64-bit ones because
-// that is the only width this runtime has, and E_ALL is 30719, which leaves
+// before it does anything else. The integer limits are the 64-bit ones,
+// the only width this runtime has. E_ALL is 30719; that leaves
 // E_STRICT out as php 8 does.
 func TestPlatformIntegerConstants(t *testing.T) {
 	t.Parallel()
@@ -106,14 +106,14 @@ var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
 	}
 }
 
-// TestPlatformVersion covers the version this runtime reports, which is a
-// decision and not a measurement: the fixtures follow that version's
-// semantics. A library reads the number when it picks which language
-// features it may use. The three spellings have to agree, because a library
-// gates on whichever one it learned.
+// TestPlatformVersion covers the version this runtime reports. That is a
+// decision, not a measurement: the fixtures follow that version's
+// semantics. A library reads the number when it picks the language
+// features it may use. Three spellings must agree; a library
+// gates on whichever spelling it learned.
 //
-// The php binary the fixture matrix runs beside reports its own version and
-// this test states the value and settles nothing by running php.
+// The php binary the fixture matrix runs beside reports its version.
+// This test states the value and settles nothing by running php.
 func TestPlatformVersion(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -129,8 +129,8 @@ var_dump(phpversion(), zend_version());`)
 
 // TestPlatformOS covers PHP_OS and PHP_OS_FAMILY, which hold php's spelling
 // of the host and not Go's: php reads the uname system name and linux is
-// "Linux". The family is the coarser grouping a script branches on, and the
-// two agree on every platform this runs on except the BSDs and Solaris.
+// "Linux". The family is the coarser grouping a script branches on. The
+// two agree on every platform this runs on, except the BSDs and Solaris.
 func TestPlatformOS(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS != "linux" {
@@ -146,13 +146,13 @@ var_dump(PHP_OS, PHP_OS_FAMILY, php_uname());`)
 }
 
 // TestIniStubs covers the configuration surface, which answers the same way
-// for every directive because this runtime has no php.ini to read. Reporting
-// an unset directive is what php does for a name it does not know, and
-// library code reads it as "this extension is not configured" and a probe for
+// for every directive because this runtime has no php.ini to read. php reports
+// an unset directive for an unknown name. Library code reads it as "this
+// extension is not configured"; a probe for
 // APCu or an opcache finds nothing and falls back.
 //
-// headers_sent is false for the length of a script because the runtime stages
-// response headers and writes them after it finishes and nothing leaves while
+// headers_sent is false for the length of a script. The runtime stages
+// response headers, writes them after it finishes, and nothing leaves while
 // php is still running.
 func TestIniStubs(t *testing.T) {
 	t.Parallel()

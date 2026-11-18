@@ -90,7 +90,7 @@ func (t *terminalMatrix) metrics() bool {
 	return t.loop || t.profile || t.lat
 }
 
-// sizeColumns rebuilds the header row and widths, the folder name heading the fixture column.
+// sizeColumns rebuilds the header row and widths, naming the folder column.
 func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 	if dir == "" {
 		dir = "Fixture"
@@ -190,7 +190,7 @@ func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.D
 		table.ColorHeader, passed, failed, total, formatEngineSplit(engines, duration), table.ColorReset)
 }
 
-// detailWidth returns the runner columns merged into one cell for failure detail.
+// detailWidth returns the runner columns merged to a single cell for failure detail.
 func (t *terminalMatrix) detailWidth() int {
 	width := 0
 	for _, w := range t.widths[1:] {

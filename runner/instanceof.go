@@ -41,7 +41,7 @@ func instanceOfName(class any) string {
 	}
 }
 
-// instanceOfClass returns the class name of a value, "" for a scalar or an array.
+// instanceOfClass returns a value's class name, "" for a scalar or array.
 func instanceOfClass(value any) string {
 	switch v := value.(type) {
 	case *model.Object:
@@ -52,8 +52,8 @@ func instanceOfClass(value any) string {
 	case nil, bool, string, int, int64, float64, *model.Array:
 		return ""
 	case *Callable:
-		// A callable value is php's Closure whichever of the three it holds, and
-		// get_class() says the same.
+		// A callable value is php's Closure whichever callable form it holds,
+		// and get_class() says the same.
 		return "Closure"
 	}
 	if err, ok := value.(error); ok {
@@ -64,7 +64,7 @@ func instanceOfClass(value any) string {
 	return goTypeName(value)
 }
 
-// phpClassName returns the class name a script sees, falling back to the value's type name.
+// phpClassName returns the class a script sees, falling back to the type name.
 func phpClassName(value any) string {
 	if class := instanceOfClass(value); class != "" {
 		return class

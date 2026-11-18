@@ -150,7 +150,7 @@ func weekdayName(name string) (time.Weekday, bool) {
 	return 0, false
 }
 
-// Next returns the first instant strictly after t at which the job should run.
+// Next returns the first instant strictly after t at which the job runs.
 func (s Schedule) Next(t time.Time) time.Time {
 	if s.Every > 0 {
 		return t.Add(s.Every)

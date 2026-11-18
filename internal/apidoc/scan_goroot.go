@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// gorootDocs reads the godoc and parameter names of one Go type from GOROOT, nil when absent.
+// gorootDocs reads a Go type's godoc and parameter names from GOROOT.
 func gorootDocs(pkg, typeName string) *TypeDocs {
 	dir := filepath.Join(gobuild.Default.GOROOT, "src", filepath.FromSlash(pkg))
 	entries, err := os.ReadDir(dir)
@@ -37,7 +37,7 @@ func gorootDocs(pkg, typeName string) *TypeDocs {
 	return out
 }
 
-// collectGoroot records what one parsed file says about typeName.
+// collectGoroot records the facts a parsed file holds about typeName.
 func (d *TypeDocs) collectGoroot(file *ast.File, typeName string) {
 	for _, decl := range file.Decls {
 		switch node := decl.(type) {

@@ -10,9 +10,9 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// TestRatio covers the form both coverage columns take. The header says what
-// the column counts and the cell holds the counts and the percent they come
-// to, and the percent rounds to whole: 1 of 2 reads 50%, where truncation
+// TestRatio covers the form both coverage columns take. The header names the
+// count a column holds; the cell holds the counts and the percent they come
+// to. The percent rounds to whole: 1 of 2 reads 50%, where truncation
 // would read 49%.
 func TestRatio(t *testing.T) {
 	t.Parallel()
@@ -33,7 +33,7 @@ func TestRatio(t *testing.T) {
 
 // TestPercentOf covers the rounding, and the nothing-to-measure case: a zero
 // total is no percent at all. Dividing by it would panic, and answering 100%
-// for a folder with no files would read as a measurement.
+// for a folder holding no files would read as a measurement.
 func TestPercentOf(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -53,9 +53,9 @@ func TestPercentOf(t *testing.T) {
 	}
 }
 
-// TestFolderCoverColumns covers what a folder with nothing to measure prints.
-// Its fixtures loaded no PHP file and both columns answer with the
-// dash: a zero percent there would drag the run's reading down for no finding.
+// TestFolderCoverColumns covers the output of a folder with nothing to
+// measure. Its fixtures loaded no PHP file. Both columns answer with the dash.
+// A zero percent there would drag the run's reading down for no finding.
 func TestFolderCoverColumns(t *testing.T) {
 	t.Parallel()
 	empty := folderCover{Dir: "arrays"}
@@ -81,10 +81,11 @@ func TestFolderCoverColumns(t *testing.T) {
 	}
 }
 
-// TestFolderCoverageCountsADeclarationFileAsReached covers the one exception
+// TestFolderCoverageCountsADeclarationFileAsReached covers the single exception
 // the file count makes: a file holding no runnable statement, a bag of
-// declarations, has nothing left to reach and counts as reached. Without it
-// the count would charge a suite including a file of class declarations for
+// declarations, has nothing left to reach and counts as reached. Without the
+// rule, the count would charge a suite including a file of class declarations
+// for
 // coverage it cannot reach.
 func TestFolderCoverageCountsADeclarationFileAsReached(t *testing.T) {
 	t.Parallel()
@@ -140,8 +141,8 @@ func TestFolderCoverageGroupsWithNothingLoaded(t *testing.T) {
 
 // TestFolderTableSplitsEngineDurations covers the folder summary of a matrix
 // run with cost columns: one duration column per runner after the wall-clock
-// one. Without engines the single column stays, as a plain run and
-// the checked-in report print.
+// column. When no engine records a time, the single column stays, as in a plain run
+// and the checked-in report.
 func TestFolderTableSplitsEngineDurations(t *testing.T) {
 	t.Parallel()
 	rows := []folderSummary{{groupTotals: groupTotals{

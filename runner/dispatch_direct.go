@@ -9,19 +9,19 @@ import (
 // This file is the typed bridge in front of reflect.Value.Call for the Go
 // methods a handler touches per request: the response writer, the request,
 // url.Values, http.Header and the JSON encoder. reflect.Value.Call allocates
-// the receiver box, the argument frame and the result slice on every call,
-// and together those are the largest allocation site a request-path profile
-// reports. An interface assertion dispatches the same method with none of the
-// three.
+// the receiver box, the argument frame, and the result slice on every call.
+// Together those are the largest allocation site a request-path profile
+// reports. An interface assertion dispatches the same method without allocating
+// any of the three.
 //
-// Each case is one method name with one signature, because a Go interface
-// encodes both. The assertion runs per call and the runtime caches the itab
-// lookup and the per-call cost is a type check. A receiver or an
+// Each case pairs one method name with one signature, as a Go interface
+// encodes both. The assertion runs per call; the runtime caches the itab
+// lookup, and the per-call cost is a type check. A receiver or an
 // argument shape a case does not cover answers handled=false, which sends the
 // call down the planned reflect path with its coercion and its errors intact;
 // no case here may answer differently than that path would.
 
-// directGoMethod returns the typed call for a resolved method, nil when no shape matches.
+// directGoMethod returns the typed call for a resolved method, nil otherwise.
 func directGoMethod(base any, goName string) func(any, []any) (any, bool, error) {
 	switch goName {
 	case "Header":
@@ -39,10 +39,10 @@ func directGoMethod(base any, goName string) func(any, []any) (any, bool, error)
 				if len(args) > 1 {
 					return nil, true, &ArgumentCountError{Want: 1, Got: len(args)}
 				}
-				// A string takes io.StringWriter where the writer has one and
-				// $w->write($s) pays no clone; the []byte conversion is what
-				// the reflect path's coercion makes anyway. Any other
-				// argument keeps the reflect path's coercion and errors.
+				// A string takes io.StringWriter where the writer supports it;
+				// $w->write($s) pays no clone. The []byte conversion matches
+				// the reflect path's coercion anyway. Any other argument keeps
+				// the reflect path's coercion and errors.
 				switch v := argAt(args, 0).(type) {
 				case string:
 					if sw, ok := recv.(io.StringWriter); ok {

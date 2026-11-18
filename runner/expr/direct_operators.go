@@ -13,7 +13,7 @@ import (
 // and the binary operators. The dispatcher that reaches them is in
 // direct.go.
 
-// compileInterp compiles an interpolated string to one closure that writes every part into a builder.
+// compileInterp compiles an interpolated string to one closure writing into a builder.
 func (dc *directCompiler) compileInterp(n *model.Interp) (closure, error) {
 	if len(n.Parts) == 0 {
 		return constClosure(""), nil
@@ -99,8 +99,8 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 }
 
 func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
-	// `instanceof` with a bare name on the right names the class, and no
-	// constant to resolve.
+	// `instanceof` with a bare name on the right names the class. No constant
+	// needs resolving.
 	if n.Op == "instanceof" {
 		if v, ok := modelutil.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
 			l, err := dc.compile(n.Left)

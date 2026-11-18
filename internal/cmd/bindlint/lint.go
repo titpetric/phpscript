@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-// finding is one binding the rules refuse: the position, the name a script
-// calls it by, and what to do about it.
+// finding holds a binding the rules refuse: the position, the name a script
+// calls it by, plus the remedy.
 type finding struct {
 	file    string
 	line    int
@@ -22,14 +22,13 @@ type finding struct {
 	message string
 }
 
-// String renders the finding the way a compiler reports one, and an editor
-// jumps to the position from it.
+// String renders the finding as a compiler line an editor jumps to.
 func (f finding) String() string {
 	return fmt.Sprintf("%s:%d: %s: %s", f.file, f.line, f.binding, f.message)
 }
 
-// pkg is one directory's Go source, test files excluded: a binding is what a
-// shipped build registers and a test file registers nothing.
+// pkg holds the Go source of one directory, excluding test files. A binding
+// is whatever a shipped build registers; a test file registers nothing.
 type pkg struct {
 	dir   string
 	root  string
@@ -152,7 +151,7 @@ func receiverType(fn *ast.FuncDecl) string {
 	return ident.Name
 }
 
-// binding is one Go function a script reaches: a registered function, a
+// binding holds a Go function a script reaches: a registered function, a
 // constructor, or a method of the type a constructor returns.
 type binding struct {
 	name  string
@@ -161,8 +160,8 @@ type binding struct {
 	pos   token.Pos
 }
 
-// check applies both rules to every binding the package registers, reporting
-// each site once: one helper serves four bindings in stdlib/ps/core alone and
+// check applies both rules to each binding the package registers, reporting
+// every site once. One helper serves four bindings in stdlib/ps/core alone;
 // one edit fixes it.
 func (p *pkg) check() []finding {
 	var out []finding
@@ -191,10 +190,10 @@ func (p *pkg) position(pos token.Pos) (string, int) {
 	return filepath.ToSlash(file), at.Line
 }
 
-// bindings collects what the package registers: the function value behind
+// bindings collects the registrations of a package: the function value behind
 // every RegisterFunc, the constructor behind every RegisterConstructor, and
-// the exported methods of the type that constructor returns, which are the
-// methods a script calls on the class.
+// the exported methods of the type that constructor returns. A script calls
+// those methods on the class.
 func (p *pkg) bindings() []binding {
 	var out []binding
 	for _, file := range p.files {
@@ -221,11 +220,11 @@ func (p *pkg) bindings() []binding {
 
 // registered resolves the function value a registration names: the literal
 // written at the call, or the function it names in this package. A value from
-// another package is out of reach of a directory at a time, and a computed one
-// (`rt.RegisterFunc(name, fn)` over a table) names no function to read.
+// another package is out of a directory's reach. A computed value
+// (`rt.RegisterFunc(name, fn)` from a table) names no function to read.
 //
 // With class set, the methods of the type the constructor returns join the
-// list: a script calls them the same way it calls a function.
+// list: a script calls those methods the same way it calls a function.
 func (p *pkg) registered(call *ast.CallExpr, class string) []binding {
 	name := registeredName(call)
 	var out []binding
@@ -249,23 +248,21 @@ func (p *pkg) registered(call *ast.CallExpr, class string) []binding {
 	return out
 }
 
-// function is one resolved function value: its signature, its body and where
-// a finding points.
+// function holds a resolved function value: signature, body and finding position.
 type function struct {
 	ftype *ast.FuncType
 	body  *ast.BlockStmt
 	pos   token.Pos
 }
 
-// resolve reads the function value a registration names, in the four
-// spellings this tree registers in: the literal written at the call, a
+// resolve reads the function value a registration names, in every spelling
+// this tree registers in: the literal written at the call, a
 // function or method of this package by name, a method value
 // (`rt.RegisterFunc("exec", r.phpExec)`), and the literal a factory returns
 // (`rt.RegisterFunc("trim", phpTrim(" "))`).
 //
-// A value from another package is out of reach of a directory at a time, and a
-// computed one (`rt.RegisterFunc(name, fn)` over a table) names no function to
-// read.
+// A value outside the package is out of a directory's reach. A computed value
+// (`rt.RegisterFunc(name, fn)` from a table) names no function to read.
 func (p *pkg) resolve(arg ast.Expr) []function {
 	switch fn := arg.(type) {
 	case *ast.FuncLit:
@@ -288,7 +285,7 @@ func (p *pkg) resolve(arg ast.Expr) []function {
 	return nil
 }
 
-// declared returns every function of the package under one name.
+// declared returns every function of the package sharing a name.
 func (p *pkg) declared(name string) []function {
 	var out []function
 	for _, decl := range p.funcs[name] {
@@ -335,9 +332,9 @@ func registeredName(call *ast.CallExpr) string {
 }
 
 // constructedType names the type a constructor returns, the type holding the
-// methods a script calls on the class. A constructor returning a type from
-// another package, or an interface, names no method set here: the methods hang
-// off the implementation, under a name only the type checker resolves.
+// methods a script calls on the class. A constructor returning a foreign
+// type, or an interface, names no method set here: the methods hang
+// off the implementation, behind a name only the type checker resolves.
 func constructedType(ftype *ast.FuncType) string {
 	if ftype.Results == nil || len(ftype.Results.List) == 0 {
 		return ""

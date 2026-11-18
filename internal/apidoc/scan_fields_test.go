@@ -8,9 +8,9 @@ import (
 )
 
 // TestFieldComments covers which comment documents a property: the leading one
-// and no other. A note trailing on the declaration line annotates the value
-// and documents no member, and net/http's `ProtoMajor int // 1` would publish
-// a docblock reading 1.
+// alone. A note trailing on the declaration line annotates the value and
+// documents no member. net/http's `ProtoMajor int // 1` would publish a
+// docblock reading 1.
 func TestFieldComments(t *testing.T) {
 	t.Parallel()
 	source := `package fake
@@ -45,8 +45,8 @@ type Holder struct {
 }
 
 // TestFieldCommentsNoStruct covers the declarations that hold no field: a
-// named scalar, and a struct whose fields document nothing. Both answer nil, and
-// a listing over them prints no docblock.
+// named scalar, a struct whose fields document nothing. Both answer nil; a
+// listing over them prints no docblock.
 func TestFieldCommentsNoStruct(t *testing.T) {
 	t.Parallel()
 	if got := fieldComments(parseTypeExpr(t, "package fake\n\ntype Duration int64\n")); got != nil {
@@ -57,9 +57,9 @@ func TestFieldCommentsNoStruct(t *testing.T) {
 	}
 }
 
-// TestImportPath covers the key the doc index holds an entry under. A reflected
-// type reports an import path and the scan walks directories. The two have to
-// agree or every lookup misses.
+// TestImportPath covers the key that indexes a doc entry. A reflected type
+// reports an import path. The scan walks directories. The two have to agree or
+// every lookup misses.
 func TestImportPath(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{
@@ -76,8 +76,7 @@ func TestImportPath(t *testing.T) {
 	}
 }
 
-// parseStructType returns the struct type declaration of the first type in
-// source, the expression fieldComments reads.
+// parseStructType returns the first type's struct declaration, the expression fieldComments reads.
 func parseStructType(t *testing.T, source string) ast.Expr {
 	t.Helper()
 	expr := parseTypeExpr(t, source)

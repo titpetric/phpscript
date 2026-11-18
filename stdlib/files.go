@@ -21,7 +21,7 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 	}
 }
 
-// fsRoots pairs each area RegisterFS reroots with its register function; exec areas need Exec.
+// fsRoots pairs each rerooted area with its register function, exec areas with Exec.
 var fsRoots = []struct {
 	area     string
 	exec     bool

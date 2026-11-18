@@ -43,7 +43,7 @@ func areaClasses() map[string][]string {
 	return classes
 }
 
-// AreaInfo is one area of the runtime and what installing it defines.
+// AreaInfo describes an area of the runtime and its installation's definitions.
 type AreaInfo struct {
 	// Name is the namespace, Runtime\PS\Core\Strings.
 	Name string
@@ -52,11 +52,11 @@ type AreaInfo struct {
 	OptIn bool
 	// Profile is the mask the area mounts under.
 	Profile runner.Profile
-	// Delta is what the install defined and what it replaced.
+	// Delta holds the definitions and replacements of the install.
 	runner.Delta
 }
 
-// Areas installs each area on a runtime built here and reports what it defines and replaces.
+// Areas installs each area on a local runtime, reporting definitions and replacements.
 func Areas(profile Profile, namespaces ...string) []AreaInfo {
 	rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
 	rt.SetProfile(profile)

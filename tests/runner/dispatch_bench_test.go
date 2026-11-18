@@ -8,8 +8,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// benchCalls runs body in a loop of 100, and a per-call figure is the reported
-// one less the baseline, divided by a hundred.
+// benchCalls runs body in a loop of 100. A per-call figure is the reported one
+// minus the baseline, divided by a hundred.
 func benchCalls(b *testing.B, body string) {
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
@@ -32,18 +32,18 @@ func BenchmarkDispatchFast(b *testing.B) {
 	benchCalls(b, `strtoupper("abc");`)
 }
 
-// BenchmarkDispatchReflect calls one it does not. str_repeat is
-// func(string, int64) string, which is not among the shapes, and
-// reflectInvoker dispatches the call through reflect.Value.Call.
+// BenchmarkDispatchReflect calls a function fastInvoker does not. str_repeat is
+// func(string, int64) string, which is not among the shapes. reflectInvoker
+// dispatches the call through reflect.Value.Call.
 //
-// The pair is what a new shape in fastInvoker is worth. 163 of the 314
-// registered functions take the reflect path, across 126 distinct signatures,
-// and each function decides separately, without a sweep.
+// The pair measures a new shape's worth in fastInvoker. 163 of the 314
+// registered functions take the reflect path, across 126 distinct signatures.
+// Each function decides separately, without a sweep.
 func BenchmarkDispatchReflect(b *testing.B) {
 	benchCalls(b, `str_repeat("a", 3);`)
 }
 
-// BenchmarkDispatchBaseline is the loop with no call in it.
+// BenchmarkDispatchBaseline is the loop holding no call.
 func BenchmarkDispatchBaseline(b *testing.B) {
 	benchCalls(b, ``)
 }
@@ -54,9 +54,9 @@ func BenchmarkDispatchBaseline(b *testing.B) {
 // figure moves with only which invoker the registration built.
 //
 // It exists because the shape of a binding's return is not a local decision.
-// Adding an error return is a correctness change that reads as one line. It
-// decides the dispatch path for every call to that name afterwards. This
-// benchmark is what prices sprintf. The move lands measured.
+// Adding an error return is a correctness change that reads as a single line.
+// It decides the dispatch path for every later call to that name. This
+// benchmark prices sprintf. The move lands measured.
 func BenchmarkDispatchSprintf(b *testing.B) {
 	benchCalls(b, `sprintf("%s-%d", "a", 3);`)
 }

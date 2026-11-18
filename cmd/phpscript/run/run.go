@@ -24,7 +24,7 @@ import (
 // Name is the command title.
 const Name = "Run php script"
 
-// NewCommand returns the run command over a copy of cfg. A later change to the
+// NewCommand returns the run command on a copy of cfg. A later change to the
 // configuration does not reach the run.
 func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 	appConfig := config.Value(cfg)
@@ -50,10 +50,10 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 	// path outside itself: cleanFSPath strips the leading slash and an
 	// absolute path resolves against the working directory. Sandboxing is
 	// the right default for an include inside a script, but not for the file
-	// the user named on the command line and a script that sits outside the
-	// working directory roots the runtime at its own directory instead.
+	// the user named on the command line. A script outside the working
+	// directory roots the runtime at its directory instead.
 	//
-	// A path under the working directory keeps today's behaviour, because PHP
+	// A path inside the working directory keeps today's behaviour, because PHP
 	// resolves an include against the working directory and not the script
 	// directory, and re-rooting every run would diverge from that.
 	script, root, err := resolveEntrypoint(args[0])
@@ -66,7 +66,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 		runErr := runOnce(generation, script, root, args, config, globals)
 		stop()
 
-		// A reload replaces the generation and its error with it. The reload
+		// A reload replaces the generation and its error together. The reload
 		// ends the script; that ending is no failure of the run. Anything else
 		// is the end of the run.
 		if ctx.Err() != nil || !reloaded() {
@@ -102,7 +102,7 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 	return generation, seen.Load, stop
 }
 
-// runOnce runs one generation from a fresh runtime, dropped on return for the reload.
+// runOnce runs one generation from a fresh runtime, dropped on return.
 func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
 	if err := options.Check(); err != nil {
@@ -112,24 +112,24 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	options.RootFS = os.DirFS(root)
 	options.Stdin = os.Stdin
 	options.Include = globals.Include
-	// A CLI run reads the process environment, with what the configuration
-	// adds on top. runner.ScriptEnvironment holds the infrastructure
+	// A CLI run reads the process environment, plus the configuration's
+	// additions. runner.ScriptEnvironment holds the infrastructure
 	// variables back.
 	options.Env = append(append([]string{}, os.Environ()...), config.Env...)
 	// The mail servers the script can name are the ones the configuration
-	// named. With none, mail() and `new Mail` refuse catchably.
+	// named. Without names, mail() and `new Mail` refuse catchably.
 	options.Mail = mail.NewProvider(config.Mail)
 	newRuntime := runner.New
 	if config.Flatstack.Enabled {
 		newRuntime = runner.NewFlatStack
 	}
 	rt := newRuntime(os.Stdout, options)
-	// The signal context and that Ctrl-C and a reload reach the script. A
+	// The signal context sends Ctrl-C and reload signals to the script. A
 	// binding that blocks - a server parked in wait() - is waiting on this.
 	rt.SetContext(ctx)
 
 	// A collector turns flatstack off for this runtime: coverage is an
-	// interpreter feature and the fallback is atomic and a counted program runs
+	// interpreter feature. The fallback is atomic. A counted program then runs
 	// interpreted whole.
 	var collector *coverage.Collector
 	if globals.Covering() {
@@ -145,8 +145,8 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, root)
 
-	// $argv is the script as named on the command line and what followed it,
-	// the way the php CLI fills it.
+	// The php CLI fills $argv the same way. It holds the script name from the
+	// command line, plus the arguments after it.
 	reqCtx := runner.NewContext()
 	reqCtx.Argv = argv
 	reqCtx.Register(rt)
@@ -166,7 +166,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	return nil
 }
 
-// writeCoverage writes the profile and the --cover report to stderr, which the script does not own.
+// writeCoverage writes the profile and --cover report to stderr, outside the script's control.
 func writeCoverage(collector *coverage.Collector, globals *flags.Options, root string) error {
 	if collector == nil {
 		return nil
@@ -196,7 +196,7 @@ func writeCoverage(collector *coverage.Collector, globals *flags.Options, root s
 	return nil
 }
 
-// resolveEntrypoint returns the script path and its root, the script's dir outside the workdir.
+// resolveEntrypoint returns the script path and root, the dir outside the workdir.
 func resolveEntrypoint(arg string) (script, root string, err error) {
 	absolute, err := filepath.Abs(arg)
 	if err != nil {

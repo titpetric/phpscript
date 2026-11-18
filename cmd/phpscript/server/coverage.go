@@ -12,9 +12,9 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// CoveragePath is where a running server publishes what it has counted so far.
+// CoveragePath names the endpoint where a running server publishes its counts.
 //
-// A profile on disk needs a writable filesystem and a shutdown; a test flow
+// A profile on disk needs a writable filesystem, plus a shutdown. A test flow
 // reads the numbers while the server is still up, right after the suite that
 // produced them. The endpoint answers that without either.
 const CoveragePath = "/debug/phpscript/coverage"
@@ -25,7 +25,7 @@ type coverageModule struct {
 	aggregator *coverage.Aggregator
 	globals    *flags.Options
 
-	// roots are the source trees the counted files read from, one per
+	// roots are the source trees the counted files read from, a tree for each
 	// site. A profile holds columns resolved from the source text. The server
 	// knows where the text is.
 	roots []fs.FS
@@ -41,7 +41,7 @@ func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 	}
 }
 
-// watch adds a site's source tree to the roots a profile resolves columns against.
+// watch adds a site's source tree to the profile's column roots.
 func (m *coverageModule) watch(root fs.FS) {
 	m.roots = append(m.roots, root)
 }
@@ -91,7 +91,7 @@ func (m *coverageModule) blocks() []coverage.ProfileBlock {
 	return coverage.Columns(m.aggregator.Blocks(), m.source)
 }
 
-// source reads one counted file from the site roots, nil when no root answers.
+// source reads a counted file from the site roots, nil when unreadable.
 func (m *coverageModule) source(file string) []string {
 	name := strings.TrimPrefix(path.Clean(file), "/")
 	for _, root := range m.roots {

@@ -4,7 +4,7 @@ name: example
 # `atkins test` from this directory, which reloads the compose service and
 # resolves the container address for {{.host}}.
 #
-# The suite leaves the database as it found it: each case that adds a bookmark
+# The suite leaves the database unchanged: each case that adds a bookmark
 # reads back the id it was given and deletes it again, so nothing here depends
 # on the ids a previous run happened to produce.
 

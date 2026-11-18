@@ -7,8 +7,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Limits bounds what a hostile form can build. A zero field means PHP's
-// default; negative means no limit.
+// Limits bounds the structure a hostile form can build. A zero field means
+// PHP's default; negative means no limit.
 type Limits struct {
 	// MaxNesting is php.ini's max_input_nesting_level. The parse drops a
 	// variable past it whole and never truncates one.
@@ -42,8 +42,8 @@ func (l Limits) maxVars() int {
 // ParseStr decodes an application/x-www-form-urlencoded string into the nested
 // array PHP builds from it. It backs parse_str(), $_GET and $_POST.
 //
-// ParseStr decodes before it reads the brackets and `k%5Ba%20b%5D=1` nests
-// under the key `a b`.
+// ParseStr decodes before it reads the brackets; `k%5Ba%20b%5D=1` nests
+// at the key `a b`.
 func ParseStr(raw string, limits Limits) *model.Array {
 	if raw == "" {
 		return model.NewArray()
@@ -62,7 +62,7 @@ func ParseStr(raw string, limits Limits) *model.Array {
 	return ParsePairs(limits, pairs)
 }
 
-// Pair is one form field, name and value already decoded.
+// Pair holds one form field, name and value already decoded.
 type Pair struct {
 	Name  string
 	Value string
@@ -154,7 +154,7 @@ func assign(root *model.Array, key string, path []string, value string) {
 	}
 }
 
-// child returns the array at key, replacing a scalar and never merging into it.
+// child returns the array at key, replacing a scalar with a fresh array.
 func child(parent *model.Array, key any) *model.Array {
 	if existing, ok := parent.Get(key); ok {
 		if arr, ok := existing.(*model.Array); ok {

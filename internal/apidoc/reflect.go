@@ -11,7 +11,7 @@ var (
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 )
 
-// reflectParams derives PHP parameters from a Go func type, inventing names from each type.
+// reflectParams derives PHP parameters from a Go func type, naming each by type.
 func reflectParams(t reflect.Type) []Param {
 	params := []Param{}
 	for i := 0; i < t.NumIn(); i++ {

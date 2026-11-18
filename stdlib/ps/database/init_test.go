@@ -9,10 +9,9 @@ import (
 )
 
 // TestDatabaseBindingsAreContributed covers the wiring the package init does.
-// A binding package registers its installer through runner.RegisterBinding, and
-// stdlib.Register runs every contributed installer and importing the package
-// is the whole of what a host does to put the Database class within reach of a
-// script. A host that constructs a Runtime without stdlib has the installer
+// A binding package registers its installer through runner.RegisterBinding.
+// stdlib.Register runs every contributed installer; importing the package is
+// everything needed to put the Database class within reach of a script. A host that constructs a Runtime without stdlib has the installer
 // list and picks from it.
 func TestDatabaseBindingsAreContributed(t *testing.T) {
 	t.Parallel()

@@ -11,9 +11,9 @@ func names(o *model.Object) string {
 	return strings.Join(o.Names(), ",")
 }
 
-// A property reads back in the slot it arrives in, as PHP does and as
-// json_encode, print_r, var_dump, get_object_vars, the (array) cast and foreach
-// all show a script.
+// A property reads back in the slot it arrives in, as PHP does. json_encode,
+// print_r, var_dump, get_object_vars, the (array) cast and foreach all show it
+// to a script.
 func TestObjectKeepsInsertionOrder(t *testing.T) {
 	t.Parallel()
 	o := model.NewStdClass()
@@ -70,8 +70,8 @@ func TestObjectOrdersDeclaredFieldsFirst(t *testing.T) {
 }
 
 // A property written straight into the map, bypassing SetProp, is still
-// reported and never lost and a call site that misses the accessor degrades
-// to a stable order and drops no data.
+// reported. A call site that misses the accessor degrades to a stable order and
+// drops no data.
 func TestObjectReportsUnrecordedProperties(t *testing.T) {
 	t.Parallel()
 	o := model.NewStdClass()

@@ -22,7 +22,7 @@ func writeConfig(t *testing.T, source string) string {
 	return path
 }
 
-// checkResult runs Check and returns what it wrote and whether it passed.
+// checkResult runs Check and returns the output and the pass verdict.
 func checkResult(t *testing.T, filename, root string) (out, errOut string, ok bool) {
 	t.Helper()
 
@@ -48,8 +48,8 @@ func TestCheck(t *testing.T) {
 		}
 	})
 
-	// The gap this closes: fs.Sub does not stat and a single-root server
-	// comes up and answers 404 on the first request without it.
+	// The gap this closes: fs.Sub does not stat. A single-root server comes up
+	// and answers 404 on the first request without the stat.
 	t.Run("a missing document root fails", func(t *testing.T) {
 		_, errOut, ok := checkResult(t, "", t.TempDir())
 		if ok {
@@ -139,7 +139,7 @@ func TestCheck(t *testing.T) {
 
 	// Resolved builds the trace store on disk; Check must not. A test of
 	// a configuration that created a directory, owned by whoever ran the
-	// test and not by the service, is a side effect with no owner.
+	// test and not by the service, is an unowned side effect.
 	t.Run("disk telemetry creates no storage", func(t *testing.T) {
 		storage := filepath.Join(t.TempDir(), "traces")
 		root := t.TempDir()

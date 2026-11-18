@@ -17,11 +17,11 @@ func mustParse(t *testing.T, src string) *model.Program {
 	return prog
 }
 
-// TestParseFile covers what the filename settles. php resolves __FILE__,
-// __DIR__ and __LINE__ when it compiles a file; so does this: each becomes
-// a literal in the AST and neither engine writes them into a scope per frame
-// or reads them back per statement. The name is the path a script sees, the
-// runtime's own spelling and never the host's.
+// TestParseFile covers the filename's role. php resolves __FILE__,
+// __DIR__ and __LINE__ at compile time; this parser does the same: each
+// becomes a literal in the AST. No engine writes them into a scope per frame
+// or reads them back per statement. The name is the path a script sees,
+// spelled by the runtime, never by the host.
 func TestParseFile(t *testing.T) {
 	t.Parallel()
 	program, err := ParseFile("app/pages/index.php", "<?php\necho __FILE__;\necho __DIR__;\necho __LINE__;")
@@ -46,8 +46,7 @@ func TestParseFile(t *testing.T) {
 		}
 	}
 
-	// Parse is ParseFile with no name and a source compiled without one
-	// leaves the file constants unresolved and keeps them as references.
+	// Parse is ParseFile with no name; unnamed source keeps __FILE__ unresolved.
 	unnamed := mustParse(t, "<?php echo __FILE__;")
 	if _, resolved := unnamed.Stmts[0].(*model.Echo).Args[0].(*model.Lit); resolved {
 		t.Error("__FILE__ resolved to a literal for a source compiled without a name")
@@ -128,7 +127,7 @@ func TestParsePostfixChain(t *testing.T) {
 }
 
 // TestParseNodesAreDistinct guards the chunked node allocation: every AST node
-// must keep its own address, because runner.compileExpr caches compiled
+// must keep a distinct address, because runner.compileExpr caches compiled
 // expressions in a map keyed by model.Expr pointer identity.
 func TestParseNodesAreDistinct(t *testing.T) {
 	t.Parallel()
@@ -298,8 +297,8 @@ func TestParseClassModifiers(t *testing.T) {
 	}
 }
 
-// A namespaced file may only declare symbols and a modifier the parser does not
-// recognise surfaces there as a rejected file and never a dropped keyword.
+// A namespaced file may only declare symbols. A modifier the parser does not
+// recognise surfaces there as a rejected file; the parser drops no keyword.
 func TestParseClassModifiersInNamespace(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, "<?php\nnamespace App;\nfinal readonly class Thing {}\n")
@@ -327,7 +326,7 @@ func TestParseClassModifiersRejected(t *testing.T) {
 	}
 }
 
-// `readonly` is not a reserved word in PHP; it reads as a modifier only where
+// `readonly` is not a reserved word in PHP; it reads as a modifier only when
 // a class declaration follows it.
 func TestParseReadonlyAsCallable(t *testing.T) {
 	t.Parallel()
@@ -338,8 +337,8 @@ func TestParseReadonlyAsCallable(t *testing.T) {
 	}
 }
 
-// The parser records `extends` and `implements` on the AST, and neither
-// confers inheritance; keeping the names is the parser's whole job here.
+// The parser records `extends` and `implements` on the AST; neither confers
+// inheritance. Keeping the names is the parser's whole job here.
 func TestParseClassHeritage(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, "<?php\nnamespace App;\n\nuse Vendor\\Framework\\TestCase;\n\nfinal class Suite extends TestCase implements \\Countable, Local {}\n")
@@ -383,9 +382,9 @@ func TestParseClassHeritageRejected(t *testing.T) {
 	}
 }
 
-// An interface body holds method signatures with no body, class constants and
-// the `static` spelling of a signature. The parser resolves those names the
-// way it resolves a class name and a namespace and a `use` alias both apply.
+// An interface body holds method signatures without a body, class constants,
+// and the `static` spelling of a signature. The parser resolves those names as
+// it resolves a class name, with a namespace and `use` alias both applying.
 func TestParseInterface(t *testing.T) {
 	t.Parallel()
 	src := "<?php\nnamespace App;\n\nuse Vendor\\Reader;\n\n" +
@@ -430,9 +429,8 @@ func TestParseInterface(t *testing.T) {
 	}
 }
 
-// PHP rejects a body, a property and `abstract` in an interface; so does the
-// parser, because printing back what it read is only possible for what it can
-// hold.
+// PHP rejects a body, a property and `abstract` in an interface. The parser
+// rejects the same forms, because it can print back only the form it holds.
 func TestParseInterfaceRejected(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{
@@ -447,9 +445,9 @@ func TestParseInterfaceRejected(t *testing.T) {
 	}
 }
 
-// The restriction on a namespaced file is a decision and the message has to
-// state the reason and the way out, and point at the offending statement
-// and not at whatever follows it.
+// The restriction on a namespaced file is a decision. The message must state
+// the reason and the way out, and point at the offending statement, not at
+// whatever follows it.
 func TestParseNamespacedStatementRejected(t *testing.T) {
 	t.Parallel()
 	_, err := Parse("<?php\nnamespace App;\n\nclass Thing {}\n\necho \"hi\";\n")
@@ -468,8 +466,7 @@ func TestParseNamespacedStatementRejected(t *testing.T) {
 	}
 }
 
-// `use` and `declare` are preamble and no code and a namespaced file may
-// still include them.
+// `use` and `declare` are preamble, not code, even in a namespaced file.
 func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	t.Parallel()
 	src := "<?php\ndeclare(strict_types=1);\n\nnamespace App;\n\nuse Vendor\\Thing;\n\nfunction f() {\n\techo \"hi\";\n}\n"
@@ -478,8 +475,8 @@ func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	}
 }
 
-// exprShape renders an expression fully parenthesised and a precedence test
-// reads as the tree the parser built and not as a chain of type
+// exprShape renders an expression fully parenthesised. A precedence test
+// reads as the tree the parser built, not as a chain of type
 // assertions.
 func exprShape(e model.Expr) string {
 	switch n := e.(type) {
@@ -504,7 +501,7 @@ func exprShape(e model.Expr) string {
 // TestParseBitwisePrecedence pins where PHP 8's precedence table puts the
 // bitwise operators: `| ^ &` are looser than any comparison and tighter than
 // `&&`, and `<< >>` are tighter than `.` and looser than `+ -`. Every
-// expectation is what the php binary evaluates the same source to.
+// expectation matches the php binary's evaluation of the same source.
 func TestParseBitwisePrecedence(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -544,9 +541,9 @@ func TestParseBitwisePrecedence(t *testing.T) {
 	}
 }
 
-// The parser reads the by-reference marker in front of a variable alone, and
-// no rule swallowed the binary `&` of `echo 6 & 3` and printed 6. The marker
-// appears in front of a variable and nowhere else and nothing consumes an
+// The parser reads the by-reference marker in front of a variable alone.
+// No rule swallows the binary `&` of `echo 6 & 3` and prints 6. The marker
+// appears in front of a variable and nowhere else, and nothing consumes an
 // operator silently.
 func TestParseAmpersandIsNotSwallowed(t *testing.T) {
 	t.Parallel()
@@ -585,9 +582,9 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 	}
 }
 
-// The parser cuts `$a = $b = array()` into one assignment per name and each
-// name gets its own array, the same thing PHP's copy-on-assignment amounts to
-// for a literal. The names come out right to left, the order PHP runs them in.
+// The parser cuts `$a = $b = array()` into a single assignment per name; each
+// name gets a distinct array, the same thing PHP's copy-on-assignment amounts
+// to for a literal. The names come out right to left, the order PHP runs them in.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")
@@ -629,9 +626,9 @@ func TestParseSplitsChainedArrayLiteralInBodies(t *testing.T) {
 	}
 }
 
-// The parser cuts a chain only where running the literal again shows nothing. A
+// The parser cuts a chain only when running the literal again shows nothing. A
 // call inside the literal would run twice, and `new` allocates an object,
-// which PHP shares between the names as well; both keep the chain and are what
+// which PHP shares between the names as well; both keep the chain, which
 // `phpscript lint` reports instead.
 func TestParseKeepsChainWithSideEffects(t *testing.T) {
 	t.Parallel()
@@ -671,8 +668,8 @@ func countAssigns(stmts []model.Stmt) int {
 }
 
 // `new class { ... }` parses into a New holding the declaration written in
-// place of the name, under a name the parser synthesized so that everything
-// downstream resolves it the way it resolves a written class.
+// place of the name, with a synthesized name, so that everything downstream
+// resolves it as it resolves a written class.
 func TestParseAnonymousClass(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, `<?php
@@ -710,8 +707,8 @@ $obj = new class implements Reader {
 	}
 }
 
-// Constructor arguments come before the heritage, as in PHP, and each
-// declaration in a file gets its own name.
+// Constructor arguments come before the heritage, as in PHP; each
+// declaration in a file gets a distinct name.
 func TestParseAnonymousClassArgsAndNaming(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, `<?php
@@ -893,7 +890,7 @@ func TestParseEllipsisIsStillConcatenation(t *testing.T) {
 
 // benchSource is a file of the shape the parser meets in an application: a
 // class with methods, a function, control flow and interpolation, repeated
-// until it reaches the size of a real source file and no snippet.
+// until it reaches a real source file's size.
 var benchSource = func() string {
 	const unit = `
 class Row%[1]d {
@@ -944,9 +941,9 @@ func BenchmarkParse(b *testing.B) {
 	}
 }
 
-// TestParseDynamicProperty covers the two spellings of a property named by a
-// value: `$obj->$name` and `$obj->{$expr}`. Both are PropAccess with
-// NameExpr set, and the method spellings still parse as calls.
+// TestParseDynamicProperty covers two spellings of a property named by a
+// value: `$obj->$name`, plus `$obj->{$expr}`. Both are PropAccess with
+// NameExpr set; the method spellings still parse as calls.
 func TestParseDynamicProperty(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, `<?php

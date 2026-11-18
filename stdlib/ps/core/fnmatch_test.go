@@ -7,7 +7,7 @@ import (
 // TestFnmatch pins the matcher against php. Every expectation here comes from
 // running the same pattern, subject and flags through php's fnmatch, never
 // through this implementation; the flag columns are the reason the table is
-// this long, since each one changes a different decision in the loop.
+// this long, since each column changes a different decision in the loop.
 func TestFnmatch(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -79,7 +79,7 @@ func TestFnmatch(t *testing.T) {
 		{"post_*", "POST_ID", fnmCasefold, true},
 		{"POST_*", "post_id", 0, false},
 
-		// Backtracking across two or more stars.
+		// Backtracking across more than one star.
 		{"*a*b*c*", "xaybzc", 0, true},
 		{"*a*b*c*", "xaybz", 0, false},
 		{"a**b", "ab", 0, true},
@@ -94,8 +94,8 @@ func TestFnmatch(t *testing.T) {
 	}
 }
 
-// TestFnmatchDefaultFlags checks the two-argument form and every
-// script calls it: the variadic slot is empty and the mode is zero.
+// TestFnmatchDefaultFlags checks the two-argument form every script uses: the
+// variadic slot is empty. The mode is zero.
 func TestFnmatchDefaultFlags(t *testing.T) {
 	t.Parallel()
 	if !phpFnmatch("post_*", "post_id") {

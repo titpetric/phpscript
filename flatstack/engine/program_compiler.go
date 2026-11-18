@@ -16,7 +16,7 @@ type loopContext struct {
 	// control leaves its body: they copy the loop variable back into the
 	// element it came from. Every other loop leaves it nil. `break` and
 	// `return` leave without reaching the end of the body and they emit it
-	// too: a reference makes the element live, and PHP keeps a write made
+	// as well: a reference makes the element live, and PHP keeps a write made
 	// before the jump.
 	writeBack func() error
 }
@@ -98,7 +98,7 @@ func (c *compiler) constant(value any) int {
 	return index
 }
 
-// methodName emits the method a first-class callable names, from a literal or a value.
+// methodName emits the method a first-class callable names, literal or value.
 func (c *compiler) methodName(name string, expr model.Expr, path string) error {
 	if expr == nil {
 		c.emit(instruction{op: opPushConst, a: c.constant(name)})
@@ -195,7 +195,7 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		c.emit(instruction{op: opThrow})
 	case *model.ClassDecl:
 		// collectClasses hoists top-level classes before execution. Nested
-		// declarations are a no-op here, matching the interpreter.
+		// declarations do nothing here, matching the interpreter.
 	case *model.InterfaceDecl:
 		// An interface is a contract checked by collectClasses. It declares no
 		// storage and no body and it emits no code.
@@ -325,7 +325,7 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	return nil
 }
 
-// paramSlots appends the positional slots and returns the variadic collector's slot, -1 without one.
+// paramSlots appends the positional slots and returns the variadic collector's slot, or -1 if the signature takes none.
 func (c *compiler) paramSlots(node *model.FuncDecl, slots *[]int, path string) (int, error) {
 	variadicSlot := -1
 	for i, param := range node.Params {
@@ -415,8 +415,8 @@ func (c *compiler) tryStmt(node *model.Try, path string) error {
 			return err
 		}
 	}
-	// Reached on every path out of the try, and a no-op unless the VM parked
-	// an unmatched error in pendingSlot.
+	// Reached on every path out of the try, and does nothing unless the VM
+	// parked an unmatched error in pendingSlot.
 	c.emit(instruction{op: opRethrow, a: pendingSlot})
 	return nil
 }
@@ -546,7 +546,7 @@ func (c *compiler) forStmt(node *model.For, path string) error {
 	return nil
 }
 
-// doWhileStmt lowers `do { ... } while (cond);` so the body runs at least once.
+// doWhileStmt lowers `do { ... } while (cond);` so the body runs once.
 func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 	startPC := len(c.program.code)
 	c.loops = append(c.loops, loopContext{continueTarget: -2})
@@ -571,7 +571,7 @@ func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 	return nil
 }
 
-// compactCall translates compact() into the array it names, with a name that is not set left out.
+// compactCall translates compact() into the named array, leaving an unset name out.
 func (c *compiler) compactCall(node *model.Call, path string) error {
 	if len(node.Args) == 0 {
 		return unsupported(path, "compact() with no names")
@@ -609,7 +609,7 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 	return nil
 }
 
-// unsetStmt lowers `unset(...)`, delegating a target with no instruction to the interpreter.
+// unsetStmt lowers `unset(...)`, delegating a target that holds no instruction to the interpreter.
 func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 	for i, target := range node.Targets {
 		targetPath := fmt.Sprintf("%s.target[%d]", path, i)
@@ -1036,7 +1036,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	return nil
 }
 
-// closure compiles an anonymous function as a func(...any) (any, error) value.
+// closure compiles an anonymous function to the Go signature `func(...any) (any, error)`.
 func (c *compiler) closure(node *model.Closure, path string) error {
 	def := closureDef{thisSlot: -1}
 	for i, param := range node.Params {
@@ -1258,7 +1258,7 @@ func unsupported(path, format string, args ...any) error {
 	return fmt.Errorf("flatstack: %s: unsupported %s", path, fmt.Sprintf(format, args...))
 }
 
-// callNames reports whether the call names fn, case-insensitively and through its fallback.
+// callNames reports whether the call names fn, case-insensitively, including its fallback.
 func callNames(node *model.Call, fn string) bool {
 	return strings.EqualFold(strings.TrimPrefix(node.Name, "\\"), fn) ||
 		strings.EqualFold(strings.TrimPrefix(node.Fallback, "\\"), fn)

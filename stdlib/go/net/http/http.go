@@ -1,8 +1,8 @@
 // Package http binds go's HTTP client and the names around it as the
-// Runtime\Go\Net\HTTP area. A script reaches them with `import "net/http";`
+// Runtime\Go\Net\HTTP area. A script reaches them through `import "net/http";`
 // and calls `http.Get($url)`; the default runtime installs none of these names.
 //
-// The area reaches any address the host can route to, as `HTTP\Client` does.
+// The area reaches any address the host can route to, like `HTTP\Client`.
 // The server half is `HTTP\Mux` and `HTTP\Server`, which own the re-entry the
 // runtime needs (docs/use-cases/http-server.md) and answer here as ServeMux and
 // Server for a runtime that selected Runtime\Go.
@@ -19,9 +19,9 @@ import (
 // Namespace is the area the import installs.
 const Namespace = modelutil.GoNamespace + `\Net\HTTP`
 
-// Set is what the package binds. The signatures reach `http.Request`,
+// Set holds the package bindings. The signatures reach `http.Request`,
 // `http.Response`, `http.Header` and `http.Cookie`, which the area enumerates
-// as its classes.
+// as classes.
 var Set = bindings.For("net/http").
 	// Runtime\Go\Net\HTTP\Get issues a GET to $url and returns the response.
 	Bind("Get", gohttp.Get).
@@ -39,7 +39,7 @@ var Set = bindings.For("net/http").
 	Bind("CanonicalHeaderKey", gohttp.CanonicalHeaderKey).
 	// Runtime\Go\Net\HTTP\DetectContentType reports the MIME type the first bytes of $data name.
 	Bind("DetectContentType", gohttp.DetectContentType).
-	// Runtime\Go\Net\HTTP\ParseTime reads $text as one of the three HTTP time formats.
+	// Runtime\Go\Net\HTTP\ParseTime reads $text in any of three HTTP time formats.
 	Bind("ParseTime", gohttp.ParseTime).
 	Bind("MethodGet", gohttp.MethodGet).
 	Bind("MethodHead", gohttp.MethodHead).
@@ -61,7 +61,7 @@ var Set = bindings.For("net/http").
 	Bind("StatusInternalServerError", gohttp.StatusInternalServerError).
 	Bind("StatusBadGateway", gohttp.StatusBadGateway).
 	Bind("StatusServiceUnavailable", gohttp.StatusServiceUnavailable).
-	// `new http.Client` sends a request the script built, under the timeout
+	// `new http.Client` sends a request the script built, within the timeout
 	// the Timeout field sets. No bound signature names the type.
 	Type(gohttp.Client{})
 

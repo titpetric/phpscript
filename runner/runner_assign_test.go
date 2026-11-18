@@ -6,8 +6,8 @@ import (
 )
 
 // TestApplyAssignOp covers the compound-assignment operators. Each resolves
-// through the same table its binary operator reads and `$x <<= -1` fails
-// where `$x = $x << -1` fails, with no silent assignment.
+// through the same table its binary operator reads; `$x <<= -1` fails
+// where `$x = $x << -1` fails, never through a silent assignment.
 func TestApplyAssignOp(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -75,7 +75,7 @@ echo $n, "|", $rows[0], "|", $rows["a"] === null ? "gone" : "kept", "|", $obj->n
 }
 
 // TestAssignValueAnswersWhatItStored covers an assignment used as a value:
-// each lvalue shape answers what the store wrote and a compound operator the
+// each lvalue shape answers the stored value, a compound operator the
 // updated value. The target resolves before the value, php's order.
 func TestAssignValueAnswersWhatItStored(t *testing.T) {
 	t.Parallel()

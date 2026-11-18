@@ -10,7 +10,7 @@ import (
 
 // TestAreas covers the introspection of the mounted runtime: every default
 // area answers under Runtime\PS or Runtime\PX, the PS areas come first, a name
-// has one owner, and the opt-in Go area lists apart.
+// has a single owner, and the opt-in Go area lists apart.
 func TestAreas(t *testing.T) {
 	infos := Areas(All)
 	if len(infos) < 10 {
@@ -45,8 +45,7 @@ func TestAreas(t *testing.T) {
 	}
 }
 
-// TestAreasSelected covers the namespace filter: a host that names Runtime\PS\Core
-// gets no Runtime\PX area.
+// TestAreasSelected covers the namespace filter: Runtime\PS\Core excludes Runtime\PX.
 func TestAreasSelected(t *testing.T) {
 	for _, info := range Areas(All, `Runtime\PS\Core`) {
 		if info.OptIn || info.Name == ErrorsArea || info.Name == ExceptionsArea {
@@ -58,7 +57,7 @@ func TestAreasSelected(t *testing.T) {
 	}
 }
 
-// TestQualifiedAreaCall covers a call written through its area: the area name
+// TestQualifiedAreaCall covers a call written with its area: the area name
 // prefixes the function and resolves the binding the bare name resolves.
 func TestQualifiedAreaCall(t *testing.T) {
 	var out strings.Builder
@@ -78,8 +77,8 @@ var_dump(function_exists('Runtime\PS\Core\Strings\strlen'), function_exists('Run
 	}
 }
 
-// TestQualifiedAreaClass covers class_exists and new through a binding area,
-// over the three spellings AreaName produces and one name no area installs.
+// TestQualifiedAreaClass covers class_exists and new via a binding area, over
+// AreaName's three spellings and a name no area installs.
 func TestQualifiedAreaClass(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})

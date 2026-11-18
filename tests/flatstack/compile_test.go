@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackCompilesConstructs pins the constructs that would otherwise drop a whole
 // program back to the compatibility interpreter. A fixture cannot tell a
-// bytecode run from a fallback that happened to agree, and every case asserts
+// bytecode run from a fallback that happened to agree; every case asserts
 // Supports before it checks the output.
 func TestFlatstackCompilesConstructs(t *testing.T) {
 	t.Parallel()
@@ -131,8 +131,8 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 
 // TestFlatstackClassConstOutsideClass pins the message a contextual class name
 // used outside a class body produces. The compiler leaves the name alone when
-// no class resolves it; the host reports it exactly as the interpreter does and
-// invents no class.
+// no class resolves the name; the host reports it exactly as the interpreter
+// does. The host invents no class.
 func TestFlatstackClassConstOutsideClass(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php class A { const X = 1; } echo self::X;`)
@@ -170,8 +170,8 @@ func TestFlatstackRefusesParent(t *testing.T) {
 }
 
 // TestFlatstackDestructuringTargetKind pins the wording of a rejected
-// destructuring target: storeTop serves both foreach and list() and names
-// the one the program wrote.
+// destructuring target: storeTop serves both foreach and list(), and names the
+// form the program wrote.
 func TestFlatstackDestructuringTargetKind(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -208,7 +208,7 @@ func TestFlatstackDestructuringTargetKind(t *testing.T) {
 	}
 }
 
-// TestFlatstackRejectsFuncGetArgs pins the one function call the compiler
+// TestFlatstackRejectsFuncGetArgs pins the single function call the compiler
 // refuses by name. A compiled frame seeds its declared parameters into slots and
 // keeps no argument list, and the call used to answer an empty one wherever it
 // appeared - in a function, a closure or a method - while the interpreter and

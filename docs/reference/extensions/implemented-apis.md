@@ -84,8 +84,8 @@ function preg_match_all(string $pattern, string $subject, &$matches, mixed $flag
 
 ```php
 /**
- * preg_quote escapes the characters that are special in a PCRE pattern,
- * plus $delimiter and a caller can splice a literal into one.
+ * preg_quote escapes the characters that are special in a PCRE pattern.
+ * The escape set includes $delimiter, letting a caller splice a literal into a pattern.
  */
 function preg_quote(string $subject, string ...$delimiter): string
 ```
@@ -93,7 +93,7 @@ function preg_quote(string $subject, string ...$delimiter): string
 ```php
 /**
  * preg_replace replaces every match of $pattern in $subject with
- * $replacement, in which \1 and $1 both name a capture group.
+ * $replacement, where \1 and $1 name the same capture group.
  */
 function preg_replace(string $pattern, string $replacement, string $subject): string
 ```
@@ -120,8 +120,8 @@ function preg_split(string $pattern, string $subject, mixed $limit, mixed $flags
 
 ```php
 /**
- * strtotime parses a datetime string against a fixed list of layouts, most
- * specific first, and returns the Unix timestamp, or false when none match.
+ * strtotime parses a datetime string through a fixed list of layouts, most
+ * specific first, and returns the Unix timestamp, or false when no name matches.
  */
 function strtotime(string $value, int ...$base): mixed
 ```
@@ -138,8 +138,8 @@ function time(): int
 ```php
 /**
  * array_column returns the $column_key value of every row of $array,
- * keyed by each row's $index_key when the call passes one; a null
- * $column_key selects the whole row and it skips rows missing the column.
+ * keyed by each row's $index_key when the call names an $index_key. A null
+ * $column_key selects the whole row, skipping rows missing the column.
  */
 function array_column(mixed $array, mixed $column_key, mixed ...$index_key): mixed
 ```
@@ -148,9 +148,9 @@ function array_column(mixed $array, mixed $column_key, mixed ...$index_key): mix
 /**
  * array_filter returns the elements of $array for which $callback is
  * truthy, preserving the keys; without a $callback it filters the values
- * on their own truthiness, and $mode selects what the callback receives
- * (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the
- * key).
+ * on their own truthiness. $mode selects the callback input:
+ * ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the
+ * key.
  */
 function array_filter(mixed $array, mixed ...$options): array
 ```
@@ -187,8 +187,8 @@ function array_map(callable $callback, mixed $array): array
 
 ```php
 /**
- * array_merge merges the given arrays into one; it renumbers integer keys
- * and later string keys overwrite earlier ones.
+ * array_merge merges the given arrays into a single array. It renumbers
+ * integer keys; later string keys overwrite earlier ones.
  */
 function array_merge(mixed ...$arrs): mixed
 ```
@@ -196,8 +196,8 @@ function array_merge(mixed ...$arrs): mixed
 ```php
 /**
  * array_pop removes the last element of $array and returns it, leaving
- * the remaining keys alone; an empty array returns null and a
- * value that is not a script array is an error.
+ * the remaining keys alone; an empty array returns null. A value that is
+ * not a script array is an error.
  */
 function array_pop(mixed $array): mixed
 ```
@@ -242,8 +242,8 @@ function array_search(mixed $needle, mixed $haystack, mixed ...$strict): mixed
 /**
  * array_shift removes the first element of $array and returns it,
  * renumbering the integer keys from zero and leaving string keys alone;
- * an empty array returns null and a value that is not a script array is
- * an error.
+ * an empty array returns null. A value that is not a script array is an
+ * error.
  */
 function array_shift(mixed $array): mixed
 ```
@@ -251,8 +251,8 @@ function array_shift(mixed $array): mixed
 ```php
 /**
  * array_slice returns up to $length elements of $array starting at
- * $offset, a negative $offset counting from the end and a negative
- * $length stopping that many short of it; it reindexes integer keys from
+ * $offset. A negative $offset counts from the end. A negative $length stops
+ * that many short of it. It reindexes integer keys from
  * zero unless $preserve_keys is true, and keeps string keys either way.
  */
 function array_slice(mixed $array, int $offset, mixed ...$args): mixed
@@ -300,7 +300,7 @@ function array_values(mixed $array): array
 ```
 
 ```php
-// compact builds a map from the calling scope, omitting names that do not exist.
+// compact builds a map from the calling scope, omitting missing names.
 function compact(string ...$names): array
 ```
 
@@ -397,7 +397,7 @@ function array_diff(mixed $array, mixed ...$others): array
 ```php
 /**
  * array_diff_key returns the entries of $array whose key is in none of
- * the other arrays, values untouched and never compared.
+ * the other arrays, values untouched, never compared.
  */
 function array_diff_key(mixed $array, mixed ...$others): array
 ```
@@ -405,8 +405,8 @@ function array_diff_key(mixed $array, mixed ...$others): array
 ```php
 /**
  * array_fill returns an array of $count copies of $value, keyed from
- * $start_index upwards. A $count below zero clamps to the empty array, which
- * is also what a count of zero answers; php 8 raises a ValueError.
+ * $start_index upwards. A $count below zero clamps to the empty array, as a
+ * count of zero does; php 8 raises a ValueError.
  */
 function array_fill(int $start_index, int $count, mixed $value): array
 ```
@@ -422,8 +422,8 @@ function array_fill_keys(mixed $keys, mixed $value): array
 
 ```php
 /**
- * array_intersect returns the entries of $array whose value is in every
- * one of the other arrays, keys kept; it compares values as strings, as
+ * array_intersect returns the entries of $array whose value appears in each
+ * of the other arrays, keys kept; it compares values as strings, as
  * array_diff compares them.
  */
 function array_intersect(mixed $array, mixed ...$others): array
@@ -431,8 +431,8 @@ function array_intersect(mixed $array, mixed ...$others): array
 
 ```php
 /**
- * array_intersect_key returns the entries of $array whose key is in every
- * one of the other arrays, values untouched and never compared.
+ * array_intersect_key returns the entries of $array whose key appears in
+ * each of the other arrays, values untouched, never compared.
  */
 function array_intersect_key(mixed $array, mixed ...$others): array
 ```
@@ -513,9 +513,9 @@ function uksort(mixed $array, callable $callback): bool
 ```php
 /**
  * Closure::bind rebinds a closure's scope. phpscript enforces no property
- * visibility and a scope change has nothing to alter and the call answers
- * the closure unchanged. Rebinding `$this` would change what the body
- * sees and the call refuses it with an error and ignores nothing.
+ * visibility. A scope change has nothing to alter. The call answers the
+ * closure unchanged. Rebinding `$this` would change the body's view. The
+ * call refuses that with an error, and ignores nothing.
  */
 Closure::bind(mixed $closure, mixed ...$args): mixed
 ```
@@ -544,7 +544,7 @@ function defer(callable $callback): void
 /**
  * base64_decode decodes the base64 in $string, skipping unknown
  * characters unless $strict is true, in which case it returns false for
- * them and for misplaced padding.
+ * those characters and for misplaced padding.
  */
 function base64_decode(string $str, mixed ...$strict): mixed
 ```
@@ -595,7 +595,7 @@ function rawurldecode(string $str): string
 ```
 
 ```php
-// rawurlencode encodes $string per RFC 3986 and a space becomes '%20' and '~' stays literal.
+// rawurlencode encodes $string per RFC 3986. A space becomes '%20' and '~' stays literal.
 function rawurlencode(string $str): string
 ```
 
@@ -610,7 +610,7 @@ function urldecode(string $str): string
 
 ```php
 /**
- * urlencode encodes $string for application/x-www-form-urlencoded and a
+ * urlencode encodes $string for application/x-www-form-urlencoded. A
  * space becomes '+' and '~' becomes '%7E'.
  */
 function urlencode(string $str): string
@@ -720,7 +720,7 @@ function get_declared_classes(): array
 ```php
 /**
  * get_defined_constants returns the defined constants as a name-sorted
- * array; $categorize true groups them under a single "Core" key.
+ * array; $categorize true groups them beneath a single "Core" key.
  */
 function get_defined_constants(bool ...$categorize): array
 ```
@@ -779,8 +779,9 @@ function intval(mixed $num, mixed ...$base): int
 
 ```php
 /**
- * A binding's []string is as much a PHP array as an *model.Array is and
- * is_array() answers for the whole value model, and never one Go type.
+ * A binding's []string is as much a PHP array as an *model.Array.
+ * is_array() answers for every shape in the value model, a Go type among
+ * them.
  */
 function is_array(mixed $v): bool
 ```
@@ -801,8 +802,8 @@ function is_callable(mixed $value): bool
 ```php
 /**
  * is_double reports whether $value is a float, php's older spelling of
- * is_float(). registerLang registers both because a script written for php
- * uses whichever its author learned.
+ * is_float(). registerLang registers both. A script written for php uses
+ * whichever spelling its author learned.
  */
 function is_double(mixed $value): bool
 ```
@@ -832,17 +833,17 @@ function is_numeric(mixed $value): bool
 
 ```php
 /**
- * is_object reports whether $value is an object. A value a Go binding
- * returned is one: a script constructs it with new, calls its methods and
- * reads its properties the same way it does an interpreted object.
+ * is_object reports whether $value is an object. A value from a Go binding
+ * qualifies. A script constructs it with new, calls its methods and reads
+ * its properties the same way it does an interpreted object.
  */
 function is_object(mixed $value): bool
 ```
 
 ```php
 /**
- * is_string reports whether $value is a string. A binding's []byte is one,
- * PHP's strings being byte strings; see phpval.Bytes.
+ * is_string reports whether $value is a string. A binding's []byte
+ * qualifies: PHP's strings are byte strings. See phpval.Bytes.
  */
 function is_string(mixed $value): bool
 ```
@@ -1045,7 +1046,7 @@ function mb_stripos(string $haystack, string $needle, mixed ...$rest): mixed
 /**
  * mb_strlen returns the number of characters in $string; the $encoding
  * argument "8bit" answers in bytes, the byte-count escape hatch for
- * binary data. Every other encoding reads as UTF-8.
+ * binary data. Any other encoding reads as UTF-8.
  */
 function mb_strlen(string $s, mixed ...$encoding): int
 ```
@@ -1222,7 +1223,7 @@ function spl_autoload_unregister(callable $callback): bool
 ```php
 /**
  * stream_resolve_include_path resolves $filename against the include path
- * and returns the first path that exists, or false when none does.
+ * and returns the first path that exists, or false when no path exists.
  */
 function stream_resolve_include_path(string $filename): mixed
 ```
@@ -1263,25 +1264,25 @@ function get_class(mixed ...$object): mixed
  * order the object reads them back. A non-object returns an empty array.
  * 
  * A value a binding returned answers with its exported Go fields, the
- * field set print_r and var_dump report for it. A throwable answers with
- * none: every php throwable declares its properties protected, a script
- * outside the class reads nothing off one, and the fields this runtime
- * keeps on its own Go type are no property a script may name.
+ * field set print_r and var_dump report. A throwable exposes no property:
+ * every php throwable declares its properties protected, a script outside
+ * the class reads nothing off one. Fields this runtime keeps on the Go type
+ * are no property a script may name.
  */
 function get_object_vars(mixed $object): array
 ```
 
 ```php
 /**
- * get_parent_class always returns false; phpscript has no inheritance and
- * no class has a parent to report.
+ * get_parent_class always returns false; phpscript has no inheritance. No
+ * class has a parent to report.
  */
 function get_parent_class(mixed ...$unused): mixed
 ```
 
 ```php
 /**
- * is_subclass_of always returns false; phpscript has no inheritance and no
+ * is_subclass_of always returns false; phpscript has no inheritance. No
  * object is an instance of a subclass. A guard written as
  * `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
  * through to the name comparison, which is the check that answers here.
@@ -1297,12 +1298,12 @@ function method_exists(mixed $object_or_class, string $method): bool
 ```php
 /**
  * property_exists reports whether object $object_or_class has property
- * $property, set or declared; a class name is not accepted and returns
+ * $property, set or declared; a class name is not accepted; it returns
  * false.
  * 
- * A declaration outlives an unset, and a value a binding returned answers
- * for its exported Go fields, resolved the way a property read resolves
- * them. A throwable answers for none, as get_object_vars does.
+ * A declaration outlives an unset. A value a binding returned answers for
+ * its exported Go fields, resolved as a property read resolves that value.
+ * A throwable answers for no property, as get_object_vars does.
  */
 function property_exists(mixed $object_or_class, string $property): bool
 ```
@@ -1310,14 +1311,14 @@ function property_exists(mixed $object_or_class, string $property): bool
 ```php
 /**
  * PHP exposes an opaque, per-object identity. A pointer is exactly that,
- * and stays stable for as long as the object is alive, which is the only
- * guarantee PHP makes either.
+ * and stays stable while the object is alive, which is the only guarantee
+ * PHP makes either.
  */
 function spl_object_hash(mixed $value): string
 ```
 
 ```php
-// spl_object_id returns a numeric identity for $object, stable for as long as the object is alive.
+// spl_object_id returns a numeric identity for $object, stable while the object is alive.
 function spl_object_id(mixed $object): int
 ```
 
@@ -1405,8 +1406,8 @@ function join(mixed $separator, mixed $array): string
 
 ```php
 /**
- * lcfirst returns $string with a leading A-Z mapped down and every other
- * first byte left alone; mb_lcfirst converts non-ASCII letters too.
+ * lcfirst returns $string with a leading A-Z mapped down; any other first
+ * byte stays unchanged. mb_lcfirst converts non-ASCII letters too.
  */
 function lcfirst(string $str): string
 ```
@@ -1457,8 +1458,8 @@ function str_ends_with(string $haystack, string $needle): bool
 ```php
 /**
  * str_pad returns $string padded with $pad_string to $length characters
- * on the side $pad_type selects; a $length below the current one is a
- * no-op.
+ * on the side $pad_type selects; a $length below the current one changes
+ * nothing.
  */
 function str_pad(string $str, int $length, mixed ...$optional): string
 ```
@@ -1475,10 +1476,10 @@ function str_replace(mixed $search, mixed $replace, mixed $subject): string
 
 ```php
 /**
- * str_split returns $string cut into chunks of $length bytes, the last one
- * shorter when the string does not divide evenly and a chunk boundary may
- * fall inside a multi-byte character. An empty string returns an empty
- * array.
+ * str_split returns $string cut into chunks of $length bytes. The last
+ * chunk is shorter when the string does not divide evenly. A chunk
+ * boundary may fall inside a multi-byte character. An empty string
+ * returns an empty array.
  */
 function str_split(string $str, int ...$length): array
 ```
@@ -1513,7 +1514,7 @@ function strpos(string $haystack, string $needle, int ...$offset): mixed
 
 ```php
 /**
- * strrev returns $string with its bytes in reverse order and a multi-byte
+ * strrev returns $string with its bytes in reverse order. A multi-byte
  * character comes out as its bytes in reverse.
  */
 function strrev(string $str): string
@@ -1539,16 +1540,16 @@ function strstr(string $haystack, string $needle): mixed
 
 ```php
 /**
- * strtolower returns $string with A-Z mapped down and every other byte
- * left alone; mb_strtolower converts non-ASCII letters too.
+ * strtolower returns $string with A-Z mapped down; any other byte stays
+ * unchanged. mb_strtolower converts non-ASCII letters too.
  */
 function strtolower(string $s): string
 ```
 
 ```php
 /**
- * strtoupper returns $string with A-Z mapped up and every other byte left
- * alone; mb_strtoupper converts non-ASCII letters too.
+ * strtoupper returns $string with A-Z mapped up; any other byte stays
+ * unchanged. mb_strtoupper converts non-ASCII letters too.
  */
 function strtoupper(string $s): string
 ```
@@ -1556,8 +1557,8 @@ function strtoupper(string $s): string
 ```php
 /**
  * substr returns the part of $string from byte $offset for $length bytes;
- * a negative $offset counts from the end and a negative $length stops
- * that many bytes before it. mb_substr counts characters.
+ * a negative $offset counts from the end. A negative $length stops that
+ * many bytes before the end. mb_substr counts characters.
  */
 function substr(string $s, int $start, int ...$length): string
 ```
@@ -1574,8 +1575,8 @@ function substr_count(string $haystack, string $needle, mixed ...$optional): int
 ```php
 /**
  * substr_replace returns $string with the bytes from $offset for $length
- * replaced by $replace; a negative $offset counts from the end and a
- * negative $length is a distance from it. Array arguments are not
+ * replaced by $replace; a negative $offset counts from the end. A
+ * negative $length is a distance from the end. Array arguments are not
  * supported.
  */
 function substr_replace(string $str, string $replace, int $offset, int ...$length): string
@@ -1591,8 +1592,8 @@ function trim(string $string, string ...$args): string
 
 ```php
 /**
- * ucfirst returns $string with a leading a-z mapped up and every other
- * first byte left alone; mb_ucfirst converts non-ASCII letters too.
+ * ucfirst returns $string with a leading a-z mapped up; any other first
+ * byte stays unchanged. mb_ucfirst converts non-ASCII letters too.
  */
 function ucfirst(string $str): string
 ```
@@ -1630,8 +1631,8 @@ function strcmp(string $string1, string $string2): int
 ```php
 /**
  * strncasecmp compares at most $length leading bytes of $string1 and
- * $string2 the way strcasecmp does, with the same reading of a $length
- * past the end or below zero.
+ * $string2 as strcasecmp does. A $length past the end or below zero reads
+ * the same way.
  */
 function strncasecmp(string $string1, string $string2, int $length): int
 ```
@@ -1639,8 +1640,8 @@ function strncasecmp(string $string1, string $string2, int $length): int
 ```php
 /**
  * strncmp compares at most $length leading bytes of $string1 and $string2
- * the way strcmp does; a $length past the end of both compares what is
- * there, and a negative one compares nothing and answers 0.
+ * as strcmp does; a $length past the end of both compares the bytes
+ * present. A negative one compares nothing and answers 0.
  */
 function strncmp(string $string1, string $string2, int $length): int
 ```
@@ -1862,8 +1863,8 @@ function escapeshellarg(string $arg): string
 /**
  * escapeshellcmd returns $command with the shell metacharacters in it
  * backslash-escaped, leaving quotes that come in pairs alone;
- * escapeshellarg is the one to call, since this leaves a quoted
- * argument's own contents live.
+ * escapeshellarg is the call to use, since this leaves a quoted
+ * argument's contents live.
  */
 function escapeshellcmd(string $command): string
 ```
@@ -1918,7 +1919,7 @@ function system(string $command, &$result_code): mixed
 ```php
 /**
  * basename returns the trailing name component of $path, less $suffix
- * when the name ends with it. The empty and root paths answer "", as
+ * when the name ends in that suffix. The empty and root paths answer "", as
  * PHP's do.
  */
 function basename(string $path, string ...$suffix): string
@@ -1926,9 +1927,9 @@ function basename(string $path, string ...$suffix): string
 
 ```php
 /**
- * chdir changes the working directory relative paths resolve against and
- * returns whether it could; the directory is this request's own, and a
- * path that would climb out of the source filesystem's root stops at it.
+ * chdir changes the working directory for relative resolution and returns
+ * whether it could. The directory belongs to this request; a path that
+ * would climb out of the source filesystem's root stops at it.
  */
 function chdir(string $dir): bool
 ```
@@ -1942,7 +1943,7 @@ function chgrp(string $filename, mixed $group): bool
 /**
  * A PHP mode argument is a raw Unix mode, an octal literal like 0644, and
  * runner.FileMode is the same number: both ends of the configuration and
- * the script agree on what a mode is.
+ * the script agree on the mode's meaning.
  */
 function chmod(string $filename, int $mode): bool
 ```
@@ -1950,7 +1951,7 @@ function chmod(string $filename, int $mode): bool
 ```php
 /**
  * PHP takes either a name or a numeric id for both of these, and leaves the
- * other half of the ownership alone, the meaning -1 has to Chown.
+ * other half of the ownership alone, the meaning -1 holds for Chown.
  */
 function chown(string $filename, mixed $owner): bool
 ```
@@ -1982,9 +1983,10 @@ function fclose(mixed $f): bool
 ```php
 /**
  * feof reports whether $stream is at its end: the read that ran out of
- * bytes, never the position, which is php's own rule and holds for a file,
- * a buffer and the request body alike. A handle the host bound itself
- * holds no flag and reads as open, php's answer for a write handle.
+ * bytes, where the position is no signal at all. That is php's own rule. It
+ * holds for a file, a buffer and the request body alike. A handle the host
+ * bound itself holds no flag and reads as open, php's answer for a write
+ * handle.
  */
 function feof(mixed $stream): bool
 ```
@@ -2000,9 +2002,9 @@ function fgetcsv(resource $stream, mixed ...$opts): mixed
 
 ```php
 /**
- * fgets reads one line from $stream, keeping the newline that ends it,
- * and returns false at the end of the handle; $length bounds the line and
- * a line longer than it comes back in pieces.
+ * fgets reads one line from $stream, keeping the newline that ends the
+ * line, and returns false at the end of the handle. $length bounds the line; a
+ * longer line comes back in pieces.
  */
 function fgets(resource $stream, int ...$length): mixed
 ```
@@ -2050,10 +2052,10 @@ function filesize(string $filename): mixed
 
 ```php
 /**
- * filetype returns "file", "dir" or "link" for what $filename names, or
- * false when nothing is there; it answers "file" for the exotic types php
- * can name - fifo, block, char, socket - because nothing inside a source
- * filesystem can be one.
+ * filetype returns "file", "dir" or "link" for the type $filename names,
+ * or false when nothing is there; it answers "file" for the exotic types
+ * php can name - fifo, block, char, socket - because nothing inside a
+ * source filesystem can have that type.
  */
 function filetype(string $filename): mixed
 ```
@@ -2061,10 +2063,10 @@ function filetype(string $filename): mixed
 ```php
 /**
  * fopen opens $filename in $mode and returns a handle, or false on
- * failure; php://output is the script's own output stream, php://input the
- * raw request body (stdin under the cli SAPI), php://memory and php://temp
- * a buffer the script owns, and fopen refuses a mode that can write
- * outside writable_paths.
+ * failure. php://output is the script's output stream. php://input is the
+ * raw request body, stdin in the cli SAPI. php://memory and php://temp are
+ * buffers the script owns. fopen refuses a mode that can write outside
+ * writable_paths.
  */
 function fopen(string $filename, string $mode): mixed
 ```
@@ -2091,9 +2093,8 @@ function fread(resource $stream, int $length): mixed
 /**
  * fseek moves $stream to $offset, counted from the start of the handle,
  * from where it sits when $whence is SEEK_CUR, or from the end when
- * $whence is SEEK_END; it answers 0 on success and -1 on failure, which is
- * the opposite way round from every other function here and is php's own
- * choice.
+ * $whence is SEEK_END; it answers 0 on success and -1 on failure, the
+ * opposite way round from the other functions here, php's own choice.
  */
 function fseek(resource $stream, int $offset, int ...$whence): int
 ```
@@ -2109,8 +2110,7 @@ function ftell(resource $stream): mixed
 ```php
 /**
  * fwrite takes any writer, not just a handle fopen() produced: STDOUT and
- * STDERR are the process's own streams. A binding may pass PHP its own
- * io.Writer.
+ * STDERR are the process streams. A binding may pass PHP another io.Writer.
  */
 function fwrite(resource $stream, string $s): mixed
 ```
@@ -2118,8 +2118,8 @@ function fwrite(resource $stream, string $s): mixed
 ```php
 /**
  * getcwd returns the working directory, written from the source
- * filesystem's root: "/" for the root itself, "/app" for a directory
- * below it. PHP answers a host path; a runtime that may serve its scripts
+ * filesystem's root: "/" for the root itself, "/app" for a child
+ * directory. PHP answers a host path; a runtime that may serve its scripts
  * out of an embedded tree has no host path to answer with.
  */
 function getcwd(): string
@@ -2152,8 +2152,8 @@ function is_executable(string $filename): bool
 ```php
 /**
  * is_file reports whether $filename names an ordinary file, in the source
- * filesystem or on the host; a directory is not one and a missing path is
- * not one.
+ * filesystem or on the host. A directory does not qualify. Nor does a
+ * missing path.
  */
 function is_file(string $filename): bool
 ```
@@ -2177,8 +2177,8 @@ function is_uploaded_file(string $filename): bool
 /**
  * is_writable reports whether a script could write $filename, which reads
  * writable_paths and not the file mode; a path the allowlist refuses is
- * not writable whatever the host's permissions say, and a path it allows
- * is writable even when the file does not exist yet.
+ * not writable whatever the host's permissions say. A path it allows is
+ * writable even when the file does not exist yet.
  */
 function is_writable(string $filename): bool
 ```
@@ -2212,9 +2212,9 @@ function opendir(string $directory): mixed
 ```php
 /**
  * pathinfo returns the parts of $path as an array of dirname, basename,
- * extension and filename; a path with no dot returns no extension key,
- * which php leaves out and never empties. It never touches
- * the filesystem and it answers about a path that does not exist.
+ * extension and filename; a path that has no extension dot returns no
+ * extension key, which php omits. The call touches no filesystem and answers about a path
+ * that does not exist.
  */
 function pathinfo(string $path): array
 ```
@@ -2230,18 +2230,18 @@ function readdir(mixed $dir_handle): mixed
 
 ```php
 /**
- * realpath returns $path written from the root, with . and .. resolved,
- * or false when nothing is there; php answers a host path, and a runtime
- * that may serve its scripts out of an embedded tree has no host path to
- * answer with and this answers the spelling getcwd() and __DIR__ use.
+ * realpath returns $path written from the root, after resolving . and ..,
+ * or false when nothing is there. php answers a host path. A runtime that
+ * may serve its scripts out of an embedded tree has no host path to answer
+ * with. This answers the spelling getcwd() and __DIR__ use.
  */
 function realpath(string $path): mixed
 ```
 
 ```php
 /**
- * rename modifies both ends: it removes the source as well as creating the
- * destination and both have to be writable.
+ * rename modifies both ends: it removes the source and creates the
+ * destination. Both must be writable.
  */
 function rename(string $from, string $to): bool
 ```
@@ -2253,9 +2253,8 @@ function rewind(resource $stream): bool
 
 ```php
 /**
- * scandir returns the names in the directory $directory, sorted, with "."
- * and ".." first as php lists them; false when $directory is not a
- * directory.
+ * scandir returns the names in the directory $directory, sorted, listing
+ * "." and ".." first as php does; false when $directory is not a directory.
  */
 function scandir(string $directory): mixed
 ```
@@ -2263,9 +2262,9 @@ function scandir(string $directory): mixed
 ```php
 /**
  * stream_get_contents reads $stream whole, or $maxlength bytes from
- * $offset; a negative or absent one of either reads the rest from where the
- * handle sits. It takes any reader, as fwrite takes any writer: STDIN is
- * one.
+ * $offset. A negative or absent value reads the rest from the current
+ * position. It takes any reader, as fwrite takes any writer; STDIN
+ * qualifies.
  */
 function stream_get_contents(resource $stream, mixed ...$bounds): string
 ```
@@ -2445,7 +2444,7 @@ function getallheaders(): array
  * header stages the "Name: value" response header in $header, written to
  * the response after the script finishes; $replace (default true)
  * overwrites an existing header of the same name, $code stages the
- * response status, and a status line such as "HTTP/1.0 404 Not Found"
+ * response status, plus a status line such as "HTTP/1.0 404 Not Found"
  * stages the status it names.
  */
 function header(string $header, mixed ...$opts): void
@@ -2454,8 +2453,9 @@ function header(string $header, mixed ...$opts): void
 ```php
 /**
  * http_response_code stages the response status in $response_code and
- * returns the one it replaced; called without one it returns the status
- * the response will send, or false when there is no request to answer for.
+ * returns the status it replaced. Called with no argument, it returns
+ * the status the response will send, or false when no request exists to
+ * answer.
  */
 function http_response_code(mixed ...$opts): mixed
 ```
@@ -2473,7 +2473,7 @@ function setcookie(string $name, mixed ...$opts): bool
 ```php
 /**
  * setrawcookie stages a Set-Cookie header the way setcookie does, writing
- * $value as it stands and a value with a semicolon or a space is the
+ * $value as it stands. A value with a semicolon or a space is the
  * caller's to handle; the encoder does nothing with it.
  */
 function setrawcookie(string $name, mixed ...$opts): bool
@@ -2639,27 +2639,26 @@ class Auth\Storage\PasswordFile
     /**
      * authenticate reports the user $key names when $secret is theirs.
      * 
-     * A missing user and a wrong password are one answer, separable by time alone:
-     * a key the file does not hold costs no derivation. Rate limiting bounds what
-     * that is worth, see docs/reference/extensions/hashing.md.
+     * A missing user gets the same answer as a wrong password, separable by time
+     * alone: a key the file does not hold costs no derivation. Rate limiting bounds
+     * the value of that; see docs/reference/extensions/hashing.md.
      */
     public function authenticate(string $key, string $secret): mixed {}
 
     /**
-     * exists reports whether there is a user database to ask: the password file
-     * is there, and at least one of its lines is an account. A file of comments
-     * and blank lines alone answers false and a login page says there are no
-     * accounts where a form refusing every password would name no cause.
+     * exists reports whether a user database exists: the password file is present,
+     * with at least one account among its lines. A file of comments and blank lines
+     * alone answers false. A login page then says there are no accounts; a
+     * form refusing every password names no cause.
      */
     public function exists(): bool {}
 
     /**
-     * users is every record in the file, ordered by username.
+     * users returns all records in the file, ordered by username.
      * 
-     * It holds no hash and a script may keep it: everything above here sees a
-     * table of two columns, and the third column never leaves this package. A
-     * caller writes the rows into its own table and rebuilds it when the file
-     * changes.
+     * It holds no hash; a script may keep it. The code above sees a table of two
+     * columns, and the third column stays in this package. A caller writes the rows
+     * into its table and rebuilds that table when the file changes.
      */
     public function users(): array {}
 }
@@ -2682,7 +2681,7 @@ class Database
     public function __construct(string $name) {}
 
     /**
-     * begin starts a transaction and opens the span measuring it. The span stays
+     * begin starts a transaction and opens the span measuring the transaction. The span stays
      * open until Commit or Rollback ends it.
      */
     public function begin(): mixed {}
@@ -2699,8 +2698,8 @@ class Database
     /**
      * get returns the first result row, or false when the query matches no rows.
      * 
-     * A row is a native map: foreach walks it, $row["col"] indexes it and
-     * unset($row["col"]) takes a column out. A map holds no column order; a script
+     * A row is a native map: foreach walks the row, a column name indexes it.
+     * unset() takes a column out. A map holds no column order; a script
      * that needs one names its columns in the SELECT and indexes them.
      */
     public function get(string $query, mixed ...$args): mixed {}
@@ -2742,20 +2741,21 @@ Area `Runtime\PS\Database`.
  * Database\Migrate loads a set of SQL migrations from the script filesystem
  * and runs them against the named connection.
  * 
- * The first name is also the project name mig records under and two
- * schemas sharing one database keep separate records when they open
- * under separate names. A script that names no connection migrates
+ * The first name is also the project name mig records under; two schemas
+ * sharing one database keep separate records when they open under separate
+ * names. A script that names no connection migrates
  * "default": the connection an unnamed one resolves to anyway.
  * 
- * The constructor tries each name as "<name>:migrate" before "<name>" and a
- * deployment can point migrations at a user allowed to alter tables while
- * the script queries through one that is not, without the script naming
- * either. The project stays "<name>" whichever credential answered: what a
- * migration connects with is not what it records under. A "<name>:migrate"
+ * The constructor tries each name as "<name>:migrate" before "<name>". A
+ * deployment can point migrations at a user allowed to alter tables, while
+ * the script queries through a user lacking that right, without naming
+ * either. The project stays "<name>" whichever credential answered: a
+ * migration records the project; the credential is only how it connects. A
+ * "<name>:migrate"
  * credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
- * form, because an environment variable name holds no colon; it arrives
- * through Database::register and a virtual host owning its own connections
- * already supplies them.
+ * form: an environment variable name holds no colon. It arrives through
+ * Database::register; a virtual host that owns the connections already
+ * supplies the connections.
  * 
  * A name longer than 16 characters fails the run with mig's ErrNoProject,
  * because 16 is the width of the project column.
@@ -2771,9 +2771,9 @@ class Database\Migrate
     public function load(string $pattern): void {}
 
     /**
-     * run applies the loaded migrations. It opens one span and not one per file:
-     * migrations run at startup, where what matters is how long the schema took and
-     * whether it failed, with no row per statement.
+     * run applies the loaded migrations. It opens a single span, never one for each
+     * file: migrations run at startup, where the useful facts are the schema's
+     * duration and whether it failed. No row per statement.
      */
     public function run(): void {}
 }
@@ -2855,11 +2855,11 @@ class HTTP\Client
 
     /**
      * parallel sends every request in $requests at once and returns the responses
-     * under the same keys. The call takes as long as the slowest request.
+     * keyed the same way. The call takes as long as the slowest request.
      * $requests is an array of HTTP\Request keyed by a name the script chooses,
      * each bounded by the client's timeout.
      * 
-     * One request failing does not fail the others and does not throw: that
+     * One request failing does not fail the others and does not throw. That
      * response reports $response->ok() as false and $response->err() as the
      * reason. A script sees every outcome. A throw means the argument is no
      * array of requests.
@@ -2871,7 +2871,7 @@ class HTTP\Client
 
     /**
      * send sends $request and returns the response. A transport failure or a
-     * timeout throws; an HTTP error status does not and check $response->status().
+     * timeout throws. An HTTP error status does not; check $response->status().
      */
     public function send(mixed $request): mixed {}
 }
@@ -2905,10 +2905,10 @@ class HTTP\Mux
      * handle registers $handler for $pattern, which is ServeMux.HandleFunc's
      * pattern, with {name} segments the handler reads through $r->path_value($name).
      * 
-     * $handler is a callable: a closure, a method read off its receiver as
-     * $this->fnName, or the name of a declared function. The mux calls it with the
-     * response writer and the request, what it echoes reaches the response, and a
-     * throw becomes a 500. docs/use-cases/http-server.md is the contract.
+     * $handler is a callable: a closure, a method read from its receiver, spelled
+     * `$this->fnName`, or the name of a declared function. The mux calls it with the
+     * response writer and the request. Its echo reaches the response. A throw
+     * becomes a 500. docs/use-cases/http-server.md is the contract.
      */
     public function handle(string $pattern, mixed $handler): void {}
 
@@ -2918,7 +2918,7 @@ class HTTP\Mux
     // use wraps the handlers registered after it with $middleware, chi's shape.
     public function use(mixed $middleware): void {}
 
-    // use_pool_for_test is usePool under a name a test can reach.
+    // use_pool_for_test exposes usePool to a test.
     public function use_pool_for_test(mixed $pool): void {}
 }
 ```
@@ -3016,8 +3016,8 @@ class HTTP\Server
     public function close(): void {}
 
     /**
-     * listen binds the address and starts answering, and returns the address it
-     * bound. It does not block: the script goes on, and calls wait() when its work
+     * listen binds the address, starts answering, and returns the address it
+     * bound. It does not block: the script goes on. It calls wait() when its work
      * completes.
      */
     public function listen(): string {}
@@ -3031,7 +3031,7 @@ class HTTP\Server
      */
     public function shutdown(): void {}
 
-    // wait blocks until the script runs out of time or its client goes away.
+    // wait blocks until the script runs out of time or its client leaves.
     public function wait(): void {}
 }
 ```
@@ -3046,14 +3046,14 @@ Area `Runtime\PS\Core\JSON`.
 /**
  * JSON\Decoder returns a decoder reading from $stream.
  * 
- * UseNumber is on, as in json_decode(): a whole number comes back an int and
- * only a fractional one a float, the way php answers.
+ * UseNumber is on, as in json_decode(): a whole number comes back an int;
+ * only a fractional number becomes a float, the way php answers.
  */
 class JSON\Decoder
 {
     public function __construct(resource $stream) {}
 
-    // decode reads the next value from the stream, throwing at the end of it.
+    // decode reads the next value from the stream, throwing at the end.
     public function decode(): mixed {}
 
     // more reports another value waiting in the stream, ending a decode loop.
@@ -3092,8 +3092,8 @@ class JSON\Encoder
     public function encode(mixed $value): void {}
 
     /**
-     * set_indent is json.Encoder.SetIndent: $indent per level under $prefix, and
-     * two empty strings go back to one line per value.
+     * set_indent is json.Encoder.SetIndent: $indent per level under $prefix. Two
+     * empty strings go back to a single line per value.
      */
     public function set_indent(string $prefix, string $indent): void {}
 }
@@ -3123,9 +3123,9 @@ class Mail
     public function __construct(mixed ...$names) {}
 
     /**
-     * send sends an email through the server this client names, as
-     * `$mail->send($to, $subject, $body, $html, $reply_to)` with the last two
-     * optional. It throws, sending nothing, when $reply_to is not one address.
+     * send sends an email via the server this client names:
+     * `$mail->send($to, $subject, $body, $html, $reply_to)`, with the last two
+     * optional. It throws, sending nothing, when $reply_to is not a single address.
      */
     public function send(string $recipient, string $subject, string $body, string $html, string $reply_to): void {}
 }
@@ -3353,9 +3353,9 @@ class Session\Manager
      * destroy ends the current session: it drops the data behind the cookie and
      * expires the cookie on the way out.
      * 
-     * A session that is not there is no error. Logging out twice, and logging out
-     * of a session a prune already took, are the same request to the client, and
-     * both end with no session and no cookie.
+     * A missing session is no error. Logging out twice, and logging out of a
+     * session a prune already took, are the same request to the client. Both end
+     * without a session or cookie.
      */
     public function destroy(): void {}
 
@@ -3365,20 +3365,17 @@ class Session\Manager
     /**
      * login authenticates $key and $secret against the user database and starts a
      * session for the user it names. It reports whether the credential held; a
-     * wrong password is false and no error.
+     * wrong password answers false, plus no error.
      * 
      * The session holds the user's primary key. The username stays in the user
-     * database and a caller that needs it reads it there.
+     * database; a caller that needs it reads the value there.
      */
     public function login(string $key, string $secret): bool {}
 
     // set_auth replaces the user database login() authenticates against.
     public function set_auth(mixed $users): void {}
 
-    /**
-     * set_storage replaces the storage that holds sessions, wrapping it for tracing
-     * as the constructor does.
-     */
+    // set_storage replaces the session storage, wrapping it for tracing as the constructor does.
     public function set_storage(mixed $storage): void {}
 
     // start creates a new session, stores userID, and stages its HTTP-only cookie.
@@ -3413,9 +3410,9 @@ class Session\Storage\Disk
     public function delete(string $id): void {}
 
     /**
-     * delete_by_user removes every session file holding userID, counting what it
-     * took. The walk reads each session because the payload is the only place the
-     * user appears: a file's name is its session id alone.
+     * delete_by_user removes every session file holding userID and counts the files.
+     * The walk reads each session: the payload is the only place the user appears.
+     * A file's name holds only the session id.
      */
     public function delete_by_user(string $user_id): int {}
 

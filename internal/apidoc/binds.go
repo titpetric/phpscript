@@ -17,7 +17,7 @@ func reflectBinds(t reflect.Type) Citation {
 	return own
 }
 
-// wrappedStdlib finds the standard library type a struct wraps, matching on name or embedding.
+// wrappedStdlib finds the standard library type a struct wraps, by name or embedding.
 func wrappedStdlib(t reflect.Type, owner string) (reflect.Type, bool) {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()

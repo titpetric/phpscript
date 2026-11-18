@@ -7,19 +7,19 @@ package model
 //
 // These two interfaces are the contract a consumer reads a collection
 // through. modelutil holds the functions that read every shape, an *Array
-// included. A binding returns the cheapest representation of its data and pays
-// nothing to build an *Array with no reader: an *Array costs a struct, a
-// map[any]any and a key slice, plus an interface box per key and per value,
-// where the same data as a []string costs one allocation.
+// included. A binding returns the cheapest representation of its data. An
+// *Array without a reader costs no allocation: an *Array costs a struct, a map
+// keyed by any, a key slice, plus an interface box per key, plus another per
+// value. The same data as a []string costs one allocation.
 //
 // *Array remains the right choice for values PHP mutates: the only shape with
 // insertion-ordered hybrid int/string keys and support for `$a[] = v`.
 
-// Collection is a value that answers its own length and iteration and a type
-// declared outside model reads as an array without being one.
+// Collection is a value that answers length and iteration. A type declared
+// outside model reads as an array without being one.
 //
-// *Array satisfies it. So does any view a caller builds over data it would
-// rather not copy into one. Everything that reads a collection accepts it,
+// Both *Array and the view a caller builds over data it would rather not copy
+// are collections. Everything that reads a collection accepts the view,
 // and such a view reaches count(), foreach and the array bindings.
 type Collection interface {
 	Len() int

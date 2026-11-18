@@ -22,7 +22,7 @@ func phpFnmatch(pattern, str string, flags ...any) bool {
 	}
 	// Folding both sides once is cheaper than folding per byte comparison.
 	// It folds the pattern's bracket expressions along with everything
-	// else, which a per-byte comparison would have to do by hand.
+	// else; a per-byte comparison must do the same by hand.
 	if mode&fnmCasefold != 0 {
 		pattern = strings.ToLower(pattern)
 		str = strings.ToLower(str)
@@ -122,7 +122,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 		}
 		next++
 		// The star has consumed at least one byte and the resume point
-		// is never a leading-period position.
+		// is not a leading-period position.
 		p, s, start = star, next, false
 	}
 
@@ -134,7 +134,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 	return p == len(pattern)
 }
 
-// fnmatchClass reads one bracket expression, reporting its end, a match and whether it closes.
+// fnmatchClass reads one bracket expression, reporting its end, match and closure.
 func fnmatchClass(pattern string, open int, b byte, noescape bool) (end int, in, closed bool) {
 	i := open + 1
 	negate := false

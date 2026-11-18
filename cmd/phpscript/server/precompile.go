@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// sharedCaches puts a site's annotated files on the caches its file handler serves from.
+// sharedCaches puts a site's annotated files on its file handler's caches.
 func sharedCaches(files *handler, options []annotations.Option) []annotations.Option {
 	return append(options[:len(options):len(options)],
 		annotations.WithIncludeCache(files.includeCache),
@@ -15,7 +15,7 @@ func sharedCaches(files *handler, options []annotations.Option) []annotations.Op
 	)
 }
 
-// precompile parses a site's tree into its caches and never fails startup on a broken file.
+// precompile fills a site's caches, never failing startup on a broken file.
 func precompile(files *handler, name string) {
 	if !files.runnerOptions.Precompile {
 		return

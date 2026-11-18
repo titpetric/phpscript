@@ -8,7 +8,7 @@ import (
 )
 
 // scriptArray builds a list-mode *model.Array of the given values, for the
-// cases that have to be a script array and no Go slice.
+// cases that require a script array.
 func scriptArray(values ...any) *model.Array {
 	out := model.NewArraySize(len(values))
 	for _, v := range values {
@@ -17,12 +17,12 @@ func scriptArray(values ...any) *model.Array {
 	return out
 }
 
-// TestString pins each value against what php prints for `(string)$v`.
+// TestString pins each value to php's output for `(string)$v`.
 //
 // A second Go implementation makes a poor oracle: rendering a float and an
 // unknown type with fmt's %v turns the shortest round-tripping float form and
 // Go's struct dump into the expected answers. A php name is a
-// behaviour claim settled by php and the want column is php's output for the
+// behaviour claim settled by php. The want column is php's output for the
 // same list, pasted.
 func TestString(t *testing.T) {
 	t.Parallel()
@@ -66,9 +66,9 @@ func TestString(t *testing.T) {
 }
 
 // TestStringPrecisionMatchesEcho pins the reason the renderer moved here: the
-// runner rendered a float at php's precision of 14 and this rendered the
-// shortest form that round-trips and one value printed two ways depending on
-// whether it went through echo or through a binding.
+// runner rendered a float at php's precision of 14; this rendered the
+// shortest form that round-trips. One value printed two ways depending on
+// its route via echo or a binding.
 func TestStringPrecisionMatchesEcho(t *testing.T) {
 	t.Parallel()
 	tests := map[float64]string{
@@ -90,9 +90,9 @@ func TestStringPrecisionMatchesEcho(t *testing.T) {
 	}
 }
 
-// TestStringContextRefusesAnObject pins the one case a string context refuses
-// and a key or a var_dump does not. There is no __toString here and an object
-// has no string form at all and php's Error covers the case.
+// TestStringContextRefusesAnObject pins the only case a string context refuses,
+// where a key or a var_dump does not; no __toString exists here. An object
+// has no string form at all, and php's Error covers the case.
 func TestStringContextRefusesAnObject(t *testing.T) {
 	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "Point"})
@@ -128,8 +128,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 }
 
 // TestBytes pins the rule the value helpers ask about a []byte: it reads as
-// the string those bytes form and a binding returning one returns text and
-// not a list of integers.
+// the string those bytes form. A binding returning one returns text.
 func TestBytes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -163,9 +162,8 @@ func TestBytes(t *testing.T) {
 	}
 }
 
-// TestInt pins Int against PHP's own integer cast. Every expectation here
-// comes off `php -r 'var_dump((int)$s);'`, and never off this package's own
-// answer.
+// TestInt pins Int against PHP's integer cast. Every expectation here
+// comes from `php -r 'var_dump((int)$s);'`; this package's answer plays no part.
 func TestInt(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -417,7 +415,7 @@ func TestKey(t *testing.T) {
 
 // TestNumericKey covers the round trip Key rests on: a string becomes an
 // integer key only when the integer prints back to the same string. php 8.5
-// keeps $a["08"] and $a[8] as two entries, and reads "-9223372036854775809"
+// treats the string "08" as a key distinct from the integer 8. It reads "-9223372036854775809"
 // as a string because the number has no int form.
 func TestNumericKey(t *testing.T) {
 	t.Parallel()
@@ -458,10 +456,10 @@ func TestNumericKey(t *testing.T) {
 	}
 }
 
-// TestTruthy covers `if ($v)`. The string rule is the one that surprises: php
-// 8.5 reads "0" as false while "0.0" and "00" are true, because the test is on
-// the two exact spellings and no numeric conversion. An empty collection is
-// false and anything else with no length is true.
+// TestTruthy covers `if ($v)`. The string rule surprises: php
+// 8.5 reads "0" as false, while "0.0" and "00" are true. The test is on
+// the two exact spellings, not on numeric conversion. An empty collection is
+// false; anything else lacking a length is true.
 func TestTruthy(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

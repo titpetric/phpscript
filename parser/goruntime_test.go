@@ -28,10 +28,10 @@ func goCall(t *testing.T, src string) *model.Call {
 	return call
 }
 
-// TestGoRuntimeBinding covers what the import binds and what it leaves alone:
-// a bare go builtin in an importing file, and no other name. The call keeps
-// the source's spelling as its fallback, the name php would have resolved and
-// the name the formatter prints.
+// TestGoRuntimeBinding covers the names the import binds and the names it
+// leaves alone. A bare go builtin binds in an importing file; no other name
+// does. The call keeps the source's spelling as its fallback, the name php
+// would have resolved, and the name the formatter prints.
 func TestGoRuntimeBinding(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ src, name, fallback string }{
@@ -43,13 +43,13 @@ func TestGoRuntimeBinding(t *testing.T) {
 		{"<?php\nuse Runtime\\Router;\nmake(1);", "make", ""},
 		{"<?php\nnamespace App;\nfunction f() { make(1); }", `App\make`, "make"},
 		// The import wins over the enclosing namespace, as php reads an
-		// imported name, and a leading separator and the case of the namespace
+		// imported name. A leading separator and the case of the namespace
 		// are php's to ignore.
 		{"<?php\nnamespace App;\nuse Runtime\\Go;\nfunction f() { make(1); }", `Runtime\Go\make`, "make"},
 		{"<?php\nuse \\runtime\\GO;\nmake(1);", `Runtime\Go\make`, "make"},
 		{"<?php\nuse Runtime\\Go as G;\nmake(1);", `Runtime\Go\make`, "make"},
 		// go spells its builtins one way. A file that writes another asked php
-		// for the name, and a qualified call decided for itself.
+		// for the name. A qualified call took the other path.
 		{"<?php\nuse Runtime\\Go;\nMAKE(1);", "MAKE", ""},
 		{"<?php\nuse Runtime\\Go;\n\\make(1);", "make", ""},
 		{"<?php\nuse Runtime\\Go;\nGo\\make(1);", `Runtime\Go\make`, ""},
@@ -61,11 +61,11 @@ func TestGoRuntimeBinding(t *testing.T) {
 	}
 }
 
-// TestGoRuntimeFold covers the conversion of a literal, which the parser
-// applies and no engine sees: a literal stands where the call stood, under
-// every width go has, holding the type the width names. A conversion php has
-// to read the value for stays a call at run time; so does a call over
-// anything but one literal.
+// TestGoRuntimeFold covers the conversion of a literal. The parser applies the
+// conversion; no engine sees the conversion. A literal stands where the call
+// stood, under every width go has, holding the type the width names. A
+// conversion php must read the value for stays a call at run time. A call over
+// anything but one literal stays a call.
 func TestGoRuntimeFold(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -96,8 +96,8 @@ func TestGoRuntimeFold(t *testing.T) {
 		}
 	}
 
-	// A string literal that folds to itself keeps the node, and with it the
-	// quoting the source used.
+	// A string literal that folds to itself keeps the node, plus the quoting
+	// the source used.
 	lit := mustParse(t, "<?php\nuse Runtime\\Go;\n$x = string('x');").Stmts[1].(*model.Assign).Value.(*model.Lit)
 	if lit.Raw != "'x'" {
 		t.Errorf("the folded literal reads %q, want the source spelling", lit.Raw)
@@ -114,7 +114,7 @@ func TestGoRuntimeFold(t *testing.T) {
 	}
 }
 
-// TestGoRuntimeMakeType covers make's first argument, the one place a type
+// TestGoRuntimeMakeType covers make's first argument, the sole place a type
 // stands where php puts an expression. The binding reads the spelling with a
 // class name qualified, and the formatter prints the spelling the source wrote.
 func TestGoRuntimeMakeType(t *testing.T) {
@@ -125,8 +125,8 @@ func TestGoRuntimeMakeType(t *testing.T) {
 		{"<?php\nuse Runtime\\Go;\nmake([]User, 1);", "[]User", "[]User"},
 		{"<?php\nnamespace App;\nuse Runtime\\Go;\nfunction f() { make([]User, 1); }", `[]App\User`, "[]User"},
 		{"<?php\nuse Runtime\\Go;\nmake([]\\Other\\User, 1);", `[]Other\User`, `[]Other\User`},
-		// A class the file imported qualifies as every other name does. The
-		// source keeps the short spelling it wrote.
+		// A class the file imported qualifies like any other name. The source
+		// keeps the short spelling it wrote.
 		{"<?php\nuse Runtime\\Go;\nuse Other\\User;\nmake([]User, 1);", `[]Other\User`, "[]User"},
 		// The type is a string a script may write by hand, which is the same
 		// call and takes the same path to the binding.
@@ -147,8 +147,8 @@ func TestGoRuntimeMakeType(t *testing.T) {
 		}
 	}
 
-	// A length and a capacity are expressions. The call takes them as any
-	// other call takes its arguments.
+	// Length and capacity are expressions. The call takes the two as any other
+	// call takes its arguments.
 	call := goCall(t, "<?php\nuse Runtime\\Go;\nmake([]int, count($a), 2 * $n);")
 	if len(call.Args) != 3 {
 		t.Errorf("make([]int, count($a), 2 * $n) took %d arguments, want 3", len(call.Args))
@@ -172,8 +172,8 @@ func TestGoRuntimeSliceHint(t *testing.T) {
 		{"function f([][]string $a): []Row {}", "[][]string", "[]Row"},
 		{"function f(?[]int $a) {}", "?[]int", ""},
 		{"function f([]\\Other\\Row $a) {}", `[]\Other\Row`, ""},
-		// A bracket in a type position opens a type and no array literal, and
-		// a hint php does spell still reads as it did.
+		// A bracket in a type position opens a type. An array literal does not
+		// open there. A hint php does spell still reads as it did.
 		{"function f(array $a): string {}", "array", "string"},
 	} {
 		fn := mustParse(t, "<?php\nuse Runtime\\Go;\n"+test.src).Stmts[1].(*model.FuncDecl)
@@ -182,8 +182,8 @@ func TestGoRuntimeSliceHint(t *testing.T) {
 		}
 	}
 
-	// A property declares one too, and the class table is where a type hint
-	// ends: the runtime reads none of them.
+	// A property declares one as well. The class table ends a type hint: the
+	// runtime reads none of them.
 	class := mustParse(t, "<?php\nuse Runtime\\Go;\nclass Totals { public []int64 $counts; }").Stmts[1].(*model.ClassDecl)
 	if class.Fields[0].Type != "[]int64" {
 		t.Errorf("the property reads %q, want []int64", class.Fields[0].Type)
@@ -220,7 +220,7 @@ func TestGoRuntimeSelectorHint(t *testing.T) {
 	}
 }
 
-// goLitExpr parses `$x = <literal>` under the import and answers the literal.
+// goLitExpr parses `$x = <literal>` with the import and answers the literal.
 func goLitExpr(t *testing.T, src string) model.Expr {
 	t.Helper()
 	prog := mustParse(t, "<?php\nuse Runtime\\Go;\n$x = "+src+";")
@@ -286,8 +286,8 @@ func TestGoLiteralParsing(t *testing.T) {
 	}
 }
 
-// TestGoPointerParsing covers `&` and `*` under the go runtime: `&$a` is an
-// address and `*$p` a dereference, and the target of `*$p = 2` is an lvalue.
+// TestGoPointerParsing covers `&` and `*` in the go runtime: `&$a` is an
+// address; `*$p` is a dereference. The target of `*$p = 2` is an lvalue.
 func TestGoPointerParsing(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -326,9 +326,9 @@ func TestGoPointerParsing(t *testing.T) {
 	}
 }
 
-// TestGoRuntimeImportSpellings covers the three ways a file can name the
-// namespace in a `use`, which the parser reads for the binding and the runtime
-// reads for the install.
+// TestGoRuntimeImportSpellings covers three ways a file can name the namespace
+// in a `use`. The parser reads each for the binding; the runtime reads each
+// for the install.
 func TestGoRuntimeImportSpellings(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -379,7 +379,7 @@ func TestParseFileOptionsGoRuntime(t *testing.T) {
 	}
 }
 
-// TestParseGoCatch covers the two clauses the runtime mode reads and the name it refuses.
+// TestParseGoCatch covers the two runtime clauses and the name refused.
 func TestParseGoCatch(t *testing.T) {
 	for _, src := range []string{
 		`<?php try { throw "x"; } catch (error $e) { echo $e; }`,

@@ -14,7 +14,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// Diagnostic is one lint finding.
+// Diagnostic is a lint finding.
 type Diagnostic struct {
 	File    string
 	Line    int
@@ -58,7 +58,7 @@ func File(name, src string) ([]Diagnostic, error) {
 	return out, nil
 }
 
-// lintJSONFlags reports a JSON_* constant, which json_encode ignores and the runtime leaves undefined.
+// lintJSONFlags reports a JSON_* constant json_encode ignores.
 func lintJSONFlags(file, src string, out *[]Diagnostic) {
 	for _, token := range parser.TokenGetAll(src) {
 		triple, ok := token.([]any)

@@ -9,9 +9,9 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/info"
 )
 
-// TestRegister covers the one name this package installs, and where its report
-// lands: phpinfo() writes through the runtime's output and a buffered page
-// captures it the way it captures echo.
+// TestRegister covers the only name this package installs, plus where its
+// report lands: phpinfo() writes through the runtime's output. A buffered page
+// captures the output as it captures echo.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php phpinfo();`)
@@ -41,10 +41,10 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestRegisterIgnoresArguments covers the signature PHP has and this binding
-// does not read: phpinfo($what) selects sections in PHP, and the report here
-// is one block and the binding takes an argument and changes nothing. A script
-// written for PHP calls phpinfo(INFO_GENERAL) and has to keep running.
+// TestRegisterIgnoresArguments covers the signature PHP accepts and this
+// binding ignores: phpinfo($what) selects sections in PHP. The report here is
+// a single block; the binding takes an argument and changes nothing. A script
+// written for PHP calls phpinfo(INFO_GENERAL) and must keep running.
 func TestRegisterIgnoresArguments(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php $ok = phpinfo(32); echo $ok ? "[true]" : "[false]";`)

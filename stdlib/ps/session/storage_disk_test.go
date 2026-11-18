@@ -12,9 +12,9 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/session"
 )
 
-// TestStorageDisk_Delete covers logging a session out. Delete removes the file,
-// and a later Load reports fs.ErrNotExist and a second Delete does too: the
-// manager reads the same condition from either backend.
+// TestStorageDisk_Delete covers logging a session out. Delete removes the
+// file. A later Load reports fs.ErrNotExist. A second Delete reports the same.
+// The manager reads the same condition from either backend.
 func TestStorageDisk_Delete(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "sessions")
@@ -53,10 +53,10 @@ func TestStorageDisk_Delete(t *testing.T) {
 
 // TestStorageDiskPruneSweepsByModificationTime covers the sweep that bounds how
 // large the directory grows. A session rewritten on every request keeps a
-// current modification time and Prune reads age off the file and never off the
-// ID.
+// current modification time. Prune reads age from the file's modification
+// time, not from the ID.
 //
-// Prune skips the temporary files Save writes and a sweep running beside a save
+// Prune skips the temporary files Save writes. A sweep concurrent with a save
 // cannot remove the file that save is about to rename into place.
 func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 	t.Parallel()
@@ -102,10 +102,10 @@ func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 	}
 }
 
-// TestStorageDisk_DeleteByUser covers the sweep a removed account runs through
-// on disk. The walk reads each file because the payload is where the user is.
-// It leaves a save's temporary file and a subdirectory alone, as Prune
-// does: a sweep running beside a save cannot take the file that save is about
+// TestStorageDisk_DeleteByUser covers the on-disk sweep a removed account
+// runs. The walk reads each file because the payload holds the user. It
+// leaves a save's temporary file alone, plus a subdirectory, as Prune does. A
+// sweep concurrent with a save cannot take the file that save is about
 // to rename into place.
 func TestStorageDisk_DeleteByUser(t *testing.T) {
 	t.Parallel()

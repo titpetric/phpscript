@@ -1,5 +1,5 @@
-// Package errors binds go's error constructors under the Runtime\Go\Errors
-// area. A script reaches them with `import "errors";` and writes
+// Package errors binds go's error constructors in the Runtime\Go\Errors
+// area. A script reaches the constructors by writing `import "errors";` and then
 // `throw errors.New("...")`; the default runtime installs none of these names.
 package errors
 
@@ -13,7 +13,7 @@ import (
 // Namespace is the area the import installs.
 const Namespace = modelutil.GoNamespace + `\Errors`
 
-// Set is what the package binds.
+// Set holds the package's bindings.
 var Set = bindings.For("errors").
 	// Runtime\Go\Errors\New returns an error holding $text.
 	Bind("New", newError)

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// fieldComments returns the leading doc comment of each named field, keyed by field name.
+// fieldComments returns each named field's leading doc, keyed by field name.
 func fieldComments(t ast.Expr) map[string][]string {
 	st, ok := t.(*ast.StructType)
 	if !ok || st.Fields == nil {

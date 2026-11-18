@@ -36,8 +36,8 @@ func TestDirectCompileBinary(t *testing.T) {
 		t.Errorf("Run() = %#v, want 5", value)
 	}
 
-	// The right operand is a call into the base env and evaluating it with no
-	// base entry errors: a short-circuited `&&` never reaches it.
+	// The right operand is a call into the base env and evaluating it without
+	// a base entry errors: a short-circuited `&&` never reaches it.
 	decided := &model.Binary{
 		Op:    "&&",
 		Left:  &model.Lit{Value: false},
@@ -101,8 +101,8 @@ func TestDirectCompileUnary(t *testing.T) {
 }
 
 // TestDirectCompileInterp covers the interpolation sub-compiler. The parts
-// write into one builder and the result allocates once; a lone literal part
-// is itself, and a literal with no parts is the empty string.
+// write to one builder and the result allocates once. A lone literal part is
+// itself. A literal without parts is the empty string.
 func TestDirectCompileInterp(t *testing.T) {
 	t.Parallel()
 	helpers := &Helpers{

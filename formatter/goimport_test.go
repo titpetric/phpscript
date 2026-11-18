@@ -8,8 +8,8 @@ import (
 )
 
 // A file that imports a go package round-trips: the statement prints as the
-// path it named, and every member of it as the dotted spelling, where the
-// parser resolved both to the area that binds the package.
+// path it named. Every member prints as the dotted spelling, where the parser
+// resolved both to the area that binds the package.
 func TestGoImportKeepsItsSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\nimport \"net/http\";\nimport \"encoding/json\";\n\n$req = http.NewRequest(\"GET\", $url);\n$body = json.Marshal($req);\necho http.StatusOK;\n$rows = make([]http.Request, 2);\n$one = new http.Request;\n"
@@ -24,7 +24,7 @@ func TestGoImportKeepsItsSpelling(t *testing.T) {
 }
 
 // The go runtime's composite literals keep the source spelling: the bracketed
-// slice, the braced map and the typed forms beside them.
+// slice, the braced map, plus the typed forms beside these.
 func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\n$list = [1, 2, 3];\n$user = {\"name\": \"ada\"};\n$names = []string{\"ada\"};\n$ages = map[string]int{\"ada\": 36};\n$empty = [];\n$none = {};\n"
@@ -39,7 +39,7 @@ func TestGoCompositeLiteralsKeepTheirSpelling(t *testing.T) {
 }
 
 // TestGoRuntimeFileFormats covers a file the php parser refuses: one import
-// per line, a braced map and a typed literal, all printed back as written.
+// per line, a braced map, a typed literal, all printed back as written.
 func TestGoRuntimeFileFormats(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nimport \"net/http\";\nimport \"fmt\";\n\n$m = {\n\t\"a\": 1,\n\t\"b\": 2,\n\t\"c\": 3,\n};\n$rows = [][]string{[\"a\"]};\necho http.StatusOK;\n"

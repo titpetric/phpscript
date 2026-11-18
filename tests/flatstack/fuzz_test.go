@@ -85,8 +85,7 @@ func FuzzFlatstackDifferential(f *testing.F) {
 	})
 }
 
-// FuzzFlatstackModelAST probes compiler boundaries that source parsing cannot
-// produce, including nil and partially initialized nodes.
+// FuzzFlatstackModelAST probes compiler boundaries source parsing cannot produce, including nil nodes.
 func FuzzFlatstackModelAST(f *testing.F) {
 	f.Add([]byte{0, 1, 2, 3, 4, 5})
 	f.Add([]byte{})

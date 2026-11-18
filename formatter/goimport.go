@@ -13,7 +13,7 @@ import (
 // the area name instead would rewrite every member of every imported package
 // and leave the import itself naming nothing.
 
-// collectGoImports maps each import path to the name it bound, nil when a file writes none.
+// collectGoImports maps each import path to its bound name, nil when unwritten.
 func collectGoImports(stmts []model.Stmt) map[string]string {
 	var out map[string]string
 	for _, s := range stmts {
@@ -34,7 +34,7 @@ func collectGoImports(stmts []model.Stmt) map[string]string {
 	return out
 }
 
-// goName returns the spelling an imported member prints as and whether this file imports it.
+// goName returns how an imported member prints and whether this file imports it.
 func (p *printer) goName(name string) (string, bool) {
 	if len(p.goImports) == 0 {
 		return "", false

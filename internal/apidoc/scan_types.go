@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// signature converts a function type to PHP parameters and result types, dropping context.Context.
+// signature converts a function type to PHP parameters and results, without context.
 func signature(ft *ast.FuncType) ([]Param, []string) {
 	params := []Param{}
 	if ft.Params != nil {
@@ -40,7 +40,7 @@ func signature(ft *ast.FuncType) ([]Param, []string) {
 	return dedupeParams(params), results
 }
 
-// astParam converts one parameter, rendering func(any) as &$name and other funcs as callable.
+// astParam renders func(any) parameters as &$name, other funcs as callable.
 func astParam(name string, t ast.Expr) Param {
 	p := Param{Name: paramName(name)}
 	if ell, ok := t.(*ast.Ellipsis); ok {
@@ -62,7 +62,7 @@ func astParam(name string, t ast.Expr) Param {
 	return p
 }
 
-// paramName converts a Go parameter name to PHP spelling, naming the blank identifier unused.
+// paramName converts a Go parameter name to PHP spelling, leaving _ alone.
 func paramName(name string) string {
 	if name == "" || name == "_" {
 		return "unused"
@@ -104,7 +104,7 @@ func isContextContext(t ast.Expr) bool {
 	return ok && pkg.Name == "context" && sel.Sel.Name == "Context"
 }
 
-// phpTypeAST maps a Go type expression to the PHP type name a script sees.
+// phpTypeAST maps a Go type expression to the PHP type a script sees.
 func phpTypeAST(t ast.Expr) string {
 	switch v := t.(type) {
 	case *ast.Ident:
@@ -158,7 +158,7 @@ func phpTypeName(name string) string {
 	return "mixed"
 }
 
-// areaName derives a subsection title from the function name, empty for a plain Register.
+// areaName derives a subsection title from the function name, empty for Register.
 func areaName(fn string) string {
 	rest := strings.TrimPrefix(fn, "register")
 	if rest == fn || rest == "" {

@@ -20,33 +20,33 @@ import (
 )
 
 // SuiteFile is the file a directory of fixtures configures itself with, the
-// same name an application root serves under, because the two are one file:
-// a tree that is both a site and a suite writes one configuration, not two.
+// same name an application root serves under. They share one file: a tree
+// serving as site and suite writes one configuration, not two.
 const SuiteFile = config.VirtualHostConfigFile
 
-// Suite is one phpscript.yml governing the fixtures below the directory holding
-// it: the connections they resolve, the prelude they load, and the hooks the
-// session runs around them.
+// Suite is a phpscript.yml governing the fixtures below its directory: the
+// connections they resolve, the prelude they load, and the hooks the session
+// runs around them.
 //
-// Provider builds the provider once and holds it, because the setup hook and
-// the fixtures have to share a pool. Two providers over one DSN are two pool
-// caches, and a schema applied through the first is not in the database the
-// second queries when the DSN names no shared file.
+// Provider builds the provider once and holds it. Setup and fixtures must
+// share a pool. Two providers on one DSN mean two pool caches.
+// A schema applied with the first is not in the database the second queries
+// when the DSN names no shared file.
 type Suite struct {
-	// Dir is the suite root as the caller spells it, the spelling an error
-	// names and the root stdlib.RegisterFS binds the shims to.
+	// Dir is the suite root in the caller's spelling, the spelling an error
+	// names. stdlib.RegisterFS binds the shims to that root.
 	Dir string
 
 	// Config is the file read over the configuration the run started with.
 	Config config.Config
 
-	// Declared holds the keys the file itself named and a caller can tell a
-	// setting the suite named from one it inherited.
+	// Declared holds the keys the file itself named; a caller can tell a
+	// setting the suite named from one inherited from the run.
 	Declared map[string]any
 
 	// root is the suite directory as a filesystem. A hook resolves its
-	// includes and its migrations against it, the way an application root
-	// resolves them under the server.
+	// includes and its migrations against this root, as an application root
+	// resolves them when serving.
 	root fs.FS
 
 	once     sync.Once
@@ -61,7 +61,7 @@ func LoadSuite(dir string, base config.Config, forbidden bool) (*Suite, error) {
 	return loadSuite(os.DirFS(dir), dir, filepath.Join(dir, SuiteFile), base, forbidden)
 }
 
-// LoadSuiteFS is LoadSuite over a directory inside root, for a tree that is not
+// LoadSuiteFS is LoadSuite for a directory inside root, for a tree that is not
 // on disk. The Go tests read their embedded fixtures this way.
 func LoadSuiteFS(root fs.FS, dir string, base config.Config) (*Suite, error) {
 	sub, err := fs.Sub(root, dir)
@@ -88,9 +88,9 @@ func loadSuite(root fs.FS, dir, filename string, base config.Config, forbidden b
 	}, nil
 }
 
-// Provider answers the connections the fixtures below this suite root resolve:
-// what the suite declared under env, or the process environment when it
-// declared none. A fixture cannot reach a database its folder did not name.
+// Provider answers the connections the fixtures this suite root governs resolve:
+// those declared under env, or the process environment when the suite
+// declared none. No fixture can reach a database its folder did not name.
 func (s *Suite) Provider() model.DatabaseProvider {
 	if s == nil {
 		return nil
@@ -104,10 +104,10 @@ func (s *Suite) Provider() model.DatabaseProvider {
 	return s.provider
 }
 
-// Mail answers the mail servers the fixtures below this suite root send
-// through: what the suite declared, or nothing, the rule a virtual host
+// Mail answers the mail servers the fixtures this suite root governs send
+// through: those declared by the suite, or nothing, the rule a virtual host
 // already follows. A fixture run delivers nothing - construction is a name
-// lookup. The names are what the fixtures are about.
+// lookup. The names drive the fixtures.
 func (s *Suite) Mail() model.MailProvider {
 	if s == nil {
 		return nil
@@ -121,7 +121,7 @@ func (s *Suite) Mail() model.MailProvider {
 	return s.mail
 }
 
-// Include is the prelude the fixtures below this suite root load, or "".
+// Include is the prelude the fixtures this suite root governs load, or "".
 func (s *Suite) Include() string {
 	if s == nil {
 		return ""
@@ -137,7 +137,7 @@ func (s *Suite) Setup() string {
 	return s.Config.Test.Hooks.Setup
 }
 
-// Teardown names the hook the session runs after them, or "".
+// Teardown names the hook the session runs afterwards, or "".
 func (s *Suite) Teardown() string {
 	if s == nil {
 		return ""
@@ -145,12 +145,12 @@ func (s *Suite) Teardown() string {
 	return s.Config.Test.Hooks.Teardown
 }
 
-// RunHook executes one hook file on a runtime built like a fixture below this
+// RunHook executes one hook file on a runtime built like a fixture in this
 // suite root: the standard library rooted at the suite, the host bindings the
 // fixtures use, and the suite's own connections.
 //
-// The suite root is the runtime's filesystem and a hook names its migrations
-// relative to itself, the way an application does.
+// The suite root is the runtime's filesystem. A hook names its migrations
+// relative to itself, as an application does.
 func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	clean := path.Clean(filepath.ToSlash(file))
 
@@ -165,7 +165,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	options.Mail = s.Mail()
 	options.Precompile = true
 	// The prelude is the hook's as much as the fixtures': a hook calling into
-	// the application's own helpers needs what the autoloader declares.
+	// the application's own helpers needs the autoloader's declarations.
 	options.Include = s.Include()
 
 	rt := runner.New(out, options)
@@ -173,7 +173,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	rt.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(rt)
 	// Register installs the shims rooted at the process working directory;
-	// RegisterFS rebinds them to the suite and it has to run after it.
+	// RegisterFS rebinds them to the suite and must run after it.
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, s.Dir)
 	rt.FreezeStdlib()
@@ -194,9 +194,9 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 }
 
 // RunSetup runs the setup hooks of every suite, outermost first, and stops at
-// the first failure. A suite nothing lays state down for has nothing for its
-// fixtures to assert against and the run fails before one executes and not
-// reporting the same missing table once per fixture.
+// the first failure. A suite that lays down no state leaves its fixtures
+// nothing to assert against. The run fails once, before a fixture executes,
+// and reports the missing table once.
 func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 	for _, suite := range suites {
 		hook := suite.Setup()
@@ -212,9 +212,8 @@ func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 
 // RunTeardown runs the teardown hooks in reverse, whatever the fixtures did.
 //
-// Every hook runs and the error list holds every failure, with no stop at
-// the first: the suites are independent, and a caller learns about every one
-// of them.
+// Every hook runs, and the error list holds every failure, without stopping at
+// the first. The suites are independent; a caller learns about each.
 func RunTeardown(ctx context.Context, suites []*Suite, out io.Writer) error {
 	var failures []error
 	for i := len(suites) - 1; i >= 0; i-- {

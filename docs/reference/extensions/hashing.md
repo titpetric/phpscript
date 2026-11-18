@@ -10,21 +10,21 @@
 | `hash_equals`                                  | n/a                 | Compare two digests without leaking where they differ |
 | `password_hash`, `password_verify`             | n/a                 | Store a password                                      |
 
-`hash_algos()` answers the seven names this build registers: `md5`, `sha1`, `sha224`, `sha256`, `sha384`, `sha512` and `crc32b`. The list is a seventh of php's and a script that lets a user pick an algorithm reads the list. `password_algos()` answers the three php answers, in php's order: `2y`, `argon2i` and `argon2id`.
+`hash_algos()` answers the seven names this build registers: `md5`, `sha1`, `sha224`, `sha256`, `sha384`, `sha512` and `crc32b`. The list is a seventh of php's; a script that lets a user pick an algorithm reads it. `password_algos()` answers php's three, in php's order: `2y`, `argon2i` and `argon2id`.
 
-The wider security posture - secrets, key handling, what a vhost may reach - is issue #139's remaining scope. [security.md](../../security.md) documents it.
+The wider security posture - secrets, key handling, vhost reach - is issue #139's remaining scope. [security.md](../../security.md) documents it.
 
 ## Checksums, digests, keyed digests and password hashes
 
 These four make four different claims. A function that makes one of them guarantees nothing about the other three.
 
-**A checksum** detects accidental corruption. `crc32` is one: 32 bits, a few cycles per byte, and no claim against someone who wants two inputs to agree. CRC-32 is linear over GF(2) and an attacker who can append four bytes to a message sets its checksum to any value they like, in constant time and with no search. Use it for a transport check, a cache bucket or an ETag over content you produced yourself. An attacker who chooses the input defeats it.
+**A checksum** detects accidental corruption. `crc32` does this: 32 bits, a few cycles per byte, no claim against anyone wanting two inputs to agree. CRC-32 is linear over GF(2) and an attacker who can append four bytes to a message sets its checksum to any value they like, in constant time, without a search. Use it for a transport check, a cache bucket or an ETag over content you produced yourself. An attacker who chooses the input defeats it.
 
 **A message digest** claims collision resistance: that nobody can produce two inputs with the same output. md5 and sha1 fail that claim, against published attacks; `sha256` upward hold it.
 
-**A keyed digest** claims authenticity: that nobody without the key can produce a valid tag. `hash_hmac` is one. A script builds a signed cookie, a webhook signature and a bearer-token tag from it, at a cost a request pays per call; [What a derivation costs](#what-a-derivation-costs) prices it against the alternatives.
+**A keyed digest** claims authenticity: that nobody without the key can produce a valid tag. `hash_hmac` does this. A script builds a signed cookie, a webhook signature or a bearer-token tag from it, at a cost a request pays per call; the cost table below prices each alternative.
 
-**A password hash** claims that the stored value is expensive to invert even though the input has little entropy. `password_hash` is the only function here that claims it. [Why a password needs a cost parameter](#why-a-password-needs-a-cost-parameter) states why no digest substitutes.
+**A password hash** claims that the stored value is expensive to invert even though the input has little entropy. `password_hash` alone makes that claim. The section on cost parameters states why no digest substitutes.
 
 ## What width buys
 
@@ -40,9 +40,9 @@ A generic collision search is a birthday search and it finds a pair after about 
 | `sha384`  |  384 |             96 |                 `2**192` |
 | `sha512`  |  512 |            128 |                 `2**256` |
 
-[tests/fixtures/stdlib/hashing.phpt](../../../tests/fixtures/stdlib/hashing.phpt) derives that table from the functions themselves and then exhibits the left-hand end of it: a `crc32` collision found by a birthday search over 60411 random inputs, against the `2**16` the row predicts. The same fixture truncates md5, sha1 and sha256 to 32 bits and collides each of them in the same number of tries. Truncating `sha256` to 32 bits reduces its collision search to `crc32`'s.
+[tests/fixtures/stdlib/hashing.phpt](../../../tests/fixtures/stdlib/hashing.phpt) derives that table from the functions themselves and then exhibits its left-hand end: a `crc32` collision found by a birthday search over 60411 random inputs, against the `2**16` the row predicts. The same fixture truncates md5, sha1 and sha256 to 32 bits and collides each of them in the same number of tries. Truncating `sha256` to 32 bits reduces its collision search to `crc32`'s.
 
-`sha256` reaches `2**128`, the current floor for a digest that has to resist collisions. Wider digests cost throughput for a margin nothing uses.
+`sha256` reaches `2**128`, the current floor for collision resistance. Wider digests cost throughput for a margin nothing uses.
 
 ## Published collisions against md5 and sha1
 
@@ -56,21 +56,21 @@ Published attacks place both far below their birthday bound:
 | sha1      | Identical-prefix collision | SHAttered, Stevens et al., 2017               | `2**63` |
 | sha1      | Chosen-prefix collision    | SHA-1 is a Shambles, Leurent and Peyrin, 2020 | `2**63` |
 
-An md5 collision is seconds of laptop time. The fixture holds the Wang-Yu pair as two 128-byte messages with one md5 between them. The sha1 chosen-prefix attack cost about $45,000 of rented GPU in 2020. That cost removed sha1 from certificates and from PGP key identity.
+An md5 collision is seconds of laptop time. The fixture holds the Wang-Yu pair as two 128-byte messages, one md5 between. The sha1 chosen-prefix attack cost about $45,000 of rented GPU in 2020. That cost removed sha1 from certificates and from PGP key identity.
 
 Preimage resistance of both is unbroken: nobody can produce an input for a given md5. An attacker guesses a stored password, which preimage resistance does nothing against.
 
-md5 and sha1 remain sound where no adversary chooses the input: a cache key, a change detector over your own files, a shard selector, an ETag. They fail wherever an attacker can influence a value and gain by duplicating it: a content address, a deduplication key over uploads, a commitment, a signature input, a password.
+md5 and sha1 remain sound where an adversary cannot choose the input: a cache key, a change detector over local files, a shard selector, an ETag. They fail wherever an attacker can influence a value and gain by duplicating it. Such inputs include a content address, a deduplication key over uploads, a commitment, a signature input, a password.
 
 `crc32` makes no cryptographic claim to weaken: it detects errors.
 
 ## crc16 and crc64 do not exist here, or in php
 
-Neither name is in php's `hash_algos()` and there is no behaviour to be compatible with and this build registers neither. A script wanting a short checksum takes `crc32`. A script wanting a 64-bit one truncates a real digest: `substr(hash("sha256", $data), 0, 16)`. SHA-2's own truncated forms have exactly that definition, and 64 bits of output is a `2**32` collision search, too narrow for anything adversarial.
+Neither name is in php's `hash_algos()`. This build registers neither. There is no behaviour to match. A script wanting a short checksum takes `crc32`. A script wanting a 64-bit one truncates a real digest: `substr(hash("sha256", $data), 0, 16)`. SHA-2's own truncated forms have exactly that definition, and 64 bits of output is a `2**32` collision search, too narrow for anything adversarial.
 
 ## What this build does not register
 
-php's `hash_algos()` has sixty entries. The absent ones, and what each is for:
+php's `hash_algos()` has sixty entries. The table lists each absent name with its purpose:
 
 | Absent                                   | What it would be for                                                                                                                                       |
 |------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -81,15 +81,15 @@ php's `hash_algos()` has sixty entries. The absent ones, and what each is for:
 | `hash_init`, `hash_update`, `hash_final` | Digesting a stream without holding it in memory.                                                                                                           |
 | `hash_file`, `hash_hmac_file`            | The same over a path.                                                                                                                                      |
 
-Length extension is the one of these a script can hit by accident. `hash("sha256", $secret . $message)` is forgeable by anyone who knows the length of `$secret`: SHA-2 lets them continue the digest without the secret. `hash_hmac("sha256", $message, $secret)` resists it. This build registers it.
+A script can hit length extension by accident. `hash("sha256", $secret . $message)` is forgeable by anyone who knows the length of `$secret`: SHA-2 lets them continue the digest without the secret. `hash_hmac("sha256", $message, $secret)` resists it. This build registers it.
 
 ## Why a password needs a cost parameter
 
-A digest is fast. An attacker with a stolen table guesses: they run the same function over a wordlist and compare. A salt stops one precomputed table from answering every row at once, and leaves the guessing rate unchanged. An attacker running an unkeyed digest spends per guess what the server spends per login and the ratio between the two is 1 to 1 at any width. The `sha256` row in [What a derivation costs](#what-a-derivation-costs) is that figure.
+A digest is fast. An attacker with a stolen table guesses: they run the same function over the wordlist and compare. A salt stops one precomputed table from answering every row at once, and leaves the guessing rate unchanged. An attacker running an unkeyed digest pays per guess the same as the server pays per login. The ratio is 1 to 1 at any width. The `sha256` row in [the cost table below](#what-a-derivation-costs) is that figure.
 
-No bit width changes the ratio. `sha512` and `sha256` cost an attacker the same per guess, with no parameter to raise it. At equal login latency a salted digest is a weaker store than `password_hash`.
+No bit width changes the ratio. `sha512` and `sha256` cost an attacker the same per guess; no parameter raises it. At equal login latency a salted digest is a weaker store than `password_hash`.
 
-A password hash takes a **cost parameter**: a number multiplying the work per guess, set so that one derivation is affordable for the one login a user performs and unaffordable for the billions an attacker needs. `PASSWORD_BCRYPT_DEFAULT_COST` is its default here:
+A password hash takes a **cost parameter**: a number multiplying the work per guess, set so that one derivation is affordable for each login and unaffordable for the billions an attacker needs. `PASSWORD_BCRYPT_DEFAULT_COST` sets the default here:
 
 ```php
 $stored = password_hash($password, PASSWORD_DEFAULT);
@@ -101,9 +101,9 @@ if (password_needs_rehash($stored, PASSWORD_DEFAULT)) {
 }
 ```
 
-The hash records the cost. `password_verify` costs what the stored value states and `password_needs_rehash` moves a deployment's stored hashes to a new cost. A login is the only place in a request that pays it.
+The hash records the cost. `password_verify` pays the cost the stored value records and `password_needs_rehash` moves a deployment's stored hashes to a new cost. A login is the only place in a request that pays it.
 
-**The fast digests belong on the token.** A session identifier or a bearer token is 128 bits from `random_bytes` and it holds nothing to guess and nothing for a cost parameter to defend. Store a digest of it and compare with `hash_equals`. An authenticated request then costs one digest:
+**The fast digests belong on the token.** A session identifier or a bearer token is 128 bits from `random_bytes`. It holds nothing to guess and nothing for a cost parameter to defend. Store a digest of the token and compare with `hash_equals`. An authenticated request then costs one digest:
 
 ```php
 // Registration and login: once per user, pays the cost parameter.
@@ -117,11 +117,11 @@ if (hash_equals($row["token_hash"], hash("sha256", $presented))) {
 }
 ```
 
-A deployment whose login latency is a problem has three levers, in this order: issue a token, which moves the derivation from every request to one per session; tune the algorithm and its parameters against a measurement on the hardware that will run it; and bound how many derivations can be in flight at once, because each one holds a core for its whole duration.
+A deployment with slow logins has three levers, in this order: issue a token, which moves the derivation from each request to one derivation per session; tune the algorithm and its parameters by measuring the serving hardware; and bound concurrent derivations, because each holds a core for its whole duration.
 
 ## What a derivation costs
 
-All numbers from [stdlib/ps/crypto/password_test.go](../../../stdlib/ps/crypto/password_test.go) on an Intel N150, Go 1.27, `CGO_ENABLED=0`, `GOMEMLIMIT=2GiB`, one pinned core: `benchstat` medians over `-count 6` at `-benchtime=100ms`. `password_verify` runs the same derivation at the parameters the hash records and one column covers both functions.
+All numbers from [stdlib/ps/crypto/password_test.go](../../../stdlib/ps/crypto/password_test.go) on an Intel N150, Go 1.27, `CGO_ENABLED=0`, `GOMEMLIMIT=2GiB`, one pinned core: `benchstat` medians over `-count 6` at `-benchtime=100ms`. `password_verify` runs the same derivation at the parameters the hash records; one column covers both functions.
 
 | Algorithm and parameters         | sec/op   | B/op     | allocs/op |
 |----------------------------------|---------:|---------:|----------:|
@@ -137,13 +137,13 @@ All numbers from [stdlib/ps/crypto/password_test.go](../../../stdlib/ps/crypto/p
 | `sha256` over a token            | 84.03 ns |        0 |         0 |
 | `hash_hmac` sha256 over a token  | 604.4 ns |      512 |         6 |
 
-The `sec/op` column is what one login costs and what one guess costs an attacker, at the same parameters. The `B/op` column is what each side holds while doing it.
+The `sec/op` column prices one login. One guess costs an attacker the same, at the same parameters. The `B/op` column holds each side's working set.
 
-The cost parameter is a power of two and each bcrypt step doubles both columns of work. The only bcrypt lever is lowering it, which halves what an attacker pays as well.
+The cost parameter is a power of two; each bcrypt step doubles both columns of work. The only lever is lowering it; that halves the attacker's cost as well.
 
 ### How many logins that is
 
-A bcrypt derivation holds one core and a small fixed working set and concurrent ones scale with the core count. An argon2id derivation holds its whole `memory_cost` and streams it and concurrent ones contend for memory bandwidth and scale below the core count. `BenchmarkPasswordVerifyThroughput` measures the rate under `-cpu 1,2,4`: `sec/op` there is wall clock per completed login across the cores in play, and logins per second is its reciprocal.
+A bcrypt derivation holds one core, a small fixed working set. Concurrent ones scale with the core count. An argon2id derivation holds its whole `memory_cost` and streams it. Concurrent ones contend for memory bandwidth and scale below the core count. `BenchmarkPasswordVerifyThroughput` measures the rate under `-cpu 1,2,4`: `sec/op` there is wall clock per completed login across the cores in play; logins per second is the reciprocal.
 
 | Stored at               | 1 core   | 2 cores  | 4 cores  | Scaling | Logins/sec | Per hour | Per day |
 |-------------------------|---------:|---------:|---------:|--------:|-----------:|---------:|--------:|
@@ -152,11 +152,11 @@ A bcrypt derivation holds one core and a small fixed working set and concurrent 
 
 Scaling is the one-core figure over the four-core figure. argon2id falls short of the core count because its working set contends for bandwidth.
 
-**argon2id adds a memory cost.** bcrypt's working set fits in a GPU core's local memory and one card runs thousands of guesses in parallel. argon2id's does not fit, and memory bandwidth bounds the parallelism an attacker buys. Both sides pay the `B/op` column: the attacker per guess, and the server once per derivation in flight. Multiply it by the concurrency limit, and set that limit.
+**argon2id adds a memory cost.** bcrypt's working set fits in a GPU core's local memory; one card runs thousands of guesses in parallel. argon2id's does not fit, and memory bandwidth bounds the parallelism an attacker buys. Both sides pay the `B/op` column: the attacker per guess, the server once per derivation in flight. Multiply it by the concurrency limit; set that limit.
 
-**A token costs the `hash_hmac` row; a password costs its algorithm's row.** A request that re-derives a password hash pays the whole derivation, and no choice of algorithm recovers the difference.
+**A token costs the `hash_hmac` row; a password costs its algorithm's row.** A request that re-derives a password hash pays the whole derivation; no choice of algorithm recovers the difference.
 
-**The `threads` option trades the host's rate for one login's latency.** More lanes spread a single derivation across cores and `password_hash($p, PASSWORD_ARGON2ID, array("threads" => 2))` lowers what one login waits. The host's rate does not change: a lane takes a core the next login would have used. Raise it when one login's latency is the complaint, and leave it at 1 for throughput.
+**The `threads` option trades the host's rate for one login's latency.** More lanes spread a single derivation across cores; `password_hash($p, PASSWORD_ARGON2ID, array("threads" => 2))` lowers each login's wait. The host's rate does not change: a lane takes a core the next login would have used. Raise it when one login's latency is the complaint, and leave it at 1 for throughput.
 
 ## Choosing a password algorithm
 
@@ -179,13 +179,13 @@ if (password_verify($submitted, $stored) && password_needs_rehash($stored, PASSW
 }
 ```
 
-`PASSWORD_DEFAULT` stays bcrypt, because php's does and a hash is a stored value two runtimes have to agree on. This build registers both argon2 variants, which encode to the PHC string form libargon2 writes and a hash written here verifies under php and the other way around; [password_argon2.phpt](../../../tests/fixtures/stdlib/password_argon2.phpt) holds pasted php output for both directions. php registers `argon2i` and this build does too. RFC 9106 recommends `argon2id`.
+`PASSWORD_DEFAULT` stays bcrypt, as php's does; a hash is a stored value two runtimes must agree on. This build registers both argon2 variants, which encode to the PHC string form libargon2 writes; a hash written here verifies under php and the other way around; [password_argon2.phpt](../../../tests/fixtures/stdlib/password_argon2.phpt) holds pasted php output for both directions. php registers `argon2i` and this build does too. RFC 9106 recommends `argon2id`.
 
 Set the parameters from a measurement on the hardware that will serve, taken with the fixture or the Go benchmark above. A cost chosen on a developer laptop is the wrong cost everywhere else, and `php -r` measures the laptop.
 
 ### A hash that cannot match costs nothing
 
-`password_verify` reads the algorithm and the work factors out of the stored value and a value that is neither argon2 nor long enough to be bcrypt is `false` with no derivation. `BenchmarkPasswordVerifyRefuse`, same conditions as the cost table:
+`password_verify` reads the algorithm and the work factors out of the stored value. A value that is neither argon2 nor long enough to be bcrypt is `false`, without a derivation. `BenchmarkPasswordVerifyRefuse`, same conditions as the cost table:
 
 | Stored value            | sec/op  | allocs/op |
 |-------------------------|--------:|----------:|
@@ -195,11 +195,11 @@ Set the parameters from a measurement on the hardware that will serve, taken wit
 | an argon2 1.0 hash      |  341 ns |         4 |
 | php 8.5.4, `""`         |   31 ns |       n/a |
 
-`password_verify($password, "")` is the spelling an application uses when a user lookup found nothing. It spends no derivation, and a missing account answers in a different time from a wrong password. Closing that gap belongs to rate limiting: limit attempts per address and per account, which bounds what an attacker learns from any timing at all. A fixed-cost decoy bounds nothing. It pays one algorithm at one parameter set while the real path pays whatever the stored hash records.
+`password_verify($password, "")` is the spelling an application uses when a user lookup found nothing. It spends no derivation; a missing account answers in a different time from a wrong password. Closing that gap belongs to rate limiting: limit attempts for each address and account, which bounds the timing signal. A fixed-cost decoy bounds nothing. It pays one algorithm at one parameter set while the real path pays whatever the stored hash records.
 
 ## Implementation
 
-`md5`, `sha1` and the `hash` family are in [stdlib/ps/crypto/hash.go](../../../stdlib/ps/crypto/hash.go); `crc32` is in [stdlib/ps/core/strings.go](../../../stdlib/ps/core/strings.go) with the rest of the string functions, because it returns an integer and a script uses it as one. The password functions are in [stdlib/ps/crypto/password.go](../../../stdlib/ps/crypto/password.go) and the CSPRNG in [stdlib/ps/crypto/random.go](../../../stdlib/ps/crypto/random.go).
+`md5`, `sha1` and the `hash` family are in [stdlib/ps/crypto/hash.go](../../../stdlib/ps/crypto/hash.go); `crc32` is in [stdlib/ps/core/strings.go](../../../stdlib/ps/core/strings.go) with the rest of the string functions, because it returns an integer that scripts use directly. The password functions are in [stdlib/ps/crypto/password.go](../../../stdlib/ps/crypto/password.go) and the CSPRNG in [stdlib/ps/crypto/random.go](../../../stdlib/ps/crypto/random.go).
 
 The argon2 encoding and its parsing are in [stdlib/ps/crypto/argon2.go](../../../stdlib/ps/crypto/argon2.go), separate from the registrations because the PHC string form is the whole of the interop and is the part a reader checks against php.
 

@@ -13,13 +13,13 @@ import (
 // that; nothing should absorb it.
 const DefaultQueue = 1024
 
-// Pool runs PHP on a fixed set of forks: the forks bound the parallelism and a
-// run that finds every one busy waits its turn and starts no extra runtime.
+// Pool runs PHP on a fixed set of forks: the forks bound the parallelism. A
+// run that finds every fork busy waits its turn and starts no extra runtime.
 //
 // A run executes on the goroutine that submits it, borrowing one of the
 // pre-built runtimes. A submitted run parks and wakes no worker goroutine, which
 // is half the context switches of a worker per request; the request goroutine
-// net/http already has is the one that runs the handler.
+// net/http already has runs the handler.
 type Pool struct {
 	free    chan *poolWorker
 	slots   chan struct{}
@@ -33,7 +33,7 @@ type Pool struct {
 	stopOnce sync.Once
 }
 
-// poolWorker is one fork and where its runs write.
+// poolWorker names one fork and where its runs write.
 type poolWorker struct {
 	rt  *Runtime
 	out func() io.Writer
@@ -41,12 +41,12 @@ type poolWorker struct {
 
 // NewPool forks rt into workers runtimes, each borrowed by one run at a time.
 //
-// Zero workers is GOMAXPROCS, which is the parallelism the machine has for work
-// that is all CPU, and is what a PHP handler doing no IO is; a host whose
-// handlers wait on a database wants more. Zero queue is DefaultQueue.
+// Zero workers is GOMAXPROCS, the parallelism for work that is all CPU. That
+// fits a PHP handler doing no IO; a host whose handlers wait on a database
+// wants more. Zero queue is DefaultQueue.
 //
 // The pool calls output once per worker, for where that worker's runtime
-// writes until a run pushes a writer over it. A host wanting a run's output
+// writes until a run pushes a writer. A host wanting a run's output
 // somewhere else pushes one inside the run; see Runtime.PushOutput.
 func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 	if workers <= 0 {
@@ -78,12 +78,12 @@ func (p *Pool) Workers() int { return p.workers }
 // Queue answers how many runs it holds waiting.
 func (p *Pool) Queue() int { return p.queue }
 
-// Submit runs job on a borrowed runtime and waits for it, and reports whether
-// it ran.
+// Submit runs job on a borrowed runtime and waits for it. It reports whether
+// the job ran.
 //
 // It answers false when ctx ends first, and on a closed pool. For a served
-// request the first is the client leaving: the pool drops a waiting run, and a
-// started one runs on to notice the disconnect through connection_aborted,
+// request the first is the client leaving: the pool drops a waiting run. A
+// started run continues to notice the disconnect through connection_aborted,
 // because stopping it halfway is the handler's call.
 func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	var done <-chan struct{}
@@ -97,7 +97,7 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	}
 
 	// The slot bounds waiting runs the way the queue did: workers run and queue
-	// more wait, and a fuller pool blocks the caller. The fast path takes a
+	// more wait. A fuller pool blocks the caller. The fast path takes a
 	// ready slot without a select, which is the path an idle pool answers on.
 	select {
 	case p.slots <- struct{}{}:
@@ -119,8 +119,8 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	}
 	p.closing.RUnlock()
 
-	// The ready worker takes the same fast path: a pool under its worker count
-	// has one waiting for every submit.
+	// The ready worker takes the same fast path: a pool below its worker count
+	// has a waiting worker for every submit.
 	var worker *poolWorker
 	select {
 	case worker = <-p.free:
@@ -142,8 +142,7 @@ func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	return true
 }
 
-// Close stops the pool accepting runs. A run already borrowed finishes on its
-// caller's goroutine.
+// Close stops the pool accepting runs; a borrowed run finishes on its caller.
 func (p *Pool) Close() {
 	p.stopOnce.Do(func() {
 		p.closing.Lock()

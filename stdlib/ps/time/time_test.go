@@ -10,8 +10,7 @@ import (
 	phptime "github.com/titpetric/phpscript/stdlib/ps/time"
 )
 
-// run executes src against a runtime holding this package's bindings and
-// no other binding, and what resolves is what Register installed.
+// run executes src on a runtime holding this package's bindings alone.
 func run(t *testing.T, src string) string {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -80,8 +79,8 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterDispatchesToGoMethods covers the decision this package rests on:
-// the constructors return Go values and no facade and every method a script
-// calls is Go's own method under the name PHP spells it with. A facade would
+// the constructors return Go values without a facade. Every method a script
+// calls is Go's own method with the name PHP spells it with. A facade would
 // need one wrapper per method, the place a method goes missing.
 func TestRegisterDispatchesToGoMethods(t *testing.T) {
 	t.Parallel()
@@ -126,7 +125,7 @@ func TestRegisterDispatchesToGoMethods(t *testing.T) {
 
 // TestRegisterTimezoneIsPerRuntime covers the reason a clock value owns the
 // location: set_timezone moves what Time construction and parsing resolve
-// against for one runtime, and two runtimes serving two requests keep separate
+// against for one runtime. Two runtimes serving two requests keep separate
 // choices. Writing time.Local would leak one request's timezone into the other.
 func TestRegisterTimezoneIsPerRuntime(t *testing.T) {
 	t.Parallel()

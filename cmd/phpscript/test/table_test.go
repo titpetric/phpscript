@@ -179,9 +179,9 @@ func TestFormatGCRuns(t *testing.T) {
 	}
 }
 
-// TestFormatDuration covers the one spelling every duration column prints in:
-// whole milliseconds, because a reader compares a table of fixture times
-// column by column, and a mixed unit would force a read per cell.
+// TestFormatDuration covers the single spelling every duration column prints:
+// whole milliseconds. A reader compares a table of fixture times column by
+// column; a mixed unit would force a read per cell.
 func TestFormatDuration(t *testing.T) {
 	t.Parallel()
 	for duration, want := range map[time.Duration]string{

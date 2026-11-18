@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestGorootDocs covers what the Go distribution answers about a standard
-// library type a class binds. HTTP\Request holds 22 properties and 20
+// TestGorootDocs covers the Go distribution's answers about a standard library
+// type a class binds. HTTP\Request holds 22 properties and 20
 // methods whose godoc is in the distribution and not in this module. The
 // scan of the module tree reaches none of it.
 func TestGorootDocs(t *testing.T) {
@@ -20,13 +20,13 @@ func TestGorootDocs(t *testing.T) {
 	if !ok {
 		t.Fatalf("net/http.Request documents no AddCookie, methods = %d", len(docs.Methods))
 	}
-	// The scan rewrites the leading Go name to the PHP one, and the
-	// published line reads as PHP documentation and not as Go's.
+	// The scan rewrites the leading Go name to the PHP name. The published
+	// line reads as PHP documentation, not as Go's.
 	if len(method.Comment) == 0 || !strings.HasPrefix(method.Comment[0], "add_cookie ") {
 		t.Errorf("AddCookie documents %q, want it to open on the PHP spelling", method.Comment)
 	}
-	// The parameter name is the one the distribution declares. Reflection
-	// invents $value2 here, which reads as the argument's real spelling.
+	// The parameter name comes from the distribution. Reflection invents
+	// $value2 here, which reads as the argument's real spelling.
 	if got, want := strings.Join(method.Params, ", "), "c"; got != want {
 		t.Errorf("AddCookie parameters = %q, want %q", got, want)
 	}
@@ -39,9 +39,9 @@ func TestGorootDocs(t *testing.T) {
 	}
 }
 
-// TestGorootDocsUnknown covers the two misses. A package not in the
-// distribution and a type it does not declare both answer nil, and the listing
-// then prints the structure reflection sees and no prose.
+// TestGorootDocsUnknown covers the two misses. A package the distribution
+// lacks, or a type it does not declare, answers nil. The listing then prints
+// the structure reflection sees, without prose.
 func TestGorootDocsUnknown(t *testing.T) {
 	t.Parallel()
 	if got := gorootDocs("github.com/titpetric/phpscript/stdlib/ps/http", "Client"); got != nil {

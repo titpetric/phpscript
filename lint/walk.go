@@ -130,7 +130,7 @@ func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 	}
 }
 
-// lintExtends reports `extends` on a class, which inherits nothing, and passes over an interface.
+// lintExtends reports `extends` on a class; an interface is not checked.
 func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
 	if n.Parent == "" {
 		return

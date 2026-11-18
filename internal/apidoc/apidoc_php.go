@@ -47,7 +47,7 @@ func (c Class) Describe() []string {
 	return append(lines, cites...)
 }
 
-// cited names the Go package and symbol behind the class and the interfaces it satisfies.
+// cited names the Go package and symbol behind a class and its interfaces.
 func (c Class) cited() []string {
 	lines := []string{}
 	if c.Binds == "" && c.Uses.Name == "" {
@@ -72,7 +72,7 @@ func (c Class) usesSymbol() string {
 	return c.Uses.Link()
 }
 
-// implementsClause is the interface list the class header prints, empty when none.
+// implementsClause is the interface list the class header prints, empty when absent.
 func (c Class) implementsClause() string {
 	if len(c.Implements) == 0 {
 		return ""
@@ -91,7 +91,7 @@ func (c Class) Rename(name string) Class {
 	return c
 }
 
-// writeDocblock writes doc comment lines as a PHP docblock, none for an empty list.
+// writeDocblock writes doc lines as a PHP docblock, none for an empty list.
 func writeDocblock(b *strings.Builder, lines []string, indent string) {
 	if len(lines) == 0 {
 		return

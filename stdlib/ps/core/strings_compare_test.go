@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-// TestCompareBytes covers the one comparison strcmp, strcasecmp, strncmp and
-// strncasecmp differ only in the arguments to.
+// TestCompareBytes covers the comparison strcmp, strcasecmp, strncmp and
+// strncasecmp share, differing only in arguments.
 //
-// The number is the difference between the first two bytes that disagree, with
-// no normalisation to -1/0/1, because a fixture recorded from php pins it:
+// The number is the difference between the first two bytes that disagree,
+// without normalisation to -1/0/1. A fixture recorded from php pins it:
 // strcmp("A", "a") is -32 there. Bytes compare unsigned and "\xff" sorts after
 // "\x01" by 254. A tie broken by length normalises, php reading strcmp("a", "")
 // as 1 whatever the tail holds.
@@ -66,8 +66,8 @@ func TestClampLength(t *testing.T) {
 }
 
 // TestLowerASCII covers the fold the case-insensitive comparisons use: A-Z
-// alone. These functions walk bytes and decode no rune and a byte above
-// 127 passes through unchanged.
+// alone. These functions walk bytes, decode no rune. A byte above 127 passes
+// through unchanged.
 func TestLowerASCII(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

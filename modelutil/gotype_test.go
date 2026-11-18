@@ -9,8 +9,8 @@ import (
 )
 
 // TestGoBuiltin covers the two name tables the import binds from: go's
-// builtins and go's types, which answer one predicate because a script calls
-// both the same way.
+// builtins and go's types, which answer one predicate. A script calls both the
+// same way.
 func TestGoBuiltin(t *testing.T) {
 	for _, name := range []string{"make", "append", "len", "cap", "clear", "delete", "panic", "println", "int64", "any"} {
 		if !modelutil.GoBuiltin(name) {
@@ -18,7 +18,7 @@ func TestGoBuiltin(t *testing.T) {
 		}
 	}
 	// The four that shadow a php name the import binds too: an import is the
-	// more specific name and `\min` is how a file reaches php's.
+	// more specific name, and `\min` is the spelling that reaches php's.
 	for _, name := range []string{"copy", "min", "max", "print"} {
 		if !modelutil.GoBuiltin(name) {
 			t.Errorf("%s does not read as a builtin", name)
@@ -47,7 +47,7 @@ func TestGoBuiltin(t *testing.T) {
 
 // TestGoFold covers the conversion a type name applies to a value php has
 // already reduced to one of php's scalars, and the pairs it refuses: a
-// string under a numeric type is phpval's to read, not this package's.
+// string in a numeric type belongs to phpval. This package does not read it.
 func TestGoFold(t *testing.T) {
 	for _, test := range []struct {
 		name string

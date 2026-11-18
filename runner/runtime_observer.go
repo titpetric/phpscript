@@ -12,8 +12,8 @@ import (
 
 // Observer receives lifecycle updates for a Runtime. Implementations must be
 // safe for use by concurrent runtimes. Trace returns a span so the interpreter
-// can measure the region it just reported; a nil span is valid and every
-// method on it does nothing and an observer with no trace in the context can
+// can measure the region it just reported; a nil span is valid, every method on
+// such a span does nothing, and an observer holding no trace in the context can
 // return one.
 type Observer interface {
 	UpdateStatus(context.Context, telemetry.State)
@@ -91,7 +91,7 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	}
 }
 
-// traceIncludes publishes the run's included files as one `info`-level span.
+// traceIncludes publishes the run's included files in a single `info`-level span.
 func (rt *Runtime) traceIncludes() {
 	if len(rt.observers) == 0 || !rt.opts.TraceLevel.Info() || len(rt.included) == 0 {
 		return

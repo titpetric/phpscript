@@ -17,11 +17,11 @@ You can use `titpetric/phpscript:latest` docker image (linux/amd64).
 
 Use `phpscript -f config.yml ...` to load runtime and server settings from a YAML file. Without `-f`, the binary uses its embedded defaults. See [Configuration](../configuration.md) for every available setting.
 
-`phpscript --help` prints the whole document: the commands, the global flags, each command's own flags and a table of worked examples per command. On a terminal the command draws the tables; redirected, the same document comes out as markdown.
+`phpscript --help` prints the whole document: the commands, the global flags, each command's flags, plus a table of worked examples per command. On a terminal the command draws the tables; redirected, the same document comes out as markdown.
 
 ## Global flags
 
-Every command accepts these. A command reads the ones it has a use for. Write them before the command name or after it and `phpscript --cover server` and `phpscript server --cover` are the same run.
+Every command accepts these. A command reads the flags it needs. Write them before the command name or after; `phpscript --cover server` and `phpscript server --cover` are the same run.
 
 | Flag              | What it does                                                                                                                       |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------|
@@ -35,20 +35,20 @@ Every command accepts these. A command reads the ones it has a use for. Write th
 | `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and the command creates missing directories.        |
 | `--stdlib`        | Install only these binding areas: `all`, `secure`, `exec`, comma separated. Default `all`.                                         |
 
-`--stdlib` limits the standard library for the whole process. `secure` is every binding confined to the runtime's sandbox; `exec` is `stdlib/pexec`, which runs a command with the permissions of the user running phpscript and outside every filesystem boundary. A name the flag leaves out stays undefined and nothing refuses it and a script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, and both engines.
+`--stdlib` limits the standard library for the whole process. `secure` confines every binding to the runtime's sandbox. `exec` names `stdlib/pexec`, which runs a command with the permissions of the user running phpscript, outside every filesystem boundary. A name the flag leaves out stays undefined; nothing refuses the name; a script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, either engine.
 
 ```sh
 # A server for untrusted sites: no exec, system, passthru, shell_exec or the shell quoting pair.
 phpscript --stdlib=secure server
 ```
 
-`--stdlib` is one value for the process, with no per-virtual-host form. An operator decides what the runtime they started may reach; a grant written per site would be a capability in the file a site's neighbours share. An unknown area name is an error, because falling back to `all` would read as a narrowed runtime and serve an unnarrowed one.
+`--stdlib` takes a single value for the process; no per-virtual-host form exists. An operator decides the reach of the runtime they started; a grant written per site would be a capability in the file a site's neighbours share. An unknown area name is an error, because falling back to `all` would read as a narrowed runtime and serve an unnarrowed one.
 
-`--include` is what makes one setting cover every way phpscript runs a tree: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks and the names a linter knows are the names a request will find. A composer autoloader is the usual file:
+`--include` makes a single setting cover every way phpscript runs a tree: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks and the names a linter knows are the names a request will find. A composer autoloader is the usual file:
 
 ## Instead of a command
 
-These two run on their own and exit. They are not flags a command accepts and the binary reads them before a command name; after one they belong to that command and `phpscript test -t 10s` is still the test command's `--time`.
+These two run alone and exit. They are not flags a command accepts and the binary reads them before a command name; after one they belong to that command and `phpscript test -t 10s` is still the test command's `--time`.
 
 | Flag                 | What it does                                                                                                     |
 |----------------------|------------------------------------------------------------------------------------------------------------------|
@@ -69,11 +69,11 @@ phpscript --include vendor/autoload.php server
 phpscript --include vendor/autoload.php lint ./...
 ```
 
-A tree that always wants it sets `runner.include` in its configuration instead. A virtual host sets its own in the `runner` block of its `phpscript.yml`, because each site has its own vendor directory; `--include` is what the operator sets for a tenant that named none.
+A tree that always wants it sets `runner.include` in its configuration instead. A virtual host sets the value in the `runner` block of its `phpscript.yml`, because each site has a separate vendor directory; `--include` is the operator's setting for a tenant that named none.
 
 ## Commands
 
-One page per command. `phpscript --help` prints the same set as one document, with a table of worked examples per command.
+One page per command. `phpscript --help` prints the same set in a single document, with a table of worked examples per command.
 
 | Command                                     | What it does                                                                 |
 |---------------------------------------------|------------------------------------------------------------------------------|
@@ -89,15 +89,15 @@ One page per command. `phpscript --help` prints the same set as one document, wi
 
 ## External tools
 
-Like `git-st` runs as `git st`, an executable named `<binary>-<tool>` on `PATH` runs as `<binary> <tool>`. Put `phpscript-gen` on `PATH` and:
+Like `git-st` runs as `git st`, an executable named `<binary>-<tool>` on `PATH` runs as `<binary> <tool>`. Install `phpscript-gen` on `PATH`:
 
-- `phpscript gen args...` runs it with `args...`, whole and unparsed: its flags are its own.
-- `phpscript --help` lists `gen` among the commands, with the first line of its `--help` as the title, and prints its full `--help` under a `phpscript gen` heading, with every `phpscript-gen` in that text rewritten to `phpscript gen`.
-- A tool named like a built-in replaces it. A coverage-built `phpx-test` on `PATH` handles `phpx test`.
+- `phpscript gen args...` runs it with `args...`, whole and unparsed: its flags belong to the tool.
+- `phpscript --help` lists `gen` among the commands, with the first line of its `--help` as the title, and prints its full `--help` with the `phpscript gen` heading, with every `phpscript-gen` in that text rewritten to `phpscript gen`.
+- A tool named like a built-in replaces that command. A coverage-built `phpx-test` on `PATH` handles `phpx test`.
 
-The prefix is the base name of the running binary (`os.Args[0]`), never a fixed string. `phpscript` loads `phpscript-*` alone, a copy renamed `phpx` loads `phpx-*` alone, and neither sees the other's tools. A name matches only where a `-` follows the prefix: `phpxy-gen` belongs to neither. Within one prefix the first directory on `PATH` holding a name wins. The tool must come first on the command line: `phpscript gen -v`, not `phpscript -v gen`.
+The prefix comes from the base name of the running binary (`os.Args[0]`); no fixed string. `phpscript` loads `phpscript-*` alone; a copy renamed `phpx` loads `phpx-*` alone. Neither sees the other's tools. A name matches when a `-` follows the prefix: `phpxy-gen` belongs to neither. Within one prefix the first directory on `PATH` holding a name wins. The tool must come first on the command line: `phpscript gen -v`, not `phpscript -v gen`.
 
-A tool binary can be a copy of the program itself. When `argv[0]` has the form `<binary>-<tool>`, the tool part is the command: `phpx-test --matrix x` runs as `phpx-test test --matrix x`. A coverage build of phpx answers as `phpx test`. A release file name such as `phpscript-linux-amd64` is not a tool name and discovery skips it. A binary built with `go build -cover` and started without `GOCOVERDIR` sets it to `cover/<binary>` and starts itself again, because the coverage runtime reads the variable before any code runs. See [how to collect Go code coverage](../guides/how-to-collect-go-code-coverage-from-phpscript-phpx-test.md).
+A tool binary can be a copy of the program itself. When `argv[0]` has the form `<binary>-<tool>`, the tool part is the command: `phpx-test --matrix x` runs as `phpx-test test --matrix x`. A coverage build of phpx answers as `phpx test`. A release file name such as `phpscript-linux-amd64` is not a tool name and discovery skips the name. A binary built with `go build -cover`, started without `GOCOVERDIR`, sets it to `cover/<binary>` and starts itself again; the coverage runtime reads the variable before any code runs. See [how to collect Go code coverage](../guides/how-to-collect-go-code-coverage-from-phpscript-phpx-test.md).
 
 Discovery reads `PATH` once per process and memoizes it, along with each tool's `--help`. The code is `cmd/phpscript/toolchain`.
 
@@ -121,4 +121,4 @@ rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
 rt.RegisterConstructor("Storage", NewStorage)
 ```
 
-This enables PHP code such as `new Storage` to use Go-backed values. Constructor and method parameters receive `context.Context` automatically when the Go function signature declares it, and the runtime turns a returned error into a PHP runtime exception.
+This enables PHP code such as `new Storage` to use Go-backed values. Constructor and method parameters receive `context.Context` automatically when the Go function signature declares it; such an error becomes a PHP runtime exception.

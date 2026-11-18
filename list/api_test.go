@@ -74,7 +74,7 @@ func TestAPIReportsMethods(t *testing.T) {
 	}
 }
 
-// TestAPIMarkdownHeadings covers the table the command prints: the four
+// TestAPIMarkdownHeadings covers the table the command prints: its
 // columns of the issue, with an empty doc shown as <none>.
 func TestAPIMarkdownHeadings(t *testing.T) {
 	out := list.APIMarkdown([]list.MethodRow{

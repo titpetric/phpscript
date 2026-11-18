@@ -8,7 +8,7 @@ import (
 // one command adds to it.
 type FlagSet = cli.FlagSet
 
-// Flag is one flag of a set, which the help reads four fields off: the long
+// Flag names one flag of a set, which the help reads four fields off: the long
 // name, the shorthand, the default and the usage line.
 type Flag = cli.Flag
 

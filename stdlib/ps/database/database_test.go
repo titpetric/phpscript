@@ -41,7 +41,7 @@ func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
 		t.Fatalf("database span attributes = %+v", span.Attributes)
 	}
 
-	// The values bound to the placeholders are what names the row.
+	// The bound argument values name the row.
 	args, ok := span.Attributes["args"].([]any)
 	if !ok || len(args) != 1 || args[0] != int64(42) {
 		t.Fatalf("bound arguments = %#v", span.Attributes["args"])
@@ -74,8 +74,8 @@ func TestDatabaseObserverOmitsEmptyArguments(t *testing.T) {
 	}
 }
 
-// A query that found no rows is control flow and no failure: recording it would
-// fail the span, the trace, and the SLA computed from them.
+// A query that found no rows is control flow. Recording it would fail the
+// span, the trace and the SLA computed from them.
 func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -98,9 +98,9 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 	}
 }
 
-// The observer classifies a statement by the keyword it starts with and records
-// the tag it holds beside it: a trace groups by a query's purpose, which the
-// statement text alone does not answer.
+// The observer classifies a statement by its leading keyword. It records a tag
+// found in the comment before the statement. A trace groups by a query's purpose, and the
+// statement text alone does not answer that.
 func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	t.Parallel()
 	span, observe := newObservedSpan(t)
@@ -114,7 +114,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 		t.Fatalf("query = %#v", span.Attributes["query"])
 	}
 
-	// An untagged statement has no attribute, and never an empty one.
+	// An untagged statement has no attribute at all.
 	span, observe = newObservedSpan(t)
 	observe(QueryLogEntry{Query: "select 1"})
 	if _, ok := span.Attributes["query_comment"]; ok || span.Attributes["query_type"] != "select" {
@@ -122,9 +122,9 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	}
 }
 
-// The CRUD helpers write by definition and a read-only client refuses them
-// before it builds a statement. The nil Bridge is the assertion that nothing
-// reached the database: running one would panic.
+// The CRUD helpers write by definition. A read-only client refuses them before
+// it builds a statement. The nil Bridge asserts that no statement reached the
+// database: running a helper would panic.
 func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
 	t.Parallel()
 	database := &Database{IsReadonly: true}
@@ -157,8 +157,8 @@ func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
 	}
 }
 
-// Statements reach the database as text and the boundary reads the text: what
-// the statement starts with decides, and a tag in front of it does not.
+// Statements reach the database as text. The boundary reads the text. The
+// leading keyword decides; a tag in front does not.
 func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -216,7 +216,7 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 }
 
 // newObservedSpan returns a recorded database span and the observer callback
-// reporting a query onto it.
+// reporting a query to the span.
 func newObservedSpan(t *testing.T) (*telemetry.Span, func(QueryLogEntry)) {
 	t.Helper()
 
@@ -271,7 +271,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 		t.Fatalf("columns = %#v", columns)
 	}
 
-	// A row is a Go map and a script adding a column mutates the row the result
+	// A row is a Go map. A script adding a column mutates the row the result
 	// set holds, the same reference semantics the *model.Array copy had.
 	row.(map[string]any)["columns"] = int64(6)
 	if got := rows.([]map[string]any)[0]["columns"]; got != int64(6) {
@@ -279,9 +279,9 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	}
 }
 
-// TestDatabase_SetID covers the name a constructed client records under. The
-// runtime passes the receiving PHP variable, and every span the client opens
-// names it and a trace tells two clients in one request apart.
+// TestDatabase_SetID covers the name a constructed client records. The
+// runtime passes the receiving PHP variable. Every span the client opens names
+// it. Each trace then tells two clients in one request apart.
 func TestDatabase_SetID(t *testing.T) {
 	t.Parallel()
 	database := &Database{}
@@ -299,9 +299,9 @@ func TestDatabase_SetID(t *testing.T) {
 }
 
 // TestDatabase_Connect covers pinning the client to one connection out of the
-// pool. A temporary table and a session variable both belong to a connection
-// and a script that creates one reserves the connection first; the reads that
-// follow run on it.
+// pool. A temporary table and session variable both belong to a connection.
+// A script that creates one reserves the connection first; the reads that
+// follow use the reserved connection.
 func TestDatabase_Connect(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -318,9 +318,9 @@ func TestDatabase_Connect(t *testing.T) {
 	}
 }
 
-// TestDatabase_Close covers releasing the reserved connection. The pool here
-// is one connection wide and a read after Close is the evidence it went back:
-// a reservation left open would block until the context expired.
+// TestDatabase_Close covers releasing the reserved connection. The pool holds
+// one connection. A read after Close is the evidence it went back: a
+// reservation left open would block until the context expired.
 func TestDatabase_Close(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -337,8 +337,8 @@ func TestDatabase_Close(t *testing.T) {
 }
 
 // TestDatabase_Begin covers the span a transaction opens. It stays open until
-// Commit or Rollback ends it and a transaction reads as one region on the
-// trace and no pair of markers a reader has to match up.
+// Commit or Rollback ends the span. The transaction then reads as a single
+// region on the trace, and needs no pair of markers for a reader to match up.
 func TestDatabase_Begin(t *testing.T) {
 	t.Parallel()
 	ctx, _ := newRecordedTrace(t)
@@ -358,7 +358,7 @@ func TestDatabase_Begin(t *testing.T) {
 
 // TestDatabase_Commit covers the committed outcome: the row survives the
 // transaction, and Commit renames the span Begin opened for the outcome and
-// ends it and one span measures the whole transaction.
+// ends it. This span measures the whole transaction.
 func TestDatabase_Commit(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -392,8 +392,8 @@ func TestDatabase_Commit(t *testing.T) {
 }
 
 // TestDatabase_Rollback covers the discarded outcome: the row never lands, and
-// the span Begin opened takes the rollback as its name and a trace says which
-// way a transaction ended without a second span to pair with it.
+// the span Begin opened takes the rollback as its name. A trace then says which
+// way a transaction ended without another span to pair with it.
 func TestDatabase_Rollback(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -424,8 +424,8 @@ func TestDatabase_Rollback(t *testing.T) {
 }
 
 // TestDatabase_InsertID covers the key the server generated for the last
-// insert. That key is the one part of an INSERT the statement does not name,
-// and a script writing a row with an autoincrement key reads the new id here.
+// insert. That key is the only part of an INSERT the statement does not name.
+// A script writing a row with an autoincrement key reads the new id here.
 func TestDatabase_InsertID(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -443,8 +443,8 @@ func TestDatabase_InsertID(t *testing.T) {
 }
 
 // TestDatabase_RowsAffected covers the count of the last write. An UPDATE
-// names a condition and reports how many rows matched it and a script learns
-// whether the write landed from this and from nothing in the statement.
+// names a condition and reports how many rows matched. A script learns
+// whether the write landed from this count alone.
 func TestDatabase_RowsAffected(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -462,13 +462,13 @@ func TestDatabase_RowsAffected(t *testing.T) {
 }
 
 // newRecordedTrace returns a context holding a recording trace and the trace
-// itself. A test reads back the spans a call left on it.
+// itself. A test reads back the spans a call left in the trace.
 func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 	t.Helper()
 
 	options := telemetry.NewOptions("phpscript")
-	// oida records only when the options enable it; a test that reads its
-	// traces back enables it.
+	// oida records only when the options enable it. Tests that read traces
+	// back enable it.
 	options.Enabled = true
 	tracer, err := telemetry.New(options)
 	if err != nil {
@@ -481,9 +481,9 @@ func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 	return ctx, trace
 }
 
-// spanNamed returns the span of one name off a trace. The spans arrive in the
-// order they opened, and a transaction span opens first and ends last and the
-// last span recorded is seldom the one a test is reading.
+// spanNamed returns the span with the given name from a trace. The spans
+// arrive in the order they opened. A transaction span opens first and ends
+// last. The last span recorded is seldom the span under test.
 func spanNamed(t *testing.T, trace *telemetry.Trace, name string) *telemetry.Span {
 	t.Helper()
 

@@ -24,7 +24,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 var durationType = reflect.TypeOf(time.Duration(0))
 
-// callbackPanic sends a PHP callback's error out through a Go frame with no error return.
+// callbackPanic sends a PHP callback's error through a Go frame returning no error.
 type callbackPanic struct{ err error }
 
 // recoveredError turns a recovered value into the error a script sees, unwrapping callbackPanic.
@@ -71,19 +71,19 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 	return result, err
 }
 
-// adapt wraps a Go callable in the uniform func(...any) (any, error) shape.
+// adapt wraps a Go callable in the uniform `func(...any) (any, error)` shape.
 func adapt(fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(nil, args) }
 }
 
-// adaptOn adapts fn bound to rt; a callable parameter calls where the call sits.
+// adaptOn adapts fn bound to rt; a callable parameter calls there.
 func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(rt, args) }
 }
 
-// nameCallError fills the PHP name into a call error the Go signature alone lacks.
+// nameCallError fills the PHP name into a call error lacking it.
 func nameCallError(err error, name string) error {
 	// The nil check keeps the allocation count down: the errors.As targets
 	// below take their address and escape, which costs a heap allocation on
@@ -166,7 +166,7 @@ func phpDebugType(v any) string {
 	return rv.Type().String()
 }
 
-// plural renders a count with its noun, as PHP spells an argument count error.
+// plural renders a count with its noun, as PHP spells an argument count.
 func plural(n int, noun string) string {
 	if n == 1 {
 		return fmt.Sprintf("%d %s", n, noun)
@@ -237,7 +237,7 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	// A binding may declare its callback in its own terms in place of the
 	// uniform shape, as regexp.Regexp.ReplaceAllStringFunc declares
 	// func(string) string. Every spelling PHP calls a callable reaches it,
-	// because rt.Callable answers them all: a closure on either engine, a
+	// because rt.Callable answers them all: a closure on each engine, a
 	// declared function by name, Class::method, array($obj, "method").
 	if call, ok := rt.Callable(v); ok {
 		// The uniform shape is variadic, which adaptCallable refuses, and needs
@@ -318,7 +318,7 @@ func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 	return reflect.Value{}, false
 }
 
-// callResult reduces reflect results to value and error, two or more becoming array.
+// callResult reduces reflect results to value and error; extra results become an array.
 func callResult(out []reflect.Value) (any, error) {
 	var values []reflect.Value
 	for _, o := range out {

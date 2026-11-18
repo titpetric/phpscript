@@ -11,7 +11,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// terminalTable writes one padded row at a time, fixing column widths before the fixtures start.
+// terminalTable writes padded rows, fixing column widths before the fixtures start.
 type terminalTable struct {
 	w       io.Writer
 	headers []string
@@ -48,7 +48,7 @@ func newTerminalTable(w io.Writer, opts Options) *terminalTable {
 	}
 }
 
-// sizeColumns rebuilds the header row and column widths, naming the folder in the filename column.
+// sizeColumns rebuilds the header row and widths, naming the folder column.
 func (t *terminalTable) sizeColumns(dir string, labels []string) {
 	if dir == "" {
 		dir = "Filename"
@@ -287,7 +287,7 @@ func engineTime(runner tests.Runner, engines []engineDuration) time.Duration {
 	return 0
 }
 
-// markdownCell keeps a value inside its table cell, escaping a pipe and collapsing newlines.
+// markdownCell keeps a value in its cell, escaping a pipe and collapsing newlines.
 func markdownCell(value string) string {
 	value = strings.ReplaceAll(value, "|", "\\|")
 	return strings.Join(strings.Fields(value), " ")

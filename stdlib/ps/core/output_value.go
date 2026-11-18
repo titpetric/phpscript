@@ -65,7 +65,7 @@ func classOf(value any) string {
 	return t.Name()
 }
 
-// objectKey returns the address identifying an object, and whether it has one.
+// objectKey returns the address identifying an object, and whether it has an address.
 func objectKey(value any) (uintptr, bool) {
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
@@ -78,7 +78,7 @@ func objectKey(value any) (uintptr, bool) {
 	return 0, false
 }
 
-// objectField is one property, with var_dump's scope annotation when it has one.
+// objectField holds one property, with var_dump's scope annotation when present.
 type objectField struct {
 	name  string
 	scope string
@@ -135,7 +135,7 @@ func fieldScope(class, visibility string) string {
 	return ""
 }
 
-// exportKey renders a key as var_export does: an integer bare, a string quoted.
+// exportKey renders a key as var_export does: integers bare, strings quoted.
 func exportKey(key any) string {
 	switch x := key.(type) {
 	case int:
@@ -146,7 +146,7 @@ func exportKey(key any) string {
 	return exportString(phpval.String(key))
 }
 
-// dumpKey renders a key as var_dump does: an integer bare, a string double-quoted.
+// dumpKey renders a key as var_dump does: integers bare, strings double-quoted.
 func dumpKey(key any) string {
 	switch x := key.(type) {
 	case int:
@@ -175,8 +175,8 @@ func exportScalar(value any) string {
 	case string:
 		return exportString(x)
 	}
-	// A typed go value exports as the conversion that builds it, which is php
-	// a file importing Runtime\Go can run: `int8(44)`.
+	// A typed go value exports as its build conversion. A file importing
+	// Runtime\Go can run that conversion: `int8(44)`.
 	if width, ok := model.GoWidthOf(value); ok {
 		return width.Name + "(" + phpval.String(value) + ")"
 	}

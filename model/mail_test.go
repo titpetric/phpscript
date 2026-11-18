@@ -6,15 +6,16 @@ import (
 )
 
 // TestMailProvider covers the promise the interface's shape makes: no
-// method here answers a credential. Every method answers an error alone and a host
+// method here answers a credential. Every method answers an error alone. A host
 // reads the host name, the username and the password inside Send, uses them for
-// the one delivery and drops them; a getter would put them on the runtime,
+// a single delivery, then discards the values. A getter would put them on the
+// runtime,
 // where a script could reach them.
 //
 // Configured is separate from Send so `new Mail` reports a server nobody
 // configured at construction, ahead of the first send some hours later. A
-// provider fixes its servers at construction and the verdict and the
-// resolution Send makes read one set.
+// provider fixes its servers at construction; the verdict and the resolution
+// Send makes read one set.
 func TestMailProvider(t *testing.T) {
 	t.Parallel()
 	typ := reflect.TypeOf((*MailProvider)(nil)).Elem()

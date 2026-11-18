@@ -25,7 +25,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 			// A compile error normally means the program uses something the
 			// bytecode subset does not cover yet. The interpreter runs it
 			// instead. A violated interface contract differs: the verdict is
-			// on the program and the interpreter would reach the same one.
+			// on the program. The interpreter would reach the same verdict.
 			// This path throws.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
@@ -37,10 +37,10 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 	}
 	if err := rt.hoistOnce(ast, rt.entrypoint); err != nil {
 		// A redeclaration is a verdict on the program, like a violated
-		// interface contract above: the interpreter would reach it too and
-		// falling back would only run the same hoist a second time, over a
-		// table the first pass already wrote into, and report the wrong
-		// declaration as the duplicate.
+		// interface contract above. The interpreter would reach it too. Falling
+		// back would only run the same hoist a second time over a table the
+		// first pass already wrote, and report the wrong declaration as the
+		// duplicate.
 		var redeclared *RedeclareError
 		if errors.As(err, &redeclared) {
 			return true, NewRuntimeException(err.Error(), 0)
@@ -154,9 +154,9 @@ func (h flatHost) UnsetIndex(container, key any) (any, error) {
 func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) error {
 	array, ok := base.(*model.Array)
 	if !ok {
-		// Native Go collections are writable where Go itself allows it, the
-		// same as in the interpreter: only `$a[] =` needs an *Array, since a
-		// slice cannot grow through the interface holding it.
+		// Native Go collections are writable where Go itself allows, as in the
+		// interpreter. Only `$a[] =` needs an *Array, since a slice cannot grow
+		// through the interface holding it.
 		if appendValue {
 			return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 		}
@@ -199,7 +199,7 @@ func (h flatHost) Cast(typ string, value any) any { return helperCast(typ, value
 // Throw turns a thrown value into the error it travels as.
 func (h flatHost) Throw(value any) error { return h.runtime.throwValue(value) }
 
-// CatchValue returns what a catch clause binds for err.
+// CatchValue returns the value a catch clause binds for err.
 func (h flatHost) CatchValue(err error) any { return catchValue(h.runtime.catchError(err)) }
 
 func (h flatHost) Binary(op string, left, right any) (any, error) {
@@ -289,8 +289,8 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 	for name, value := range vars {
 		scope.Set(name, value)
 	}
-	// includeFile owns the *_once dedupe and both engines answer it on the
-	// resolved path and neither keeps its own scan over spellings.
+	// includeFile owns the *_once dedupe. Both engines answer it on the
+	// resolved path. Neither keeps a scan over spellings.
 	result, err := h.runtime.includeFile(phpString(path), once, scope)
 	if err != nil {
 		return nil, nil, err
@@ -306,7 +306,7 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 	return result, exported, nil
 }
 
-// MemoryCheckInterval reports how often the VM polls the memory limit, zero for none.
+// MemoryCheckInterval reports how often the VM polls the memory limit; zero disables polling.
 func (h flatHost) MemoryCheckInterval() int {
 	if h.runtime.opts.MemoryLimit <= 0 {
 		return 0

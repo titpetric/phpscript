@@ -18,7 +18,7 @@ import (
 )
 
 // precompileSite writes an application root holding two files that parse, one
-// that does not, and one that is not PHP at all.
+// that fails to parse, plus a stylesheet.
 func precompileSite(t testing.TB) string {
 	t.Helper()
 
@@ -30,8 +30,8 @@ func precompileSite(t testing.TB) string {
 	return root
 }
 
-// newPrecompileHandler builds the file handler of that root under an options
-// block that either named precompilation or did not.
+// newPrecompileHandler builds the file handler for that root with
+// precompilation on or off.
 func newPrecompileHandler(t testing.TB, root string, on bool) *handler {
 	t.Helper()
 
@@ -67,9 +67,9 @@ func TestPrecompile(t *testing.T) {
 	}
 }
 
-// TestPrecompileServesAfterABrokenFile covers what the site does once the walk
-// has skipped one: the page still answers; so does a request for the file
-// that did not parse, with the error it fails with lazily.
+// TestPrecompileServesAfterABrokenFile covers the site's behavior after the
+// walk skips a file: the page still answers. A request for the file that
+// failed to parse gets the error, raised lazily.
 func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 	t.Parallel()
 	root := precompileSite(t)
@@ -86,8 +86,8 @@ func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 	}
 }
 
-// TestSharedCaches covers the pair a site's routed endpoints run off: the ones
-// its file handler holds and the one walk of the tree covers both. The proof is
+// TestSharedCaches covers the pair a site's routed endpoints use: the caches
+// its file handler holds. A single walk of the tree covers both. The proof is
 // an endpoint answering out of the cache after its file leaves the disk.
 func TestSharedCaches(t *testing.T) {
 	t.Parallel()
@@ -116,8 +116,8 @@ func TestSharedCaches(t *testing.T) {
 }
 
 // TestVirtualHostPrecompilesUnderItsOwnConfiguration covers the per-site half:
-// each site's phpscript.yml sets precompilation, a site holding a file that
-// does not parse still builds, and both answer.
+// each site's phpscript.yml sets precompilation. A site holding a file that
+// does not parse still builds. Both sites answer.
 func TestVirtualHostPrecompilesUnderItsOwnConfiguration(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -162,16 +162,16 @@ foreach ($rows as $row) {
 }
 `
 
-// BenchmarkServeEntrypoint measures one request against a site's document root
-// with the setting off and on, on each engine. The difference is what an
-// entrypoint pays for a parse per request: the parse itself, and the
-// expression closures and the bytecode keyed by the AST it produced.
+// BenchmarkServeEntrypoint measures one request served from a site's document root
+// with the setting off and on, on each engine. The difference is the cost an
+// entrypoint pays for a parse per request: the parse, the expression closures,
+// and the bytecode keyed by the AST it produced.
 func BenchmarkServeEntrypoint(b *testing.B) {
 	// The two flatstack rows are only flatstack numbers if the page compiles to
-	// bytecode. Fallback is per-program and silent and without this the rows
-	// would report the interpreter's cost under the flatstack name and read as
-	// the two engines performing alike. Fail and never skip: a page that
-	// stopped compiling is the finding.
+	// bytecode. Fallback is per-program and silent. Without this check, the
+	// rows would report the interpreter's cost with the flatstack name and read
+	// as the two engines performing alike. A failure to compile stops the
+	// benchmark; that page is the finding.
 	prog, err := parser.Parse(benchPage)
 	if err != nil {
 		b.Fatal(err)
@@ -183,8 +183,8 @@ func BenchmarkServeEntrypoint(b *testing.B) {
 	root := b.TempDir()
 	write(b, filepath.Join(root, "public", "index.php"), benchPage)
 
-	// The pass logs one line per site, which is not what a benchmark run is
-	// reporting.
+	// The pass logs one line per site. A benchmark run does not report that
+	// line.
 	log.SetOutput(io.Discard)
 	b.Cleanup(func() { log.SetOutput(os.Stderr) })
 

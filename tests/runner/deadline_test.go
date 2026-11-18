@@ -12,8 +12,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// runLimited runs src on a runtime holding ctx and returns what it printed and
-// how it ended.
+// runLimited runs src on a runtime holding ctx, returning the output and ending.
 func runLimited(t testing.TB, ctx context.Context, src string) (string, error) {
 	t.Helper()
 	var out strings.Builder
@@ -54,7 +53,7 @@ while (true) { $n = 1; }
 	}
 }
 
-// TestTimeLimitSleepsAreCut holds the limit over a wait as well as over a
+// TestTimeLimitSleepsAreCut holds the limit during a wait as well as during a
 // loop: a sleep is on the runtime context and ends when the script does.
 func TestTimeLimitSleepsAreCut(t *testing.T) {
 	t.Parallel()
@@ -92,8 +91,7 @@ echo "finished";
 	}
 }
 
-// TestClientAbortEndsTheScript is the default: the connection goes away and
-// the script ends with it.
+// TestClientAbortEndsTheScript is the default: client and script end together.
 func TestClientAbortEndsTheScript(t *testing.T) {
 	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
@@ -150,7 +148,7 @@ echo ", ran to the end";
 }
 
 // TestConnectionAbortedWithoutARequest keeps the functions present and inert on
-// a runtime nothing is waiting on, which is every command line run.
+// a runtime lacking a waiter, as a command line run does.
 func TestConnectionAbortedWithoutARequest(t *testing.T) {
 	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
@@ -168,8 +166,8 @@ var_dump(connection_aborted());
 	}
 }
 
-// TestTimeLimitIsNotCatchable holds the limit past a try, the way php holds its
-// own: no time remains. The clause does not run while the error reaches the
+// TestTimeLimitIsNotCatchable holds the limit past a try, as php does: no time
+// remains. The clause does not run while the error reaches the
 // host.
 func TestTimeLimitIsNotCatchable(t *testing.T) {
 	t.Parallel()
@@ -191,9 +189,9 @@ try {
 	}
 }
 
-// TestShutdownRunsAfterTheLimit is what makes the limit survivable: the clock
-// is off for the shutdown pass, and a callback registered to close what the
-// script opened gets to run.
+// TestShutdownRunsAfterTheLimit makes the limit survivable: the clock is off
+// for the shutdown pass. A callback registered to close the script's resources
+// gets to run.
 func TestShutdownRunsAfterTheLimit(t *testing.T) {
 	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
@@ -213,8 +211,8 @@ while (true) { $n = 1; }
 }
 
 // TestEnterRequestScopesTheConnection covers what HTTP\Mux does per handler:
-// the connection a handler answers is the one connection_aborted reports on,
-// and the previous one comes back afterwards.
+// the connection a handler answers is the connection connection_aborted
+// reports on. The previous connection comes back afterwards.
 func TestEnterRequestScopesTheConnection(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -242,8 +240,8 @@ func TestEnterRequestScopesTheConnection(t *testing.T) {
 }
 
 // TestTimeLimitEndsAnEmptyLoop covers the shortest loop there is. The check
-// used to run per statement, and a body with no statements never reached it,
-// and `while (true) {}` outran every limit on the interpreter.
+// used to run per statement; a body holding no statements never reached it.
+// `while (true) {}` outran every limit on the interpreter.
 func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
 	t.Parallel()
 	for _, body := range []string{"{}", "{ }", ";"} {
@@ -338,8 +336,8 @@ func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 }
 
 // TestDeadlineStillHoldsAfterAShutdownPass covers the other half of reuse: the
-// shutdown pass turns the clock off so its callbacks can run, and turns it
-// back on, and a later program on that runtime stays bounded.
+// shutdown pass turns the clock off so its callbacks can run. It turns the
+// clock back on. A later program on that runtime stays bounded.
 func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -379,7 +377,7 @@ func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
 }
 
 // TestSetTimeLimitKeepsTheContextABindingHolds is the server case directly: the
-// runtime builds the context once and a limit is a timer on it, because
+// runtime builds the context once. A limit is a timer on that context, since
 // rebuilding it ends whatever parks on it.
 func TestSetTimeLimitKeepsTheContextABindingHolds(t *testing.T) {
 	t.Parallel()

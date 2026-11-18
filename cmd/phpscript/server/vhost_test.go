@@ -19,9 +19,8 @@ import (
 // newVirtualHostServer writes two sites to disk and returns the host mux and
 // modules the server would run for them.
 //
-// shop leaves the document root alone, which is the common case: public is
-// the default and nothing has to say so. blog names web, the reason the setting
-// exists at all.
+// shop leaves the document root alone, the common case: public is the default
+// and needs no declaration. blog names web, the setting's purpose.
 func newVirtualHostServer(t *testing.T) (http.Handler, []LifecycleModule, config.Config) {
 	t.Helper()
 
@@ -67,7 +66,7 @@ env: []
 runner:
   writable_paths: ["web/upload"]
 `)
-	// What a script, and through it a visitor, put in a writable directory.
+	// Content a script writes into a writable directory, reachable by a visitor.
 	write(t, filepath.Join(blog, "web", "upload", "evil.php"), `<?php echo "executed";`)
 	write(t, filepath.Join(blog, "web", "upload", "photo.txt"), `a photo`)
 	// An annotation in a writable directory must not publish a route either.
@@ -111,7 +110,7 @@ func get(t testing.TB, handler http.Handler, host, path string) *httptest.Respon
 }
 
 // TestVirtualHostsServeTheirOwnTree pins the split: each domain serves the
-// document root under its application root; public is the default.
+// document root inside the application root; public is the default.
 func TestVirtualHostsServeTheirOwnTree(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -143,8 +142,8 @@ func TestVirtualHostsServeTheirOwnTree(t *testing.T) {
 	}
 }
 
-// TestVirtualHostRoutesDoNotLeakAcrossDomains is why each site gets its own
-// router: an @route one site declares is not reachable on another.
+// TestVirtualHostRoutesDoNotLeakAcrossDomains pins the reason each site gets a
+// separate router: an @route one site declares is not reachable on another.
 func TestVirtualHostRoutesDoNotLeakAcrossDomains(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -160,7 +159,7 @@ func TestVirtualHostRoutesDoNotLeakAcrossDomains(t *testing.T) {
 }
 
 // TestVirtualHostTelemetryIsItsOwn pins that a site's debug front end answers
-// on its domain alone; telemetry off leaves a site without one.
+// on its domain alone; telemetry off leaves a site without a dashboard.
 func TestVirtualHostTelemetryIsItsOwn(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -176,8 +175,8 @@ func TestVirtualHostTelemetryIsItsOwn(t *testing.T) {
 }
 
 // TestVirtualHostRecordsIntoItsOwnTracer pins that a request on one domain
-// lands on that domain's recorder and the front ends are separate and
-// never two views of one buffer.
+// lands on that domain's recorder; the front ends are separate, never two views
+// of one buffer.
 func TestVirtualHostRecordsIntoItsOwnTracer(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -192,8 +191,8 @@ func TestVirtualHostRecordsIntoItsOwnTracer(t *testing.T) {
 	if traces.Code != http.StatusOK {
 		t.Fatalf("status = %d", traces.Code)
 	}
-	// The listing names the host of each trace. shop's page has
-	// to show shop's traffic, or the absence of blog's below proves nothing.
+	// The listing names the host of each trace. shop's page must show shop's
+	// traffic, or the absence of blog's below proves nothing.
 	if !strings.Contains(traces.Body.String(), "shop.example.com") {
 		t.Fatal("shop dashboard does not show its own traffic")
 	}
@@ -203,8 +202,8 @@ func TestVirtualHostRecordsIntoItsOwnTracer(t *testing.T) {
 }
 
 // TestVirtualHostDatabasesAreIsolated is the guarantee a shared execution
-// environment rests on: a site can open the connections its own env names, and
-// no others. blog runs a byte-identical script and cannot reach shop's.
+// environment rests on: a site can open the connections the site env names, no
+// others. blog runs a byte-identical script and cannot reach shop's.
 func TestVirtualHostDatabasesAreIsolated(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -217,16 +216,16 @@ func TestVirtualHostDatabasesAreIsolated(t *testing.T) {
 	if response.Code != http.StatusInternalServerError {
 		t.Fatalf("blog: status = %d, body = %q", response.Code, response.Body.String())
 	}
-	// The failure is what this pins; so is the silence about it: what blog named
-	// for and did not get is in the log and on the trace, not in a body its
-	// visitors read. See serveStatus.
+	// This pins the failure, and the silence: what blog named for and did not
+	// get is in the log and on the trace, not in a body its visitors read. See
+	// serveStatus.
 	if strings.Contains(response.Body.String(), "no configuration found for database") {
 		t.Fatalf("blog: body = %q, want the failure not to name the site's internals", response.Body.String())
 	}
 }
 
 // TestVirtualHostDomainsReachTheSameSite pins that a further name in the domain
-// list is another name for a site, not another copy of it: one build, one set of
+// list is another name for a site, not another copy. One build, one set of
 // modules, and the same handler behind every name.
 func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 	handler, modules, _ := newVirtualHostServer(t)
@@ -246,8 +245,8 @@ func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 		})
 	}
 
-	// A further name registers no second site and the module count holds:
-	// two sites, one startup and one schedule module each.
+	// A further name registers no separate site; the module count holds:
+	// two sites; each holds a startup module plus a schedule module.
 	if len(modules) != 4 {
 		t.Fatalf("modules = %d, want 4; a second name must not build a second site", len(modules))
 	}
@@ -258,9 +257,9 @@ func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 	}
 }
 
-// TestVirtualHostEnvironmentIsItsOwn pins that getenv() reads the site's own
-// env, not the process the operator started, and never the infrastructure
-// variables that hold connection strings.
+// TestVirtualHostEnvironmentIsItsOwn pins that getenv() reads the site env, not
+// the process the operator started, and not the infrastructure variables that
+// hold connection strings.
 func TestVirtualHostEnvironmentIsItsOwn(t *testing.T) {
 	t.Setenv("OPERATOR_SECRET", "hunter2")
 	handler, _, _ := newVirtualHostServer(t)
@@ -269,21 +268,20 @@ func TestVirtualHostEnvironmentIsItsOwn(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
 	}
-	// The site's own variable is readable; the PLATFORM_ entry beside it in
-	// the same env block is not, because it configures a connection.
+	// The site variable is readable; the PLATFORM_ entry beside that one in the
+	// same env block is not, because it configures a connection.
 	if got := response.Body.String(); got != "[shop-value][]" {
 		t.Fatalf("body = %q, want [shop-value][]", got)
 	}
 }
 
-// TestVirtualHostStartupFailureDoesNotStopTheServer pins the reason nonFatal
-// wraps the startup module: one tenant's broken job is that tenant's problem.
+// TestVirtualHostStartupFailureDoesNotStopTheServer pins nonFatal wrapping: one tenant's job is theirs.
 func TestVirtualHostStartupFailureDoesNotStopTheServer(t *testing.T) {
 	_, modules, _ := newVirtualHostServer(t)
 
-	// shop's boot.php calls a function that does not exist. Every module has
-	// to start clean anyway, or the platform aborts the process and takes
-	// blog down with it.
+	// shop's boot.php calls a function that does not exist. Every module must
+	// start clean anyway, or the platform aborts the process and takes blog
+	// down with it.
 	for _, module := range modules {
 		if err := module.Start(context.Background()); err != nil {
 			t.Fatalf("module %s returned %v, want the failure recorded and not returned", module.Name(), err)
@@ -292,7 +290,7 @@ func TestVirtualHostStartupFailureDoesNotStopTheServer(t *testing.T) {
 }
 
 // TestVirtualHostServerVars pins the $_SERVER entries only the server can fill:
-// they name the site the request reached, and never the process it shares.
+// they name the site the request reached, and leave the shared process unnamed.
 func TestVirtualHostServerVars(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -312,16 +310,16 @@ func TestVirtualHostServerVars(t *testing.T) {
 			t.Fatalf("body = %q, want it to contain %s", body, want)
 		}
 	}
-	// The document root is this site's, under its own application root.
+	// The document root belongs to this site, inside the application root.
 	if !strings.Contains(body, "/shop/public") {
 		t.Fatalf("body = %q, want shop's document root", body)
 	}
 }
 
-// TestWritablePathsAreNotExecuted is the reason writable_paths reaches the
-// router at all: a directory a script can write to is a directory a visitor can
-// get content into, and running what lands there turns an upload form into a
-// way to execute code.
+// TestWritablePathsAreNotExecuted pins the reason writable_paths reaches the router: a
+// directory a script can write to is a directory a visitor can get content
+// into, and running what lands there turns an upload form into a way to
+// execute code.
 func TestWritablePathsAreNotExecuted(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
@@ -347,14 +345,13 @@ func TestWritablePathsAreNotExecuted(t *testing.T) {
 		t.Fatalf("status = %d, want an uploaded @route to be ignored", response.Code)
 	}
 
-	// A site that configures no writable_paths keeps executing its own PHP.
+	// A site that configures no writable_paths keeps executing its PHP.
 	if response := get(t, handler, "shop.example.com", "/"); response.Body.String() != "shop" {
 		t.Fatalf("body = %q", response.Body.String())
 	}
 }
 
-// TestVirtualHostModulesAreNamedPerSite pins that platform.Options.Modules can
-// still address one site's modules, which identical names would prevent.
+// TestVirtualHostModulesAreNamedPerSite pins that platform.Options.Modules can address one site's identically named modules.
 func TestVirtualHostModulesAreNamedPerSite(t *testing.T) {
 	_, modules, _ := newVirtualHostServer(t)
 
@@ -458,14 +455,14 @@ func named(name string) http.Handler {
 // tell apart: every script is at the same relative path in both trees and
 // only the string it prints differs.
 //
-// A cache keyed by the path a script wrote collides on that, and a
-// store one process holds for every tenant answers with the wrong value. The
-// three tests below are what would see either.
+// A cache keyed by the path a script wrote collides on that. A store one
+// process holds for every tenant answers with the wrong value. Either failure
+// shows in the tests below.
 //
-// Both sites precompile, which is `config.New`'s default and the include cache
-// answers for entrypoints as well as for includes and a second request reads
-// back what the first one parsed. A lazy site parses per request and would
-// prove nothing about the cache.
+// Both sites precompile; that is `config.New`'s default. The include cache
+// answers for entrypoints and includes; a second request reads back the parse
+// from the first request. A lazy site parses per request and would prove
+// nothing about the cache.
 func confusableSites(t *testing.T) (one, two string) {
 	t.Helper()
 
@@ -484,8 +481,8 @@ runner:
 		write(t, filepath.Join(site.root, "public", "index.php"),
 			`<?php include "lib/secret.php"; echo secret();`)
 
-		// A writer that proves the store works within one request, and a reader
-		// that names what the other site wrote.
+		// A writer proves the store works within one request; a reader names the
+		// value the other site wrote.
 		write(t, filepath.Join(site.root, "public", "shm-write.php"),
 			`<?php $shm = new SharedMemory; $shm->set("key", "`+site.name+`-value"); echo "[" . $shm->get("key") . "]";`)
 		write(t, filepath.Join(site.root, "public", "shm-read.php"),
@@ -510,18 +507,17 @@ func confusableServer(t *testing.T, one, two string) http.Handler {
 	return handler
 }
 
-// TestVirtualHostIncludeCacheIsItsOwn is the parsed-tree half of the isolation a
-// shared execution environment rests on: two sites holding different code at the
-// same relative path each run their own.
+// TestVirtualHostIncludeCacheIsItsOwn is the parsed-tree half of
+// shared-environment isolation. Two sites hold different code at the same
+// relative path; each runs its code.
 //
-// The include cache keys on the path a script wrote, resolved against that
-// site's source root and "lib/secret.php" is the key on both sites. What keeps
-// them apart is the cache object, one per handler. Hand two sites one and the
-// first request decides what the second one executes, this test's negative
-// control and the reason for having it.
-//
-// The test requests one twice, before and after two, because a cache the
-// first request filled is only observable on a later one.
+// The include cache keys on the path a script wrote, resolved against the
+// site's source root; "lib/secret.php" is the key on both sites. The cache object
+// keeps them apart, a separate cache per handler. Hand two sites the same cache
+// and the first request decides the program the second executes: this test's
+// negative control, and the reason for having it. That test requests one twice,
+// before and after two; a cache the first request filled is only observable on
+// a later request.
 func TestVirtualHostIncludeCacheIsItsOwn(t *testing.T) {
 	one, two := confusableSites(t)
 	handler := confusableServer(t, one, two)
@@ -545,12 +541,12 @@ func TestVirtualHostIncludeCacheIsItsOwn(t *testing.T) {
 // TestVirtualHostSharedMemoryIsNotShared is the store half: a key one site
 // writes is not readable on another.
 //
-// The writer prints what it just read back and the empty answer on the other
-// site is isolation and not a binding that does nothing. The server binds no
-// store and `new SharedMemory` answers a fresh one per construction and nothing
-// crosses; a host that pooled one per site would pass this for the stronger
-// reason, and one that pooled a single store for the process would not pass it
-// at all.
+// The writer prints the value it just read back; the empty answer on the other
+// site is isolation at work. The server binds no
+// store, and `new SharedMemory` answers a fresh store per construction; nothing
+// crosses. A host that pooled a store per site would pass this for the stronger
+// reason; one that pooled a single store for the process would not pass it at
+// all.
 func TestVirtualHostSharedMemoryIsNotShared(t *testing.T) {
 	one, two := confusableSites(t)
 	handler := confusableServer(t, one, two)
@@ -570,7 +566,7 @@ func TestVirtualHostSharedMemoryIsNotShared(t *testing.T) {
 }
 
 // TestVirtualHostHandlersOwnTheirCaches pins the structure the two tests above
-// observe from the outside: the caches belong to the handler and two sites never
+// observe from the outside: the caches belong to the handler; two sites never
 // hold the same pair.
 //
 // A site's annotated endpoints do read the handler's caches, by decision: one

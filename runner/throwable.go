@@ -1,6 +1,6 @@
 package runner
 
-// phpscript has no OOP. There is no class hierarchy, no inheritance and no
+// phpscript has no OOP. There is no class hierarchy, no inheritance, no
 // `extends` at runtime.
 //
 // A catch clause matches on the name a throwable records, by the rule in
@@ -13,11 +13,11 @@ package runner
 
 // Throwable marks a value that records its PHP class.
 //
-// ThrowableClass reads the class off the value and not off the Go type: every
-// SPL name is one Go type and reflection would answer "Exception" for an
-// InvalidArgumentException. The method is also the predicate separating a PHP
-// throwable from an error a Go binding returned, which a Go type name cannot
-// do: it would take a driver type called Error for PHP's Error class. The
+// ThrowableClass reads the class from the value, not from the Go type. Every SPL
+// name maps onto a single Go type, and reflection would answer "Exception" for
+// an InvalidArgumentException. The method also separates a PHP throwable from
+// an error a Go binding returned. A Go type name cannot make that separation:
+// it would take a driver type called Error for PHP's Error class. The
 // error would fall out of the `catch (Exception $e)` a script wrote.
 type Throwable interface {
 	error
@@ -26,7 +26,7 @@ type Throwable interface {
 	ThrowableClass() string
 }
 
-// throwableClassOf returns an error's PHP class, "" for one that is not a throwable.
+// throwableClassOf returns an error's PHP class, "" for a non-throwable.
 func throwableClassOf(err error) (string, bool) {
 	t, ok := err.(Throwable)
 	if !ok {

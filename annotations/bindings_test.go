@@ -9,9 +9,9 @@ import (
 	"github.com/titpetric/phpscript/annotations"
 )
 
-// recordingService is a Router that records every registration. Every other
-// method of the interface panics: a call to one would be a claim on the server
-// library that nothing here states.
+// recordingService is a Router that records every registration. All other
+// methods of the interface panic: calling any such method would claim a
+// server-library behaviour nothing here states.
 type recordingService struct {
 	annotations.Router
 	registered []string
@@ -44,7 +44,7 @@ func TestBindings(t *testing.T) {
 }
 
 // TestBindings_Name covers the name the platform reports the module by, which
-// server.modules filters on and a virtual host suffixes per site.
+// server.modules filters on; a virtual host suffixes it for each site.
 func TestBindings_Name(t *testing.T) {
 	t.Parallel()
 	if got := annotations.NewBindings().Name(); got != "phpbindings" {

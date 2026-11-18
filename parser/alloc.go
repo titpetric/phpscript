@@ -6,19 +6,19 @@ import (
 
 // Allocation strategy for the AST.
 //
-// Parsing a 10 KB PHP file builds a few thousand AST nodes and a few hundred
+// Parsing a 10 KB PHP file builds a few thousand AST nodes and hundreds of
 // child slices. One object at a time costs an allocation each; this file
 // carves both out of two chunked structures, mirroring
 // parser/tokenizer.go's emitArr.
 // See docs/allocation-performance.md rules 6 and 7.
 //
 //   - nodeChunk carves nodes of one concrete type out of a backing array.
-//     Every node keeps its own address, leaves the chunk exactly once and
-//     takes no reset and no reuse and pointer identity holds, which
-//     runner.compileExpr relies on for its map[model.Expr]*compiledExpr cache.
-//     The trade is retention: a chunk stays reachable while any node in it
-//     does. That costs nothing here because one *model.Program holds the whole
-//     AST, and a failed parse drops every node at once.
+//     Every node keeps a distinct address and leaves the chunk exactly once.
+//     No code resets or reuses a node. Pointer identity then holds.
+//     runner.compileExpr relies on that for its map[model.Expr]*compiledExpr
+//     cache. The trade is retention: a chunk stays reachable while any node in
+//     it does. That costs nothing here because one *model.Program holds the
+//     whole AST. A failed parse drops every node at once.
 //
 //   - scratch is a per-type stack collecting the children of a node
 //     whose count is only known once parsed (call arguments, statement
@@ -64,7 +64,7 @@ func (s *scratch[T]) mark() int { return len(s.buf) }
 
 func (s *scratch[T]) push(v T) { s.buf = append(s.buf, v) }
 
-// take returns everything pushed since mark in a slice with cap == len, nil when empty.
+// take returns everything pushed since mark with cap == len, nil when empty.
 func (s *scratch[T]) take(mark int) []T {
 	n := len(s.buf) - mark
 	if n == 0 {
@@ -83,8 +83,8 @@ func (s *scratch[T]) drop(mark int) { s.buf = s.buf[:mark] }
 // ---------------------------------------------------------------------------
 // Node constructors
 //
-// One per chunked node type. make zeroes chunk memory, and every node leaves
-// the chunk once and a constructor that leaves a field unset matches a
+// One constructor per chunked node type. make zeroes chunk memory. Every node
+// leaves the chunk once. A constructor that leaves a field unset matches a
 // composite literal that omits it.
 // ---------------------------------------------------------------------------
 

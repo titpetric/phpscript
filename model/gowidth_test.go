@@ -9,9 +9,8 @@ import (
 )
 
 // TestGoWidthNamed covers the width table. A sized name answers its bits and
-// its sign, go's two aliases answer the width they alias, and a name php
-// already has - int, int64, float64 - answers nothing, because `int64(5)`
-// is php's 5 and holds no width.
+// its sign, go's two aliases answer the width they alias. A name php already
+// has - int, int64, float64 - reports no width: `int64(5)` is php's 5.
 func TestGoWidthNamed(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -47,8 +46,8 @@ func TestGoWidthNamed(t *testing.T) {
 // TestGoWidth_Valid covers a width a host assembled by hand: it names a go
 // numeric type and declares the size go declares for that name.
 //
-// The zero value fails. A caller that skipped GoWidthNamed holds one, and an
-// unchecked zero width narrows every value to int64.
+// The zero value fails. A caller that skipped GoWidthNamed holds a zero width.
+// An unchecked zero width narrows every value to int64.
 func TestGoWidth_Valid(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"int8", "uint64", "float32", "rune", "byte"} {
@@ -112,8 +111,8 @@ func TestGoWidthOf(t *testing.T) {
 }
 
 // TestGoWidthNarrow covers the conversion. A value wider than the width keeps
-// its low bits and sign-extends them, as go's conversion does, and a negative
-// value into an unsigned width wraps: uint8(-1) is 255.
+// its low bits and sign-extends them, as go's conversion does. A negative value
+// into an unsigned width wraps: uint8(-1) is 255.
 func TestGoWidthNarrow(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -143,8 +142,8 @@ func TestGoWidthNarrow(t *testing.T) {
 	}
 }
 
-// TestGoWidthZero covers the value a width holds before anything writes to it,
-// the one an element of a slice of it reads back.
+// TestGoWidthZero covers the value a width holds before any write. An element
+// of a slice of the width reads that value back.
 func TestGoWidthZero(t *testing.T) {
 	t.Parallel()
 	for width, want := range map[string]any{

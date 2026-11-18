@@ -6,10 +6,10 @@ import (
 	pshttp "github.com/titpetric/phpscript/stdlib/ps/http"
 )
 
-// Mount is Register narrowed to a profile: it installs only the binding areas
-// the bitmask names and a name from any other area stays undefined in the
-// runtime and never refused, unreachable through a call, a callable or either
-// engine. Mount installs the caller's extra bindings verbatim.
+// Mount is Register narrowed to a profile. It installs only the binding areas
+// the bitmask names. A name from any other area stays undefined, never refused,
+// unreachable through a call, a callable or either engine. Mount installs the
+// caller's extra bindings verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
 	if rt.GoRuntime() {

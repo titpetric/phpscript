@@ -2,16 +2,16 @@ package runner
 
 // This file pins the observable behaviour of the call-dispatch machinery
 // (invokeAny with its fastInvoker shortcut, adapt, buildArgs/coerceArg,
-// callGoMethod, wantsContext, and the evaluation-environment helpers) ahead
+// callGoMethod, wantsContext, the evaluation-environment helpers) ahead
 // of its consolidation into registration-time invokers. Every test here holds
 // before and after that refactor: the assertions go through invokeAny, adapt,
 // callGoMethod and the public API, never through the shortcut directly.
 //
-// The one lever the tests use is Go's type identity: fastInvoker's type switch
-// matches concrete unnamed signatures only and a defined func type with the
-// same underlying signature is invisible to it and always takes the reflect
-// path. Calling the same behaviour through both spellings is what turns
-// "fast equals reflect" into an assertion.
+// The single lever is Go's type identity: fastInvoker's type switch matches
+// concrete unnamed signatures only. A defined func type with the same
+// underlying signature always takes the reflect path. Calling the same
+// behaviour through two spellings turns "fast equals reflect" into an
+// assertion.
 
 import (
 	"context"
@@ -71,7 +71,7 @@ type (
 )
 
 // dispatchPinErr is the error the error-returning probe bindings return
-// when asked to and a test can watch both dispatch paths surface it.
+// when asked to, and tests can watch both dispatch paths surface it.
 var dispatchPinErr = errors.New("dispatch pin: forced failure")
 
 // dispatchPinSink is the func value the func(string) func(any) probe returns.
@@ -79,8 +79,8 @@ var dispatchPinErr = errors.New("dispatch pin: forced failure")
 // comparison can be by pointer and not by an unobservable closure.
 var dispatchPinSink = func(any) {}
 
-// dispatchPinArgs spells out each argument as value and dynamic type and a
-// probe's return value records exactly what the binding received: "65(string)"
+// dispatchPinArgs spells out each argument as value and dynamic type. A
+// probe's return value records exactly what arrived at the binding: "65(string)"
 // proves the coercion of the int64, "<nil>(<nil>)" proves the padding arrives.
 func dispatchPinArgs(vs ...any) string {
 	parts := make([]string, len(vs))
@@ -94,7 +94,7 @@ func dispatchPinArgs(vs ...any) string {
 func dispatchPinBoom(v any) bool { return fmt.Sprint(v) == "boom" }
 
 // dispatchPinArray builds the array the *model.Array probes return, one
-// stringified element per argument and two runs of the same probe build
+// stringified element per argument. Two runs of the same probe build
 // structurally equal arrays.
 func dispatchPinArray(vs ...any) *model.Array {
 	arr := model.NewArraySize(len(vs))
@@ -118,7 +118,7 @@ func dispatchPinEqual(a, b any) bool {
 // Every signature the fast path recognises produces the same value and the
 // same error as the reflect path, for full calls, short calls (padding), nil
 // arguments, an int64 where a string parameter sits, and surplus arguments.
-// This is the contract a consolidated dispatcher has to keep: which path a
+// This is the contract a consolidated dispatcher must keep: which path a
 // call takes must never be observable from a script.
 func TestDispatchPinFastReflectParity(t *testing.T) {
 	t.Parallel()
@@ -553,8 +553,8 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 
 // A call passing more arguments than the callable declares fails with an
 // ArgumentCountError holding the declared and passed counts, on both paths:
-// the check runs before dispatch. Direct invocation has no PHP name and
-// Name stays empty and the message says "call()".
+// the check runs before dispatch. Direct invocation has no PHP name. Name
+// stays empty and the message says "call()".
 func TestDispatchPinArgumentCount(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -718,8 +718,8 @@ func TestDispatchPinWantsContext(t *testing.T) {
 }
 
 // A binding declaring a leading context receives one holding the scope the
-// call ran under; a binding without one takes the script's arguments alone,
-// and a nil scope is fine because nothing builds a context for it.
+// call ran within. A binding without a context takes the script's arguments
+// alone. A nil scope is fine, because nothing builds a context for it.
 func TestDispatchPinContextInjection(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -755,9 +755,9 @@ func TestDispatchPinContextInjection(t *testing.T) {
 }
 
 // Receivers for the callGoMethod resolution tests. Two distinct types have a
-// same-named method so a test can watch per-type caching for cross-talk, and one
-// type declares its method on the pointer only so the pointer and value method
-// sets resolve separately.
+// same-named method so a test can watch per-type caching for cross-talk. One
+// type declares its method on the pointer only. The pointer and value method
+// sets then resolve separately.
 type dispatchPinReceiver struct{ id string }
 
 func (r *dispatchPinReceiver) Hello() string { return "recv-hello:" + r.id }
@@ -785,7 +785,7 @@ func (*dispatchPinPtrOnly) Hello() string { return "ptronly-hello" }
 // underscores stripped so a snake_case PHP spelling finds the idiomatic Go
 // name. A miss reports PHP's undefined-method message naming the class a
 // script sees. Every lookup runs twice. The test asserts the warm-cache
-// answer matches the cold one, per receiver type.
+// answer matches the cold answer for each receiver type.
 func TestDispatchPinCallGoMethod(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -863,8 +863,7 @@ func TestDispatchPinCallGoMethodPanic(t *testing.T) {
 	}
 }
 
-// adapt wraps any Go callable into the uniform func(...any) (any, error) the
-// runtime uses everywhere. The wrapper answers exactly as a direct
+// adapt wraps a Go callable into the uniform ABI the runtime uses everywhere. The wrapper answers exactly as a direct
 // invocation does, for fast-path and reflect-only signatures alike.
 // Runtime.Callable resolves a registered name to the same uniform shape.
 func TestDispatchPinUniformABI(t *testing.T) {
@@ -932,8 +931,8 @@ func dispatchPinRun(t *testing.T, rt *Runtime, out *strings.Builder, src string)
 // internals become: a method call (__call), a property read (__get), an
 // assignment used as an expression (__set), a dynamic function-name call, the
 // namespaced global fallback (__func) and func_get_args all behave through
-// the public API. The script uses no standard library: the runner's own
-// helpers and one registered binding are the whole surface under test.
+// the public API. The script uses no standard library. The runner's own
+// helpers plus one registered binding are the whole surface under test.
 func TestDispatchPinEnvHelperSmoke(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

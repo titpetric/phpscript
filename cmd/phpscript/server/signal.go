@@ -13,7 +13,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// SignalReload is the one verb -s takes. nginx also has stop, quit and
+// SignalReload is the only verb -s takes. nginx also has stop, quit and
 // reopen; the first two are a kill with extra steps. No log file needs
 // reopening.
 const SignalReload = "reload"

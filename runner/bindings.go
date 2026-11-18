@@ -23,7 +23,7 @@ func RegisterBinding(installer func(*Runtime)) {
 	RegisterProfileArea(NamespaceUnnamed, ProfileSecure, installer)
 }
 
-// RegisterProfileBinding contributes installer under profile for stdlib.Mount to install on a matching host.
+// RegisterProfileBinding contributes installer under profile for stdlib.Mount.
 func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
 	RegisterProfileArea(NamespaceUnnamed, profile, installer)
 }

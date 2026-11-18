@@ -12,8 +12,8 @@ import (
 
 // TestRegister covers the two names this package installs and the signature
 // they share. PHP passes $real_usage to split the allocator's own footprint
-// from the script's; the estimate here is one walk of the live values and has
-// no such split and the binding takes the argument and reports the same number.
+// from the script's; the estimate here walks the live values once, without
+// such a split. The binding takes the argument and reports the same number.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})

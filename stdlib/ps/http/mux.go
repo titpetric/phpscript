@@ -8,36 +8,37 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Mux is net/http's ServeMux with PHP callables as its handlers, answered on a
-// worker runtime each. It stays a facade and no ServeMux itself because nothing
-// turns a PHP callable into the func(ResponseWriter, *Request) that HandleFunc
-// declares. docs/use-cases/http-server.md is the surface.
+// Mux is net/http's ServeMux with PHP callables as its handlers, each answered
+// on a worker runtime. It stays a facade over a ServeMux. No code turns a PHP
+// callable into the func(ResponseWriter, *Request) HandleFunc declares.
+// docs/use-cases/http-server.md is the surface.
 type Mux struct {
 	mux *nethttp.ServeMux
 	rt  *runner.Runtime
 
-	// pool is the workers handlers run on, shared by every route.
+	// pool is the workers handlers run on, shared by all routes.
 	//
-	// HTTP\Server::listen installs one sized from its $workers and $queue; a mux
-	// a Go host mounts and drives through ServeHTTP itself builds a default one
-	// on its first request. Either way the Once builds it once: the two paths
-	// can both reach it, and every request reads it.
+	// HTTP\Server::listen installs one sized from its $workers and $queue. A mux
+	// a Go host mounts and drives through ServeHTTP builds a default one on its
+	// first request. Either way the Once builds it once: both paths can reach
+	// it. Every request reads it.
 	once sync.Once
 	pool *runner.Pool
 
 	// root is the mux a Group hangs off, or the mux itself. A group shares its
-	// root's ServeMux, pool and mount; only the middleware stack is its own.
+	// root's ServeMux, pool and mount; only the middleware stack belongs to
+	// the group.
 	root *Mux
 
 	// middleware wraps the handlers registered after Use, outermost first.
 	middleware []*runner.Callable
 
 	// mount, when set, takes every registration in place of the ServeMux. A
-	// mux built by NewMountedMux keeps no routes itself and cannot list them.
+	// mux built by NewMountedMux keeps no routes itself. It cannot list them.
 	mount func(pattern string, handler nethttp.Handler) error
 }
 
-// NewMux returns a router with no routes on it.
+// NewMux returns a router holding no routes.
 func NewMux(rt *runner.Runtime) *Mux {
 	m := &Mux{mux: nethttp.NewServeMux(), rt: rt}
 	m.root = m
@@ -54,19 +55,19 @@ func NewMountedMux(rt *runner.Runtime, mount func(pattern string, handler nethtt
 // Handle registers $handler for $pattern, which is ServeMux.HandleFunc's
 // pattern, with {name} segments the handler reads through $r->path_value($name).
 //
-// $handler is a callable: a closure, a method read off its receiver as
-// $this->fnName, or the name of a declared function. The mux calls it with the
-// response writer and the request, what it echoes reaches the response, and a
-// throw becomes a 500. docs/use-cases/http-server.md is the contract.
+// $handler is a callable: a closure, a method read from its receiver, spelled
+// `$this->fnName`, or the name of a declared function. The mux calls it with the
+// response writer and the request. Its echo reaches the response. A throw
+// becomes a 500. docs/use-cases/http-server.md is the contract.
 func (m *Mux) Handle(pattern string, handler any) error {
 	if pattern == "" {
 		return fmt.Errorf("HTTP\\Mux::handle: pattern is required")
 	}
-	// Resolved here and a handler that cannot run on another runtime is an
-	// error where the script writes the route, ahead of a 500 on the first
-	// request that reaches it. The handler itself first: a middleware returns a
-	// closure that is callable whatever it holds. Resolving the wrapper alone
-	// would take a broken handler and refuse it a request too late.
+	// Resolved here: a handler that cannot run on another runtime is an error
+	// where the script writes the route, ahead of a 500 on the first request.
+	// The handler resolves first: a middleware returns a closure that is
+	// callable whatever it holds. Resolving the wrapper alone would pass a
+	// broken handler and fail only at request time.
 	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
 		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
@@ -82,9 +83,8 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	}
 
 	serve := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		// A client that has already gone gets no handler at all. No write
-		// now reaches it, and skipping the work is what the check
-		// is for.
+		// A client already gone gets no handler at all. No write can reach
+		// it. Skipping the work is the purpose of the check.
 		if r.Context().Err() != nil {
 			return
 		}
@@ -139,9 +139,9 @@ func (m *Mux) wrap(handler any) (any, error) {
 
 // answer submits one request to a worker and waits for it.
 func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *nethttp.Request) {
-	// The tracker is the work as well as the wrapper: it lives for the length
-	// of the run already and submitting it submits no closure. Its Run method
-	// is what the worker calls, and tracker.go holds it.
+	// The tracker is both the work and the wrapper: it lives for the run's
+	// length, and submitting it submits no closure. The worker calls its Run
+	// method; tracker.go holds it.
 	answered := trackers.Get().(*answerTracker)
 	answered.ResponseWriter, answered.wrote, answered.failure = w, false, nil
 	answered.callable, answered.request = callable, r
@@ -153,11 +153,11 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 		// The client left with the run queued or in flight. A write now
 		// would reach no client.
 		//
-		// The tracker is not put back. A run already started notices the
-		// disconnect itself and the worker may still be inside the handler and
-		// still holding this value; returning it here is the one way a free-list
-		// entry could outlive its request and reach a second one. Dropping it
-		// costs an allocation on a path a client has already left.
+		// The tracker is not put back. A started run notices the disconnect
+		// itself. The worker may still be inside the handler, still holding
+		// this value; returning it here is the only way a free-list entry
+		// could outlive its request and reach a second one. Dropping it costs
+		// an allocation on a path the client has left.
 		return
 	}
 	// Only when nothing has gone out yet. A handler that wrote half a document
@@ -167,8 +167,8 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 	if answered.failure != nil && !answered.wrote {
 		nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
 	}
-	// The release last and nothing above reads a cleared field and no idle
-	// free-list entry holds a connection alive.
+	// Release last. The code above reads no cleared field, and an idle
+	// free-list entry holds no connection alive.
 	answered.release()
 }
 
@@ -185,10 +185,10 @@ func (m *Mux) usePool(pool *runner.Pool) {
 	m.once.Do(func() { m.pool = pool })
 }
 
-// UsePoolForTest is usePool under a name a test can reach.
+// UsePoolForTest exposes usePool to a test.
 func (m *Mux) UsePoolForTest(pool *runner.Pool) { m.usePool(pool) }
 
-// closeWorkers stops the workers once they answer the queue, for a server shutting down.
+// closeWorkers stops the workers once they answer the queue, on shutdown.
 func (m *Mux) closeWorkers() {
 	m = m.root
 	if m.pool != nil {

@@ -11,7 +11,7 @@ type lifecycleTracker interface {
 	TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error
 }
 
-// nonFatal wraps module so a startup failure reaches the observers and the caller sees nil.
+// nonFatal wraps module so startup failure reaches observers and the caller sees nil.
 func nonFatal(module LifecycleModule, observers []runner.Observer) LifecycleModule {
 	return &nonFatalModule{LifecycleModule: module, observers: observers}
 }
@@ -21,7 +21,7 @@ type nonFatalModule struct {
 	observers []runner.Observer
 }
 
-// Start runs the wrapped module and reports its failure by trace, always returning nil.
+// Start runs the wrapped module and reports its failure by trace, returning nil.
 func (m *nonFatalModule) Start(ctx context.Context) error {
 	run := func(ctx context.Context) error {
 		return m.LifecycleModule.Start(ctx)

@@ -17,7 +17,7 @@ import (
 
 // runScript runs src with the standard library installed and the image
 // bindings rooted at the working directory, and returns the handle the script
-// left in the IM constant together with what it echoed.
+// left in the IM constant, with its echoed output.
 //
 // A script is the only way to build an *Image: the constructors exist as
 // registered functions and the type has no exported one.
@@ -34,8 +34,8 @@ func runScriptAt(t *testing.T, dir, src string) (*gd.Image, string) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
-	// The second registration replaces the one stdlib.Register installed at
-	// the working directory, the way stdlib.RegisterFS reroots a virtual host.
+	// The second registration replaces stdlib.Register's working-directory
+	// install, the way stdlib.RegisterFS reroots a virtual host.
 	gd.RegisterRoot(rt, dir)
 	rt.SetContext(context.Background())
 
@@ -81,10 +81,10 @@ func writePNG(t *testing.T, path string, width, height int) {
 	}
 }
 
-// TestRegister covers what the stdlib wiring installs. That wiring sets the
-// IMG_* and IMAGETYPE_* constants unconditionally because ported code branches
-// on them, and imagetypes reports one fixed set: the program links its decoders
-// in and discovers none at runtime.
+// TestRegister covers the stdlib wiring's installs. That wiring sets the IMG_*
+// and IMAGETYPE_* constants unconditionally, because ported code branches on
+// them. imagetypes reports one fixed set: the program links its decoders in and
+// discovers none at runtime.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -117,7 +117,7 @@ func TestRegister(t *testing.T) {
 	if err := rt.Run(program); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	// 7 is IMG_GIF|IMG_JPEG|IMG_PNG, the three formats this build handles.
+	// 7 is IMG_GIF|IMG_JPEG|IMG_PNG, matching this build's three formats.
 	if got := out.String(); got != "7 4x3" {
 		t.Errorf("echoed %q, want %q", got, "7 4x3")
 	}
@@ -173,7 +173,7 @@ var_export(imagesx($im));
 }
 
 // TestImage_Bounds covers the rectangle a Go host embedding this package reads
-// off a handle a script produced. A created image starts at the origin and the
+// from a handle a script produced. A created image starts at the origin; the
 // bounds are the width and height the script named.
 func TestImage_Bounds(t *testing.T) {
 	t.Parallel()
@@ -188,8 +188,8 @@ func TestImage_Bounds(t *testing.T) {
 }
 
 // TestImage_Underlying covers the drawable the handle wraps. A host writes
-// through it and the value is the same drawable the script's own calls paint
-// on, and a pixel set here is the pixel the next call reads.
+// through the handle. The value is the same drawable the script's own calls
+// paint on. A pixel set here is the pixel the next call reads.
 func TestImage_Underlying(t *testing.T) {
 	t.Parallel()
 	handle, _ := runScript(t, `<?php define("IM", imagecreatetruecolor(2, 2));`)

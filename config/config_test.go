@@ -33,7 +33,7 @@ func TestRuntime(t *testing.T) {
 }
 
 // TestTelemetry covers the inline decode of the block. The struct embeds the
-// oida options with `yaml:",inline"` and path and driver are at one level in a
+// oida options through `yaml:",inline"`; path and driver share one level in a
 // file: a reader of `config.yml` sees one telemetry block and not a nested one.
 func TestTelemetry(t *testing.T) {
 	t.Parallel()
@@ -61,8 +61,8 @@ storage_path: "/dev/shm/site"
 	}
 }
 
-// TestTelemetry_Validate covers the driver names a server starts under. The
-// check trims and lowercases the name before it compares and an operator who
+// TestTelemetry_Validate covers the driver names a server accepts. The
+// check trims and lowercases the name before comparing; an operator who
 // typed Disk is not refused over the spelling. An empty driver is memory.
 func TestTelemetry_Validate(t *testing.T) {
 	t.Parallel()
@@ -141,7 +141,7 @@ func TestTelemetry_Resolved(t *testing.T) {
 		if err == nil {
 			t.Fatal("an unknown driver resolved")
 		}
-		// The options come back whole beside the error and a caller that
+		// The options come back whole with the error and a caller that
 		// reports the failure can still name the block it came from.
 		if options.Path != "/debug/oida" {
 			t.Errorf("path = %q, want /debug/oida", options.Path)
@@ -149,9 +149,9 @@ func TestTelemetry_Resolved(t *testing.T) {
 	})
 }
 
-// TestFlatstack covers the one key that selects the flat bytecode runtime.
+// TestFlatstack covers the key that selects the flat bytecode runtime.
 // `config.yml` keeps it off, because the runner is the path every
-// measurement compares against; a file turns it on per application root.
+// measurement uses as the reference; a file turns it on per application root.
 func TestFlatstack(t *testing.T) {
 	t.Parallel()
 	if config.New().Flatstack.Enabled {
@@ -168,7 +168,7 @@ func TestFlatstack(t *testing.T) {
 }
 
 // TestRoutes covers the key that loads annotated PHP routes. `config.yml` holds
-// it on and a server started over an application root serves the @route
+// it on. A server started over an application root serves the @route
 // annotations in it without a file saying so.
 func TestRoutes(t *testing.T) {
 	t.Parallel()
@@ -185,9 +185,9 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
-// TestValue covers the nil pointer a caller may pass any command constructor.
-// One signature covers the commands that read configuration beside the ones
-// that read none and the nil check lives here once.
+// TestValue covers the nil pointer a caller may pass to any command
+// constructor. One signature covers the commands that read configuration and
+// those that read none; the nil check lives here once.
 func TestValue(t *testing.T) {
 	t.Parallel()
 	if got := config.Value(nil); got.DocumentRoot != "" || got.Routes.Enabled {
@@ -209,7 +209,7 @@ func TestValue(t *testing.T) {
 }
 
 // TestRunnerAreas covers the runner.areas key: the compiled-in default leaves
-// the list empty, which installs every area, and a file narrows it by namespace.
+// the list empty, which installs every area. A file narrows it by namespace.
 func TestRunnerAreas(t *testing.T) {
 	t.Parallel()
 	if got := config.New().Runner.Areas; len(got) != 0 {

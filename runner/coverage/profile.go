@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// DefaultCoverFile is where --cover writes the profile when --coverfile does
-// not name one.
+// DefaultCoverFile names the profile --cover writes when --coverfile names
+// none.
 const DefaultCoverFile = "phpscript.cov"
 
-// The --cover modes. Line is what a bare --cover means: measure, write the
+// The --cover modes. Line is the bare --cover mode: measure, write the
 // profile, print the one-line percentage. Func and file also write the profile,
 // then print a per-symbol report in the format go tool cover -func prints.
 const (
@@ -20,7 +20,7 @@ const (
 	ModeFile = "file"
 )
 
-// ProfileBlock is one line of a written profile: a coverage block with its
+// ProfileBlock is a line of a written profile: a coverage block with its
 // columns resolved from the source text. The collector reports lines only; the
 // columns exist so the profile is the format go test writes and go tool cover
 // renders, spanning the statement text and not the indentation around it.
@@ -36,7 +36,7 @@ type ProfileBlock struct {
 
 // Columns resolves each block's columns against the source text of the file it
 // came from. source returns the lines of a file, or nil when the host cannot
-// read it, in which case the block keeps column 1 on both ends.
+// read it, in which case the block keeps column 1 at both ends.
 func Columns(blocks []Block, source func(file string) []string) []ProfileBlock {
 	cache := map[string][]string{}
 	lines := func(file string) []string {
@@ -74,8 +74,7 @@ func Columns(blocks []Block, source func(file string) []string) []ProfileBlock {
 	return out
 }
 
-// SortProfile orders blocks by file and position, the order a profile lists
-// them in.
+// SortProfile orders blocks by file and position, a profile's listing order.
 func SortProfile(blocks []ProfileBlock) {
 	sort.Slice(blocks, func(i, j int) bool {
 		if blocks[i].File != blocks[j].File {

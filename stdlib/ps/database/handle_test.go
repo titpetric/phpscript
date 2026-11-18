@@ -6,7 +6,7 @@ import (
 )
 
 // TestNewDB covers the handle every binding of this package queries through:
-// it is the pool the connector opened and a query runs on it.
+// the pool the connector opened, where a query runs.
 func TestNewDB(t *testing.T) {
 	t.Parallel()
 	pool, err := sql.Open("sqlite", ":memory:")
@@ -29,8 +29,9 @@ func TestNewDB(t *testing.T) {
 	}
 }
 
-// TestConnector covers the open function a provider takes. Open satisfies it.
-// A host builds the default provider and an instrumented one the same way.
+// TestConnector covers the open function a provider takes. Open satisfies the
+// function. A host builds either the default provider or an instrumented
+// provider the same way.
 func TestConnector(t *testing.T) {
 	t.Parallel()
 	var connector Connector = Open

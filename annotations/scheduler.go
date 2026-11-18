@@ -14,7 +14,7 @@ import (
 )
 
 // Scheduler runs @schedule jobs for the life of the server. Start returns
-// immediately; each job waits until its next due time in its own goroutine.
+// immediately; each job waits until its next due time in a separate goroutine.
 type Scheduler struct {
 	Module
 	root   fs.FS
@@ -45,8 +45,7 @@ func NewScheduler(root fs.FS, options ...Option) *Scheduler {
 	}
 }
 
-// Start discovers jobs and runs them until ctx ends or a caller calls Stop,
-// called.
+// Start runs discovered jobs until ctx ends or a caller calls Stop.
 func (s *Scheduler) Start(ctx context.Context) error {
 	var jobs []scheduledJob
 	err := scanner{root: s.root, excluded: s.config.excludedDirs}.walk(func(file string, src []byte) error {

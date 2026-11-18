@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// This file mutates storage a script names: assignment and unset over every
-// lvalue shape, the read an increment makes first, and the compound operators
-// both resolve through. The container a write lands in is assign_container.go,
+// This file mutates storage a script names: assignment and unset across every
+// lvalue shape, the read an increment makes first, the compound operators both
+// resolve through. The container a write lands in is assign_container.go,
 // and the writes that reach a binding's native Go value assign_go.go.
 
 // execAssign mutates a variable, property or array element through assignValue.
@@ -19,7 +19,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	return err
 }
 
-// assignValue stores value in target and returns what the target holds after the store.
+// assignValue stores value in target, returning the value now held.
 func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, scope *Scope) (any, error) {
 	// `$a ??= b` reads the target once and stores only while it answers null:
 	// storing the value already there would write a string offset php leaves
@@ -62,8 +62,8 @@ func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, s
 
 	case *model.ListExpr:
 		// list($a, $b) = $arr destructures by position (integer keys). The
-		// loop below reads the source through helperIndex and a binding
-		// returning a native []string destructures like an *Array.
+		// loop below reads the source through helperIndex; a binding returning
+		// a native []string destructures like an *Array.
 		if !modelutil.IsCollection(rhs) {
 			return nil, fmt.Errorf("assign: list() target requires an array")
 		}
@@ -94,7 +94,7 @@ func (rt *Runtime) assignValue(target model.Expr, op string, value model.Expr, s
 	}
 }
 
-// assignIndex stores value at one element and returns what the element holds after it.
+// assignIndex stores value at one element, returning the element's value.
 func (rt *Runtime) assignIndex(tgt *model.Index, op string, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.container(tgt.Base, scope)
 	if err != nil {
@@ -113,10 +113,10 @@ func (rt *Runtime) assignIndex(tgt *model.Index, op string, value model.Expr, sc
 	}
 	arr, ok := base.(*model.Array)
 	if !ok {
-		// Native Go collections are writable where Go itself allows it: a
-		// map takes a new or replacement entry, a slice an overwrite of an
-		// element it holds. Only `$a[] =` needs an *Array, since a slice
-		// cannot grow through the interface holding it.
+		// Native Go collections are writable where Go itself allows: a map
+		// takes a new or replacement entry, a slice an overwrite of an
+		// element. Only `$a[] =` needs an *Array, since a slice
+		// cannot grow through the interface that holds it.
 		if appendValue {
 			return nil, fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 		}
@@ -142,7 +142,7 @@ func (rt *Runtime) assignIndex(tgt *model.Index, op string, value model.Expr, sc
 	return next, nil
 }
 
-// assignProp stores value in one property and returns what the property holds after it.
+// assignProp stores value in one property, returning the property's value.
 func (rt *Runtime) assignProp(tgt *model.PropAccess, op string, value model.Expr, scope *Scope) (any, error) {
 	base, err := rt.Eval(tgt.Base, scope)
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 
 // TestClosureFromCallable covers turning a callable into a closure a script can
 // call. Every spelling php accepts as a callable arrives here through
-// rt.Callable and a function name, a closure literal and a method pair all
-// resolve; a value nothing can call is an error, where php raises a TypeError.
+// rt.Callable; a function name, a closure literal, plus a method pair all
+// resolve. A value nothing can call is an error, where php raises a TypeError.
 func TestClosureFromCallable(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -38,11 +38,10 @@ func TestClosureFromCallable(t *testing.T) {
 	}
 }
 
-// TestClosureBind covers the one scope change this runtime can make, which is
-// none. This runtime enforces no property visibility, a scope argument alters
-// no state, and the closure comes back unchanged. Rebinding $this would
-// change what the body reads and the call refuses it and never ignores it in
-// silence.
+// TestClosureBind covers the scope change this runtime can make: none. This
+// runtime enforces no property visibility; a scope argument alters no state.
+// The closure comes back unchanged. Rebinding $this would change the values the
+// body reads. The call refuses the rebind and reports it.
 func TestClosureBind(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

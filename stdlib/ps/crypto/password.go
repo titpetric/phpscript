@@ -1,11 +1,11 @@
 // Package crypto holds the password hashing and the random source a script
-// cannot write for itself.
+// cannot supply.
 //
-// PHP's password_hash() is one of the few standard functions with no
-// implementation in the language: it needs a key derivation function and a
+// PHP's password_hash() is among the few standard functions lacking an
+// implementation in the language: it needs a key derivation function plus a
 // CSPRNG, and phpscript exposes neither. Everything else the family does
-// (parsing options, choosing an algorithm) is arithmetic a script could do and
-// the binding is narrow: the password functions here, and the CSPRNG pair in
+// (parsing options, choosing an algorithm) is arithmetic a script could do.
+// The binding is narrow: the password functions here, plus the CSPRNG pair in
 // random.go, which returns the same entropy to scripts directly.
 package crypto
 
@@ -28,9 +28,8 @@ const (
 
 	// defaultCost is PHP 8.5's PASSWORD_BCRYPT_DEFAULT_COST, not x/crypto's
 	// bcrypt.DefaultCost, which is still 10. The constant reports the number to
-	// scripts and every hash records it and a difference here is a difference a
-	// script can see; matching PHP is what lets the .phpt fixture run against
-	// the php binary.
+	// scripts; every hash records the number. A difference here is visible to a script;
+	// matching PHP lets the .phpt fixture run against the php binary.
 	defaultCost = 12
 )
 
@@ -49,7 +48,7 @@ type params struct {
 	lanes  uint8  // argon2, parallelism
 }
 
-// defaultParams is what an omitted $options means, per algorithm.
+// defaultParams holds the value of an omitted $options, per algorithm.
 func defaultParams(algo string) params {
 	if algo == algoBcrypt {
 		return params{algo: algo, cost: defaultCost}
@@ -256,9 +255,9 @@ func paramsFrom(opts []any) (params, error) {
 func algoFrom(opts []any) (string, error) {
 	algo := algoBcrypt
 	for _, opt := range opts {
-		// A collection is the options bag, whatever built it: the array a
-		// script wrote and the map another binding returned both. The
-		// algorithm is the other argument.
+		// A collection is the options bag, whatever built the collection: the
+		// array a script wrote, the map another binding returned. The algorithm
+		// is the other argument.
 		if opt == nil || modelutil.IsCollection(opt) {
 			continue
 		}

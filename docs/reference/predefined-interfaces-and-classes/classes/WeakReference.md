@@ -6,7 +6,7 @@
 
 Reference to an object that does not prevent PHP from destroying the object.
 
-Holding one does not raise the object's reference count, and a cache built from weak references does not keep its entries alive. Once PHP destroys the object, `get()` answers null.
+Holding one does not raise the object's reference count. A cache built from weak references does not keep its entries alive. Once PHP destroys the object, `get()` answers null.
 
 ## Class synopsis
 
@@ -34,6 +34,6 @@ public function get(): ?object
 
 ## Status
 
-- phpscript has no `WeakReference`. The name is not declared.
+- phpscript declares no `WeakReference` anywhere.
 - The concept does not apply here. PHP destroys an object when its reference count reaches zero, which is the event a weak reference reports; phpscript objects are Go values collected by the Go garbage collector, and nothing observes the moment one becomes unreachable.
-- For a cache whose entries should expire, hold the values in an array and remove them by hand, or keep the cache on the host side with `SharedMemory`.
+- For a cache whose entries should expire, hold the values in an array and remove them manually, or keep the cache on the host side with `SharedMemory`.

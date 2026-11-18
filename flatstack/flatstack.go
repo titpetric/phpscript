@@ -69,7 +69,7 @@ func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 	return runner.ScopeFromContext(ctx)
 }
 
-// IsExit reports whether err is the error exit() and die() raise, and answers it.
+// IsExit reports whether err is the error exit() and die() raise.
 func IsExit(err error) (*ExitError, bool) { return runner.IsExit(err) }
 
 // Supports reports whether p executes through flat bytecode.

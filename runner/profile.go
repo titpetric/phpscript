@@ -1,14 +1,14 @@
 package runner
 
-// Profile is a bitmask naming the binding areas a host mounts. Each area that
-// reaches outside the runtime's sandbox is its own bit and a call site spells
-// out every insecure area it enables; stdlib.Mount reads one.
+// Profile is a bitmask naming the binding areas a host mounts. Each area
+// reaching outside the runtime's sandbox gets a separate bit; a call site
+// spells out every insecure area it enables. stdlib.Mount reads the mask.
 type Profile uint64
 
-// The binding areas. One bit per area, assigned by iota and a host spells out
-// what it mounts.
+// The binding areas, with one bit per area assigned by iota. A host spells out
+// the set it mounts.
 const (
-	// ProfileSecure is every binding confined to the runtime's own sandbox
+	// ProfileSecure covers every binding confined to the runtime's sandbox
 	// boundaries: the surface for a host running untrusted scripts.
 	ProfileSecure Profile = 1 << iota
 

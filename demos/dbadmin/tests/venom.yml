@@ -20,14 +20,14 @@ name: dbadmin
 #
 # The sign-in and sign-out posts carry a csrf field that must agree with the
 # csrf cookie. The pair is double-submit: the server stores nothing, so any
-# client that controls its own cookies satisfies the check by sending the same
-# value in both halves, and most steps here do exactly that with a fixed
-# token. What the check refuses is a cross-site form post, where the attacker
-# writes neither half. The sign-in and sign-out cases take the long way - read
+# client controlling its cookies satisfies the check by sending the same
+# value in both halves. Most steps here do exactly that with a fixed token.
+# The check refuses a cross-site form post, where the attacker writes neither
+# half. The sign-in and sign-out cases take the long way - read
 # the form, extract the token the page rendered, post it back - because those
 # two prove the rendered forms carry a working token.
 #
-# The suite is idempotent. It removes its own leftovers before it starts - the
+# The suite is idempotent. It removes its leftovers before it starts - the
 # scratch tables and the user it appends to the password file - and does its
 # row editing in a scratch table, so the seeded catalogue rows keep the ids the
 # migration gave them.
@@ -123,7 +123,7 @@ testcases:
           - result.systemout ShouldContainSubstring CSRF token mismatch
           - 'result.systemout ShouldNotContainSubstring Set-Cookie: session'
       # A token field whose cookie half is absent fails the same way: the pair
-      # has to agree, not merely exist.
+      # must agree, not merely exist.
       - type: exec
         script: |
           curl -sS -b .venom-csrf -d "csrf=mismatched&username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
@@ -228,8 +228,8 @@ testcases:
           - result.systemout ShouldContainSubstring reader
           - result.systemout ShouldContainSubstring 2 matching rows
       # The id is the ULID computed from the username: the Crockford base32 of
-      # the first 128 bits of sha256(name), which is what the same digest
-      # printed through php answers. The query carries no string literal, so
+      # the first 128 bits of sha256(name), the same value the digest printed
+      # through php answers. The query carries no string literal, so
       # the quoting is the table name's alone.
       - type: exec
         script: curl -sS -b .venom-jar --data-urlencode 'query=SELECT id, username FROM "user" ORDER BY username' -w '\nSTATUS %{http_code}\n' {{.host}}/sql
@@ -487,7 +487,7 @@ testcases:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
           - 'result.systemout ShouldContainSubstring class="who">admin'
-      # The new account signs in, with a session of its own.
+      # The new account signs in, with a separate session.
       - type: exec
         script: |
           TOKEN=$(curl -sS -c .venom-other {{.host}}/login | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
@@ -533,7 +533,7 @@ testcases:
           - result.systemout ShouldContainSubstring STATUS 302
           - 'result.systemout ShouldContainSubstring Location: /login'
       # The account that stayed keeps its session: the sweep took the ids the
-      # file dropped and no others.
+      # file dropped, and none besides.
       - type: exec
         script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
         assertions:

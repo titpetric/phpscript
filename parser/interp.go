@@ -42,7 +42,7 @@ type interpPart struct {
 	Line  int
 }
 
-// scanInterp splits a double-quoted literal into parts and reports its end offset and interp.
+// scanInterp splits a double-quoted literal, reporting its end offset and interp.
 func scanInterp(src string, start int, line int) (parts []interpPart, end int, interp bool, err error) {
 	var text strings.Builder
 	textStart, textLine := start, line
@@ -113,7 +113,7 @@ func scanInterp(src string, start int, line int) (parts []interpPart, end int, i
 	return nil, 0, false, fmt.Errorf("line %d: unterminated string", line)
 }
 
-// scanSimple reads the simple-syntax expression at src[i], ok=false for a lone dollar.
+// scanSimple reads a simple-syntax expression at src[i].
 func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	if i+1 >= len(src) {
 		return part, 0, false, nil
@@ -222,7 +222,7 @@ func (p *parser) interpExpr(part interpPart, line int) (model.Expr, error) {
 	}
 }
 
-// interpSubscript resolves a simple-syntax $a[sub] key, a bare word reading as a string.
+// interpSubscript resolves a simple-syntax $a[sub] key, a bare word as string.
 func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 	if sub == "" {
 		return nil, fmt.Errorf("line %d: empty [] in string interpolation", line)
@@ -238,7 +238,7 @@ func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 	return p.parseSubExpr(sub, line)
 }
 
-// parseSubExpr parses expression source from inside a literal, on a parser holding the file's namespace.
+// parseSubExpr parses expression source in a literal, holding the file's namespace.
 func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 	lx := newLexer(src)
 	lx.inPHP = true
@@ -274,7 +274,7 @@ func skipQuoted(src string, i int) (end int, ok bool) {
 	return 0, false
 }
 
-// scanDollarBrace reads the ${name} and ${name[subscript]} forms starting at the `$` under src[i].
+// scanDollarBrace reads ${name} and ${name[subscript]} at the `$` under src[i].
 func scanDollarBrace(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	j := i + 2
 	if j >= len(src) || !isIdentStart(rune(src[j])) {
@@ -301,7 +301,7 @@ func scanDollarBrace(src string, i int, line int) (part interpPart, end int, ok 
 	return part, j + 1, true, nil
 }
 
-// dollarBraceErr reports a ${...} that names the variable-variable form, which is not implemented.
+// dollarBraceErr reports a ${...} naming the variable-variable form, which is not implemented.
 func dollarBraceErr(line int) error {
 	return fmt.Errorf("line %d: ${expression} names a variable by its value and needs $$name, which is not implemented; write {$...} for an expression", line)
 }

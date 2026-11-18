@@ -51,8 +51,8 @@ func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status in
 		return h.serveErrorFile(w, name, status)
 	}
 
-	// A page in a writable directory is content a visitor put there, the same
-	// as any other .php below the document root. See handler.executes.
+	// A page in a writable directory is content a visitor wrote, like any
+	// other .php below the document root. See handler.executes.
 	entrypoint := path.Join(h.documentRoot, name)
 	if !h.executes(entrypoint) {
 		return false
@@ -78,7 +78,7 @@ func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status in
 		return false
 	}
 
-	// The page may answer with its own status; one that names none answers
+	// The page may answer with a separate status; one that names none answers
 	// with the status of the call.
 	if staged := reqCtx.ResponseStatus(); staged != 0 {
 		status = staged
@@ -88,7 +88,7 @@ func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status in
 	return true
 }
 
-// serveErrorFile writes the named static page with status and reports whether it read one.
+// serveErrorFile writes the named static page with status, reporting whether it read one.
 func (h *handler) serveErrorFile(w http.ResponseWriter, name string, status int) bool {
 	body, err := fs.ReadFile(h.public, name)
 	if err != nil {

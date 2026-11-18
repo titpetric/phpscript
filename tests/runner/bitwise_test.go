@@ -10,8 +10,8 @@ import (
 )
 
 // TestBitwiseSemantics pins the operand coercions and the shift edges. Every
-// expectation is what the php binary prints for the same expression, including
-// the ones PHP only reaches after a "non-numeric value" warning.
+// expectation comes from the php binary's output for the same expression,
+// including the ones PHP only reaches after a "non-numeric value" warning.
 func TestBitwiseSemantics(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -66,9 +66,10 @@ func TestBitwiseSemantics(t *testing.T) {
 	}
 }
 
-// TestBitwiseNegativeShiftIsCatchable pins the one bitwise input with no answer.
-// PHP raises ArithmeticError for it; a compound assignment has to fail the same
-// way, or `$x >>= -1` would assign a value the expression form refuses.
+// TestBitwiseNegativeShiftIsCatchable pins the single bitwise input that has no
+// answer. PHP raises ArithmeticError here. A compound assignment must fail
+// the same way, or `$x >>= -1` would assign a value the expression form
+// refuses.
 func TestBitwiseNegativeShiftIsCatchable(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{
@@ -82,7 +83,7 @@ func TestBitwiseNegativeShiftIsCatchable(t *testing.T) {
 	}
 }
 
-// evalPHP runs one snippet on the interpreter and returns what it echoed.
+// evalPHP runs one snippet on the interpreter and returns its echoed output.
 func evalPHP(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)

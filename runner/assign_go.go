@@ -12,7 +12,7 @@ import (
 // slice around the removed element. runner_assign.go writes the script-owned
 // storage, *model.Array, directly.
 
-// assignGoIndex writes a map entry or an existing slice element, never growing a slice.
+// assignGoIndex writes a map entry or existing slice element, never growing.
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	if keyed, ok := base.(model.Keyed); ok {
 		name := keyString(key)

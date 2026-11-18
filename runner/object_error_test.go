@@ -8,10 +8,9 @@ import (
 )
 
 // TestObjectError covers the wrapper a thrown instance travels in. An object is
-// not an error and it needs one to take the path a built-in throwable takes,
-// and the class it records is both what a catch clause filters on and what
-// get_class() reports. A class declaring `extends` is still only its own class
-// here.
+// not an error; it needs a wrapper to take the path a built-in throwable takes.
+// The recorded class both filters a catch clause and answers get_class(). A
+// class declaring `extends` stays a single class here.
 func TestObjectError(t *testing.T) {
 	t.Parallel()
 	obj := model.NewObject(&model.Class{Name: "AppException"})
@@ -27,10 +26,10 @@ func TestObjectError(t *testing.T) {
 }
 
 // TestObjectErrorRendering covers the renderings an uncaught throw falls back
-// to: a class with no message prints the class, an instance of no class prints
-// "object", and a wrapper around nothing still renders a message. A nil class
-// reports no name at all and matchCatchType routes it the way it routes an
-// error a binding returned.
+// to. A class without a message prints the class; an instance of no class prints
+// "object"; a wrapper around nothing still renders a message. A nil class
+// reports no name, and matchCatchType routes it as it routes an error a binding
+// returned.
 func TestObjectErrorRendering(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -65,10 +64,10 @@ func TestObjectErrorRendering(t *testing.T) {
 	}
 }
 
-// TestCatchValue covers what a catch clause binds. A script that threw an
-// instance gets the instance back, never the wrapper; everything else binds the
-// error itself and a Go binding's failure reaches `catch` as a value a script
-// can read a message off.
+// TestCatchValue covers the value a catch clause binds. A script that threw an
+// instance gets the instance back. It does not get the wrapper. Everything else
+// binds the error itself; a Go binding's failure reaches `catch` as a value a
+// script can read a message from.
 func TestCatchValue(t *testing.T) {
 	t.Parallel()
 	obj := model.NewObject(&model.Class{Name: "AppException"})

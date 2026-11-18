@@ -1,6 +1,6 @@
 // Package compat implements the PHP language surface a script uses
-// directly, and no library it calls: functions whose behaviour follows from
-// what the interpreter does, not from what they compute.
+// directly, without any library it calls: functions whose behaviour the
+// interpreter fixes, whatever their computed result.
 //
 // Importing it wires it in, the way a program imports a database/sql
 // driver:
@@ -13,7 +13,7 @@
 // # Output buffering
 //
 // PHP's ob_* family redirects everything echo would emit into a stack of
-// in-memory buffers, and template engines lean on it: rendering to a string is
+// in-memory buffers. Template engines lean on it: rendering to a string is
 // "start a buffer, include the compiled template, take the contents".
 // MiniTPL\Template::get() builds on exactly that.
 //
@@ -21,19 +21,19 @@
 //	include $compiled;
 //	$html = ob_get_clean();
 //
-// ob_start pushes a buffer onto the runtime with runner.PushOutput and the
+// ob_start pushes a buffer onto the runtime with runner.PushOutput. The
 // capture covers everything that reaches Runtime.Output: echo, inline HTML and
 // builtins that emit text directly, such as die() with a message.
 //
-// A function that reports "no buffer is active" returns false, as PHP does,
-// and no empty string; the two are distinguishable with ===.
+// A function that reports "no buffer is active" returns false, as PHP does.
+// It returns no empty string; the two are distinguishable with ===.
 //
 // # Regular expressions
 //
 // PHP's preg_* family is PCRE; Go's regexp is RE2, which cannot express
-// backreferences or lookaround. regex.go compiles each pattern with whichever
-// engine can express it and both `\1` and a linear-time guarantee are
-// available where they apply.
+// backreferences or lookaround. regex.go compiles each pattern with the
+// engine that can express it. Both `\1` backreferences and linear-time
+// matching are available where they apply.
 package compat
 
 import (
@@ -53,7 +53,7 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterBuffers installs the ob_* output buffering functions. Each runtime
-// gets its own buffer stack and concurrent requests capture their own output.
+// gets a separate buffer stack, and concurrent requests capture their own output.
 func RegisterBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
 	// A reset between programs drops the levels with the redirections they

@@ -9,8 +9,8 @@ import (
 )
 
 // This file is the direct compiler's node dispatcher: one case per expression
-// shape the runtime evaluates, each compiling to the closure that evaluates
-// it. The operator and interpolation sub-compilers it dispatches to are in
+// shape the runtime evaluates, each compiling to a closure that evaluates the
+// shape. The operator and interpolation sub-compilers it dispatches to are in
 // direct_operators.go, and the compiler's bindings and call plumbing in
 // compiled.go.
 
@@ -80,8 +80,8 @@ func (dc *directCompiler) nameOrExpr(name string, e model.Expr) (closure, error)
 func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 	switch n := e.(type) {
 	case *model.Lit:
-		// The value goes in as itself, invalid UTF-8 included: with no
-		// source text to travel through no decoding can corrupt it.
+		// The value goes in unchanged, invalid UTF-8 included. No source text
+		// travels with the value. No decoding can corrupt it.
 		return constClosure(n.Value), nil
 
 	case *model.Var:
@@ -300,9 +300,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 			}
 			return baseCall("__set", []closure{constClosure(v.Name), val}), nil
 		}
-		// An element, a property and every compound operator write storage a
-		// closure environment cannot name: the runtime stores through the node
-		// and answers what it wrote. See runner.assignValue.
+		// An element, a property, a compound operator: each writes storage a
+		// closure environment cannot name. The runtime stores through the node
+		// and answers the stored value. See runner.assignValue.
 		return dc.markCall(n), nil
 
 	case *model.AddrOf, *model.Deref:
@@ -326,9 +326,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 // compileCall mirrors emitCall: __ref output args, __func dispatch and global fallback.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
-		// `greet(...)` takes the callable and never calls it and the name
-		// goes in as a value and the fallback with it: resolution is the
-		// runtime's, as for a call. The result is a Closure.
+		// `greet(...)` takes the callable without calling it. Resolution is
+		// the runtime's, as for a call. The name and the fallback go in as
+		// values. The result is a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil
 	}
 	args := make([]closure, len(n.Args))

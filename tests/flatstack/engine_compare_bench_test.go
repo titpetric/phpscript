@@ -10,8 +10,8 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// benchmarkEngines runs one program through the interpreter and through flat
-// bytecode as engine= sub-benchmarks, and the two columns line up under
+// benchmarkEngines runs one program on the interpreter and on flat bytecode as
+// engine= sub-benchmarks. The two columns line up under
 // `benchstat -col /engine`. Supports gates the program: both engines must run
 // it natively or the comparison measures fallback by accident.
 func benchmarkEngines(b *testing.B, source string, register func(*runner.Runtime)) {

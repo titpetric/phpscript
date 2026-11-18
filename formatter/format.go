@@ -1,6 +1,6 @@
 // Package formatter pretty-prints phpscript ASTs in a gofmt-like style:
 // hard tabs, canonical `function` keywords, parentheses on control structures,
-// semicolons, collapsed blank lines, and a trailing newline. Class, function,
+// semicolons, collapsed blank lines, plus a trailing newline. Class, function,
 // and control-structure opening braces stay on the declaration line.
 package formatter
 
@@ -62,7 +62,7 @@ func hasInlinePHPBlock(src string) bool {
 	return false
 }
 
-// parseSource reads src as php, and as a go runtime file when php refuses it.
+// parseSource reads src as php, or as go when php refuses it.
 func parseSource(src string) (*model.Program, bool, error) {
 	prog, err := parser.Parse(src)
 	if err == nil {

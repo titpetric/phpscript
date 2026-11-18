@@ -19,8 +19,8 @@ func TestJSONObjectKeepsInsertionOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The expected key and value come from json.Marshal and the HTML escapes
-	// are the library's and no literal in this file.
+	// The expected key and value come from json.Marshal; the HTML escapes belong
+	// to the library.
 	key, _ := json.Marshal("html <key>")
 	value, _ := json.Marshal("a&b")
 	want := `{"id":42,` + string(key) + `:` + string(value) + `,"nested":["x"]}`

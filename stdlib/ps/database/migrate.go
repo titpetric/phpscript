@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// DatabaseMigrate loads and runs SQL migrations against a platform database.
+// DatabaseMigrate loads and runs SQL migrations on a platform database.
 //
 // The project is the binding's own connection name, and is
 // what mig records applied files under.
@@ -36,9 +36,9 @@ func (m *DatabaseMigrate) Load(pattern string) error {
 	return nil
 }
 
-// Run applies the loaded migrations. It opens one span and not one per file:
-// migrations run at startup, where what matters is how long the schema took and
-// whether it failed, with no row per statement.
+// Run applies the loaded migrations. It opens a single span, never one for each
+// file: migrations run at startup, where the useful facts are the schema's
+// duration and whether it failed. No row per statement.
 func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	ctx, span := telemetry.Start(ctx, "migrate", telemetry.KindDatabase)
 	defer span.End()
@@ -68,15 +68,15 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	applied, err := manager.Apply(ctx)
 
 	// Recorded before observe reports the run, because recording an error on a
-	// span is last write wins and what Apply returns is the driver error
-	// alone. Reporting after it leaves the span with the message that
-	// names the file holding the statement.
+	// span is last write wins. Apply returns the driver error alone. Reporting
+	// after it leaves the span with the message naming the file holding the
+	// statement.
 	span.RecordError(err)
 	m.observe(ctx, span, applied, err)
 	return err
 }
 
-// observe reports a mig run, logging per-file failures and recording the stopping file on span.
+// observe reports a mig run, logging per-file failures and recording the stopping file.
 func (m *DatabaseMigrate) observe(ctx context.Context, span *telemetry.Span, applied []migrate.Migration, runErr error) {
 	log := logger.New(ctx, "migrate")
 	reported := false

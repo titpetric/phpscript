@@ -1,16 +1,16 @@
 // Package flags holds the command line options every phpscript subcommand
 // accepts, and the work they imply.
 //
-// The set exists so no command spells the same idea again:
-// --include in test and in lint with two help texts and two implementations
-// and not in server at all, --cpuprofile only in test, -v defined twice, -f
-// hand-parsed out of argv and printed by no help output. One Options binds
-// onto every command. A command reads what it uses.
+// The set exists so no command spells the same idea again. Examples: --include
+// in test and lint, through two help texts, two implementations; server had no
+// copy; --cpuprofile only in test; -v defined twice; -f parsed by hand out
+// of argv, printed by no help output. One Options binds onto every command. A
+// command reads the options it uses.
 //
-// Pre reads -f and -w before anything constructs the command, because the
-// configuration file and the working directory decide what the command takes.
-// Pre also takes them off the argument list; Bind declares them anyway and
-// they appear in help beside the rest.
+// Pre reads -f and -w before anything constructs the command. The configuration
+// file and the working directory decide the options a command takes. Pre also
+// takes them from the argument list; Bind declares them anyway, and help lists
+// them with the rest.
 package flags
 
 import (
@@ -35,8 +35,8 @@ import (
 // compose a filename per start.
 const TimePlaceholder = "{time}"
 
-// TimeLayout is what TimePlaceholder expands to: UTC, sortable, and free of
-// the characters a shell or a path would have an opinion about.
+// TimeLayout expands TimePlaceholder to UTC, sortable, and free of the
+// characters a shell or a path would have an opinion about.
 const TimeLayout = "20060102-150405"
 
 // Options are the flags every subcommand accepts.
@@ -92,7 +92,7 @@ func (o *Options) Bind(fs *cli.FlagSet) {
 }
 
 // BindWith returns a Bind that declares the shared flags before the command's
-// own and every command accepts the set whether it defines flags or not.
+// own flags. Every command accepts the set, whether it defines flags or not.
 func (o *Options) BindWith(bind func(*cli.FlagSet)) func(*cli.FlagSet) {
 	return func(fs *cli.FlagSet) {
 		o.Bind(fs)
@@ -102,10 +102,10 @@ func (o *Options) BindWith(bind func(*cli.FlagSet)) func(*cli.FlagSet) {
 	}
 }
 
-// RunWith wraps a command's Run with the shared work: Check reads the flags,
-// the CPU profile runs for the length of the command, and the heap profile
-// lands after it. A failure to start profiling fails the command; the operator
-// named a measurement and did not get one.
+// RunWith wraps a command's Run with the shared work. Check reads the flags,
+// the CPU profile runs for the command's length, and the heap profile lands
+// afterwards. A failure to start profiling fails the command; the operator
+// named a measurement and got none.
 func (o *Options) RunWith(run func(context.Context, []string) error) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		if err := o.Check(); err != nil {
@@ -127,12 +127,12 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 	}
 }
 
-// Pre reads -f and -w off the argument list and returns the rest.
+// Pre reads -f and -w from the argument list and returns the rest.
 //
-// This runs before anything constructs the command: -f decides the
-// configuration a command takes, and -w decides what every relative path after
-// it means, the configuration file included. pflag runs later and never sees
-// them and Bind's defaults are the values this found.
+// This runs before anything constructs the command. -f decides the
+// configuration a command takes, and -w decides the meaning of every later
+// relative path, the configuration file included. pflag runs later; it never sees
+// these flags. Bind's defaults are the values this found.
 func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))
@@ -197,15 +197,15 @@ func Pre(args []string) (*Options, []string, error) {
 	return o, remaining, nil
 }
 
-// valued names the shared flags that take a value and consume the word after them.
+// valued names shared flags that take a value and consume the next word.
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,
 	"--cover": true, "--coverfile": true, "--file": true, "--workdir": true,
 	"--stdlib": true, "-f": true, "-w": true,
 }
 
-// Split cuts the argument list after the script named for `run` and the words
-// after it belong to the script as $argv and never to phpscript as flags.
+// Split cuts the argument list after the script named for `run`. The words
+// after the script belong to it as $argv, never to phpscript as flags.
 //
 // The script is the first word that is not a flag, a flag's value or the run
 // command. Any other command keeps its arguments whole, with nothing cut.
@@ -232,12 +232,12 @@ func Split(args []string, isCommand func(string) bool) (head, script []string) {
 	return args, nil
 }
 
-// Hoist moves the command name to the front of the argument list and a global
-// flag may precede it.
+// Hoist moves the command name to the front of the argument list. A global flag
+// may precede it.
 //
-// This walks the flags this package declares and no others: a command's own
-// flags belong after its name. A bare --cover does not consume the word after it,
-// which its NoOptDefVal makes legal.
+// This walks the flags this package declares, no others: a command's own flags
+// belong after its name. A bare --cover does not consume the following word,
+// which NoOptDefVal makes legal.
 func Hoist(args []string, isCommand func(string) bool) []string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -264,8 +264,8 @@ func Hoist(args []string, isCommand func(string) bool) []string {
 	return args
 }
 
-// Chdir applies -w. It runs before the read of the configuration and naming a
-// tree once serves it, and no path inside the configuration repeats that name.
+// Chdir applies -w. It runs before anything reads the configuration. Naming a
+// tree once is enough; no path inside the configuration repeats that name.
 func (o *Options) Chdir() error {
 	if o.WorkDir == "" {
 		return nil
@@ -277,7 +277,7 @@ func (o *Options) Chdir() error {
 }
 
 // FromConfig fills the options a configuration file may also set, where the
-// command line did not name one. The flag wins: an operator typed it.
+// command line named nothing. The flag wins: an operator typed it.
 func (o *Options) FromConfig(appConfig config.Config) {
 	if o.Include == "" {
 		o.Include = appConfig.Runner.Include
@@ -315,7 +315,7 @@ func (o *Options) Report() bool {
 
 // ResolveCoverFile expands TimePlaceholder and creates the directory that
 // holds the profile and --coverfile=cover/phpscript.{time}.cov works
-// against a tree that has no cover directory yet.
+// in a tree that has no cover directory yet.
 func (o *Options) ResolveCoverFile(now time.Time) (string, error) {
 	name := o.CoverFile
 	if name == "" {

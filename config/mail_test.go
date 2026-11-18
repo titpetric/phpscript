@@ -9,12 +9,12 @@ import (
 )
 
 // TestMail_Validate covers the check every configured server passes before
-// a command runs. A credential the operator got wrong fails the command and
-// never the first delivery: on a site whose only sender is a @schedule job,
+// a command runs. A credential the operator got wrong fails the command. The
+// first delivery never fails: on a site whose only sender is a @schedule job,
 // that delivery is the middle of the night.
 //
-// The check walks names in sorted order and a file with two bad servers
-// reports the same one on every run.
+// The check walks names in sorted order. A file with two bad servers reports
+// the same error on every run.
 func TestMail_Validate(t *testing.T) {
 	t.Parallel()
 	good := mail.Config{Host: "mail.example.com", From: "noreply@example.com"}
@@ -66,12 +66,12 @@ func TestMail_Validate(t *testing.T) {
 }
 
 // TestValidateMailDeclaration covers the refusal a flat mail block gets ahead
-// of the typed decode. The generic map is the one place the difference is still
-// visible: a typed decode can report that a string is not a struct, which names
-// neither the key nor the fix.
+// of the typed decode. The generic map is the only place the difference is still
+// visible. A typed decode can report that a string is not a struct, which names
+// neither key nor fix.
 //
-// The check walks keys in the order flatMailKeys lists them and names in
-// sorted order and one file fails on one line every time.
+// The check walks keys in the order flatMailKeys lists. It walks names in
+// sorted order. One file fails on one line every time.
 func TestValidateMailDeclaration(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

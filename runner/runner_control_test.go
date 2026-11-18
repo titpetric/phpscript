@@ -67,9 +67,9 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 }
 
 // TestMatchCatchTypeTakesAnyClauseForANonThrowable holds the contract a host
-// binding relies on: an error a Go function returned, and a panic recovered at
-// the call boundary, belong to no PHP class and the catch a script already
-// wrote has to reach them whichever throwable class it names.
+// binding relies on: an error a Go function returned, or a panic recovered at
+// the call boundary, belongs to no PHP class. The catch a script already wrote
+// must reach them, whichever throwable class it names.
 func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 	t.Parallel()
 	for _, err := range []error{
@@ -186,8 +186,8 @@ func TestNoInheritanceAtRuntime(t *testing.T) {
 		}
 	}
 
-	// A class declaring `extends RuntimeException` is only its own class, to a
-	// catch clause and to instanceof alike.
+	// A class declaring `extends RuntimeException` counts as that class alone,
+	// to a catch clause and to instanceof alike.
 	thrown := newObjectError(model.NewObject(&model.Class{Name: "NotFound"}))
 	if matchCatchType("RuntimeException", thrown) {
 		t.Error("catch (RuntimeException) took a NotFound: `extends` must confer nothing")

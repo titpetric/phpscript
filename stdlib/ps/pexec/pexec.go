@@ -1,13 +1,12 @@
 // Package pexec exposes process execution to PHP: the ref.exec.php functions
-// that run a command through the shell, the two that quote for it, and
-// posix_getpid and getmypid, which name the running process.
+// that run a command through the shell, the quoting pair, and posix_getpid and
+// getmypid, which name the running process.
 //
-// Running a command leaves the fs.FS sandbox behind. A process reads
-// and writes with the permissions of the user running the server, and
-// writable_paths does not reach it; a host that runs untrusted scripts mounts
-// without this package, stdlib.Mount(rt, stdlib.Secure). What the runtime does
-// say is where a command starts, which is the working directory chdir() moved,
-// resolved onto the host.
+// Running a command leaves the fs.FS sandbox behind. A process reads and
+// writes with the permissions of the user running the server; writable_paths
+// does not reach that process. A host that runs untrusted scripts mounts
+// without this package, stdlib.Mount(rt, stdlib.Secure). The runtime says where
+// a command starts: the working directory chdir() moved, resolved onto the host.
 package pexec
 
 import (
@@ -16,7 +15,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init registers the process bindings under the Exec profile area.
+// init registers the process bindings in the Exec profile area.
 func init() {
 	runner.RegisterProfileArea(`Runtime\PS\Exec`, runner.ProfileExec, Register)
 }
@@ -26,8 +25,8 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, "")
 }
 
-// RegisterRoot installs the process bindings rooted at dir, replacing whatever
-// root stood before it. An empty dir is the process working directory.
+// RegisterRoot installs the process bindings rooted at dir, replacing any
+// earlier root. An empty dir is the process working directory.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 

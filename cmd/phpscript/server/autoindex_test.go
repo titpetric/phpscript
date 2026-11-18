@@ -19,8 +19,7 @@ var autoindexFS = fstest.MapFS{
 	"public/files/archive/old.txt": {Data: []byte(`old`)},
 }
 
-// newAutoindexHandler builds a handler with listings turned on, as
-// `autoindex: true` in the configuration reaches.
+// newAutoindexHandler builds a handler with listings on, as `autoindex: true` reaches.
 func newAutoindexHandler(t *testing.T, files fstest.MapFS) *handler {
 	t.Helper()
 	h, err := newHandler(files, "", DefaultDocumentRoot, runner.Options{}, false, true)
@@ -31,8 +30,8 @@ func newAutoindexHandler(t *testing.T, files fstest.MapFS) *handler {
 }
 
 // TestAutoindexIsOffUnlessTheSiteAsksForIt pins the default. Publishing every
-// file below the document root is a decision and a directory with no index page
-// is a 404 until the configuration says otherwise.
+// file beneath the document root is a decision. A directory holding no index
+// page is a 404 until the configuration says otherwise.
 func TestAutoindexIsOffUnlessTheSiteAsksForIt(t *testing.T) {
 	t.Parallel()
 	rr := fetch(newErrorPageHandler(t, autoindexFS), http.MethodGet, "/files/", nil)
@@ -49,7 +48,7 @@ func TestAutoindexIsOffUnlessTheSiteAsksForIt(t *testing.T) {
 	}
 }
 
-// TestAutoindexListsTheDirectory pins what a listing holds: every entry linked
+// TestAutoindexListsTheDirectory pins the contents of a listing: every entry linked
 // relative to the directory's request path, images shown as well as
 // named, sizes for files, a way back up, and nothing beginning with a dot.
 func TestAutoindexListsTheDirectory(t *testing.T) {
@@ -73,14 +72,14 @@ func TestAutoindexListsTheDirectory(t *testing.T) {
 		t.Errorf("listing shows a dotfile:\n%s", body)
 	}
 	// The listing fetches nothing from anywhere else: one that loaded a
-	// stylesheet from a CDN would tell that CDN what a visitor is browsing.
+	// stylesheet from a CDN would tell that CDN the page a visitor is browsing.
 	if strings.Contains(body, "://") {
 		t.Errorf("listing names an off site URL:\n%s", body)
 	}
 }
 
 // TestAutoindexEscapesNames pins both escapings a name passes through. A file
-// named with an "&" has to stay addressable as a link and must not end the
+// named with an "&" must stay addressable as a link and must not end the
 // attribute holding it.
 func TestAutoindexEscapesNames(t *testing.T) {
 	t.Parallel()
@@ -90,7 +89,7 @@ func TestAutoindexEscapesNames(t *testing.T) {
 	}
 }
 
-// TestAutoindexAnswersHeadWithHeadersAlone pins that a HEAD gets the size of
+// TestAutoindexAnswersHeadWithHeadersAlone pins the case where a HEAD gets the size of
 // the listing without the listing, which is the question a HEAD puts.
 func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 	t.Parallel()
@@ -107,7 +106,7 @@ func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 }
 
 // TestAutoindexDoesNotReplaceAnIndexPage pins the order: an index page answers
-// the directory that has one. The listing answers a directory without one.
+// the directory holding one, while a directory holding none gets the listing.
 func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
 	t.Parallel()
 	h := newAutoindexHandler(t, autoindexFS)

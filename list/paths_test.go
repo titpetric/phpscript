@@ -55,8 +55,8 @@ func TestExpandFile(t *testing.T) {
 }
 
 // TestExpandSkipsTestdata covers the directory a recursive sweep leaves out.
-// testdata holds the input a test feeds a tool, php a parser refuses among it,
-// and a lint run over a project reports on the project. The path named
+// testdata holds the input a test feeds a tool, including php a parser
+// refuses; a lint run on a project reports on the project. The path named
 // outright still lists its files, as `go test` reads one.
 func TestExpandSkipsTestdata(t *testing.T) {
 	t.Parallel()

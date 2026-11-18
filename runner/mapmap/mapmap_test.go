@@ -148,10 +148,9 @@ func TestNilIsEmpty(t *testing.T) {
 	})
 }
 
-// TestRequestSourceReadsThroughAMapMap covers the layer over a request: a
-// MapMap reads every derived name through to the source, and Len agrees with
-// what Range visited and count() and foreach() over a superglobal report the
-// same set.
+// TestRequestSourceReadsThroughAMapMap covers the request layer. A MapMap reads
+// each derived name through to the source. Len matches the names Range visits.
+// count() and foreach() on a superglobal report the same set.
 func TestRequestSourceReadsThroughAMapMap(t *testing.T) {
 	t.Parallel()
 	req := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
@@ -193,9 +192,9 @@ func TestRequestSourceReadsThroughAMapMap(t *testing.T) {
 	}
 }
 
-// rangeAll walks src twice: once to the end, and once cut short at the first
-// entry. It returns what the complete walk visited, and checks the bool Range
-// answers and a MapMap over the source tells a finished walk from a
+// rangeAll walks src twice: to the end, then cut short at the first entry. It
+// returns the names the complete walk visited. It checks the bool Range answers.
+// It also checks that a MapMap over the source tells a finished walk from a
 // stopped one.
 func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
 	t.Helper()
@@ -219,10 +218,10 @@ func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
 	return seen
 }
 
-// TestSource covers the contract the read-only half of a MapMap must meet.
-// Each of the three implementations answers Get, Len and Range, and a MapMap
-// built over any of them reads through to it and one source type replaces
-// another and the layer over it stays put.
+// TestSource covers the contract for the read-only half of a MapMap. All three
+// implementations answer Get, Len and Range. A MapMap built over any
+// implementation reads through to the source. A source type replaces another; the
+// layer over the source stays put.
 func TestSource(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/", nil)
@@ -257,9 +256,9 @@ func TestSource(t *testing.T) {
 	}
 }
 
-// TestMapSource_Get covers the read a CLI run answers through: a plain map of
-// strings, where a key the map does not hold answers absent and never answers
-// an empty string, because isset() reads the second return.
+// TestMapSource_Get covers the read a CLI run answers through. The source is a
+// plain map of strings. A key the map does not hold answers absent, never an
+// empty string. isset() reads the second return.
 func TestMapSource_Get(t *testing.T) {
 	t.Parallel()
 	src := mapmap.MapSource{"REQUEST_METHOD": "GET", "EMPTY": ""}
@@ -277,8 +276,7 @@ func TestMapSource_Get(t *testing.T) {
 	}
 }
 
-// TestMapSource_Len covers count() over a CLI source: one per entry, and zero
-// for a map nobody filled.
+// TestMapSource_Len covers count() on a CLI source, zero for an unfilled map.
 func TestMapSource_Len(t *testing.T) {
 	t.Parallel()
 	if got := (mapmap.MapSource{"A": "1", "B": "2"}).Len(); got != 2 {
@@ -289,9 +287,9 @@ func TestMapSource_Len(t *testing.T) {
 	}
 }
 
-// TestMapSource_Range covers the walk, and the bool that cuts it short. Go
-// map order is not insertion order and the assertions take what the walk
-// visited and never the sequence it visited them in.
+// TestMapSource_Range covers the walk and the bool that cuts it short. Go map
+// order is not insertion order. The assertions take the names the walk visited,
+// never their sequence.
 func TestMapSource_Range(t *testing.T) {
 	t.Parallel()
 	src := mapmap.MapSource{"A": "1", "B": "2"}
@@ -302,10 +300,9 @@ func TestMapSource_Range(t *testing.T) {
 	}
 }
 
-// TestValueSource_Get covers the source a superglobal holding nested data
-// reads through. The values are already PHP values and `a[]=1&a[]=2` decoded
-// to an array under one name comes back as that array; a map of strings
-// cannot hold one.
+// TestValueSource_Get covers the source for a superglobal holding nested data.
+// The values are already PHP values. `a[]=1&a[]=2` decodes to the array named
+// a[] and comes back as that array. A map of strings cannot hold one.
 func TestValueSource_Get(t *testing.T) {
 	t.Parallel()
 	nested := []any{int64(1), int64(2)}
@@ -324,8 +321,8 @@ func TestValueSource_Get(t *testing.T) {
 	}
 }
 
-// TestValueSource_Len covers count() over a source of PHP values: one per
-// name, at any depth of the value under it.
+// TestValueSource_Len covers count() on a source of PHP values: one entry per
+// name, at any depth of the value.
 func TestValueSource_Len(t *testing.T) {
 	t.Parallel()
 	src := mapmap.ValueSource{"a": []any{int64(1), int64(2)}, "q": "1"}
@@ -354,10 +351,10 @@ func TestValueSource_Range(t *testing.T) {
 	}
 }
 
-// TestRequestSource_Get covers the CGI names derived off the request and
-// serving one builds no map. A header arrives under its HTTP_ spelling, a
-// header the client omits reads as absent, Extra wins over a derived name,
-// and a source with no request behind it answers nothing.
+// TestRequestSource_Get covers the CGI names derived from the request; serving
+// one builds no map. A header arrives with its HTTP_ spelling. An omitted header
+// reads as absent. Extra beats a derived name. A source without a request behind
+// it answers nothing.
 func TestRequestSource_Get(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
@@ -387,10 +384,10 @@ func TestRequestSource_Get(t *testing.T) {
 	}
 }
 
-// TestRequestSource_Len covers count() over a request: the derived names plus
+// TestRequestSource_Len covers count() on a request: the derived names plus
 // the headers plus the extras, each counted once. Len answers the number of
-// names Range visits and the two agree by construction and a name counted
-// twice in one shows up in both.
+// names Range visits. The two agree by construction; a name counted twice shows
+// up in both.
 func TestRequestSource_Len(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
@@ -411,9 +408,9 @@ func TestRequestSource_Len(t *testing.T) {
 
 // TestRequestSource_Range covers the order the names arrive in and the
 // de-duplication between the halves: the derived names first, then the
-// headers, then the extras that are not among either. The walk passes over a
-// name Extra holds where it would otherwise derive one and that name arrives
-// once, with the value Extra holds.
+// headers, then the extras that are not among either. The walk passes a name
+// Extra holds where it would otherwise derive a name. It arrives once, with the
+// value Extra holds.
 func TestRequestSource_Range(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
@@ -450,8 +447,8 @@ func TestRequestSource_Range(t *testing.T) {
 }
 
 // TestLazy covers the deferral a superglobal costs nothing until a script
-// names it: build runs on the first Get, Len or Range, at most once, and
-// never at all for a request that reads none of them.
+// names it: build runs on the first Get, Len or Range, at most once. It does not
+// run for a request that reads none of them.
 func TestLazy(t *testing.T) {
 	t.Parallel()
 	built := 0

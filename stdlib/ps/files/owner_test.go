@@ -8,8 +8,8 @@ import (
 )
 
 // TestLookupUser covers the argument chown() takes: PHP accepts a user name or
-// a numeric uid, and a numeric string is an id. "0" is root in PHP and never a
-// user called zero and lookupUser reads the digits before the name table.
+// a numeric uid; a numeric string is an id. "0" is root in PHP; zero names no
+// user. lookupUser reads the digits before the name table.
 func TestLookupUser(t *testing.T) {
 	t.Parallel()
 	current, err := user.Current()
@@ -76,9 +76,9 @@ func TestLookupGroup(t *testing.T) {
 }
 
 // TestLookupRefusesOtherTypes covers an argument neither function can read.
-// PHP's chown() takes a string or an int alone and an array or a bool answers
-// the error naming the call and leaves the uid at zero: zero is
-// root, and a silent zero would change the owner of the file.
+// PHP's chown() takes a string or an int alone. An array or a bool answers the
+// error naming the call, and leaves the uid at zero. Zero is root; a silent zero
+// would change the owner of the file.
 func TestLookupRefusesOtherTypes(t *testing.T) {
 	t.Parallel()
 	for _, value := range []any{nil, true, 1.5, []string{"root"}} {

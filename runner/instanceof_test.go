@@ -8,9 +8,9 @@ import (
 
 // TestPHPInstanceOf covers `$value instanceof Class` as class-name equality,
 // compared without case as class names are everywhere else. A class declaring
-// `extends RuntimeException` is an instance of itself and of that class alone,
-// because there is no inheritance to follow; an interface name matches against
-// the list the declaration recorded. See docs/design.md.
+// `extends RuntimeException` is an instance of itself; it counts as an
+// instance of that class alone as well, since no inheritance follows. An interface name
+// matches against the list the declaration recorded. See docs/design.md.
 func TestPHPInstanceOf(t *testing.T) {
 	t.Parallel()
 	store := model.NewObject(&model.Class{Name: "Store", Implements: []string{"Reader", "Writer"}})
@@ -44,9 +44,9 @@ func TestPHPInstanceOf(t *testing.T) {
 }
 
 // TestInstanceOfClass covers the class name a value reports. A scalar is an
-// instance of nothing and `1 instanceof Foo` is false and raises nothing. A
-// callable value is php's Closure whichever of the three spellings it holds,
-// and a host-backed value reports its Go type name and `new Database("app")`
+// instance of nothing; `1 instanceof Foo` is false and raises nothing. A
+// callable value is php's Closure whichever of three spellings it holds. A
+// host-backed value reports its Go type name, and `new Database("app")`
 // answers "Database".
 func TestInstanceOfClass(t *testing.T) {
 	t.Parallel()
@@ -73,8 +73,8 @@ func TestInstanceOfClass(t *testing.T) {
 }
 
 // TestPHPClassName covers the name get_class() reports: the declared name for
-// an interpreted object, the Go type name for a host-backed one, and
-// get_debug_type()'s spelling for a value of no class at all.
+// an interpreted object, the Go type name for a host-backed value, plus
+// get_debug_type()'s spelling for an unclassed value.
 func TestPHPClassName(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -97,7 +97,7 @@ func TestPHPClassName(t *testing.T) {
 
 // TestGoTypeName covers the declared name of the Go type behind a value, read
 // through any depth of pointer, which is the class name a script sees for a
-// host-backed object. An unnamed type reports nothing, as does nil.
+// host-backed object. An unnamed type reports nothing. Nil reports the same.
 func TestGoTypeName(t *testing.T) {
 	t.Parallel()
 	scope := &Scope{}

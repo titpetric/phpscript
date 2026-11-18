@@ -20,8 +20,8 @@ var coverFS = fstest.MapFS{
 	"boot.php":         {Data: []byte("<?php\nfunction greet($n) { return \"hello, \" . $n; }\nfunction unused() { return 1; }\n")},
 }
 
-// coveredServer serves coverFS with coverage on and answers count requests and
-// what the module reports is what a run of the site produced.
+// coveredServer serves coverFS with coverage on, answers count requests, and
+// reports the output a run of the site produced.
 func coveredServer(t *testing.T, count int, coverFile string) *coverageModule {
 	t.Helper()
 	module := newCoverageModule(&flags.Options{Cover: coverage.ModeLine, CoverFile: coverFile}, coverFS)
@@ -44,8 +44,8 @@ func coveredServer(t *testing.T, count int, coverFile string) *coverageModule {
 }
 
 // TestCoverageModuleCountsAcrossRequests pins the aggregation: each request
-// gets its own collector, and what the process holds is the sum. The prelude
-// counts too and an --include file is part of the measurement.
+// gets a separate collector; the process holds the sum. The prelude
+// counts as well; an --include file is part of the measurement.
 func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 	t.Parallel()
 	module := coveredServer(t, 3, "")
@@ -70,8 +70,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 	}
 }
 
-// TestCoverageModuleServe covers the endpoint and a test flow reads
-// coverage off a server without shutting it down.
+// TestCoverageModuleServe covers the endpoint; a flow reads coverage without a shutdown.
 func TestCoverageModuleServe(t *testing.T) {
 	t.Parallel()
 	module := coveredServer(t, 1, "")

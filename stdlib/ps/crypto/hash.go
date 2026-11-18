@@ -18,11 +18,11 @@ import (
 
 // RegisterHash installs PHP's message digests: md5() and sha1(), and the
 // algorithm-agnostic hash() family over the table below. Like the CSPRNG, a
-// digest is something a script cannot write for itself at any usable speed.
+// script cannot compute a digest at any usable speed.
 // That qualifies it for this package.
 //
 // Both return string, not []byte: a PHP string is a Go string in this
-// runtime, and a []byte would reach scripts as a foreign Go value that
+// runtime, and the []byte form would reach scripts as a foreign Go value that
 // strlen and concatenation do not recognise.
 func RegisterHash(rt *runner.Runtime) {
 	// md5 returns the MD5 hash of $string as 32 lowercase hex characters, or
@@ -124,12 +124,12 @@ func newDigest(fn, algo string) (hash.Hash, error) {
 	return factory(), nil
 }
 
-// unknownAlgo returns PHP 8's ValueError text for a digest name this build does not hold.
+// unknownAlgo returns PHP 8's ValueError text for a digest this build lacks.
 func unknownAlgo(fn, algo string) error {
 	return fmt.Errorf("%s(): Argument #1 ($algo) must be a valid hashing algorithm, %q given", fn, algo)
 }
 
-// digestString renders a sum as hex, or raw bytes when the call passes binary true.
+// digestString renders a sum as hex, or raw bytes when binary is true.
 func digestString(sum []byte, binary []bool) string {
 	if len(binary) > 0 && binary[0] {
 		return string(sum)

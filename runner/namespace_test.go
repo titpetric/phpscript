@@ -8,12 +8,12 @@ import (
 )
 
 // TestRegisterNamespace covers the registry and the install. The registry is
-// process-wide and append-only, and the namespace a test registers is one no
-// binding package claims, with an installer that touches its own name alone.
+// process-wide and append-only. The namespace a test registers is a name that
+// no binding package claims, with an installer that touches that name alone.
 //
-// RegisterNamespace drops a nil installer and an empty name, and either one
-// would reach a runtime mid-install, after a program had resolved part of its
-// calls already.
+// RegisterNamespace drops a nil installer and an empty name. Either would
+// reach a runtime mid-install, after a program had resolved part of its calls
+// already.
 func TestRegisterNamespace(t *testing.T) {
 	RegisterNamespace("Test\\Area", func(rt *Runtime) {
 		rt.RegisterFunc("test_area_probe", func() string { return "installed" })
@@ -21,7 +21,7 @@ func TestRegisterNamespace(t *testing.T) {
 	if _, ok := NamespaceInstaller("Test\\Area"); !ok {
 		t.Fatal("the registered installer does not resolve")
 	}
-	// PHP resolves a name in any case and so does the import.
+	// PHP resolves a name in any case. The import resolves it the same way.
 	if _, ok := NamespaceInstaller("\\test\\area"); !ok {
 		t.Error("the installer does not resolve case-insensitively, or through a leading separator")
 	}
@@ -39,11 +39,11 @@ func TestRegisterNamespace(t *testing.T) {
 	}
 }
 
-// TestUseNamespace covers what an import does to a runtime. An import that
-// names no contributed namespace leaves the surface alone, an import that
-// names one runs the installer, and a second import of the same namespace
-// runs it no further time. The surface a runtime has before the import is
-// the guarantee the mechanism exists for.
+// TestUseNamespace covers the change an import makes to a runtime. An import
+// naming no contributed namespace leaves the surface alone. An import naming
+// one runs the installer. A second import of the same namespace runs nothing
+// further. The surface a runtime holds before the import is the guarantee the
+// mechanism exists for.
 func TestUseNamespace(t *testing.T) {
 	installs := 0
 	RegisterNamespace("Test\\Counted", func(rt *Runtime) {
@@ -72,10 +72,10 @@ func TestUseNamespace(t *testing.T) {
 	}
 }
 
-// TestUseImports covers the program-level seam Run uses, the one the bytecode
-// engine needs. That engine compiles and runs a program whole and reaches no
-// statement interpreter, and the install happens before either engine starts.
-// The loop passes over a statement that imports no namespace.
+// TestUseImports covers the program-level seam Run uses, needed by the
+// bytecode engine. That engine compiles and runs a program whole and reaches
+// no statement interpreter. The install happens before either engine starts.
+// The loop passes over any statement importing no namespace.
 func TestUseImports(t *testing.T) {
 	RegisterNamespace("Test\\Program", func(rt *Runtime) {
 		rt.RegisterFunc("test_program_probe", func() string { return "installed" })
@@ -91,10 +91,10 @@ func TestUseImports(t *testing.T) {
 	}
 }
 
-// TestUseImportPaths covers the three ways a file can name a contributed namespace:
-// the namespace, and a `use function` or `use const` import of a symbol in it,
-// which names one segment more. A path below a contributed namespace installs
-// it no deeper than one segment, whichever segment the install reads.
+// TestUseImportPaths covers three ways a file can name a contributed namespace:
+// the namespace; a `use function` import of a symbol inside the namespace; a
+// `use const` import. Those name one segment more. A path below a contributed namespace
+// installs no deeper than one segment, whichever segment the install reads.
 func TestUseImportPaths(t *testing.T) {
 	RegisterNamespace("Test\\Symbol", func(rt *Runtime) {
 		rt.RegisterFunc("test_symbol_probe", func() string { return "installed" })
@@ -117,7 +117,7 @@ func TestUseImportPaths(t *testing.T) {
 // TestUseImportReadsAKnownNamespaceOnce covers the import of a registered
 // namespace seen twice, as `useImports` before the run and the `use` statement
 // during it do: the second pass finds the namespace already installed and does
-// not fall back to the namespace above it, which would install that one.
+// not fall back to the namespace above. That parent would install too.
 func TestUseImportReadsAKnownNamespaceOnce(t *testing.T) {
 	parentInstalls := 0
 	RegisterNamespace("Test\\Twice", func(*Runtime) { parentInstalls++ })

@@ -36,10 +36,9 @@ echo "hello " . $_REQUEST["name"];
 	"secret.txt": {Data: []byte(`not public`)},
 }
 
-// TestNewCommand covers what the constructor closes over. The configuration
-// arrives as a pointer so one signature covers all nine commands. The server
-// reads it and a nil pointer resolves to the zero configuration before the Run
-// closure captures it. The command declares no flags: the listen address and
+// TestNewCommand covers the state the constructor closes over. The
+// configuration arrives as a pointer; one signature covers all nine commands. The server reads the pointer. A nil pointer resolves to the zero
+// configuration before the Run closure captures the pointer. The command declares no flags: the listen address and
 // the document root come from the configuration file; the rest are the shared
 // flags.
 func TestNewCommand(t *testing.T) {
@@ -61,9 +60,9 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestModule covers the module serving one application root. The root is a
-// directory on disk and the document root is the subdirectory below it that
-// HTTP reaches and the handler serves a file inside the document root and
-// never one beside it.
+// directory on disk; the document root is a subdirectory of it that HTTP
+// reaches. The handler serves a file inside the document root. A file outside
+// the document root stays out.
 func TestModule(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -105,9 +104,9 @@ func TestModule(t *testing.T) {
 }
 
 // TestModule_Mount covers the pattern the module claims. "/*" is the last
-// route a router resolves and a module mounted this way answers every path the
-// routes registered ahead of it left alone, and the annotated routes of the
-// same application keep their own paths.
+// route a router resolves; a module mounted this way answers every path the
+// routes registered ahead of it left alone. The annotated routes of the same
+// application keep their own paths.
 func TestModule_Mount(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -246,9 +245,9 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 	}
 }
 
-// TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode pins what the recorded
-// state means: a page ending with exit() ran to completion, and only a
-// non-zero code is a failure, because the state feeds the reported SLA.
+// TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode pins the recorded state: a
+// page ending with exit() ran to completion; only a non-zero code is a failure.
+// The state feeds the reported SLA.
 func TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -339,8 +338,7 @@ func TestPlatformOptionsComeFromTheServerBlock(t *testing.T) {
 	}
 }
 
-// site writes an application root serving body at its index, and returns the
-// root.
+// site writes an application root with body at index and returns it.
 func site(t *testing.T, name, body string) string {
 	t.Helper()
 
@@ -358,8 +356,8 @@ func site(t *testing.T, name, body string) string {
 	return root
 }
 
-// operatorConfig writes the file the server starts from, and returns its
-// path. Rewriting it and reloading is what these tests are about.
+// operatorConfig writes the file the server starts from, and returns the path.
+// These tests rewrite and reload that file.
 func operatorConfig(t *testing.T, source string) string {
 	t.Helper()
 

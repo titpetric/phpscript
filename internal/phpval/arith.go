@@ -8,8 +8,8 @@ import (
 // phpArith and the flat VM's specialised integer opcodes so the overflow and
 // division rules have one home.
 
-// The Overflow* trio performs int64 arithmetic and reports false, and never
-// wrapping and a caller can fall back to float the way PHP does.
+// The Overflow* trio performs int64 arithmetic and reports false on overflow,
+// without wrapping; a caller can fall back to float the way PHP does.
 
 // OverflowAddInt adds x and y.
 func OverflowAddInt(x, y int64) (int64, bool) {
@@ -40,10 +40,10 @@ func OverflowMulInt(x, y int64) (int64, bool) {
 }
 
 // AddInt, SubInt and MulInt add PHP semantics on top: integer arithmetic that
-// overflows becomes float and PHP_INT_MAX + 1 is 9.2233720368548E+18, never a
-// wrapped negative.
+// overflows becomes float and PHP_INT_MAX + 1 is 9.2233720368548E+18; the
+// result never wraps negative.
 
-// AddInt is PHP's + on two ints.
+// AddInt adds two ints as PHP's + does.
 func AddInt(x, y int64) any {
 	if z, ok := OverflowAddInt(x, y); ok {
 		return z
@@ -51,7 +51,7 @@ func AddInt(x, y int64) any {
 	return float64(x) + float64(y)
 }
 
-// SubInt is PHP's - on two ints.
+// SubInt subtracts two ints as PHP's - does.
 func SubInt(x, y int64) any {
 	if z, ok := OverflowSubInt(x, y); ok {
 		return z
@@ -59,7 +59,7 @@ func SubInt(x, y int64) any {
 	return float64(x) - float64(y)
 }
 
-// MulInt is PHP's * on two ints.
+// MulInt multiplies two ints as PHP's * does.
 func MulInt(x, y int64) any {
 	if z, ok := OverflowMulInt(x, y); ok {
 		return z
@@ -68,8 +68,8 @@ func MulInt(x, y int64) any {
 }
 
 // DivInt divides as PHP's / does: an uneven division is float, an even one
-// stays int. A zero divisor answers int 0 and no caller reads it, both engines
-// raising DivisionByZeroError first.
+// stays int. A zero divisor answers int 0, a value no caller reads; both engines
+// raise DivisionByZeroError first.
 func DivInt(x, y int64) any {
 	if y == 0 {
 		return int64(0)

@@ -78,7 +78,7 @@ func parseFixture(data []byte) (fixture, error) {
 
 // runFixture executes the fixture's PHP the way the HTTP host does: it
 // buffers output and, on an uncaught error, discards it in favour of an
-// "Internal Server Error" body. It returns the underlying error too and a
+// "Internal Server Error" body. It returns the underlying error as well; a
 // fixture can also assert its message through the `error` metadata field.
 func runFixture(ctx context.Context, f fixture) (string, error) {
 	prog, err := parser.Parse(f.PHP)
@@ -115,7 +115,7 @@ func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings
 	return rt
 }
 
-// TestFixtures discovers every fixtures/<area>/*.phpt file, runs it, and
+// TestFixtures discovers every fixtures/<area>/*.phpt file, runs it, then
 // asserts the program output (or the expected error). It also prints a summary
 // table, grouped the way the fixture tree is.
 func TestFixtures(t *testing.T) {
@@ -173,7 +173,7 @@ var bindingBenchmarkSink int
 
 // BenchmarkGoBindingHTTP compares the same constructor and API calls made by a
 // native Go HTTP handler and by a per-request PHP runtime. Source parsing sits
-// outside the timed region, and each iteration reuses one prebuilt request.
+// outside the timed region; each iteration reuses one prebuilt request.
 // The timed region covers recorder allocation, runtime setup, reflective
 // binding dispatch, execution and response writing, where each applies.
 func BenchmarkGoBindingHTTP(b *testing.B) {
@@ -264,9 +264,9 @@ func oneLine(s string) string {
 }
 
 // TestFixtureRequest covers the frontmatter block a fixture describes its
-// superglobals with. Every map keys on the name PHP reads it under and a
-// fixture writes $_GET and $_POST as yaml and the harness copies them across
-// without a translation table.
+// superglobals with. Every map keys on the superglobal name PHP expects. A
+// fixture writes $_GET and $_POST as yaml. The harness copies them across
+// directly.
 func TestFixtureRequest(t *testing.T) {
 	fx, err := ParseFixture([]byte("name: request\ndescription: request block\nrequest:\n  get:\n    page: \"2\"\n  post:\n    name: alice\n  cookie:\n    sid: abc\n  env:\n    APP: test\n  headers:\n    X-Trace: t1\n  stdin: \"in\"\n  body: \"raw\"\n  args: [\"one\"]\n---\n<?php\n---\n"), "request.phpt")
 	if err != nil {
@@ -289,7 +289,7 @@ func TestFixtureRequest(t *testing.T) {
 }
 
 // TestFixtureResponse covers the headers a fixture holds the response to. The
-// block is assertions and no input and it holds only what a run compares
+// block holds assertions, not input; it holds only the values a run compares
 // against.
 func TestFixtureResponse(t *testing.T) {
 	fx, err := ParseFixture([]byte("name: response\ndescription: response block\nresponse:\n  headers:\n    Content-Type: text/plain\n---\n<?php\n---\n"), "response.phpt")
@@ -304,8 +304,8 @@ func TestFixtureResponse(t *testing.T) {
 }
 
 // TestFixture_SetRootFS covers the filesystem a fixture's includes resolve
-// against. The directory holding the .phpt is what every caller binds and a
-// relative require reaches the same file under all three runners.
+// against. Every caller binds the directory holding the .phpt; a relative
+// require reaches the same file under all three runners.
 func TestFixture_SetRootFS(t *testing.T) {
 	fx, err := ParseFixture([]byte("name: rootfs\ndescription: include root\n---\n<?php\nrequire \"helper.php\";\necho helper();\n---\nhelped"), "rootfs.phpt")
 	if err != nil {
@@ -322,9 +322,9 @@ func TestFixture_SetRootFS(t *testing.T) {
 }
 
 // TestFixture_SetAppRoot covers the second filesystem a fixture runs over: the
-// application root holding the prelude. The fixture directory answers first,
-// and a fixture's own relative include keeps meaning what it meant. The run
-// reads the prelude off the root beneath it.
+// application root holding the prelude. The fixture directory answers first; a
+// fixture's relative include keeps its meaning. The run reads the prelude off
+// the root beneath it.
 func TestFixture_SetAppRoot(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "prelude.php"), []byte("<?php\nfunction prelude_tag() { return \"tagged\"; }\n"), 0o600); err != nil {
@@ -352,8 +352,8 @@ func TestFixture_SetAppRoot(t *testing.T) {
 
 // TestFixture_SetDatabase covers the connections a fixture's Database bindings
 // resolve through. The suite passes the provider its setup hook applied the
-// schema with and runnerOptions sends that one into the run and opens no
-// second pool over the same DSN.
+// schema; runnerOptions sends that provider into the run and opens no other
+// pool over the same DSN.
 func TestFixture_SetDatabase(t *testing.T) {
 	provider := database.New(nil)
 
@@ -369,8 +369,8 @@ func TestFixture_SetDatabase(t *testing.T) {
 }
 
 // TestFixture_SetMail covers the mail servers a fixture may name. The run
-// leaves no state behind: construction is a name lookup. The names are what
-// the fixtures assert on.
+// leaves no state behind: construction is a name lookup. The fixtures assert
+// on those names.
 func TestFixture_SetMail(t *testing.T) {
 	provider := mail.NewProvider(nil)
 
@@ -403,8 +403,8 @@ func TestFixture_SetCoverage(t *testing.T) {
 
 // TestFixture_RootDir covers the directory a fixture's includes resolve
 // against, which is also where the php runner executes. A fixture naming
-// `root:` moves it, relative to its own directory, for a tree phpscript does
-// not embed.
+// `root:` moves it, relative to its directory, for a tree phpscript does not
+// embed.
 func TestFixture_RootDir(t *testing.T) {
 	for _, tc := range []struct {
 		path string

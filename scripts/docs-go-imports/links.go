@@ -16,8 +16,8 @@ type generator struct {
 	classes  map[string]classLink
 }
 
-// classLink is what a class row links to: the Go type behind a wrapper, the Go
-// name of each method it exposes.
+// classLink is the target of a class row link: the Go type behind a wrapper,
+// the Go name of each method it exposes.
 type classLink struct {
 	path    string
 	name    string
@@ -72,7 +72,7 @@ func splitClassName(name string) (area, short string) {
 
 // url answers the pkg.go.dev link for one row, and empty where the package
 // declares no such symbol. The check reads the standard library source. A name
-// the runtime adds beside a package, such as http.Aborted, stays plain.
+// the runtime adds next to a package, such as http.Aborted, stays plain.
 func (g *generator) url(area, kind, name string) string {
 	shortName := short(area, name)
 	path := g.paths[area]
@@ -154,7 +154,7 @@ func docURL(path, anchor string) string {
 	return packageURL(path) + "#" + anchor
 }
 
-// named renders a name as a table cell, linked where the package declares it.
+// named renders a name as a table cell, linked to its declaration.
 func (g *generator) named(area, kind, name string) string {
 	if url := g.url(area, kind, name); url != "" {
 		return "[" + "`" + name + "`" + "](" + url + ")"

@@ -6,8 +6,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestPHPBase64Encode covers the standard alphabet with '=' padding, the only
-// base64 php's encoder writes.
+// TestPHPBase64Encode covers the standard alphabet with '=' padding.
 func TestPHPBase64Encode(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ in, want string }{
@@ -78,9 +77,9 @@ func TestPHPBin2hex(t *testing.T) {
 }
 
 // TestURLEncode covers the two tables the encoders keep. Go's url.QueryEscape
-// leaves '~' literal where php escapes it in the form spelling and neither
-// encoder passes through the standard library: urlencode writes a space as '+'
-// and '~' as '%7E', rawurlencode writes '%20' and leaves '~' alone.
+// leaves '~' literal, while php escapes it in the form spelling; neither
+// encoder passes through the standard library: urlencode writes a space as a
+// plus and '~' as '%7E', rawurlencode writes '%20' and leaves '~' alone.
 func TestURLEncode(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -120,8 +119,8 @@ func TestURLDecode(t *testing.T) {
 }
 
 // TestPHPHTTPBuildQuery covers joining pairs into a query string: the encoder
-// urlencodes both halves and a nested key arrives as the escaped key%5Bsub%5D,
-// and the insertion order of the array is the order of the pairs. It drops a
+// urlencodes both halves; a nested key arrives as the escaped key%5Bsub%5D, and
+// the insertion order of the array is the order of the pairs. It drops a
 // null entry, writing no empty value for it.
 func TestPHPHTTPBuildQuery(t *testing.T) {
 	t.Parallel()
@@ -145,8 +144,8 @@ func TestPHPHTTPBuildQuery(t *testing.T) {
 }
 
 // TestPHPParseStr covers the inverse of http_build_query, and the decoder
-// behind $_GET and $_POST. php's bracket syntax nests, and every value decodes
-// as a string and a=1 reads back as the string "1".
+// behind $_GET and $_POST. php's bracket syntax nests; every value decodes as a
+// string. The query a=1 reads back as the string "1".
 //
 // The setter is nil when a script omitted the by-reference argument. php raises
 // an ArgumentCountError for that call; this runtime pads a short call and

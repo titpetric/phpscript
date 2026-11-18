@@ -214,15 +214,15 @@ func jsonDecodeValue(v any) any {
 	}
 }
 
-// JSONEncoder writes JSON values to a stream, Go's json.Encoder with the one
-// difference PHP forces: Encode takes a PHP value and converts it the way
-// json_encode() converts one and the two spellings answer the same JSON for
+// JSONEncoder writes JSON values to a stream, Go's json.Encoder with one
+// difference PHP forces: Encode takes a PHP value and converts it as
+// json_encode() converts that value. Both spellings answer the same JSON for
 // the same array.
 //
 // A plain encoder appends the document into buf and writes it in one call.
-// SetIndent alone builds the json.Encoder underneath, because indenting is
-// encoding/json's own pass over finished bytes and this writes none it could
-// read; an encoder nothing indents never builds one.
+// SetIndent alone builds the json.Encoder underneath. Indenting is
+// encoding/json's pass over finished bytes. This encoder writes none, and an
+// encoder nothing indents never builds one.
 type JSONEncoder struct {
 	stream io.Writer
 	buf    []byte
@@ -261,8 +261,8 @@ func (e *JSONEncoder) Encode(value any) error {
 	return err
 }
 
-// SetIndent is json.Encoder.SetIndent: $indent per level under $prefix, and
-// two empty strings go back to one line per value.
+// SetIndent is json.Encoder.SetIndent: $indent per level under $prefix. Two
+// empty strings go back to a single line per value.
 func (e *JSONEncoder) SetIndent(prefix, indent string) {
 	if e.enc == nil {
 		e.enc = json.NewEncoder(e.stream)
@@ -278,8 +278,8 @@ type JSONDecoder struct {
 
 // NewJSONDecoder returns a decoder reading from $stream.
 //
-// UseNumber is on, as in json_decode(): a whole number comes back an int and
-// only a fractional one a float, the way php answers.
+// UseNumber is on, as in json_decode(): a whole number comes back an int;
+// only a fractional number becomes a float, the way php answers.
 func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	if stream == nil {
 		return nil, errNilStream("JSON\\Decoder", "reader")
@@ -289,7 +289,7 @@ func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	return &JSONDecoder{dec: dec}, nil
 }
 
-// Decode reads the next value from the stream, throwing at the end of it.
+// Decode reads the next value from the stream, throwing at the end.
 func (d *JSONDecoder) Decode() (any, error) {
 	return jsonDecodeStream(d.dec)
 }

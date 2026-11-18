@@ -16,7 +16,7 @@ import (
 // GoNamespace is the namespace a script imports to bind go's builtins.
 const GoNamespace = `Runtime\Go`
 
-// goBuiltins holds the names the go import binds unqualified, four of which shadow php.
+// goBuiltins holds the names the go import binds unqualified, four shadowing php.
 var goBuiltins = map[string]struct{}{
 	"append":  {},
 	"cap":     {},
@@ -34,7 +34,7 @@ var goBuiltins = map[string]struct{}{
 	"println": {},
 }
 
-// goTypes maps a go type name to its conversion, false for a pair it declines.
+// goTypes maps a go type name to its conversion, or false when declined.
 var goTypes = map[string]func(any) (any, bool){
 	"any":     func(v any) (any, bool) { return v, true },
 	"bool":    goBool,
@@ -93,7 +93,7 @@ func GoBuiltinNames() []string {
 	return names
 }
 
-// GoType reports whether name is one of go's builtin types.
+// GoType reports whether name is a go builtin type.
 func GoType(name string) bool {
 	_, ok := goTypes[name]
 	return ok
@@ -104,7 +104,7 @@ func GoTypeNames() []string {
 	return slices.Sorted(maps.Keys(goTypes))
 }
 
-// GoFold converts v under the go type name and reports whether it did.
+// GoFold converts v to the go type name and reports whether it did.
 func GoFold(name string, v any) (any, bool) {
 	convert, ok := goTypes[name]
 	if !ok {
@@ -113,19 +113,19 @@ func GoFold(name string, v any) (any, bool) {
 	return convert(v)
 }
 
-// goBool is bool's conversion, over a value php has already read for truth.
+// goBool is bool's conversion, applied to a value php already read for truth.
 func goBool(v any) (any, bool) {
 	b, ok := v.(bool)
 	return b, ok
 }
 
-// goString is string's conversion, over a value php has already rendered.
+// goString is string's conversion, applied to a value php already rendered.
 func goString(v any) (any, bool) {
 	s, ok := v.(string)
 	return s, ok
 }
 
-// goSigned converts an int64 at php's own width and declines every other type.
+// goSigned converts an int64 at php's own width and declines all other types.
 func goSigned(bits int) func(any) (any, bool) {
 	return func(v any) (any, bool) {
 		n, ok := v.(int64)

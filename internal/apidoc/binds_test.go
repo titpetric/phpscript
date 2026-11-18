@@ -11,7 +11,7 @@ import (
 )
 
 // boundClient is the shape a binding of this module takes: it holds the
-// standard library type it exposes, next to the machinery it needs to.
+// standard library type it exposes alongside the machinery it needs.
 type boundClient struct {
 	client  *http.Client
 	timeout time.Duration
@@ -24,8 +24,7 @@ type boundEncoder struct {
 	encoder *json.Encoder
 }
 
-// boundStore holds machinery and exposes nothing of the standard library, the
-// SharedMemory over sync.Mutex shape.
+// boundStore exposes no standard library: sync.Mutex in SharedMemory.
 type boundStore struct {
 	mu     sync.Mutex
 	values map[string]string
@@ -37,12 +36,12 @@ type boundEmbedded struct {
 }
 
 // TestReflectBinds covers the rule the class description cites by: a bound type
-// the standard library declares cites itself, one this module declares cites
-// the standard library type it wraps, and one that wraps none cites itself.
+// the standard library declares cites itself; one this module declares cites
+// the standard library type it wraps; one wrapping none cites itself.
 //
-// The name test separates the wrapped value from the machinery beside it.
-// Without it an encoder cites the io.Writer it holds, the first standard
-// library field it declares and the one it encodes through.
+// The name test separates the wrapped value from the surrounding machinery.
+// Remove that separation, and an encoder cites the io.Writer it holds, the first
+// standard library field it declares, plus the field it encodes through.
 func TestReflectBinds(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -70,8 +69,8 @@ func TestReflectBinds(t *testing.T) {
 }
 
 // TestReflectBindsLinksStdlibOnly pins which citation holds a link. A
-// pkg.go.dev page exists for a standard library symbol and for nothing in this
-// module, and a link to a page that does not exist is worse than no link.
+// pkg.go.dev page exists for a standard library symbol, not for anything in
+// this module. A link to a page that does not exist is worse than no link.
 func TestReflectBindsLinksStdlibOnly(t *testing.T) {
 	t.Parallel()
 	if got, want := reflectBinds(reflect.TypeOf(&boundClient{})).URL, "https://pkg.go.dev/net/http#Client"; got != want {
@@ -103,8 +102,8 @@ func TestRelatedNames(t *testing.T) {
 	}
 }
 
-// TestGoTypeKey covers the key the doc index holds a bound type's source text
-// under. A pointer and the type it points at answer the same key, and an
+// TestGoTypeKey covers the key the doc index stores a bound type's source text
+// with. A pointer and the type it points at answer the same key, and an
 // unnamed type answers the empty string.
 func TestGoTypeKey(t *testing.T) {
 	t.Parallel()

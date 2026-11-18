@@ -8,13 +8,13 @@ import (
 )
 
 // TestRegisterEnvironment covers the putenv/getenv pair reading one map on the
-// runtime and a variable a script sets is visible to the same script and to
-// no other part of the process around it.
+// runtime. A variable a script sets is visible to the same script and to no
+// other part of the process around it.
 //
 // getenv answers false for a name nothing set, which is php's contract and the
 // reason a caller compares with === false: the empty string is a value a
-// variable can hold. putenv answers true for every call it accepts, and a bare
-// "NAME" with no '=' unsets.
+// variable can hold. putenv answers true for every call it accepts. A bare
+// "NAME" without '=' unsets.
 func TestRegisterEnvironment(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

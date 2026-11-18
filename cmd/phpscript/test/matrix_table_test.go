@@ -195,8 +195,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	}
 }
 
-// TestMatrixDurationsSplitPerEngine covers the per-runner share the matrix
-// subtotal and summary lines print after the wall-clock figure.
+// TestMatrixDurationsSplitPerEngine covers the per-runner share the subtotal and summary print.
 func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 	t.Parallel()
 	engines := []engineDuration{
@@ -222,8 +221,7 @@ func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 	}
 }
 
-// TestMarkdownSummarySplitsEngineDurations covers the closing summary table of
-// a -o matrix report with cost columns.
+// TestMarkdownSummarySplitsEngineDurations covers the closing summary table with cost columns.
 func TestMarkdownSummarySplitsEngineDurations(t *testing.T) {
 	t.Parallel()
 	engines := []engineDuration{

@@ -17,7 +17,7 @@ const (
 	argon2DefaultLanes  = 1
 )
 
-// argon2SaltLen and argon2KeyLen hold the 16-byte salt and 32-byte tag php's PHC form uses.
+// argon2SaltLen and argon2KeyLen hold the 16-byte salt and 32-byte tag.
 const (
 	argon2SaltLen = 16
 	argon2KeyLen  = 32
@@ -30,7 +30,7 @@ const argon2MaxLanes = 255
 // argon2b64 is the PHC string format's encoding: standard base64, unpadded.
 var argon2b64 = base64.RawStdEncoding
 
-// argon2Hash derives a fresh hash under p, encoding the generated salt into the result.
+// argon2Hash derives a fresh hash under p, encoding the generated salt.
 func argon2Hash(password string, p params) (string, error) {
 	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
@@ -39,7 +39,7 @@ func argon2Hash(password string, p params) (string, error) {
 	return argon2Encode(salt, argon2Key(p, []byte(password), salt, argon2KeyLen), p), nil
 }
 
-// argon2Verify recomputes the tag from the stored hash's parameters and salt, false when unreadable.
+// argon2Verify recomputes the tag from stored parameters and salt.
 func argon2Verify(password, hash string) bool {
 	p, salt, want, err := argon2Decode(hash)
 	if err != nil {
@@ -69,7 +69,7 @@ func argon2Encode(salt, sum []byte, p params) string {
 	return b.String()
 }
 
-// argon2Decode reads the PHC string into parameters, salt and tag, requiring the version field.
+// argon2Decode reads the PHC string into parameters, salt and tag.
 func argon2Decode(hash string) (params, []byte, []byte, error) {
 	fields := strings.Split(hash, "$")
 	if len(fields) != 6 || fields[0] != "" {
@@ -125,7 +125,7 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 	return p, salt, sum, nil
 }
 
-// isArgon2 reports whether a stored hash names an argon2i or argon2id variant.
+// isArgon2 reports whether a stored hash is argon2i or argon2id.
 func isArgon2(hash string) bool {
 	return strings.HasPrefix(hash, "$"+algoArgon2i+"$") || strings.HasPrefix(hash, "$"+algoArgon2id+"$")
 }

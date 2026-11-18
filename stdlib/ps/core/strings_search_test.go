@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestStringSearchPositions covers the four position functions: an offset
+// TestStringSearchPositions covers every position function: an offset
 // counts bytes and the search starts there, a negative one counts back, the
 // reverse pair answers the last match, and the folded pair matches ASCII case.
 // A needle the haystack does not hold is false and the return is any.
@@ -33,8 +33,8 @@ func TestStringSearchPositions(t *testing.T) {
 }
 
 // TestSubstrCountWindow covers the offset and length substr_count() takes: the
-// window is the part of the haystack counted over, and a count past the window
-// is not a count.
+// window is the part of the haystack that the count covers. A count past the
+// window does not count.
 func TestSubstrCountWindow(t *testing.T) {
 	t.Parallel()
 	if got := phpSubstrCount("aaa", "a"); got != 3 {
@@ -46,14 +46,14 @@ func TestSubstrCountWindow(t *testing.T) {
 	if got := phpSubstrCount("aaa", "a", int64(0), int64(2)); got != 2 {
 		t.Errorf("substr_count over a window = %d, want 2", got)
 	}
-	// Overlapping needles count once each, as php counts them.
+	// Overlapping needles each count once, as php counts them.
 	if got := phpSubstrCount("aaa", "aa"); got != 1 {
 		t.Errorf("substr_count of an overlapping needle = %d, want 1", got)
 	}
 }
 
-// TestStringContainsFamily covers the three php 8 predicates, which pass
-// straight through to strings and answer true for an empty needle.
+// TestStringContainsFamily covers three php 8 predicates. They pass straight
+// through to strings and answer true for an empty needle.
 func TestStringContainsFamily(t *testing.T) {
 	t.Parallel()
 	if !phpStrContains("hello", "ell") || !phpStrStartsWith("hello", "he") || !phpStrEndsWith("hello", "lo") {

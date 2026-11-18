@@ -1,8 +1,8 @@
 # Virtual hosting
 
-One `phpscript server` can answer for more than one website. The operator lists the sites, each site owns the tree it serves and the configuration it runs under, and the `Host` header of a request is the only thing that selects between them.
+One `phpscript server` can answer for more than one website. The operator lists the sites. Each site owns the tree it serves and the configuration it uses. A request's `Host` header alone selects a site.
 
-This walkthrough builds a server for two sites, `shop.example.com` and `blog.example.com`, and then shows what one domain cannot reach on the other. The reference for every key it uses is [Configuration](../configuration.md#virtual-hosts).
+This walkthrough builds a server for two sites, `shop.example.com` and `blog.example.com`. It then shows which resources one domain cannot reach on the other. The reference for every key it uses is [Configuration](../configuration.md#virtual-hosts).
 
 ## 1. The layout
 
@@ -28,11 +28,11 @@ sites/
         └── db.php
 ```
 
-`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing has to say so. `blog` already calls that directory `web`. The setting exists for that case.
+`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing says so. `blog` already calls that directory `web`. The setting exists for that case.
 
 ## 2. The operator's configuration
 
-`server.yml` names the listen address and the sites. A `root` resolves against the working directory and these are the two directories beside the file:
+`server.yml` names the listen address and the sites. A `root` resolves against the working directory. These are the two directories next to the file:
 
 ```yaml
 server:
@@ -50,13 +50,13 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would mount on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults hold and a site that configures no database inherits nothing. The sites' scripts also read `env` with `getenv()` and leaving it empty keeps the operator's own environment out of them.
+Two keys here are off. `telemetry.enabled: false` leaves the platform dashboard unmounted. It would mount on the root router, in front of the host mux, and shadow the dashboard each site mounts. `env: []` drops the connection the embedded defaults hold; a site that configures no database inherits nothing. The sites' scripts also read `env` with `getenv()`. Leaving it empty keeps the operator's environment out of them.
 
 ## 3. Each site's configuration
 
-Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml` and it only names what it changes.
+Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml`. It names only the keys it changes.
 
-`shop/phpscript.yml` takes route scanning and the runner limits as they come, and names its own tracer and database:
+`shop/phpscript.yml` takes route scanning and the runner limits as they come. It names a tracer, plus a database:
 
 ```yaml
 routes:
@@ -87,11 +87,11 @@ telemetry:
 env: []
 ```
 
-Both sites mount a dashboard on `/debug/oida`. That is not a collision: each mounts it inside its own router, and a router only ever sees the requests for its own domain.
+Both sites mount a dashboard on `/debug/oida`. That is not a collision: each mounts it inside a private router. A router sees only requests for the domain it serves.
 
 ## 4. The sites
 
-The files are what they would be if each site ran in its own server. `shop/public/index.php`:
+The files match a run where each site had a server to itself. `shop/public/index.php`:
 
 ```php
 <?php echo "shop";
@@ -133,7 +133,7 @@ header("Content-Type: application/json");
 echo json_encode(array("posts" => array()));
 ```
 
-Both sites hold the same `db.php`, `shop/public/db.php` and `blog/web/db.php` and the database boundary is visible later:
+Both sites hold the same `db.php`: `shop/public/db.php` and `blog/web/db.php`. The database boundary is visible later:
 
 ```php
 <?php
@@ -145,7 +145,7 @@ echo "connected";
 
 ## 5. Run it
 
-The operator passes no application root. The entries name their own, and `phpscript server` rejects an argument here:
+The operator passes no application root. The entries name the roots, and `phpscript server` rejects an argument here:
 
 ```bash
 phpscript -f server.yml server
@@ -159,7 +159,7 @@ Server listening on 127.0.0.1:8080 http://127.0.0.1:8080
 
 `@startup` and `@schedule` run per site, and the modules they run as name the domain and `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
 
-A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server goes on serving every site including the one whose job failed. The rest of that site's jobs still run.
+A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server goes on serving every site, including the site whose job failed. The rest of that site's jobs still run.
 
 Requests select a site by `Host`:
 
@@ -174,7 +174,7 @@ curl -H 'Host: blog.example.com' http://127.0.0.1:8080/feed
 # {"posts":[]}
 ```
 
-A site that answers to more than one name lists them all in `domain`, separated by spaces. The server builds it once and every name reaches the same handler, sharing its routes, its recorder and its connections:
+A site that answers to more than one name lists them all in `domain`, separated by spaces. The server builds it once. Every name reaches the same handler, which shares routes, recorder and connections:
 
 ```yaml
 virtualhost:
@@ -182,9 +182,9 @@ virtualhost:
     root: shop
 ```
 
-The first name is the site's own, the one errors and module names report it as.
+The first name is primary: errors and module names report it.
 
-Matching is exact, but the host mux compares a `Host` lowercased, without its port and without a trailing dot and all three of these reach `shop`:
+Matching is exact, but the host mux compares a `Host` lowercased, without a port and without a trailing dot. All three reach `shop`:
 
 ```sh
 curl -H 'Host: SHOP.Example.com.' http://127.0.0.1:8080/
@@ -194,9 +194,9 @@ curl -H 'Host: shop.example.com' http://127.0.0.1:8080/
 
 ## 6. What one domain cannot reach on the other
 
-Each site gets its own router; every boundary below follows from it.
+Each site gets a private router; every boundary below follows from that.
 
-**Routes.** Shop's router registers `/hello/{name}` and the blog does not have it, and `/feed` is not shop's:
+**Routes.** Shop's router registers `/hello/{name}`; the blog lacks it. `/feed` is not shop's:
 
 ```sh
 curl -i -H 'Host: blog.example.com' http://127.0.0.1:8080/hello/Ada
@@ -205,18 +205,18 @@ curl -i -H 'Host: shop.example.com' http://127.0.0.1:8080/feed
 # HTTP/1.1 404 Not Found
 ```
 
-**The document root.** Each site serves the directory beneath its own application root, `shop/public` and `blog/web`. A path that exists in one tree is not a path in the other.
+**The document root.** Each site serves the directory beneath the application root: `shop/public` for one, `blog/web` for the other. Any path that exists in one tree is not a path in the other.
 
-**Telemetry.** Each site's `telemetry` block builds its own tracer and mounts its own front end inside its own router. The same URL is a different dashboard on each domain:
+**Telemetry.** Each site's `telemetry` block builds a tracer and mounts a front end inside a private router. The same URL is a different dashboard on each domain:
 
 ```sh
 curl -s -H 'Host: shop.example.com' http://127.0.0.1:8080/debug/oida/traces
 curl -s -H 'Host: blog.example.com' http://127.0.0.1:8080/debug/oida/traces
 ```
 
-Each page takes its title from the `service_name` its own file configured, `shop` on one domain and `blog` on the other, and lists the requests that arrived on that domain and no others. The counters and the trace store behind them are separate, not two views of one buffer.
+Each page takes its title from the `service_name` in the site's file: `shop` on one domain, `blog` on the other. It lists the requests that arrived on that domain, never another's. The counters and the trace store are separate, not two views of one buffer.
 
-**Databases.** The provider builds a site's connections from that site's own `env` and sees no other site's connection. The two `db.php` files are identical and only shop's works:
+**Databases.** The provider builds a site's connections from that site's `env` and sees no other site's connection. The two `db.php` files are identical and only shop's works:
 
 ```sh
 curl -H 'Host: shop.example.com' http://127.0.0.1:8080/db.php
@@ -236,15 +236,15 @@ curl -i -H 'Host: other.example.com' http://127.0.0.1:8080/
 
 ## 7. What the sites may not do
 
-The listen address belongs to the operator and a site declares no sites. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
+The listen address belongs to the operator; a site declares no sites. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
 
 ```text
 virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the operator, not by the site
 ```
 
-The rest of the configuration is the site's. It can turn route scanning off, raise its own upload limits, choose the flat-stack runtime, or record its traces to disk, without any of it reaching the other site.
+The rest of the configuration is the site's. It can turn route scanning off, raise its upload limits, choose the flat-stack runtime, or record its traces to disk, without any of it reaching the other site.
 
-The startup check loads and checks every entry before the server listens and a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
+The startup check loads and checks every entry before the server listens. A missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server before it accepts a request. [Configuration](../configuration.md#startup-checks) lists the checks.
 
 ## Where to go next
 

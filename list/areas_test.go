@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestAreas covers the area listing: the strings area is there with functions,
-// the overlay layers after it, the Go namespace is opt-in, and a namespace
-// argument narrows the rows.
+// TestAreas covers the area listing: the strings area is there with functions;
+// the overlay layers follow; the Go namespace is opt-in. A namespace argument
+// narrows the rows.
 func TestAreas(t *testing.T) {
 	rows := Areas(runner.Options{})
 	byName := map[string]AreaRow{}

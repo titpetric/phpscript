@@ -4,25 +4,25 @@ import (
 	"context"
 )
 
-// Storage is a user database to authenticate against: the one question a login
-// asks, and whether there is a database to ask it of.
+// Storage is a user database for authentication. It answers the question a
+// login asks, and whether a database exists to ask it of.
 //
 // This is the Auth\Storage\* contract, the arrangement stdlib/ps/session's
-// Storage has one level up - a named interface, and a driver registered under
-// the namespace. A host with its own user table implements these two methods
-// and Session\Manager logs in against it unchanged.
+// Storage uses one level up: a named interface with a driver registered in the
+// namespace. A host with a user table implements these two methods, and
+// Session\Manager logs in with that table unchanged.
 type Storage interface {
 	// Authenticate reports the user key names when secret is theirs. A nil
-	// user refuses, with no error: a wrong password, an unknown key and a
-	// malformed key all answer the same way and neither a caller nor a
+	// user refuses and raises no error: a wrong password, an unknown key or a
+	// malformed key all answer the same way. Neither a caller nor the
 	// caller's timing tells them apart.
 	//
 	// An error names a store nothing could read: a misconfiguration, where a
 	// refusal is a failed login.
 	Authenticate(ctx context.Context, key, secret string) (User, error)
 
-	// Exists reports whether there is a user database to ask: the store is
-	// there and holds at least one account.
+	// Exists reports whether a user database exists: the store is present and
+	// holds at least one account.
 	//
 	// A manager takes a default store on this answer and the default fails no
 	// tree that has no user database: construction resolves where the store

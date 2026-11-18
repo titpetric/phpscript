@@ -21,7 +21,7 @@ var areaRuntimes = struct {
 	byArea map[string]*runner.Runtime
 }{byArea: map[string]*runner.Runtime{}}
 
-// programAreas lists the binding areas prog's use and import statements install, nameless paths excluded.
+// programAreas lists areas prog's use and import statements install, nameless excluded.
 func programAreas(prog *model.Program) []string {
 	var areas []string
 	seen := map[string]bool{}

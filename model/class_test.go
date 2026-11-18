@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-// TestClass_Field covers reading a declaration back off a class. A caller
+// TestClass_Field covers reading a declaration back from a class. A caller
 // reads it when the name alone is not enough: the formatter prints the
 // visibility and the type hint an author wrote. The runtime refuses a write
 // to a private property from outside.
 //
 // A name the class does not declare answers the zero Field and false, which
-// separates an undeclared property from one declared with no visibility.
+// separates an undeclared property from one declared without a visibility.
 func TestClass_Field(t *testing.T) {
 	t.Parallel()
 	class := &Class{
@@ -54,9 +54,8 @@ func TestClass_Field(t *testing.T) {
 	}
 }
 
-// TestClass_declares covers the check a property write passes through. It
-// answers the declaration and not the value and a class whose property is unset
-// still declares it.
+// TestClass_declares covers the check a property write passes. Its answer is
+// the declaration. A class whose property is unset still declares it.
 func TestClass_declares(t *testing.T) {
 	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}

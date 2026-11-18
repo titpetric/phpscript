@@ -13,14 +13,14 @@ import (
 )
 
 // isolationTree is the source root the pooled runtimes serve: one include
-// target and one directory for chdir to move into.
+// target, plus one directory for chdir to move into.
 var isolationTree = fstest.MapFS{
 	"inc.php":      {Data: []byte("<?php\nfunction inc_fn() { return \"inc\"; }\n")},
 	"sub/dir.keep": {Data: []byte("")},
 }
 
-// stateRecorder records the last lifecycle state published to it and a test
-// can see what a pooled runtime announces between requests.
+// stateRecorder records the last lifecycle state published to the recorder. A
+// test can then see the state a pooled runtime announces between requests.
 type stateRecorder struct {
 	state telemetry.State
 }
@@ -45,12 +45,12 @@ func runPooled(t *testing.T, rt *runner.Runtime, src string) (string, error) {
 	return out.String(), err
 }
 
-// TestSessionPoolIsolation runs two programs through one pooled runtime and
-// asserts the second sees nothing of the first: one case per kind of state a
-// script can set, each written so that a reset that stops clearing that state
-// fails the case. The pool holds one runtime, and each case asserts it got the
-// same one back and the isolation under test is the reset's and never a second
-// runtime's.
+// TestSessionPoolIsolation runs two programs through a single pooled runtime
+// and asserts the second sees nothing of the first. The suite holds one case
+// per kind of state a script can set, each written so that a reset which stops
+// clearing that state fails the case. The pool holds one runtime. Each case asserts it
+// got the same runtime back, and the isolation under test is the reset's. The
+// reset alone does that work.
 func TestSessionPoolIsolation(t *testing.T) {
 	recorder := &stateRecorder{}
 	pool := runner.NewSessionPool(1, func() *runner.Runtime {
@@ -68,7 +68,7 @@ func TestSessionPoolIsolation(t *testing.T) {
 		first     string
 		firstErr  bool
 		firstWant string
-		// second probes for the state and echoes what it found; between is a
+		// second probes for the state and echoes its findings; between is a
 		// Go-level probe run after the reset and before the second program.
 		second  string
 		want    string
@@ -181,8 +181,8 @@ func TestSessionPoolIsolation(t *testing.T) {
 			second:   `<?php echo "clean";`,
 			want:     "clean",
 			between: func(t *testing.T, rt *runner.Runtime) {
-				// What a pooled runtime announces at the start of the next
-				// request is whatever SetContext publishes and the probe is
+				// The state a pooled runtime announces at the start of the
+				// next request is whatever SetContext publishes. The probe is
 				// the same call the handler makes.
 				rt.SetContext(context.Background())
 				if recorder.state == telemetry.StateError {

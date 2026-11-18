@@ -42,7 +42,7 @@ func phpStrripos(haystack, needle string, offset ...int64) any {
 	return int64(i)
 }
 
-// searchStart resolves the strpos-family byte offset, reporting false when it lies past the end.
+// searchStart resolves the strpos-family byte offset, false past the end.
 func searchStart(haystack string, offset []int64) (int, bool) {
 	if len(offset) == 0 {
 		return 0, true
@@ -60,7 +60,7 @@ func searchStart(haystack string, offset []int64) (int, bool) {
 	return int(start), true
 }
 
-// searchLast returns the last match at or before the window offset describes, or -1.
+// searchLast returns the last match no later than the window offset, or -1.
 func searchLast(haystack, needle string, offset []int64) int {
 	if len(offset) == 0 || offset[0] == 0 {
 		return strings.LastIndex(haystack, needle)
@@ -80,8 +80,8 @@ func searchLast(haystack, needle string, offset []int64) int {
 	if last < 0 {
 		last = 0
 	}
-	// A match inside the prefix that ends one needle past the cap starts at
-	// or before it and LastIndex over that prefix answers directly.
+	// A match inside the prefix that ends one needle past the cap starts no
+	// later than the cap. LastIndex over that prefix answers directly.
 	end := last + int64(len(needle))
 	if end > int64(len(haystack)) {
 		end = int64(len(haystack))

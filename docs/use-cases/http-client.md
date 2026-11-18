@@ -1,8 +1,8 @@
 # HTTP client bindings
 
-The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls where PHP has the `curl_*` family, which [Design decisions](../design.md#wont-build) refuses.
+The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. A script calls these where PHP has the `curl_*` family, which [Design decisions](../design.md#wont-build) refuses.
 
-A request is a `net/http` request handed straight over and a script reads and writes it the way Go names it. A response is a facade, because the runtime reads its body in full before the script sees it.
+A request is a `net/http` request handed straight over. The script reads and writes it as Go names it. That shape stays visible. A response is a facade: the runtime reads its body in full before the script sees it.
 
 ## Create a client
 
@@ -34,9 +34,9 @@ $client = new HTTP\Client(array(
 | `headers`          | Sent with every request the client makes                                                                    |
 | `insecure`         | Disables certificate verification, for a test server and not for a service                                  |
 
-A client always has a timeout. No spelling turns it off, because a request with no deadline is the one failure a script cannot recover from.
+A client always has a timeout. A request without a deadline is a failure a script cannot recover from. No spelling turns it off.
 
-An unrecognised key throws and the constructor reports a typo where the script writes it, ahead of a request going out without it:
+An unrecognised key throws and the constructor reports a typo where the script writes it, before a request goes out:
 
 ```php
 new HTTP\Client(array("timeuot" => 5));   // throws: unknown option "timeuot"
@@ -60,7 +60,7 @@ $request->header->set("Content-Type", "application/json");
 $response = $client->send($request);
 ```
 
-A script writes HTTP methods uppercase. The request constructor uppercases a lowercase one before the request goes out, because a server treats the method as case-sensitive.
+A script writes HTTP methods uppercase. The request constructor uppercases a lowercase one before the request goes out. A server treats the method as case-sensitive.
 
 `send()` throws on a transport failure or a timeout. An HTTP error status is not a failure and check the status:
 
@@ -90,7 +90,7 @@ $request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 
-Everything `net/http` exports on a request is reachable and there is one vocabulary for a request, with no PHP-side name per part of it.
+Everything `net/http` exports on a request is reachable. A single vocabulary describes a request; no PHP-side name labels a part.
 
 ## Read a response
 
@@ -104,7 +104,7 @@ Everything `net/http` exports on a request is reachable and there is one vocabul
 | `headers()`     | Every response header as an array                                   |
 | `json()`        | The body decoded into arrays and scalars; throws on a non-JSON body |
 
-The response reads the body in full on construction, under a fixed ceiling. A script has no way to close a stream and an unread body would leak its connection when the request ended.
+The response reads the body in full on construction, beneath a fixed ceiling. A script has no way to close a stream and an unread body would leak its connection when the request ended.
 
 ## Send requests in parallel
 
@@ -126,7 +126,7 @@ foreach ($results as $name => $response) {
 }
 ```
 
-One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason and a page renders what it has, and one unreachable host loses one result:
+One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason. A page renders whatever data arrived. One unreachable host loses one result:
 
 ```php
 $results = $client->parallel(array(
@@ -142,7 +142,7 @@ $results["offline"]->status();  // 0, no response arrived
 $results["offline"]->err();     // the transport error, ending in "connection refused"
 ```
 
-`parallel()` throws before opening any connection when the argument is not an array of `HTTP\Request`. The client's timeout bounds each request, and the client's headers and `base_url` apply to every one of them.
+`parallel()` throws before opening any connection when the argument is not an array of `HTTP\Request`. The client's timeout bounds each request, and the client's headers and `base_url` apply to each request.
 
 ## A page that calls an API
 
@@ -177,8 +177,8 @@ foreach ($response->json() as $user) {
 }
 ```
 
-A transport failure throws and an error status does not and the route handles both, and neither leaves the page rendering a half-built list.
+A transport failure throws; an error status does not. The route handles both cases. Neither leaves the page rendering a half-built list.
 
 ## Tracing
 
-`send()` records an external span per request, naming the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans and a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).
+`send()` records an external span per request, naming the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans. A slow page then shows which upstream call it waited on. See [Telemetry](../telemetry.md).

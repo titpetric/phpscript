@@ -65,16 +65,16 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 	root := fstest.MapFS{
 		"job.php": {Data: []byte("<?php\n// @schedule every 1 seconds -- prune\necho $argv[1];\n")},
 	}
-	// Guarded, because a job writes from the scheduler's goroutine while this
-	// one reads: a bytes.Buffer shared that way is a data race, and the writer
-	// a host passes a scheduler has to be safe for the same reason.
+	// Guarded: a job writes from the scheduler's goroutine while this one reads.
+	// A bytes.Buffer shared that way is a data race, and the writer a host
+	// passes a scheduler must be safe for the same reason.
 	var out syncBuffer
 	s := annotations.NewScheduler(root, annotations.WithOutput(&out))
 	if err := s.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	// Stopped before the test returns and its jobs do not outlive it and write
-	// into a buffer the next test is not expecting.
+	// Stopped before the test returns; its jobs do not outlive the test and
+	// write into a buffer the next test is not expecting.
 	defer func() {
 		if err := s.Stop(context.Background()); err != nil {
 			t.Errorf("stop: %v", err)
@@ -92,8 +92,8 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 	t.Fatalf("output = %q, want prune", out.String())
 }
 
-// syncBuffer is a writer two goroutines may use: a scheduled job writes what it
-// printed. The test reads it.
+// syncBuffer is a writer two goroutines may use: a scheduled job writes its
+// output, the test reads it.
 type syncBuffer struct {
 	mu  sync.Mutex
 	buf bytes.Buffer
@@ -121,10 +121,10 @@ func TestSchedulerStartScansFS(t *testing.T) {
 	}
 }
 
-// TestSchedulerStopEndsItsJobs pins what a reload depends on. The context
-// the platform passes Start belongs to the caller and not to the
-// generation going away and a scheduler that ignored Stop would leave the
-// previous tree's jobs running beside every generation that followed.
+// TestSchedulerStopEndsItsJobs pins the state a reload depends on. The context
+// the platform passes Start belongs to the caller, not to the generation going
+// away; a scheduler that ignored Stop would leave the previous tree's jobs
+// running beside every generation that followed.
 func TestSchedulerStopEndsItsJobs(t *testing.T) {
 	var runs atomic.Int64
 

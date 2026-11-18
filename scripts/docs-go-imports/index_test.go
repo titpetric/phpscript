@@ -26,7 +26,7 @@ func TestLoadPackage(t *testing.T) {
 }
 
 // TestLoadPackageMissing covers a path the toolchain does not hold: a row it
-// names stays plain, and no link reaches a page that does not exist.
+// names stays plain. No link reaches a page that does not exist.
 func TestLoadPackageMissing(t *testing.T) {
 	t.Parallel()
 	if _, err := loadPackage("github.com/titpetric/phpscript"); err == nil {

@@ -139,8 +139,8 @@ func TestParseStr(t *testing.T) {
 	}
 }
 
-// The parse drops a variable nested past the limit whole and never truncates
-// it. php warns and drops it too.
+// The parse drops a variable nested past the limit whole, and truncates
+// nothing. php warns and drops it too.
 func TestParseStrNestingLimit(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -166,7 +166,7 @@ func TestParseStrNestingLimit(t *testing.T) {
 	}
 }
 
-// The parse drops pairs past the limit and keeps earlier ones, as php does.
+// The parse drops pairs past the limit and keeps earlier ones.
 func TestParseStrVarLimit(t *testing.T) {
 	t.Parallel()
 	var b strings.Builder
@@ -184,8 +184,8 @@ func TestParseStrVarLimit(t *testing.T) {
 	}
 }
 
-// flatten renders a decoded array as sorted, space-separated `path=value` and
-// a test states its expectation on one line. Nested paths join with a dot; no
+// flatten renders a decoded array as sorted, space-separated `path=value`; a
+// test states its expectation on a single line. Nested paths join with a dot; no
 // test uses a dot inside a key.
 func flatten(arr *model.Array) string {
 	var entries []string

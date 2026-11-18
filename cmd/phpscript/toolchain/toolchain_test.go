@@ -33,8 +33,7 @@ func TestBinary(t *testing.T) {
 	}
 }
 
-// TestDiscoverPrefixIsolation pins the rule: a binary sees only the tools
-// named with its own prefix.
+// TestDiscoverPrefixIsolation pins that a binary sees only tools named with its own prefix.
 func TestDiscoverPrefixIsolation(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

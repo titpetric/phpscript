@@ -14,8 +14,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestRunListsPaths covers the default behaviour: a markdown table of the PHP
-// files a path selects.
+// TestRunListsPaths covers the default: a markdown table of files a path selects.
 func TestRunListsPaths(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -36,7 +35,7 @@ func TestRunListsPaths(t *testing.T) {
 }
 
 // TestRunListsBindings covers --bindings: the registered surface of this
-// build, with no tree involved.
+// build, without a tree.
 func TestRunListsBindings(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -51,7 +50,7 @@ func TestRunListsBindings(t *testing.T) {
 }
 
 // TestRunListsBindingsAsJSON covers --bindings --json: the rows a generator
-// renders into the go-imports page, under the field names it reads.
+// renders into the go-imports page, using the field names it reads.
 func TestRunListsBindingsAsJSON(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -113,10 +112,10 @@ func TestRunListsClasses(t *testing.T) {
 
 // TestRunListsClassesAsJSON covers --classes --json: the class it renders the
 // definition from, for a generator that links each member in place of a block
-// of PHP. Both spellings of every symbol are in it, because such a generator
-// cannot derive them alone: the Go field name behind a property, the Go method
-// name behind a method, and the Go interface behind the PHP name a script
-// types in a catch clause.
+// of PHP. Both spellings of every symbol are present: such a generator cannot
+// derive them alone. It needs the Go field name behind a property, the Go method
+// name behind a method, and the Go interface behind the PHP name a script types
+// in a catch clause.
 func TestRunListsClassesAsJSON(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -168,8 +167,8 @@ func TestRunListsClassesAsJSON(t *testing.T) {
 }
 
 // TestRunRejectsClassesWithAPI pins the refusal. --classes answers about the
-// registered classes of this build and --api lists the methods of a scanned
-// tree, and a caller that named both named one of them by mistake.
+// registered classes of this build. --api lists the methods of a scanned tree.
+// A caller that named both named one by mistake.
 func TestRunRejectsClassesWithAPI(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -185,11 +184,11 @@ func TestRunRejectsClassesWithAPI(t *testing.T) {
 	}
 }
 
-// TestNewCommand covers the one flag this command owns. --bindings switches
-// the subject from a tree to the binary and it defaults off: a bare `phpscript
-// list` scans paths. The constructor takes the configuration and the global
-// options because one signature covers all nine commands. This command reads
-// neither; both arguments are nil here.
+// TestNewCommand covers the flag this command owns. --bindings switches the
+// subject from a tree to the binary, and stays off by default. Absent that flag,
+// `phpscript list` scans paths. The constructor takes the configuration and the global
+// options; one signature covers all nine commands. This command reads neither;
+// both arguments are nil here.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -215,9 +214,9 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestRun covers the exported entry point: run() pointed at stdout.
-// The markdown table is the same one a redirected run writes and the one
-// assertion worth making here is that os.Stdout is where it lands.
+// TestRun covers the exported entry point: run() pointed at stdout. The
+// markdown table matches the table a redirected run writes. The single
+// assertion here: os.Stdout receives it.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
 	source := "<?php\n// @route GET /hello\nclass Greeter {}\n"
@@ -249,9 +248,9 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer about
-// different things and a caller that named both named one of them by mistake.
-// The error names which one it drops, never leaving them to guess.
+// TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer
+// different questions. A caller that named both named one by mistake. The error
+// names the dropped mode; a caller has nothing to guess.
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -307,7 +306,7 @@ func TestRunAPIJSON(t *testing.T) {
 	}
 }
 
-// TestRunRuntimeGo covers --runtime=go: the go names and no php function.
+// TestRunRuntimeGo covers --runtime=go: the go names, no php functions.
 func TestRunRuntimeGo(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer

@@ -54,8 +54,8 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 }
 
 // TestRouteFileUpload drives a file upload through the routed handler, the path
-// a browser form takes: the multipart body has to reach both superglobals, and
-// the temporary copy has to disappear once the handler writes the response.
+// a browser form takes: the multipart body must reach both superglobals, and
+// the temporary copy must disappear once the handler writes the response.
 func TestRouteFileUpload(t *testing.T) {
 	root, err := fs.Sub(fixturesFS, "fixtures/routing")
 	if err != nil {

@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// TestShareSources covers the layer precompiling one directory compiles from.
-// Every body in the directory is in one filesystem and one compile covers
-// the whole area and no fixture in it compiles the tree again.
+// TestShareSources covers the layer precompiling one directory compiles.
+// Every body in the directory belongs to one filesystem. One compile covers the
+// whole area. No fixture in it compiles the tree again.
 func TestShareSources(t *testing.T) {
 	first := &Fixture{Name: "first", Path: "area/first.phpt", PHP: "<?php echo 1;"}
 	second := &Fixture{Name: "second", Path: "area/second.phpt", PHP: "<?php echo 2;"}
@@ -25,7 +25,7 @@ func TestShareSources(t *testing.T) {
 		}
 	}
 
-	// A fixture naming its own root keys a separate cache and the bodies of
+	// A fixture naming its root keys a separate cache and the bodies of
 	// one directory do not reach the tree a second directory compiled.
 	apart := &Fixture{Name: "apart", Path: "other/apart.phpt", PHP: "<?php echo 3;"}
 	ShareSources([]*Fixture{first, apart})

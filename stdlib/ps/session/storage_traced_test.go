@@ -10,8 +10,8 @@ import (
 func TestSessionStorageRecordsSpans(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only where a caller enables it; a test that reads
-	// its traces back has to.
+	// oida records only when a caller enables it. A test that reads its
+	// traces back must do so.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -55,8 +55,8 @@ func TestSessionStorageRecordsSpans(t *testing.T) {
 		t.Fatalf("load span = %+v", spans[1])
 	}
 
-	// A session that is not there is a miss, not a failure: it must not fail
-	// the trace, and the session ID must never reach the front end.
+	// A missing session records a miss. The trace still completes. The session
+	// ID must never reach the front end.
 	if spans[2].Attributes["hit"] != false || spans[2].Err() != nil {
 		t.Fatalf("miss span = %+v", spans[2])
 	}

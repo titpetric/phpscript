@@ -1,7 +1,7 @@
 // Package gotest runs the scripts the Runtime\Go namespace tests share: a
 // script per case on a runtime that holds the default surface, Runtime\PS. The
 // import in the script installs the namespace under test, and RunAreas names
-// the areas the runtime installs: Runtime\None is the language with no binding.
+// the areas the runtime installs: Runtime\None is the language without bindings.
 package gotest
 
 import (
@@ -18,7 +18,7 @@ type Case struct {
 	Want string
 }
 
-// Run reports a case whose output differs from the one it echoes.
+// Run reports a case whose output differs from its expected output.
 func Run(t *testing.T, namespace string, cases []Case) {
 	t.Helper()
 	RunAreas(t, namespace, nil, cases)

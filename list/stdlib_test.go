@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestStdlibClassesReportsAClass covers the reflected class under the name asked about.
+// TestStdlibClassesReportsAClass covers the reflected class for the name asked about.
 func TestStdlibClassesReportsAClass(t *testing.T) {
 	t.Parallel()
 	classes, err := list.StdlibClasses(runner.Options{}, `HTTP\Client`)
@@ -21,9 +21,9 @@ func TestStdlibClassesReportsAClass(t *testing.T) {
 }
 
 // TestStdlibReportsWhatTheRuntimeRegisters checks the listing against names the
-// runtime binds, one per kind, and against the counts the runtime reports for
-// itself and this listing and the `info` command answer the same question
-// about the same build.
+// runtime binds, one name per kind. It also checks the counts the runtime
+// reports against the listing and the `info` command, which answer the same
+// question about the same build.
 func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
 	t.Parallel()
 	symbols := list.Stdlib(runner.Options{})
@@ -95,7 +95,7 @@ func TestStdlibSignatures(t *testing.T) {
 // paragraph, then its fields with their docs, then its methods with their
 // signatures and their docs. This prints the same shape in PHP spelling.
 //
-// HTTP\Client's bound type holds a *net/http.Client and its own timeout and
+// HTTP\Client's bound type holds a *net/http.Client plus a timeout, and
 // publishes neither, leaving no property section to print. It satisfies no
 // interface in the set, leaving no implements clause.
 func TestStdlibDefinitions(t *testing.T) {
@@ -134,13 +134,13 @@ class HTTP\Client
 }
 
 // TestStdlibDefinitionsProperties covers a class that does publish properties.
-// Database holds two, in the order the Go struct declares them, and
+// Database holds two, in the order the Go struct declares.
 // $is_readonly is the folded spelling: Runtime.structField resolves
-// is_readonly back to IsReadonly through the underscores, and a listing
+// is_readonly back to IsReadonly through the underscores. A listing
 // printing isReadonly would name a property no script can read.
 //
 // The client it queries through is not among them: an exported field is a
-// property a script reads. That one answers with no read-only check. See
+// property a script reads. That one answers without a read-only check. See
 // docs/security.md.
 func TestStdlibDefinitionsProperties(t *testing.T) {
 	t.Parallel()
@@ -169,8 +169,8 @@ func TestStdlibDefinitionsProperties(t *testing.T) {
 	if !strings.Contains(got, "     * IsReadonly restricts the client to statements that only read.") {
 		t.Errorf("$is_readonly carries no docblock:\n%s", got)
 	}
-	// The constructor follows every property, and no declaration prints a
-	// body: the implementation is Go and no PHP a reader could open.
+	// The constructor follows every property. No declaration prints a
+	// body: the implementation is Go. A reader has no PHP source to open.
 	if strings.Index(got, "public bool $is_readonly;") > strings.Index(got, "public function __construct") {
 		t.Error("a property prints after the constructor")
 	}
@@ -180,9 +180,9 @@ func TestStdlibDefinitionsProperties(t *testing.T) {
 }
 
 // TestStdlibDefinitionsAliasAndUnbound covers the two names a caller can name
-// that are not a class's own: an SPL name sharing the Exception constructor
-// prints under the name on the command line, and stdClass has no Go constructor
-// and no bound type to report anything about.
+// that are not a class's: an SPL name sharing the Exception constructor
+// prints with the name on the command line. stdClass has no Go constructor and
+// lacks a bound type to report anything about.
 func TestStdlibDefinitionsAliasAndUnbound(t *testing.T) {
 	t.Parallel()
 	got, err := list.StdlibDefinitions(runner.Options{}, "RuntimeException")
@@ -198,8 +198,8 @@ func TestStdlibDefinitionsAliasAndUnbound(t *testing.T) {
 	}
 }
 
-// TestStdlibDefinitionsAll covers the listing with no name: every class a
-// script can construct, each as its own definition, and stdClass left out.
+// TestStdlibDefinitionsAll covers the listing without a name: every class a
+// script can construct, each with a separate definition, and stdClass left out.
 func TestStdlibDefinitionsAll(t *testing.T) {
 	t.Parallel()
 	got, err := list.StdlibDefinitions(runner.Options{})
@@ -222,8 +222,7 @@ func TestStdlibDefinitionsAll(t *testing.T) {
 	}
 }
 
-// TestStdlibMarkdownIsATable checks the rendering has a heading row, a
-// separator, and one row per symbol.
+// TestStdlibMarkdownIsATable checks for a heading row, separator and one row per symbol.
 func TestStdlibMarkdownIsATable(t *testing.T) {
 	t.Parallel()
 	symbols := list.Stdlib(runner.Options{})

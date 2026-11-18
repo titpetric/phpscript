@@ -10,8 +10,7 @@ import (
 // list and dictionary in one value.
 //
 // It starts as a dense slice and promotes itself to a map on the first key that
-// is not the next index, which no caller and no behaviour can tell apart; see
-// promote. Keys are opaque here, and normalising "1" to 1 is the caller's job
+// is not the next index, which callers cannot observe; see promote. Keys are opaque here, and normalising "1" to 1 is the caller's job
 // (runner.normalizeKey).
 type Array struct {
 	list   []any // list mode only: element i is the value of key int64(i)
@@ -20,7 +19,7 @@ type Array struct {
 	nextID int64
 }
 
-// noIntKey is nextID's value for a map-mode array that never held an integer key.
+// noIntKey is nextID's value for a map-mode array holding no integer key.
 const noIntKey = math.MinInt64
 
 // NewArray returns an empty ordered array.
@@ -44,9 +43,9 @@ func (a *Array) Reset() {
 	clear(a.keys)
 	a.keys = a.keys[:0]
 	clear(a.values)
-	// The sentinel, not 0, is what makes the claim above true: a reset array
-	// that held an integer key would otherwise append at 0 where a fresh one
-	// appends from the first key the caller sets.
+	// The sentinel, not 0, makes the claim above true: a reset array that held
+	// an integer key would otherwise append at 0. A fresh array appends from
+	// the first key the caller sets.
 	a.nextID = noIntKey
 }
 
@@ -104,8 +103,8 @@ func (a *Array) Set(key, val any) {
 func (a *Array) Append(val any) {
 	if a.isList() {
 		a.list = append(a.list, val)
-		// Assigned and never incremented, because a list's next index is its
-		// length by definition and the counter may still hold the sentinel.
+		// Assigned without increment, since a list's next index equals its
+		// length by definition. The counter may still hold the sentinel.
 		a.nextID = int64(len(a.list))
 		return
 	}
@@ -127,7 +126,7 @@ func (a *Array) NextIndex() int64 {
 // array is still a list.
 //
 // A Go slice is already a list and the fast path pays one allocation for the
-// whole copy where Append per element pays one per growth step.
+// whole copy where Append per element pays on each growth step.
 func (a *Array) AppendAll(items []any) {
 	if len(items) == 0 {
 		return
@@ -157,8 +156,8 @@ func (a *Array) Get(key any) (any, bool) {
 // Delete removes key, preserving the order of the entries around it (PHP's
 // unset). A list-mode array promotes itself first: dropping an element from
 // the middle would leave the remaining keys sparse, which list mode cannot
-// express, and dropping the last one would still leave nextID past the end,
-// which is also what PHP does, since unset never renumbers.
+// express, and dropping the last element would still leave nextID past the
+// end, matching PHP, since unset never renumbers.
 func (a *Array) Delete(key any) {
 	if a.isList() {
 		i, ok := key.(int64)
@@ -184,8 +183,8 @@ func (a *Array) Delete(key any) {
 }
 
 // Pop removes the last entry and returns its key and value, PHP's array_pop.
-// The append index drops only when the removed key is the one it would hand
-// out next: popping 9 from [5 => a, 9 => c] leaves the next append at 9.
+// The append index drops only when the removed key equals the next key it
+// would hand out: popping 9 from [5 => a, 9 => c] leaves the next append at 9.
 func (a *Array) Pop() (any, any, bool) {
 	if a.Len() == 0 {
 		return nil, nil, false
@@ -194,9 +193,9 @@ func (a *Array) Pop() (any, any, bool) {
 	key := keys[len(keys)-1]
 	value, _ := a.Get(key)
 	a.Delete(key)
-	// The guard excludes the sentinel and never decrements it: an array holding
-	// an integer key has had the index set and the two cannot both be true, and
-	// nextID-1 on the sentinel would wrap.
+	// An array holding an integer key has set the index. The two cannot both
+	// hold, and nextID-1 on the sentinel would wrap. The guard excludes the
+	// sentinel.
 	if i, ok := key.(int64); ok && a.nextID != noIntKey && i == a.nextID-1 {
 		a.nextID = i
 	}
@@ -289,7 +288,7 @@ func (a *Array) ReplaceInt64List(vals []int64) {
 	}
 }
 
-// Clear removes all entries and returns the array to list mode at index 0.
+// Clear removes all entries and returns the array to list mode.
 func (a *Array) Clear() {
 	a.list = nil
 	a.keys = nil

@@ -30,8 +30,7 @@ import (
 // Name is the command title.
 const Name = "Run php server"
 
-// DefaultDocumentRoot is the directory beneath an application root served over
-// HTTP when the configuration names none.
+// DefaultDocumentRoot is the directory beneath an application root served over HTTP.
 const DefaultDocumentRoot = "public"
 
 // NewCommand creates a new server command.
@@ -62,7 +61,7 @@ func NewModule(root, documentRoot string, options runner.Options, flatstack, aut
 	return newModule("phpserver", handler), nil
 }
 
-// newModule wraps a handler as the module that mounts it on every unclaimed path.
+// newModule wraps a handler as a module mounting it on unclaimed paths.
 func newModule(name string, handler http.Handler) *Module {
 	return &Module{
 		ZeroModule: *newZeroModule(name),
@@ -87,27 +86,27 @@ type handler struct {
 	flatstack     bool
 	observers     []runner.Observer
 
-	// phpOptions is runnerOptions as an entrypoint runs under it: the SAPI
-	// named and the source root bound. Derived once, because the pool's
-	// runtimes and every request's Context read the same value.
+	// phpOptions holds runnerOptions for an entrypoint: the SAPI named, the
+	// source root bound. The handler derives it once. The pool's runtimes and
+	// request Contexts read the same value.
 	phpOptions runner.Options
 
-	// pool holds this site's registered runtimes between requests, a field
-	// of the handler the same way the include cache is and a runtime
-	// registered against this site's filesystem and options can never answer
-	// for another site; see runner.SessionPool.
+	// pool holds this site's registered runtimes between requests, a handler
+	// field like the include cache. A runtime registered against this
+	// site's filesystem and options can never answer for another site; see
+	// runner.SessionPool.
 	pool *runner.SessionPool
 
-	// coverage counts the statements every request runs, folded in per request
-	// so nothing keyed by an AST node outlives its own program.
+	// coverage counts the statements every request runs, folded per request so
+	// no AST-keyed state outlives the program.
 	// Nil is off, the state of a server started without --cover.
 	coverage *coverage.Aggregator
 
-	// autoindex answers a directory with no index page with a listing of
-	// what is in it. See serveAutoindex.
+	// autoindex answers a directory lacking an index page with a listing. See
+	// serveAutoindex.
 	autoindex bool
 
-	// writable is where scripts may write, resolved against the application
+	// writable lists where scripts may write, resolved against the application
 	// root. The handler never runs a file in one of these directories.
 	writable []string
 }
@@ -146,7 +145,7 @@ func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options
 	return h, nil
 }
 
-// executes reports whether a .php entrypoint may run, false for one in a writable root.
+// executes reports whether a .php entrypoint may run, false in a writable root.
 func (h *handler) executes(filename string) bool {
 	if len(h.writable) == 0 {
 		return true
@@ -171,13 +170,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The index page answers a directory. One with no index page is a
-	// 404 and no listing of the files below it, unless the site turned
-	// autoindex on and named exactly that.
+	// The index page answers a directory. A directory lacking an index page
+	// gets a 404. The files below stay unlisted, unless the site enabled
+	// autoindex for exactly that directory.
 	if info.IsDir() {
-		// A directory named without its trailing slash takes a redirect first,
-		// and the relative links in the page that answers resolve below it and
-		// not beside it.
+		// A directory named without a trailing slash takes a redirect first.
+		// In the answering page, relative links resolve below the directory;
+		// none resolve beside it.
 		if !strings.HasSuffix(r.URL.Path, "/") {
 			redirectToDirectory(w, r)
 			return
@@ -205,7 +204,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// A .php file in a writable directory goes out as bytes, never runs.
 	}
 
-	// ServeFileFS takes the name and not the URL path, because a directory's
+	// ServeFileFS takes the file name, ignoring the URL path. A directory's
 	// index page is a file the request did not name.
 	http.ServeFileFS(w, r, h.public, filename)
 }
@@ -228,7 +227,7 @@ func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMovedPermanently)
 }
 
-// serverVars adds the $_SERVER entries only the server knows, with filename relative to the application root.
+// serverVars adds the $_SERVER entries only the server knows, filename app-relative.
 func (h *handler) serverVars(request runner.Context, r *http.Request, filename string) {
 	request.Server["DOCUMENT_ROOT"] = path.Join(h.rootDir, h.documentRoot)
 	request.Server["SERVER_SOFTWARE"] = "phpscript"
@@ -250,16 +249,16 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 	request.Server["SERVER_NAME"] = strings.TrimSuffix(strings.ToLower(host), ".")
 }
 
-// run executes one entrypoint and returns the staged context, buffered body and error, writing nothing.
+// run executes one entrypoint, returning the staged context, buffered body and error.
 func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
 	var out bytes.Buffer
 
 	// A pooled runtime, registered once by buildRuntime and reset between
 	// requests: the Put drops everything a request wrote. The response is a
-	// pushed redirection, dropped with the rest of the session by the reset,
-	// and the connection enters through BeginRequest the way a Path B worker's
-	// does and connection_aborted answers for this client and ignore_user_abort
-	// starts off for every request.
+	// pushed redirection, dropped with the rest of the session by the reset.
+	// The connection enters through BeginRequest, as a Path B worker's does.
+	// connection_aborted answers for this client; ignore_user_abort starts off
+	// for every request.
 	rt := h.pool.Get()
 	defer h.pool.Put(rt)
 	rt.PushOutput(&out)
@@ -268,8 +267,8 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	if h.coverage != nil {
 		// A collector turns flatstack off for this request: coverage is an
 		// interpreter feature and the fallback is atomic. The pool drops the
-		// collector with the session and nothing keyed by an AST node outlives
-		// its own program.
+		// collector with the session; nothing keyed by an AST node outlives the
+		// program.
 		collector := coverage.New()
 		rt.SetCoverage(collector)
 		defer h.coverage.Add(collector)
@@ -308,13 +307,13 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	reqCtx, body, err := h.run(w, r, filename, nil)
 	status := reqCtx.StatusFor(err)
 
-	// What went wrong, for the site's error page to do as it likes with. Only
-	// a failure sets it, and a failure discards whatever the script echoed
-	// before it: half a page is not an answer.
+	// What went wrong, for the site's error page to use. A failure sets the
+	// value. A failure discards whatever the script echoed before it: half a page
+	// is not an answer.
 	var notes string
 	if _, exited := runner.IsExit(err); err != nil && !exited {
-		// The trace ID is also the Request-Id header and a log line and the
-		// recorded trace of the same request find each other.
+		// The trace ID appears as the Request-Id header, in the log line, and
+		// in the recorded trace of the same request.
 		log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, filename, err, telemetry.TraceID(r.Context()))
 		notes, body = err.Error(), nil
 	}
@@ -361,8 +360,8 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 
 	manager := newPlatformManager(options)
 
-	// One aggregator for the process: a reload replaces the sites and leaves the
-	// measurement of what this process ran.
+	// One aggregator for the process: a reload replaces the sites and keeps
+	// the measurement of this process's work.
 	var cover *coverageModule
 	if globals.Covering() {
 		cover = newCoverageModule(globals)
@@ -370,7 +369,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 
 	// Everything -t runs, before the swap: a later failure arrives with the
 	// old generation stopped, and the manager then exits. Loading the file is
-	// not enough, a virtual host with no root parses.
+	// not enough, a virtual host lacking a root parses.
 	name, root := configName(globals.ConfigFile), rootArg(args)
 	manager.Check = func() error {
 		appConfig, err := reloadConfig(started, globals)
@@ -380,8 +379,8 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 		return appConfig.Check(name, root)
 	}
 
-	// A reload discards the platform value every registration binds to,
-	// and every registration belongs here and not in Run.
+	// A reload discards the platform value every registration binds to. Each
+	// registration belongs here, not in Run.
 	manager.Setup = func(svc *Service) error {
 		appConfig, err := reloadConfig(started, globals)
 		if err != nil {
@@ -394,7 +393,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 	return manager, nil
 }
 
-// reloadConfig reads the configuration from disk again, returning started when no -f names a file.
+// reloadConfig reads the configuration from disk again, returning started without -f.
 func reloadConfig(started config.Config, globals *flags.Options) (config.Config, error) {
 	if globals.ConfigFile == "" {
 		return started, nil
@@ -402,12 +401,12 @@ func reloadConfig(started config.Config, globals *flags.Options) (config.Config,
 	return config.Load(globals.ConfigFile)
 }
 
-// setup registers what one generation serves.
+// setup registers each generation's services.
 func setup(ctx context.Context, svc *Service, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
 	// The platform records, phpscript observes: the interpreter reports onto
 	// the trace the recorder's middleware put in the request context, never
-	// into a second recorder. Looked up per generation, each of which
-	// builds its own. Telemetry off leaves the observers empty.
+	// into a second recorder. Looked up per generation; each builds a separate
+	// recorder. Telemetry off leaves the observers empty.
 	var observers []runner.Observer
 	var recorder *TelemetryModule
 	if svc.Find(&recorder) {
@@ -431,9 +430,9 @@ func setup(ctx context.Context, svc *Service, appConfig config.Config, args []st
 		}
 	}
 
-	// Last and it stops last: the platform stops modules in registration
-	// order, and a profile written before the sites stopped would miss what
-	// they did on the way out.
+	// The profile goes last and stops last: the platform stops modules in
+	// registration order. A profile written before the sites stopped would
+	// miss what they did on the way out.
 	if cover != nil {
 		svc.Register(cover)
 	}
@@ -465,12 +464,12 @@ func warnFrozen(log Logger, started, reloaded config.Config) {
 	}
 }
 
-// registerSite wires the single tenant server, mounting its modules straight onto the platform router.
+// registerSite wires the single-tenant server, mounting modules onto the platform router.
 func registerSite(svc *Service, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
 	// One application owns the process and its scripts read the process
-	// environment with what the configuration adds on top. Either way,
+	// environment plus whatever the configuration adds. Either way,
 	// runner.ScriptEnvironment holds infrastructure variables back.
 	runnerOptions := appConfig.Runner
 	runnerOptions.Env = append(append([]string{}, os.Environ()...), appConfig.Env...)
@@ -499,19 +498,19 @@ func registerSite(svc *Service, appConfig config.Config, observers []runner.Obse
 		files.coverage = cover.aggregator
 	}
 
-	// A single application server keeps a failing @startup fatal: there is no
-	// other tenant to protect, and a process that came up with its schema
-	// unapplied is worse than one that did not come up.
+	// A single application server keeps a failing @startup fatal. No other
+	// tenant needs protection. A process that came up with its schema
+	// unapplied is worse than one still down.
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
-	// What a @startup job binds goes on the router even where the tree holds no
-	// @route annotations. This registers beside the jobs and not beside the
+	// A @startup job's bindings go on the router even where the tree holds no
+	// @route annotations. The registration lives with the jobs, not with the
 	// scanner: a service binds where a script annotates.
 	svc.Register(annotations.NewBindings(annotationOptions...))
 
-	// The routed endpoints take the file handler's error pages: the site's
-	// document root holds them, the directory the file handler looks in.
+	// The routed endpoints take the file handler's error pages, held in the
+	// site's document root, the directory the file handler looks in.
 	if appConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
@@ -543,7 +542,7 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 	}
 }
 
-// routeOptions excludes the document root and each relative writable path from annotation scans.
+// routeOptions excludes the document root and writable paths from annotation scans.
 func routeOptions(options []annotations.Option, writablePaths []string, documentRoot string) []annotations.Option {
 	result := append(options[:len(options):len(options)], annotations.WithExcludedDirectory(documentRoot))
 	for _, p := range writablePaths {

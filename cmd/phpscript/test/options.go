@@ -27,14 +27,14 @@ type Options struct {
 	SkipPHP   bool
 	Cache     string
 
-	// Config is what the run started with: the embedded defaults, with the
-	// file -f named read over them. discoverSuites reads a phpscript.yml from
+	// Config holds the starting state of the run: the embedded defaults, with
+	// the file -f named read over them. discoverSuites reads a phpscript.yml from
 	// the fixture tree over this one in turn.
 	Config config.Config
 
-	// typed reports whether the command line names a flag, deciding between
-	// it and the value a configuration file supplies. It stays nil for an
-	// Options a test assembles, where no command line exists.
+	// typed reports whether the command line names a flag, choosing the flag.
+	// A configuration-file value fills the rest. It stays nil for an Options a
+	// test assembles, where none exists.
 	typed func(string) bool
 }
 
@@ -75,22 +75,22 @@ func (o Options) runners() []tests.Runner {
 	return runners
 }
 
-// The --cache modes, which say how far a parsed include and a compiled
-// expression travel.
+// The --cache modes, which set the travel of a parsed include and compiled
+// expression.
 //
-// There is no "shared" mode because a worker loop already is one: run without
-// --parallel there is a single worker and a single set of caches serves the
+// There is no "shared" mode: a worker loop already does that. Without
+// --parallel there is a single worker, whose single cache set serves the
 // whole run. Sharing them across workers on top of that only adds contention
 // for a hit the worker's own cache already has.
 const (
 	// CacheOff builds caches per fixture run and drops the runtime
-	// after it. A parse from one run stays invisible to the next. A run pays
-	// the parsing its own includes cost - and drops what it held when it
-	// ends, with no state kept for the length of the suite.
+	// afterwards. A parse from one run stays invisible to the next. A run pays
+	// the parsing of its includes, and drops the result at the end. No state
+	// survives for the suite's length.
 	CacheOff = "off"
 	// CacheWorker keeps one set per worker, reused by the fixtures that
-	// worker runs serially. What a worker holds scales with --parallel and
-	// not with the number of fixtures.
+	// worker runs serially. A worker's holdings scale with --parallel, not
+	// with the fixture count.
 	CacheWorker = "worker"
 )
 

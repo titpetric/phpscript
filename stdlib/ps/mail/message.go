@@ -12,9 +12,9 @@ import (
 
 // Message is a queued email, with the name of its target server.
 //
-// Body is the plain text. HTML, when set, travels beside it as the alternative
-// a mail client prefers, and ReplyTo, when set, is where a reply goes in place
-// of From.
+// Body holds the plain text. HTML, when set, travels alongside as the
+// alternative a mail client prefers. ReplyTo, when set, names where a reply
+// goes in place of From.
 type Message struct {
 	Server    string
 	Recipient string

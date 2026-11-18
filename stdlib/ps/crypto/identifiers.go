@@ -14,7 +14,7 @@ import (
 // RegisterIdentifiers installs the id generators. Neither ulid() nor uuid() is
 // a PHP name: PHP's own library mints no unique ids. Both are a format over
 // crypto/rand sharing one layout, a 48-bit millisecond timestamp followed by
-// randomness, and both sort by creation time.
+// randomness. Both sort by creation time.
 func RegisterIdentifiers(rt *runner.Runtime) {
 	// ulid returns a 26-character ULID: a millisecond timestamp and 80 random
 	// bits in Crockford base32 and ids sort by creation time. Ids from the

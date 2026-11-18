@@ -1,8 +1,8 @@
 // Package slices binds the day-to-day functions of go's slices package as the
 // Runtime\Go\Slices namespace. A script imports it with `use Runtime\Go\Slices;`
 // and calls `Slices\Contains($list, $v)`; the default runtime installs none of
-// these names. A function reads a list and answers a new one, because a php
-// array is a value: no sort and no reverse here writes the argument.
+// these names. A function reads a list and answers a new one: a php array is a
+// value. No sort or reverse here writes the argument.
 package slices
 
 import (
@@ -24,7 +24,7 @@ func init() {
 
 func name(fn string) string { return Namespace + `\` + fn }
 
-// same is go's ==: equal in value and of one type. 1 and "1" differ.
+// same is go's ==: equal in value and type; 1 and "1" differ.
 func same(a, b any) bool {
 	return phpval.Compare(a, b) == 0 && reflect.TypeOf(a) == reflect.TypeOf(b)
 }
@@ -69,7 +69,7 @@ func Register(rt *runner.Runtime) {
 		}
 		return vals[minIndex(vals)], nil
 	})
-	// Runtime\Go\Slices\Compact drops the repeats that sit next to each other.
+	// Runtime\Go\Slices\Compact drops adjacent repeats.
 	rt.RegisterFunc(name("Compact"), func(s any) []any { return goslices.CompactFunc(goslices.Clone(phpval.Values(s)), same) })
 	// Runtime\Go\Slices\Concat joins the lists into one.
 	rt.RegisterFunc(name("Concat"), func(lists ...any) []any {

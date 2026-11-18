@@ -326,10 +326,10 @@ class Loaded {
 
 var update = flag.Bool("update", false, "rewrite testdata golden files")
 
-// TestGolden formats every testdata/*.php input and compares it against the
+// TestGolden formats every testdata/*.php input and compares it with the
 // matching .golden file. Each case is also checked for the two properties the
-// formatter has to hold when it rewrites a file in place: the output parses,
-// and formatting it again does not change it.
+// formatter must hold when it rewrites a file in place: the output parses, and
+// formatting it again does not change it.
 func TestGolden(t *testing.T) {
 	t.Parallel()
 	inputs, err := filepath.Glob(filepath.Join("testdata", "*.php"))

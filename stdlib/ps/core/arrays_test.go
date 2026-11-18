@@ -25,7 +25,7 @@ func TestArrayKeyExistsHoldsNull(t *testing.T) {
 }
 
 // TestArraySumPromotes covers array_sum(): a float or a numeric string anywhere
-// makes the sum a float, and a list of integers stays an integer.
+// makes the sum a float; a list of integers stays an integer.
 func TestArraySumPromotes(t *testing.T) {
 	t.Parallel()
 	if got := phpArraySum([]any{int64(1), int64(2)}); got != int64(3) {

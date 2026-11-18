@@ -1,6 +1,6 @@
 # SQLite Admin demo
 
-A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Each controller is a `.php` file with a `@route` annotation, and every HTML view is a `templates/*.tpl` that [titpetric/minitpl](https://github.com/titpetric/minitpl) renders. The pages are a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console and CSV export.
+A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Each controller is a `.php` file with a `@route` annotation. Each HTML view is a `templates/*.tpl` file, rendered by [titpetric/minitpl](https://github.com/titpetric/minitpl). The pages are a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console and CSV export.
 
 The table editor creates up to four initial columns and includes common numeric, text, binary, boolean, and date/time types. The SQL console takes any schema change beyond that. The demo connection and schema catalogue remain SQLite-backed; the PostgreSQL and MySQL selections check definitions against those dialect presets.
 
@@ -14,7 +14,7 @@ composer install
 
 That writes `vendor/`, which `setup.php` pulls in with `require "vendor/autoload.php"`. phpscript interprets composer's generated autoloader as ordinary PHP, and the runtime special-cases nothing about it.
 
-minitpl compiles each template to PHP on first use and caches the result in `templates/cache/`, which has to be writable. `.gitignore` holds both directories.
+minitpl compiles each template to PHP on first use and caches the result in `templates/cache/`, which must be writable. `.gitignore` holds both directories.
 
 ## Running
 
@@ -35,20 +35,20 @@ The login gates every route. The demo ships with two accounts:
 
 ## Accounts
 
-`.htpasswd` in this directory is the user database, in apache's format: one `username:hash` per line, with lowercase names. The application root holds it, not `public/`: no request can reach it, and the application never opens it either - `new Auth\Storage\PasswordFile` reads it and answers a verdict, a username and an id. No password or hash appears in any PHP here. The schema has no password column.
+`.htpasswd` in this directory is the user database, in apache's format: a `username:hash` entry per line, with lowercase names. The application root holds the file, not `public/`. No request reaches the file, and the application never opens it either. `new Auth\Storage\PasswordFile` reads it, answering a verdict, a username and an id. No password or hash appears in any PHP here. The schema has no password column.
 
-Adding an account is a line in the file and a reload:
+Adding an account takes a line in the file, then a reload:
 
 ```sh
 htpasswd -B -C 10 .htpasswd alice
 phpscript -s reload       # or: kill -HUP $(pidof phpscript)
 ```
 
-bcrypt (`-B`) is what to write. The runtime also reads apache's default `$apr1$` md5 and its `{SHA}`, because files in the wild hold them. Neither takes a cost parameter; see [security.md](../../docs/security.md).
+Write bcrypt (`-B`). The runtime also reads apache's default `$apr1$` md5 and its `{SHA}`, because files in the wild hold them. Neither takes a cost parameter; see [security.md](../../docs/security.md).
 
-A reload re-runs the `@startup` jobs, and `users.php` is one: it rebuilds the `user` table from the file, and the accounts browse like any other table. That table is a view of the file and stores nothing - nothing writes to it, and `schema/` leaves it out. Its primary key is a ULID the username determines, and removing an account takes its row alone, while adding the same name back restores the same key. A reload signs nobody out: sessions are files, keyed by the application root.
+A reload re-runs the `@startup` jobs, including `users.php`. It rebuilds the `user` table from the file, and the accounts browse like any other table. That table is a view of the file and stores no data. No write reaches it; `schema/` leaves it out. Its primary key is a ULID the username determines, and removing an account takes its row alone, while adding the same name back restores the same key. A reload signs nobody out: sessions are files, keyed by the application root.
 
-The sign-in route holds each address, and each account name, to five refusals in ten seconds, and answers further posts with 429 until the window passes: a password check pays a bcrypt derivation, and without the ceiling an unauthenticated caller decides how many of those the server runs. The sign-in and sign-out forms hold a double-submit `csrf` token, and a post that does not return the cookie's value gets 403; [security.md](../../docs/security.md) states what that adds over the session cookie's `SameSite=Lax`.
+The sign-in route holds each address and account name to five refusals in ten seconds. Further posts get 429 until the window passes. A password check pays a bcrypt derivation; without the ceiling an unauthenticated caller decides how many bcrypt derivations the server runs. The sign-in and sign-out forms hold a double-submit `csrf` token. A post that does not return the cookie's value gets 403; [security.md](../../docs/security.md) states what this adds over the session cookie's `SameSite=Lax`.
 
 ## Schema
 
@@ -60,7 +60,7 @@ $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
-Each file is append only. A `migrations` table records every applied statement by index, and a later change goes in as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
+Each file is append only. A `migrations` table records every applied statement by index. A later change goes in as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
 
 ## Tests
 
@@ -70,13 +70,13 @@ Each file is append only. A `migrations` table records every applied statement b
 cd tests && atkins test
 ```
 
-Every step is `curl` under an `exec` step, sharing one cookie jar, because the suite signs in: venom's http executor follows redirects and cannot publish a captured cookie to a later step. The suite has nowhere else to keep a session id. The jar is a file, which is all the state the suite needs.
+Every step is `curl` inside an `exec` step, sharing one cookie jar, because the suite signs in: venom's http executor follows redirects and cannot publish a captured cookie to a later step. The suite has nowhere else to keep a session id. The jar is a file, which is all the state the suite needs.
 
-The compose service joins two networks, the ingress one and the compose default, and `docker inspect` prints an address for each. `awk` takes the first and wraps it in the URL. A template that wrapped the address in the URL itself emitted the two URLs as one unusable string. [The pipeline](../../docs/pipeline.md#the-demo-pipelines) states why the lookup spells out an `xargs` pipeline.
+The compose service joins two networks, the ingress network and the compose default, and `docker inspect` prints an address for each. `awk` takes the first and wraps it in the URL. A template that wrapped the address in the URL itself emitted the two URLs as a single unusable string. [The pipeline](../../docs/pipeline.md#the-demo-pipelines) states why the lookup spells out an `xargs` pipeline.
 
-`atkins cover` reads what the suite covered off the container, ahead of the `compose down` that stops it. The service runs under `--cover`, the aggregator holds every request the suite made, and `/debug/phpscript/coverage` answers with it while the container runs. Two files, because two readers want them: `dbadmin.cov` is the profile a release attaches, and `dbadmin.file.txt` is what `summary coverfunc` reads.
+`atkins cover` reads the coverage record from the container, ahead of the `compose down` that stops the container. The service runs with `--cover`; the aggregator holds every request the suite made, and `/debug/phpscript/coverage` answers with the record while the container runs. Two files, because two readers want them: `dbadmin.cov` is the profile a release attaches, and `dbadmin.file.txt` feeds `summary coverfunc`.
 
-It runs against a locally started server too, with the reload command named for that process:
+It runs on a locally started server too, with the reload command named for that process:
 
 ```sh
 cd tests && venom run venom.yml \
@@ -84,12 +84,12 @@ cd tests && venom run venom.yml \
   --var='reload=pkill -HUP -x phpscript'
 ```
 
-The suite is idempotent: it removes its own leftovers before it starts - the scratch tables, and the account the reload case appends to `.htpasswd` - and edits rows in a scratch table so the seeded rows keep the ids the migration gave them.
+The suite is idempotent: it removes its leftovers before it starts - the scratch tables, and the account the reload case appends to `.htpasswd` - and edits rows in a scratch table so the seeded rows keep the ids the migration gave them.
 
-Each case enforces one of the demo's security rules. The server refuses a sign-in post without the form token before it reads the credential and stages no session cookie. A cross-site page can make a browser send the session cookie. The form token stays out of reach. Six wrong passwords from one address cross the five-refusal ceiling, and the sixth response is the one asserted on. The document root is `public/`. The password file in the application root is unreachable over HTTP under either spelling.
+Each case enforces one of the demo's security rules. The server refuses a sign-in post without the form token before it reads the credential and stages no session cookie. A cross-site page can make a browser send the session cookie. The form token stays out of reach. Six wrong passwords from one address cross the five-refusal ceiling, and the sixth response is the asserted response. The document root is `public/`. The password file in the application root is unreachable over HTTP under either spelling.
 
-The reload path runs through `SIGHUP`. The signal re-runs the `@startup` jobs, and `users.php` rebuilds the user table from `.htpasswd`: the table is a view of the password file. The schema holds no password column. Adding an account is a line in the file and a reload, with no cache to invalidate and no request dropped. The hash the reload case appends is bcrypt at cost 4, the lowest the algorithm accepts, because the suite computes it on every run.
+The reload path runs through `SIGHUP`. The signal re-runs the `@startup` jobs, and `users.php` rebuilds the user table from `.htpasswd`: the table is a view of the password file. The schema holds no password column. Adding an account takes a line in the file plus a reload. No cache needs invalidation; the reload drops no request. The hash the reload case appends is bcrypt at cost 4, the lowest the algorithm accepts, because the suite computes it on every run.
 
 The delete step sends `-d ""` and not `-X POST`: `-X` would keep the method on the redirect, and `POST` to the browse page is not a route. The sign-in case proves the round trip: it reads the form, then posts the token and the cookie back. That round trip proves a browser's sign-in works end to end.
 
-> **Local demo only:** the login is a real session over a real password file, but this application's SQL console intentionally executes arbitrary SQL for anyone who signs in. Authorization stops at "has an account". Do not expose it to an untrusted network or use it against a production database.
+> **Local demo only:** the login is a real session backed by a real password file, but this application's SQL console intentionally executes arbitrary SQL for anyone who signs in. Authorization stops at "has an account". Do not expose it to an untrusted network. Do not point it at a production database.

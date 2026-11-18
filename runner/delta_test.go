@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// TestDelta covers the empty report: an install that registers nothing
-// leaves every list empty.
+// TestDelta covers the empty report: an install registering nothing leaves every list empty.
 func TestDelta(t *testing.T) {
 	t.Parallel()
 	d := New(nil, Options{}).Track(func(*Runtime) {})

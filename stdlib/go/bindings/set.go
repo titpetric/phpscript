@@ -21,7 +21,7 @@ func (s *Set) Bind(name string, value any) *Set {
 }
 
 // Type files a package type no bound signature reaches, by a zero value of
-// it. The walk starts from it as it starts from a signature.
+// that type. The walk starts from it as from a signature.
 func (s *Set) Type(sample any) *Set {
 	if kind := reflect.TypeOf(sample); kind != nil {
 		s.seeds = append(s.seeds, kind)
@@ -29,7 +29,7 @@ func (s *Set) Type(sample any) *Set {
 	return s
 }
 
-// Entries returns what the set binds, in the order a binding wrote them.
+// Entries returns the set's bindings, in the order a binding wrote them.
 func (s *Set) Entries() []Entry { return s.entries }
 
 // Area is the name a script imports the package by.
@@ -40,7 +40,7 @@ func (s *Set) Install() {
 	runner.RegisterNamespace(s.area, s.Register)
 }
 
-// Register installs the entries and the types they reach on one runtime.
+// Register installs the entries and the types they reach.
 func (s *Set) Register(rt *runner.Runtime) {
 	for _, entry := range s.entries {
 		name := s.area + `\` + entry.Name
@@ -60,7 +60,7 @@ func (s *Set) Register(rt *runner.Runtime) {
 	}
 }
 
-// constructor returns an addressable zero value of a discovered type as a go constructor.
+// constructor returns an addressable zero of a discovered type as a go constructor.
 func constructor(kind reflect.Type) any {
 	return func() any { return reflect.New(kind).Interface() }
 }

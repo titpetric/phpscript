@@ -8,7 +8,7 @@ import (
 )
 
 // legacyArray is the map-backed *Array without list mode: every array
-// allocates a map[any]any and a key slice up front. The differential test below
+// allocates a `map[any]any` plus a key slice up front. The differential test below
 // replays operation sequences against both implementations and requires
 // identical observable behaviour; the benchmarks measure what list mode saves.
 // Following docs/allocation-performance.md ("keep the old implementation as a
@@ -191,7 +191,7 @@ func TestArrayMixedLiteral(t *testing.T) {
 }
 
 // TestArraySparseIntKeys covers PHP's array(5 => "a", "b"): the next append
-// lands at 6, and a later low key does not move.
+// lands at 6; a later low key does not move.
 func TestArraySparseIntKeys(t *testing.T) {
 	t.Parallel()
 	a := NewArray()
@@ -212,7 +212,7 @@ func TestArraySparseIntKeys(t *testing.T) {
 }
 
 // TestArrayOutOfOrderSetPromotes: writing key 1 before key 0 is not a list.
-// Its iteration order is 1 then 0, which a naive "append into the slice"
+// Its iteration order is 1 then 0; a naive "append into the slice"
 // implementation would silently reorder.
 func TestArrayOutOfOrderSetPromotes(t *testing.T) {
 	t.Parallel()
@@ -263,9 +263,9 @@ func TestArrayListModeOverwrite(t *testing.T) {
 
 // TestArrayNegativeKey: PHP 8.3 semantics, as php 8.5 prints for
 // `$a = [-3 => "x"]; $a[] = "y";` - keys -3 and -2. The first integer key sets
-// the append index to key+1 whatever its sign; PHP 7 left it at 0 and this
-// modelled that. Later keys only raise it, which is the `i >= a.nextID` guard,
-// and an array that never held an integer key appends at 0.
+// the append index to key+1 whatever its sign; PHP 7 left it at 0; this
+// modelled that. Later keys only raise it. That rule comes from the
+// `i >= a.nextID` guard. An array holding no integer key appends at 0.
 func TestArrayNegativeKey(t *testing.T) {
 	t.Parallel()
 	a := NewArray()
@@ -400,7 +400,7 @@ func TestArrayRangeStopsEarly(t *testing.T) {
 }
 
 // TestArrayPromoteDuringRange is the hazard list mode introduces: a script may
-// add a string key from inside its own foreach. Promotion must not scramble the
+// add a string key from inside a foreach over the array. Promotion must not scramble the
 // slice the in-flight Range is walking.
 func TestArrayPromoteDuringRange(t *testing.T) {
 	t.Parallel()
@@ -518,7 +518,7 @@ func TestArray_NextIndex(t *testing.T) {
 	}
 }
 
-// op is one step of the differential test below.
+// op is a single step of the differential test below.
 type op struct {
 	kind string // "append", "set", "clear"
 	key  any
@@ -526,7 +526,7 @@ type op struct {
 }
 
 // TestArrayMatchesLegacyImplementation replays operation sequences against the
-// list-mode Array and against the map-backed implementation it replaces, and
+// list-mode Array and the map-backed implementation it replaces, and
 // requires identical keys, values, iteration order, Len and append index. Any
 // list-mode shortcut that gets PHP's key rules wrong shows up here.
 func TestArrayMatchesLegacyImplementation(t *testing.T) {
@@ -730,7 +730,7 @@ func BenchmarkArrayAppend50Sized(b *testing.B) { benchArrayAppend(b, 50, true) }
 func BenchmarkArrayAppend50SizedLegacy(b *testing.B) { benchLegacyAppend(b, 50, true) }
 
 // The Ints variants store values in 0..255, which the runtime boxes for free
-// (staticuint64s) and what they time is the array's own structural cost.
+// (`staticuint64s`); they then time the array's own structural cost.
 func BenchmarkArrayAppend5Ints(b *testing.B) {
 	b.ReportAllocs()
 	for range b.N {
@@ -752,7 +752,7 @@ func BenchmarkArrayAppend5IntsLegacy(b *testing.B) {
 }
 
 // The string-keyed build is the case list mode must not make worse: the array
-// promotes on the first key and it should cost what the map-backed one did.
+// promotes on the first key and should cost the same as the map-backed one.
 func BenchmarkArrayStringKeys5(b *testing.B) {
 	keys := benchValues(5)
 	b.ReportAllocs()
@@ -775,8 +775,7 @@ func BenchmarkArrayStringKeys5Legacy(b *testing.B) {
 	}
 }
 
-// A five-element list literal with one string key: the mixed shape that pays
-// for promotion.
+// A five-element list with one string key: the mixed shape promotion pays for.
 func BenchmarkArrayMixedLiteral(b *testing.B) {
 	b.ReportAllocs()
 	for range b.N {
@@ -827,9 +826,9 @@ func BenchmarkArrayRange50Legacy(b *testing.B) {
 	}
 }
 
-// Reset empties the array but keeps its storage and a reused container
-// (a per-request superglobal) refills without reallocating, and holds no
-// stale reference above its new length.
+// Reset empties the array but keeps its storage. A reused container
+// (a per-request superglobal) refills without reallocating and holds no stale
+// reference above its new length.
 func TestArrayResetKeepsStorage(t *testing.T) {
 	t.Parallel()
 	arr := NewArray()
@@ -851,7 +850,7 @@ func TestArrayResetKeepsStorage(t *testing.T) {
 		t.Fatalf("Len after refill = %d, want 1", arr.Len())
 	}
 
-	// List mode resets and reuses too, and the append index restarts.
+	// List mode also resets and reuses. The append index restarts.
 	list := NewArray()
 	list.Append("x")
 	list.Append("y")
@@ -908,8 +907,8 @@ func TestArray_Delete(t *testing.T) {
 }
 
 // TestArray_Pop covers array_pop, which is here and not in the shim because of
-// the append index. PHP decrements it only when the removed key is the one it
-// would hand out next: popping 9 from [5 => a, 9 => c] leaves the next append
+// the append index. PHP decrements it only when the removed key matches the
+// next key it hands out: popping 9 from [5 => a, 9 => c] leaves the next append
 // at 9, and popping 5 from the same array leaves it at 10. Rebuilding the array
 // from its entries loses that counter.
 func TestArray_Pop(t *testing.T) {
@@ -939,7 +938,7 @@ func TestArray_Pop(t *testing.T) {
 
 // TestArray_Int64List covers the fast path a sort or a numeric shim takes:
 // Int64List answers a dense int64 list with a []int64 copy and refuses the
-// rest. The copy is why a caller can sort it without writing through the array.
+// rest. The copy lets a caller sort it without writing through the array.
 func TestArray_Int64List(t *testing.T) {
 	t.Parallel()
 	arr := NewArray()
@@ -980,8 +979,8 @@ func TestArray_Int64List(t *testing.T) {
 
 // TestArray_ReplaceInt64List covers the other half of that path: a sorted
 // []int64 goes back as a dense list, replacing whatever the array held and
-// whichever mode it holds. An empty replacement appends at 0, because an array
-// that holds no integer key has not had the index set.
+// whichever mode it holds. An empty replacement appends at 0; an array that
+// holds no integer key has not had the index set.
 func TestArray_ReplaceInt64List(t *testing.T) {
 	t.Parallel()
 	arr := NewArray()

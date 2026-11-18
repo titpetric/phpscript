@@ -6,11 +6,11 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// Comment is one comment of the source, with the lines it occupied. The AST
-// holds no comments and the formatter reads them off the source separately and
-// places them by line: a comment goes out before the first statement that
-// starts below it. OwnLine records that nothing but whitespace came before it,
-// which separates a comment an author wrote above a statement from one written
+// Comment is a single comment of the source, with the lines it occupied. The
+// AST holds no comments. The formatter reads them from the source separately
+// and places every comment by line. A comment goes out before the first statement that
+// starts below the comment. OwnLine records that only whitespace came before
+// it. This separates a comment written above a statement from one written
 // after it.
 type Comment struct {
 	Text    string
@@ -57,7 +57,7 @@ func (p *printer) appendToLine(text string) {
 	p.buf.WriteByte('\n')
 }
 
-// blankFor writes the blank line the author left above line, none at the start of a block.
+// blankFor writes the blank line above line, none at a block's start.
 func (p *printer) blankFor(line int) {
 	if p.lastLine > 0 && line > p.lastLine+1 {
 		p.blank()
@@ -83,8 +83,8 @@ func (p *printer) comment(c Comment) {
 }
 
 // CollectComments returns every comment of src in source order, with the lines
-// it occupied and whether it stood alone on a line. The AST holds no comments
-// and this is what keeps them in a file the formatter rewrites.
+// it occupied and whether it stood on a line alone. The AST holds no comments.
+// This keeps them in a file the formatter rewrites.
 func CollectComments(src string) []Comment {
 	var out []Comment
 	offset := 0

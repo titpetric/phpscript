@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// NamespacePS is phpscript's own binding surface, which every build mounts. A
-// script writes a name bare or under its area: strlen() is also
+// NamespacePS is phpscript's own binding surface, mounted by each build. A
+// script writes a name bare or inside its area: strlen() is also
 // \Runtime\PS\Core\Strings\strlen(), and the Database class is also
 // \Runtime\PS\Database.
 const NamespacePS = `Runtime\PS`
@@ -16,8 +16,8 @@ const NamespacePS = `Runtime\PS`
 const NamespacePX = `Runtime\PX`
 
 // NamespaceGo is the opt-in binding of go's standard library. `use
-// Runtime\Go\Strings` installs one area on the runtime that runs the file, and
-// a runtime no file imported defines none of these names.
+// Runtime\Go\Strings` installs one area on the runtime that runs the file. A
+// runtime that imported no file defines none of these names.
 const NamespaceGo = `Runtime\Go`
 
 // NamespaceNone selects no area at all: the runtime holds the language and the
@@ -26,7 +26,7 @@ const NamespaceGo = `Runtime\Go`
 // the host hands in.
 const NamespaceNone = `Runtime\None`
 
-// NamespaceUnnamed holds an installer contributed without a name.
+// NamespaceUnnamed holds an unnamed installer.
 const NamespaceUnnamed = NamespacePS + `\Unnamed`
 
 // RegisterArea contributes an installer under ProfileSecure in the named area.
@@ -34,7 +34,7 @@ func RegisterArea(name string, installer func(*Runtime)) {
 	RegisterProfileArea(name, ProfileSecure, installer)
 }
 
-// RegisterProfileArea contributes an installer in the named area under a profile.
+// RegisterProfileArea contributes an installer in the named area for a profile.
 func RegisterProfileArea(name string, profile Profile, installer func(*Runtime)) {
 	if installer == nil {
 		return
@@ -86,16 +86,16 @@ func SelectAreas(areas []Area, namespaces []string) []Area {
 	return out
 }
 
-// InNamespace reports whether name is the namespace or nests under one, folding case as php does.
+// InNamespace reports whether name is the namespace or nests beneath one, folding case.
 func InNamespace(name, namespace string) bool {
 	name, namespace = foldName(name), foldName(namespace)
 	return name == namespace || strings.HasPrefix(name, namespace+`\`)
 }
 
-// areaLayers is the highest layer: 0 is Runtime\PS and the rest, 1 is Runtime\PX.
+// areaLayers records the top layer: 0 for Runtime\PS, 1 for Runtime\PX.
 const areaLayers = 1
 
-// areaLayer orders the areas: the overlay installs after what it overlays.
+// areaLayer orders the areas: the overlay installs after the area it overlays.
 func areaLayer(name string) int {
 	if InNamespace(name, NamespacePX) {
 		return 1
@@ -108,7 +108,7 @@ func (rt *Runtime) Areas() []string { return rt.opts.SelectedAreas() }
 
 // CheckAreas refuses a namespace naming no registered area or opt-in
 // namespace, a misspelling that would leave a runtime without bindings. The
-// three roots pass; a deeper name has to match an area this build linked.
+// root namespaces pass. A deeper name must match an area this build linked.
 func CheckAreas(namespaces []string) error {
 	registered := AreasFor(^Profile(0))
 	opt := Namespaces()
@@ -130,7 +130,7 @@ func CheckAreas(namespaces []string) error {
 	return nil
 }
 
-// isRoot reports whether ns names Runtime\PS, Runtime\PX, Runtime\Go or Runtime\None.
+// isRoot reports whether ns names Runtime\PS, Runtime\PX, Runtime\Go, Runtime\None.
 func isRoot(ns string) bool {
 	for _, root := range []string{NamespacePS, NamespacePX, NamespaceGo, NamespaceNone} {
 		if foldName(ns) == foldName(root) {

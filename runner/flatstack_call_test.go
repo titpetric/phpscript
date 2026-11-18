@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// TestFlatHostFrame covers the handle the engine binds once per run, which
-// replaced the map copied in and out around every call. A host with no frame
-// bound materialises an empty scope and a callee reading caller locals before
-// the bind sees nothing and never a nil map.
+// TestFlatHostFrame covers the handle the engine binds once per run, replacing
+// the map copied in and out around every call. A host lacking a bound frame
+// materialises an empty scope; a callee reading caller locals before the bind
+// sees nothing; the map is never nil.
 func TestFlatHostFrame(t *testing.T) {
 	t.Parallel()
 	host := &flatHost{runtime: New(io.Discard, Options{})}
@@ -34,8 +34,8 @@ func TestFlatHostFrame(t *testing.T) {
 }
 
 // TestFlatHostCall covers the engine's function-call path: a function-table
-// hit dispatches through the cached entry, a missing name resolves through
-// the fallback, and a name neither table holds reports the call as undefined.
+// hit dispatches through the cached entry; a missing name resolves through
+// the fallback. A name neither table holds reports the call as undefined.
 func TestFlatHostCall(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

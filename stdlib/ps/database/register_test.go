@@ -10,8 +10,8 @@ import (
 
 // TestRegister covers the surface a script reaches once the installer has run:
 // the Database class, the Database\Migrate class, and the two connection
-// statics. The installer registers each under the name a script types and the
-// runtime's own lookup answers for it.
+// statics. The installer registers each class by the name a script types, and
+// the runtime's lookup answers for it.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{Database: New(nil)})
@@ -31,10 +31,9 @@ func TestRegister(t *testing.T) {
 
 // TestRegisterConnections covers the two statics an application extends its
 // connection set with. Connection names normally come from the environment the
-// host started with, and an application keeping its connections in a table has
-// nowhere else to put them: the host builds the provider before the first
-// request, and putenv writes to the script environment, which no provider
-// reads.
+// host started with. An application keeping its connections in a table has
+// nowhere else to put the connections. The host builds the provider before the first
+// request; putenv writes to the script environment. No provider reads the table.
 func TestRegisterConnections(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{Database: New(nil)})
@@ -64,11 +63,12 @@ func TestRegisterConnections(t *testing.T) {
 	}
 }
 
-// TestRegisterMigrate covers the names Database\Migrate resolves against. It
-// tries each name as "<name>:migrate" before "<name>" and a deployment can
-// point migrations at a user allowed to alter tables while the script queries
-// through one that is not. The project stays the first name the script passed,
-// whichever credential answered, and a script naming none migrates "default".
+// TestRegisterMigrate covers the names `Database\Migrate` resolves. It tries
+// each name as "<name>:migrate" before the plain "<name>". A deployment can
+// point migrations at a user allowed to alter tables, while the script queries
+// through a less privileged credential. The project stays the first name the
+// script passed, whichever credential answered; a script naming none migrates
+// "default".
 func TestRegisterMigrate(t *testing.T) {
 	t.Parallel()
 	provider := New(nil)

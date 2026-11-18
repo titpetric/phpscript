@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// buffers is one runtime's stack of output buffering levels, typed so ob_get_contents can read them.
+// buffers holds one runtime's output buffering levels, typed for ob_get_contents.
 type buffers struct {
 	rt    *runner.Runtime
 	stack []*strings.Builder
@@ -27,13 +27,13 @@ func (b *buffers) push() {
 // level reports how many levels are active, backing ob_get_level.
 func (b *buffers) level() int { return len(b.stack) }
 
-// reset drops every buffering level a program left open, the runtime resetting its side too.
+// reset drops every buffering level a program left open.
 func (b *buffers) reset() {
 	clear(b.stack)
 	b.stack = b.stack[:0]
 }
 
-// contents returns the innermost buffer without ending it, false with no buffer active.
+// contents returns the innermost buffer without ending it. It answers false when no buffer is active.
 func (b *buffers) contents() (string, bool) {
 	if len(b.stack) == 0 {
 		return "", false

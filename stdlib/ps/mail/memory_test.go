@@ -8,7 +8,7 @@ import (
 )
 
 // TestMemory_Configured covers which names an in-memory provider accepts.
-// Naming none configures every name and a dry run captures whatever a script
+// Naming none configures every name. A dry run captures whatever a script
 // sends; naming some lets a test read back the refusal a script reads for the
 // rest. An empty name is the "default" server, as everywhere else.
 func TestMemory_Configured(t *testing.T) {
@@ -36,9 +36,9 @@ func TestMemory_Configured(t *testing.T) {
 }
 
 // TestMemory_Send covers queueing in place of delivering. A queued message
-// holds its target server's name and a test reads back which server a script
-// selected. This provider refuses a name it does not hold the way a real
-// delivery refuses it and a test still exercises the error a script reads.
+// holds its target server's name. A test reads back which server a script
+// selected. This provider refuses an unknown name the way a real delivery
+// does. A test still exercises the error a script reads.
 func TestMemory_Send(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
@@ -93,9 +93,9 @@ func TestMemory_SendMessage(t *testing.T) {
 }
 
 // TestMemory_Next covers reading the queue as a queue: the oldest message
-// first, and gone once read and a test walking a sequence of deliveries does
-// not index into a slice. The second return reports an empty queue, because a
-// zero Message reads the same as one a script sent with empty strings.
+// first, gone once read. A test walking a sequence of deliveries does not index
+// into a slice. The second return reports an empty queue: a zero Message reads
+// the same as a message a script sent with empty strings.
 func TestMemory_Next(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory()
@@ -121,9 +121,9 @@ func TestMemory_Next(t *testing.T) {
 	}
 }
 
-// TestMemory_Reset covers emptying the queue, which a test reusing one
-// provider across cases does between them. The configured names survive it and
-// the provider still refuses what it refused before.
+// TestMemory_Reset covers emptying the queue, the step a test reusing one
+// provider across cases takes. The configured names survive the reset; the
+// provider still refuses the names it refused before.
 func TestMemory_Reset(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")

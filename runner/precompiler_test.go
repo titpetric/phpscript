@@ -17,9 +17,9 @@ var precompileFS = fstest.MapFS{
 	"public/style.css": {Data: []byte(`body { color: red; }`)},
 }
 
-// TestPrecompiler covers the walk: the pass caches every .php file that parses
-// under the path a script would name it by, skips one that does not parse, and
-// does not fail.
+// TestPrecompiler covers the walk: the pass caches every .php file that
+// parses, keyed by the path a script would name it by, and skips one that
+// does not parse.
 func TestPrecompiler(t *testing.T) {
 	t.Parallel()
 	includes := runner.NewIncludeCache()
@@ -42,8 +42,8 @@ func TestPrecompiler(t *testing.T) {
 	}
 }
 
-// TestPrecompilerEmptyTree covers the inputs that have nothing to walk: a host
-// builds the Precompiler itself and may leave a field empty.
+// TestPrecompilerEmptyTree covers the inputs with nothing to walk: a host
+// may build the Precompiler with an empty field.
 func TestPrecompilerEmptyTree(t *testing.T) {
 	t.Parallel()
 	includes := runner.NewIncludeCache()
@@ -58,8 +58,8 @@ func TestPrecompilerEmptyTree(t *testing.T) {
 	}
 }
 
-// TestPrecompilerServesLoadFile covers what the walk buys a request: an
-// entrypoint LoadFile answers with the program the walk parsed, and not
+// TestPrecompilerServesLoadFile covers the walk's gain for a request: an
+// entrypoint LoadFile answers with the program the walk parsed, not
 // with a second parse of the same bytes.
 func TestPrecompilerServesLoadFile(t *testing.T) {
 	t.Parallel()
@@ -81,7 +81,7 @@ func TestPrecompilerServesLoadFile(t *testing.T) {
 
 // TestPrecompilerOffReparses covers the other half of the option: with it off,
 // LoadFile reads and parses the file every time, as a CLI run and an
-// application editing its own sources expect.
+// application editing its sources expect.
 func TestPrecompilerOffReparses(t *testing.T) {
 	t.Parallel()
 	for _, precompile := range []bool{false, true} {
@@ -101,8 +101,8 @@ func TestPrecompilerOffReparses(t *testing.T) {
 }
 
 // TestPrecompilerBrokenEntrypointStillFails covers the error a precompiled tree
-// must keep reporting: the cache holds no entry for it and the request that
-// reaches it parses it and fails the way it does without precompilation.
+// must keep reporting: the cache holds no entry for the broken file. A request
+// that reaches it parses the file and fails as it would without precompilation.
 func TestPrecompilerBrokenEntrypointStillFails(t *testing.T) {
 	t.Parallel()
 	includes := runner.NewIncludeCache()
@@ -115,9 +115,9 @@ func TestPrecompilerBrokenEntrypointStillFails(t *testing.T) {
 	}
 }
 
-// TestPrecompilerAccountsItsHeap covers what opcache_get_status reports: the
-// pass records the heap it added, and a cache nothing precompiled reports
-// none of it.
+// TestPrecompilerAccountsItsHeap covers the figures opcache_get_status
+// reports: the pass records the heap it added; a cache nothing precompiled
+// reports none of it.
 func TestPrecompilerAccountsItsHeap(t *testing.T) {
 	// A tree large enough that the pass is visible above the noise of a
 	// collection, since the figure is a live-heap delta and no sum.

@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// phpClass is a class with one of everything a definition prints: a
+// phpClass is a class holding every element a definition prints: a
 // description, a cited standard library symbol, a satisfied interface, a
-// documented property, an undocumented one, and a method.
+// documented property, an undocumented property, plus a method.
 func phpClass() Class {
 	return Class{
 		Name:    "Database",
@@ -40,7 +40,7 @@ func phpClass() Class {
 }
 
 // TestClass_PHP covers the definition a class prints: the fields before the
-// functions, every member's godoc as a docblock, and no body anywhere.
+// functions, every member's godoc as a docblock. No body appears anywhere.
 func TestClass_PHP(t *testing.T) {
 	t.Parallel()
 	want := `/**
@@ -74,7 +74,7 @@ class Database implements fmt.Stringer
 }
 
 // TestClassPHPFieldsBeforeFunctions pins the order of the two halves. A reader
-// looking for what a class holds reads it before the behaviour, which is the
+// looking for a class's data reads it before the behaviour, which is the
 // order `go doc` prints a Go type in.
 func TestClassPHPFieldsBeforeFunctions(t *testing.T) {
 	t.Parallel()
@@ -93,8 +93,8 @@ func TestClassPHPFieldsBeforeFunctions(t *testing.T) {
 }
 
 // TestClassPHPPrintsNoBody pins where a declaration ends. The implementation is
-// Go and no PHP a reader could open, and a declaration ends at the semicolon,
-// with no body for a reader to look inside.
+// Go, not PHP a reader could open. A declaration ends at the semicolon;
+// no body invites a reader to look inside.
 func TestClassPHPPrintsNoBody(t *testing.T) {
 	t.Parallel()
 	for _, line := range strings.Split(phpClass().PHP(), "\n") {
@@ -111,10 +111,10 @@ func TestClassPHPPrintsNoBody(t *testing.T) {
 	}
 }
 
-// TestClassPHPWithoutMembers covers a class with no property to print: it
-// prints no property section and no prose about the absence. HTTP\Client is
-// the one in this tree, and a sentence saying it holds nothing is a sentence
-// about the binding and not about the class.
+// TestClassPHPWithoutMembers covers a class lacking any property to print: it
+// prints no property section or prose about the absence. HTTP\Client is the
+// only such class in this tree. A sentence saying it holds nothing is a
+// sentence about the binding, not about the class.
 func TestClassPHPWithoutMembers(t *testing.T) {
 	t.Parallel()
 	c := Class{
@@ -170,7 +170,7 @@ func TestClassDescribeWithoutGodoc(t *testing.T) {
 
 // TestClassImplementsClause covers the clause the class header prints. A
 // bound type satisfying none of the interface set prints no clause: no
-// placeholder and no prose about the absence.
+// placeholder, no prose about the absence.
 func TestClassImplementsClause(t *testing.T) {
 	t.Parallel()
 	if got := (Class{}).implementsClause(); got != "" {
@@ -185,8 +185,8 @@ func TestClassImplementsClause(t *testing.T) {
 	}
 }
 
-// TestClass_Rename covers the copy an alias prints under. The SPL exception
-// names share one constructor and one entry, and a caller asking about
+// TestClass_Rename covers the copy an alias prints: the SPL exception
+// names share one constructor, one entry; a caller asking about
 // RuntimeException reads that name in the header.
 func TestClass_Rename(t *testing.T) {
 	t.Parallel()
@@ -204,7 +204,7 @@ func TestClass_Rename(t *testing.T) {
 }
 
 // TestWriteDocblock covers the docblock form. A blank godoc line prints no
-// trailing space, which a formatter would strip and a diff would then report.
+// trailing space. A formatter would strip such a space. A diff would report it.
 func TestWriteDocblock(t *testing.T) {
 	t.Parallel()
 	var b strings.Builder

@@ -9,8 +9,8 @@ import (
 )
 
 // TestUser covers the record's two methods and the property the primary key
-// rests on: the id follows from the username and one name answers one key, for
-// as long as the name exists and again after a second line adds it back.
+// rests on: the id follows from the username. One name answers one key as long
+// as the name exists, and again after a second line adds it back.
 func TestUser(t *testing.T) {
 	t.Parallel()
 
@@ -29,11 +29,11 @@ func TestUser(t *testing.T) {
 	}
 }
 
-// TestUserRendersAsItsUsername is the reason the second method is String and
-// no GetUsername: phpval.GoString takes a fmt.Stringer and `echo $user` and a
-// Go binding's string parameter both read the username with nothing spelled at
-// the call site. A record that dropped Stringer would print the empty string,
-// and no other test here would catch it.
+// TestUserRendersAsItsUsername is the reason the second method is String, not
+// GetUsername. phpval.GoString takes a fmt.Stringer. `echo $user` reads the
+// username; a Go binding's string parameter reads it too, with nothing spelled
+// at the call site. A record that dropped Stringer would print the empty
+// string; no other test here would catch that.
 func TestUserRendersAsItsUsername(t *testing.T) {
 	t.Parallel()
 

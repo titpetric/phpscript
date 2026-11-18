@@ -50,7 +50,7 @@ func run(t *testing.T, src string) string {
 	}
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	// minimal forwarded stdlib (the README's "bring your own stdlib" idea)
+	// minimal forwarded stdlib (the README's "bring your stdlib" idea)
 	rt.RegisterFunc("strlen", func(s string) int { return len(s) })
 	rt.RegisterFunc("strtoupper", strings.ToUpper)
 	rt.RegisterFunc("count", func(a any) int {
@@ -452,7 +452,7 @@ echo $out;`)
 	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
 	rt.RegisterFunc("token_name", parser.TokenName)
 	// Shape-agnostic, like the real stdlib is_array: TokenGetAll returns a
-	// []any of []any, and no *model.Array.
+	// []any of []any. No *model.Array appears.
 	rt.RegisterFunc("is_array", modelutil.IsCollection)
 	// minitpl-style wrapped expression with the "." -> "__1" marker.
 	rt.SetGlobal("code", `<?php if ($this->_vars) { ?>`)
@@ -532,7 +532,7 @@ func TestRegisterFuncBetweenRuns(t *testing.T) {
 }
 
 // TestNestedEvalScopes proves that reused environments never leak a scope: a
-// user function called from inside an expression must see its own frame, and
+// user function called from inside an expression must see a fresh frame, and
 // the caller's variables must survive the nested evaluation.
 func TestNestedEvalScopes(t *testing.T) {
 	t.Parallel()
@@ -555,10 +555,10 @@ echo outer(2) . "|" . $local;`)
 
 // TestLazyEnvInstallsFunctionsOnDemand covers the environments' on-demand
 // population. The runtime wraps a registered function into an environment the
-// first time an expression evaluated with that environment calls it and the
-// places a call can hide from a naive "top-level expressions only" scan are
-// what matters: a closure body, a user function body, a method body, a
-// nested/recursive call and a by-reference call.
+// first time an expression evaluated with that environment calls the function.
+// A naive "top-level expressions only" scan misses the places a call can hide:
+// a closure body, a user function body, a method body, a nested or recursive
+// call, a by-reference call.
 func TestLazyEnvInstallsFunctionsOnDemand(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -663,9 +663,9 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 }
 
 // TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList drives evaluation deeper
-// than the pooled environment free list and the runtime builds, nests,
-// discards and reuses environments while every level holds an open call to a
-// lazily installed function.
+// than the pooled environment free list. The runtime builds, nests, discards
+// and reuses environments while each level holds an open call to a lazily
+// installed function.
 func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
 	t.Parallel()
 	got := run(t, `<?php
@@ -682,7 +682,8 @@ echo down(40);`)
 }
 
 // TestLazyEnvUndefinedFunctionStillErrors asserts the diagnostic for a call to
-// a function that is not registered: a runtime error, and no silent nil.
+// a function that is not registered: a runtime error. A silent nil never
+// answers.
 func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php echo no_such_function(1);`)
@@ -696,8 +697,9 @@ func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 }
 
 // TestInterfaceContractRaisesOnBothBackends pins the rule that made the
-// previous attempt at class metadata a mistake: a check wired into one backend
-// and not the other means the two disagree about what a program does. A
+// previous attempt at class metadata a mistake: a check wired into a single
+// backend but not the other means the two disagree about the result of a
+// program. A
 // violated contract must be the same RuntimeException whichever engine runs it,
 // raised before the program prints anything.
 func TestInterfaceContractRaisesOnBothBackends(t *testing.T) {
@@ -746,10 +748,10 @@ echo "unreachable";`)
 	}
 }
 
-// A class satisfying its contract runs on either backend, and gains no member
-// from the interface: the interface declares no body and the class answers only
-// with what it wrote. `instanceof` does consult the list of names the class
-// declared, which is a name comparison and no inherited member.
+// A class satisfying its contract runs on both backends, and gains no member
+// from the interface: the interface declares no body. The class answers only
+// with the members it wrote. `instanceof` consults the list of names the class
+// declared. That is a name comparison. No backend inherits a member.
 func TestInterfaceContractSatisfied(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php

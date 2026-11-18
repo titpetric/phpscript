@@ -7,9 +7,9 @@ import (
 )
 
 // TestDeepSize covers the walk memory_get_usage() and the limit checkpoints
-// read. The walk counts a container reachable through two or more variables
-// once, and ends on a self-referential one, because the visited set keys on
-// pointer identity.
+// read. The walk counts a container reachable through more than one variable
+// once, and ends on a self-referential value. The visited set keys on pointer
+// identity.
 func TestDeepSize(t *testing.T) {
 	t.Parallel()
 	inner := model.NewArray()
@@ -41,8 +41,8 @@ func TestDeepSize(t *testing.T) {
 }
 
 // TestDeepSizeContainers covers the container kinds a script owns. A nil
-// container costs nothing, DeepSize charges an object for its property names
-// as well as its values, and a host-owned Go value takes the shallow size, the
+// container costs nothing. DeepSize charges an object for its property names
+// as well as its values. A host-owned Go value takes the shallow size, the
 // ownership rule flatHost.SetEntry applies.
 func TestDeepSizeContainers(t *testing.T) {
 	t.Parallel()
@@ -74,10 +74,10 @@ func TestDeepSizeContainers(t *testing.T) {
 	}
 }
 
-// TestEstimateValueSize covers the shallow estimate charged to every binding's
-// result. A scalar is its own width, a string is its header plus its bytes,
-// and the walk that reads a deeper graph is DeepSize: this one undercounts
-// nesting and is cheap enough to run per call.
+// TestEstimateValueSize covers the shallow estimate charged for each binding's
+// result. A scalar costs its width; a string costs its header plus its bytes.
+// The walk reading a deeper graph is DeepSize: this one undercounts nesting
+// and is cheap enough to run per call.
 func TestEstimateValueSize(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -110,9 +110,9 @@ func TestEstimateValueSize(t *testing.T) {
 	}
 }
 
-// TestShallowElementSize covers what one entry of a container costs while the
-// shallow estimate walks it. A nested container costs its header and nothing
-// below it and the estimate stays one level deep whatever it holds.
+// TestShallowElementSize covers the cost of one container entry as the
+// shallow estimate walks the entry. A nested container costs its header alone.
+// The estimate stays one level deep whatever the container holds.
 func TestShallowElementSize(t *testing.T) {
 	t.Parallel()
 	filled := model.NewArray()

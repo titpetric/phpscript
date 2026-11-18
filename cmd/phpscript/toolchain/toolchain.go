@@ -122,8 +122,7 @@ func Title(binary string, tool Tool, tools []Tool) string {
 	return "External tool " + filepath.Base(tool.Path)
 }
 
-// Exec runs the tool with args, attached to the process's standard streams,
-// and returns its exit code.
+// Exec runs the tool on the standard streams, returning its exit code.
 func Exec(tool Tool, args []string) int {
 	cmd := exec.Command(tool.Path, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr

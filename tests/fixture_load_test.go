@@ -31,17 +31,17 @@ func TestParseGolden(t *testing.T) {
 	}
 }
 
-// TestFindFixtures covers discovery over a real tree: both fixture forms, in
-// path order, and a _test.php with no expected output beside it left out. A
-// path ending in /... walks the subdirectories, and one without it reads only
-// the directory named.
+// TestFindFixtures covers discovery on a real tree: both fixture forms, in
+// path order, leaving out a _test.php whose expected output is missing. A path
+// ending in /... walks the subdirectories; a plain path reads only the named
+// directory.
 func TestFindFixtures(t *testing.T) {
 	dir := writeTree(t,
 		"doc.phpt", "name: doc\ndescription: a document\n---\n<?php echo \"ok\";\n---\nok",
 		"body_test.php", "<?php echo \"ok\";\n",
 		"body_test.txt", "ok\n",
-		// A body with no expected output beside it stays a php file in the
-		// tree, and no fixture.
+		// A body whose expected output is missing stays an ordinary php file
+		// in the tree; the finder skips it.
 		"loose_test.php", "<?php echo \"loose\";\n",
 		"nested/deep.phpt", "name: deep\ndescription: a nested document\n---\n<?php echo \"ok\";\n---\nok",
 	)

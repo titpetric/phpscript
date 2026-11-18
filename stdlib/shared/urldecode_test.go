@@ -8,9 +8,9 @@ import (
 
 // TestURLDecode covers urldecode(): the form encoding a browser posts. Every
 // want comes off `var_export(urldecode($in), true)` under php 8. The decoder
-// is lenient because php is: `%zz` and a truncated `%4` decode to themselves,
-// where net/url refuses the input and drops the whole pair, losing a field the
-// browser did send.
+// is lenient because php is. A truncated `%4` decodes to itself; `%zz` decodes
+// to itself too. net/url refuses the input and drops the whole pair, losing a field
+// the browser did send.
 func TestURLDecode(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -41,8 +41,8 @@ func TestURLDecode(t *testing.T) {
 }
 
 // TestRawURLDecode covers rawurldecode(): RFC 3986, where `+` is a plus and
-// only `%20` is a space. That is the one difference from urldecode() and a
-// path segment holding a plus sign survives the decode.
+// only `%20` is a space. That is the only difference from urldecode(). A path
+// segment holding a plus sign survives the decode.
 func TestRawURLDecode(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

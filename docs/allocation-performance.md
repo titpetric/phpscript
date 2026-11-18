@@ -2,15 +2,15 @@
 
 phpscript has no marshalling layer. Reflection invokes a registered Go function; the call boxes whatever it returns into `any` and passes it to the VM, which dispatches on the dynamic type. `foreach`, `$x[0]`, `$m["key"]`, `$obj->field` and `$obj->method()` all work against native Go values through reflection fallbacks.
 
-That freedom has one consequence: **a binding pays for the value it builds, not for the type it declares.** Returning `any` costs nothing. Building a `*model.Array` costs a lot.
+That freedom has this consequence: **a binding pays for the value it builds, not for the type it declares.** Returning `any` costs nothing. Building a `*model.Array` costs a lot.
 
-This document is the guideline, the reasoning behind it, and a checklist of every binding in the tree.
+This document states the guideline and its reasoning, with a checklist of every binding.
 
 ## The measured baseline
 
-All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`) and the floor the table reports is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which covers the shapes a runtime survey finds the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and the trim/sprintf variadic families among them; a covered shape dispatches directly and pays no reflect allocations at all.
+All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`) and the floor the table reports is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which covers the shapes a runtime survey finds the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and including the trim/sprintf variadic families. A covered shape dispatches directly, paying no reflect allocations.
 
-The switch matches a whole signature and **adding an error return moves a binding off the fast path** unless the switch lists the error-returning spelling too. That is not a visible change at the call site and no test fails for it: `sprintf` declares `func(string, ...any) (string, error)` since it stopped handing its arguments to `fmt`, and a spelling the switch does not list dispatches through `reflect.Value.Call`. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` is what prices it.
+The switch matches a whole signature and **adding an error return moves a binding off the fast path** unless the switch lists the error-returning spelling too. That change is invisible at the call site. No test fails for it: `sprintf` declares `func(string, ...any) (string, error)` since it stopped handing its arguments to `fmt`. A spelling the switch does not list dispatches through `reflect.Value.Call`. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` prices it.
 
 Same five-element list, five representations:
 
@@ -37,7 +37,7 @@ Five rows of two columns, the database shape:
 | `[]string` (now)        |  128 |         3 |   412 |
 | `*model.Array` (before) |  488 |        12 |   765 |
 
-The `*model.Array` rows measure `model.Array`'s list mode (see the audit at the bottom). The table keeps its ordering: a slice still beats it, and the gap on the nested database shape is still a factor of ten in time.
+The `*model.Array` rows measure `model.Array`'s list mode (see the audit at the bottom). The table keeps its ordering: a slice still beats it, with the nested database shape still a factor of ten behind in time.
 
 ## The rules
 
@@ -69,21 +69,21 @@ rt.RegisterFunc("explode", func(delim, s string) *model.Array {
 | `[]any`                        | 1 allocation + a box per element                               | mixed lists    |
 | `*model.Array`                 | struct + `map[any]any` + key slice + a box per key *and* value | see rule 4     |
 
-**3. `any` versus a concrete return type does not matter.** `firstReturn` calls `reflect.Value.Interface()` either way. The `bind_int` and `bind_int_any` rows in the table differ by one word and no allocation; for a slice the difference is one 16-byte allocation. Declare whichever reads better. Use `any` when the value is genuinely polymorphic; PHP's `strpos` returning `false|int` is the honest case.
+**3. `any` versus a concrete return type does not matter.** `firstReturn` calls `reflect.Value.Interface()` either way. The `bind_int` and `bind_int_any` rows in the table differ by one word; neither allocates. For a slice the difference is a single 16-byte allocation. Declare whichever reads better. Use `any` when the value is genuinely polymorphic; PHP's `strpos` returning `false|int` is the honest case.
 
 **4. Return `*model.Array` for exactly three reasons.**
 
-- **The script appends to it.** A Go slice cannot grow through the interface value holding it and `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`. So does `unset($m["k"])` on a returned map, and `unset($a[0])` on a returned slice, which renumbers what follows; see `TestBindingCollectionsUnset`.
-- **Insertion order is part of the contract.** A Go map re-randomises on every `foreach`. If a script iterates a value more than once and the output must match, that value needs an `*model.Array`. This is why `json_decode` returns one for JSON objects and why the introspection listings keep theirs.
+- **The script appends to a returned value.** A Go slice cannot grow through the interface value holding it; `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`. `unset($m["k"])` on a returned map works too; `unset($a[0])` on a returned slice renumbers what follows; see `TestBindingCollectionsUnset`.
+- **Insertion order is part of the contract.** A Go map re-randomises on every `foreach`. If a script iterates a value more than once and the output must match, that value needs an `*model.Array`. That is why `json_decode` returns one for JSON objects, and the introspection listings keep theirs for the same reason.
 - **Hybrid int/string keys with PHP's ordering.** Only `*model.Array` models it.
 
-Everything else (projections, listings, query results, regex captures) is a read-only collection the script walks once.
+Every remaining case (projections, listings, query results, regex captures) is a read-only collection the script walks once.
 
-**5. Take arguments as `any`.** A collection reaches a binding in two shapes: the `*model.Array` the interpreter builds for an array literal, and the Go slice or map another binding returned. `coerceArg` (`runner/invoke.go`) converts neither into the other. A parameter typed `*model.Array` answers a `TypeError` for the `[]string` a script passed from `array_keys`, and one typed `[]string` answers a `TypeError` for the array literal. Read arguments through `modelutil.RangeValues` / `modelutil.LenValues` / `modelutil.IsCollection` (`modelutil/collection.go`), which handle `*Array`, slices and maps with typed fast paths. `modelutil.Keys`, `modelutil.Values`, `modelutil.Map` and `modelutil.Typed[T]` are the same read collected into a slice or a map, for a binding whose body needs the whole collection in hand.
+**5. Take arguments as `any`.** A collection reaches a binding in two shapes: the `*model.Array` the interpreter builds for an array literal, and the Go slice or map another binding returned. `coerceArg` (`runner/invoke.go`) converts neither shape into the other. Any parameter typed `*model.Array` answers a `TypeError` for the `[]string` a script passed from `array_keys`, while one typed `[]string` answers a `TypeError` for the array literal. Read arguments through `modelutil.RangeValues` / `modelutil.LenValues` / `modelutil.IsCollection` (`modelutil/collection.go`), which handle `*Array`, slices and maps with typed fast paths. `modelutil.Keys`, `modelutil.Values`, `modelutil.Map` and `modelutil.Typed[T]` are the same read collected into a slice or a map, for a binding whose body needs the whole collection in hand.
 
-A narrowing inside the binding is the same mistake one line later. `value.(*model.Array)` answers for the array a literal wrote and takes the other path, silently, for the map another binding returned: `setcookie` read an options bag as the positional argument list, `password_hash` refused the call outright, `strtr` returned the subject unreplaced, and `get_object_vars` and `property_exists` answered for an interpreted object and for no Go value. A narrowing needs one of four reasons the code states: a type switch with a case for the native shape, a call that reads every shape anyway, a capability a Go-native value has not got (`Append`, `Set`, `Clear`, `Int64List`: a slice behind an interface cannot grow, and `arrayTarget` holds the four mutators to the one type that can), and an error that refuses the value loudly.
+A narrowing inside the binding is the same mistake one line later. `value.(*model.Array)` answers for the array a literal wrote and takes the other path, silently, for the map another binding returned: `setcookie` read an options bag as the positional argument list, `password_hash` refused the call outright, `strtr` returned the subject unreplaced; `get_object_vars` and `property_exists` answered for an interpreted object and for no Go value. A narrowing needs one of four reasons the code states: a type switch with a case for the native shape, a call that reads every shape anyway, a capability a Go-native value has not got (`Append`, `Set`, `Clear`, `Int64List`: a slice behind an interface cannot grow, and `arrayTarget` holds the four mutators to the single type that can), and an error that refuses the value loudly.
 
-`go run ./internal/cmd/bindlint .` reports a parameter of either shape and an unreasoned narrowing, over every registered function, constructor and class method in the tree, with the reason it did not accept. `atkins lint` runs it and `TestRunTree` fails on a finding; the tree is at zero.
+`go run ./internal/cmd/bindlint .` reports a parameter of either shape and an unreasoned narrowing across every registered function, constructor and class method in the tree, with the reason it did not accept. `atkins lint` runs it; `TestRunTree` fails on a finding; the tree is at zero.
 
 **6. Presize everything.** `model.NewArraySize(n)`, `make([]any, 0, n)`, `make(map[string]any, n)`. A five-element `*model.Array` built by `Append` grows its key slice 1->2->4->8: four allocations before any data. Map size hints are hints, not capacity, but they still avoid the rehash-and-copy cycle.
 
@@ -98,15 +98,15 @@ A narrowing inside the binding is the same mistake one line later. `value.(*mode
 | `7`           |       none |
 | `4096`        |    8 bytes |
 
-Pointers, slices headers into existing backing arrays, and maps box without a fresh allocation for the pointee. This is why `*model.Array` is expensive twice over: it boxes every key *and* every value into a `map[any]any`.
+Pointers, slices headers into existing backing arrays, and maps box without a fresh allocation for the pointee. This is why `*model.Array` is expensive twice: it boxes both keys and values into a `map[any]any`.
 
 **`map[any]any` pays for hashing too.** An interface-keyed map cannot use a compile-time-specialised hash function; it dispatches through the type descriptor at runtime. Go 1.24's Swiss Table maps improved lookup and insert throughput measurably (roughly 20-30% on microbenchmarks) but did not change that dispatch cost; a concrete key type still beats an interface key.
 
 **`reflect.Value.Call` allocates before your code runs.** It builds a slice for the results on every call, plus per-call preparation, which is the 2-alloc floor in the table above. The cost is long-standing and known. The mitigation is not to micro-optimise the call but to make the *returned value* cheap, and to avoid re-entering reflection more times than necessary.
 
-**Escape analysis will keep things on the stack if you let it.** A value whose lifetime the compiler can bound stays on the stack and costs nothing. Returning it through an interface defeats that, which is unavoidable at the binding boundary, but everything *inside* the binding is still eligible. Check with `go build -gcflags=-m ./stdlib` and look for `escapes to heap` / `moved to heap`. Narrow lifetimes, avoid returning a pointer to a local, which moves it to the heap, and prefer generics over `any` in internal helpers where you know the type.
+**Escape analysis keeps values on the stack when it can.** A value whose lifetime the compiler can bound stays on the stack and costs nothing. An interface return defeats that, which is unavoidable at the binding boundary, but everything *inside* the binding is still eligible. Check with `go build -gcflags=-m ./stdlib`, looking for `escapes to heap` / `moved to heap`. Narrow lifetimes, avoid returning a pointer to a local, which moves it to the heap, and prefer generics over `any` in internal helpers where you know the type.
 
-**Where the guidance stops.** Reflection in `runner.invokeAny` is the design; the project trades some throughput for "any Go function is a PHP function with no glue". The rules above recover the part of that cost which buys nothing.
+**Where the guidance stops.** Reflection in `runner.invokeAny` is the design; the project trades some throughput so that "any Go function is a PHP function without glue". The rules above recover the part of that cost which buys nothing.
 
 Sources: [Stack Allocations and Escape Analysis](https://goperf.dev/01-common-patterns/stack-alloc/), [Avoiding Interface Boxing](https://goperf.dev/01-common-patterns/interface-boxing/), [runtime: prevent allocation when converting small ints to interfaces](https://github.com/golang/go/commit/9828c43288a53d3df75b1f73edad0d037a91dff8), [runtime/iface.go](https://github.com/golang/go/blob/master/src/runtime/iface.go), [reflect: Call is slow (golang/go#7818)](https://github.com/golang/go/issues/7818), [Faster Go maps with Swiss Tables](https://go.dev/blog/swisstable), [Memory Preallocation](https://goperf.dev/01-common-patterns/mem-prealloc/), [Escape Analysis in Go](https://blog.jetbrains.com/go/2026/07/20/escape-analysis/).
 
@@ -116,9 +116,9 @@ The size of the function table is not the dominant cost. `runner.baseEnv` once r
 
 `runner` does three things that keep the table off the per-`Eval` path:
 
-- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection and one environment serves every `Eval`;
+- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection; one environment serves every `Eval`;
 - populates an environment with the functions an expression calls, on demand (`Runtime.installFunc`, fed by `Transpiler.Calls`), leaving the rest of the table out;
-- caches the expr compile configuration per function-table generation (`Runtime.exprConfig`) and builds its type-env nature directly (`typeEnvNature`), with no reflective walk of the table.
+- caches the expr compile configuration per function-table generation (`Runtime.exprConfig`) and builds its type-env nature directly (`typeEnvNature`), without a reflective walk of the table.
 
 | Runtime              | B/op  | allocs/op | ns/op |
 |----------------------|------:|----------:|------:|
@@ -131,11 +131,11 @@ The two are now identical: a script pays for the functions it calls, not for the
 
 ### The compile-time type env of the expr-lang era
 
-The third bullet dominates the tree with the runtime env fixed: `expr.Compile(src, expr.Env(typeEnv), ...)` makes expr walk the whole ~95-entry type-env map through `reflect.Value.MapKeys` + `MapIndex` + `copyVal` on **every compile**, which is 64% of all allocations.
+The third bullet dominates the tree with the runtime env fixed: `expr.Compile(src, expr.Env(typeEnv), ...)` makes expr walk the whole ~95-entry type-env map through `reflect.Value.MapKeys` + `MapIndex` + `copyVal` during **every compile**, which costs 64% of all allocations.
 
-The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed and the comment above `Runtime.compile` claimed we compiled without type information anyway, is **wrong, and silently so**. `expr/parser.parseCall` checks its own `predicates` table *before* the disabled-builtins list, and the only thing that stops expr from parsing a name as its predicate syntax is `conf.Config.IsOverridden(name)`, which consults `Config.Env`. PHP's `count`, `map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all collide. `expr.DisableAllBuiltins()` does not cover this. With no env, `count($x)` compiles to expr's `count` predicate and never reaches the registered PHP function.
+The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed and the comment above `Runtime.compile` claimed we compiled without type information anyway, is **wrong, and silently so**. `expr/parser.parseCall` checks the `predicates` table *before* the disabled-builtins list, and the only thing that stops expr from parsing a name as its predicate syntax is `conf.Config.IsOverridden(name)`. That check consults `Config.Env`. PHP's `count`, `map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all collide. `expr.DisableAllBuiltins()` does not cover this. Without an env, `count($x)` compiles to expr's `count` predicate; it never reaches the registered PHP function.
 
-So the env stays for as long as expr-lang compiles anything; the per-compile cost of deriving it goes, one shared nature for all keys, with no reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: with no expr-lang compile there is no type env, no predicate collision and no bytecode to guard.
+So the env stays while expr-lang compiles anything; the per-compile cost of deriving it goes, one shared nature for all keys, without a reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: without an expr-lang compile there is no type env, no predicate collision, no bytecode to guard.
 
 ### The run on the caller's goroutine
 
@@ -143,7 +143,7 @@ So the env stays for as long as expr-lang compiles anything; the per-compile cos
 
 The worker goroutine paid two costs: the context switches between the submitter and the worker, and the completion channel the submitter waited on. With the run on the caller's goroutine the call that submits it returns when the run ends. The pool reads no channel from a job.
 
-The free list is still the channel itself, which keeps the old refusal: a run dropped before it takes a runtime never holds one, and a run once started lives to its end on the caller's goroutine. The caller sees a disconnect through `connection_aborted`, the same way a handler does.
+The free list is still the channel itself, which keeps the old refusal: a run dropped before it takes a runtime holds none; a run once started lives to its end on the caller's goroutine. The caller sees a disconnect through `connection_aborted`, the same way a handler does.
 
 Measured on the go-runtime server, `GET /hello`, three ten-second runs:
 
@@ -154,7 +154,7 @@ Measured on the go-runtime server, `GET /hello`, three ten-second runs:
 
 ### The closure engine
 
-With the env fixed, the remaining eval cost is the VM's dispatch itself: every helper call pays an OpCall argument slice, the adapt() indirection and a defer/recover, even though the transpiler only ever emits a fixed vocabulary:
+With the env fixed, the remaining eval cost is the VM's dispatch itself: every helper call pays an OpCall argument slice, the adapt() indirection, a defer/recover, even though the transpiler only ever emits a fixed vocabulary:
 
 - literals and `v_` identifiers
 - the pure `__*` helpers with constant op strings
@@ -162,7 +162,7 @@ With the env fixed, the remaining eval cost is the VM's dispatch itself: every h
 
 The engine compiles the tree into a chain of typed Go closures that call `phpArith`, `phpCompare` and friends directly, with a single panic guard per evaluation covering every call in the chain. The technique is expr-cls's (guamoko995/expr-cls compiles expressions to typed closure chains); its API takes a struct-typed env fixed at compile time, which PHP's per-expression variable map rules out and the technique is rebuilt over the model AST. It lands as a fast path in front of the expr-lang pipeline and replaces it outright once its coverage is total. Calls that re-enter the interpreter (`__call`, `__get`, registered functions) stay env lookups; the `[]any` slice their variadic signature requires is the allocation that remains.
 
-The closure compiler binds variables by slot, not by map: it assigns each per-evaluation identifier an index, and Eval fills a pooled `[]any`, with no env map to layer and delete on release; with the engine in place, map writes, deletes and hashing are half of what the profile still holds. Functions and helpers still resolve through the persistent base map.
+The closure compiler binds variables by slot, not by map: it assigns each per-evaluation identifier an index, and Eval fills a pooled `[]any`, without an env map to layer and delete on release; with the engine in place, map writes, deletes and hashing still account for half the profile. Functions and helpers still resolve through the persistent base map.
 
 Measured pinned in one sweep while both engines existed, closure against the same program's bytecode path:
 
@@ -175,7 +175,7 @@ Measured pinned in one sweep while both engines existed, closure against the sam
 | `strlen($s)` (VM)        |  152 |         6 |   902 |
 | `strlen($s)` (closure)   |   16 |         1 |   216 |
 
-The binding call's one remaining allocation is the variadic argument slice. The same profile showed two boxing allocations, fixed on both engines: `nameCallError` allocated its `errors.As` targets on every successful call (fixed with a nil guard), and `phpval.Key` reboxed the string and int64 keys it returns unchanged.
+The binding call's one remaining allocation is the variadic argument slice. The same profile showed two boxing allocations, fixed for both engines: `nameCallError` allocated its `errors.As` targets on every successful call (fixed with a nil guard), and `phpval.Key` reboxed the string and int64 keys it returns unchanged.
 
 End to end, with IO-bound fixtures unchanged. Each source pays the closure build once, and the same caches as the bytecode amortise it.
 
@@ -187,7 +187,7 @@ End to end, with IO-bound fixtures unchanged. Each source pays the closure build
 | Closure build per source, allocs            |       0 |      +20 |
 | Closure build per source, B                 |       0 | +0.8 KiB |
 
-The compile path took the same exit: `runner/expr/direct.go::CompileExpr` walks the model AST and builds the closure chain with no source text. One compound expression compiles at:
+The compile path took the same exit: `runner/expr/direct.go::CompileExpr` walks the model AST and builds the closure chain without source text. One compound expression compiles at:
 
 | Compiler                                                                                                                                                                                                                                                                                                                                                                                                                                                               | sec/op | allocs/op |
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------:|----------:|
@@ -240,11 +240,11 @@ Legend: **OK**: optimal, no change needed. **OK (by design)**: allocates, but th
 
 ### Array sorting
 
-The key-preserving half of the sort family. `sort`, `rsort` and `usort` only permute values and `sortValues` can sort a Go slice in place through its backing array. These six move the key with the value, which means rebuilding the array: `arrayEntries` snapshots the pairs, the sort orders the snapshot, then `Clear` plus `arrayReplay` in restore mode writes every pair back with `Set`. `Append` would hand out fresh integer keys and quietly turn the call into `sort()`.
+The key-preserving half of the sort family. `sort`, `rsort` and `usort` only permute values and `sortValues` can sort a Go slice in place through the backing array. These six move the key with the value, which means rebuilding the array: `arrayEntries` snapshots the pairs, the sort orders the snapshot, then `Clear` plus `arrayReplay` in restore mode writes every pair back with `Set`. `Append` would hand out fresh integer keys and quietly turn the call into `sort()`.
 
-Cost is one `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. The sort orders the snapshot and never the live storage and the rewrite never iterates what it overwrites; `array_shift` snapshots for the same reason.
+Cost is a single `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. The sort orders the snapshot, not the live storage; the rewrite never iterates the region it overwrites. `array_shift` snapshots for the same reason.
 
-All six require a `*model.Array` and error on a native Go slice, following `arrayTarget` (`array_splice`, `array_shift`). A Go slice has no keys to preserve and sorting one would be `sort()` under another name.
+All six require a `*model.Array` and error on a native Go slice, following `arrayTarget` (`array_splice`, `array_shift`). A Go slice has no keys to preserve; sorting a slice would be `sort()` under another name.
 
 | Binding  | Returns                                           | Status                                                                                       |
 |----------|---------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -316,7 +316,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `preg_match_all` | `int64`; `$matches` is `[]any` of `[]string`                    | OK                  |
 | `preg_replace`   | `string`, compiled patterns cached                              | OK                  |
 
-`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are and the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. A `[]byte` reads as a PHP string with no conversion and the byte shapes cost nothing extra.
+`Regexp\Compile` and `Regexp\CompilePOSIX` are wrappers over `regexp.Compile` and `regexp.CompilePOSIX`. The binding layer adds nothing to measure: the constructor allocates the compiled expression. Each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. A `[]byte` reads as a PHP string without a conversion, and the byte shapes cost nothing extra.
 
 ### Filesystem
 

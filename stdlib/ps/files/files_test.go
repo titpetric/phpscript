@@ -12,9 +12,9 @@ import (
 )
 
 // TestWithin covers the containment test a host shares with the allowlist: a
-// server serving a writable directory has to know not to execute the PHP a
-// script may have written into it. The separator is what keeps a sibling out,
-// and a directory whose name starts with a root's name is outside the root.
+// server serving a writable directory must avoid executing PHP a script wrote
+// into it. The separator keeps a sibling out. A directory whose name starts with
+// a root's name lies outside the root.
 func TestWithin(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -36,10 +36,10 @@ func TestWithin(t *testing.T) {
 	}
 }
 
-// TestHostPath covers the mapping a binding in another package calls and the
-// file it opens is the file file_get_contents would open for the same
-// spelling. The rule is the runtime's, and every caller joining its answer
-// onto the bound root is what keeps one rule for the whole tree.
+// TestHostPath covers the mapping a binding in another package calls. The file
+// it opens is the file file_get_contents would open for the same spelling. The
+// rule belongs to the runtime. A caller joining that path onto the bound root
+// keeps one rule for the whole tree.
 func TestHostPath(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -63,9 +63,9 @@ func TestHostPath(t *testing.T) {
 
 // TestWritableRoots covers how WritableRoots reads a configured
 // writable_paths entry: a relative entry is a path inside the project and
-// resolves under the bound root, and an absolute one survives as written and
-// then matches nothing, because resolve clamps the path it compares against
-// into the root. There is no spelling that grants a write outside the tree.
+// resolves beneath the bound root. An absolute entry survives as written, then
+// matches nothing, because resolve clamps the compared path into the root.
+// There is no spelling that grants a write outside the tree.
 func TestWritableRoots(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("/srv", "site")
@@ -107,14 +107,15 @@ func TestWritableRoots(t *testing.T) {
 	}
 
 	// An absolute entry grants no access: the path a script's /srv/shared
-	// resolves to is under the root and it never lands inside /srv/shared.
+	// resolves to lies beneath the root, never landing inside /srv/shared.
 	if allowed := files.Within(files.HostPath(runner.New(&strings.Builder{}, runner.Options{}), root, "/srv/shared/x"), filepath.FromSlash("/srv/shared")); allowed {
 		t.Error("an absolute writable_paths entry allowed a write")
 	}
 }
 
 // TestRegister covers the root Register binds and the names it installs. The
-// root is the process working directory, the one a CLI run reads and writes.
+// root is the process working directory. A CLI run reads and writes that
+// directory.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -136,9 +137,9 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestRegisterRoot covers what a host binds a project directory with: it
-// replaces whatever root stands before it and a path a script writes
-// resolves under the directory named last and never under the first.
+// TestRegisterRoot covers the directory a host binds a project to. RegisterRoot
+// replaces any earlier root. A path a script writes resolves beneath the
+// directory named last, never beneath the first.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
 	first, second := t.TempDir(), t.TempDir()
@@ -167,15 +168,14 @@ func TestRegisterRoot(t *testing.T) {
 	}
 }
 
-// writableOptions is a runner configured with an upload directory below the
-// document root and a private one beside it, the layout of a site that
-// accepts uploads.
+// writableOptions returns a runner configured with an upload directory below
+// the document root, plus a private directory alongside. That layout matches a
+// site accepting uploads.
 func writableOptions() runner.Options {
 	return runner.Options{WritablePaths: []string{"upload", "public/upload"}}
 }
 
-// TestWritablePathsAllowsConfiguredDirectories pins that the allowlist is a
-// tree: the directory itself and anything below it.
+// TestWritablePathsAllowsConfiguredDirectories pins the allowlist as a tree: the directory and anything beneath.
 func TestWritablePathsAllowsConfiguredDirectories(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -203,8 +203,8 @@ echo "written";`)
 }
 
 // TestWritablePathsThrowsOutsideTheAllowlist pins the refusal and its shape: an
-// exception and no false return and a script cannot continue believing
-// the write happened.
+// exception, no false return. A script cannot continue believing the write
+// happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -246,8 +246,8 @@ try {
 	}
 }
 
-// Reads are not writes. An allowlist restricts what a script may change, not
-// what it may look at and the file it cannot overwrite it can still read.
+// Reads are not writes. An allowlist restricts the changes a script may make. It
+// does not restrict reads: a file it cannot overwrite is still readable.
 func TestWritablePathsLeavesReadsAlone(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)
@@ -263,8 +263,8 @@ echo "|" . (file_exists("private/keep.txt") ? "yes" : "no");`)
 	}
 }
 
-// An unconfigured allowlist is what every project that never set the key has.
-// It must keep writing wherever the user running the process may.
+// A project without a key setting leaves the allowlist unconfigured. It must
+// keep writing wherever the process user may write.
 func TestWritablePathsUnsetAllowsEverything(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)
@@ -277,7 +277,7 @@ echo "written";`)
 	}
 }
 
-// A prefix is not a parent: upload-old is a sibling of upload and no child of it.
+// A prefix is not a parent: upload-old is a sibling of upload.
 func TestWritablePathsRejectsASiblingSharingAPrefix(t *testing.T) {
 	t.Parallel()
 	root := writableTree(t)
@@ -298,7 +298,7 @@ try {
 }
 
 // writableTree builds the layout the tests above share: two writable upload
-// directories and a private one holding a file worth protecting.
+// directories, plus a private directory holding a file worth protecting.
 func writableTree(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

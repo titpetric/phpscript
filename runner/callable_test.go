@@ -10,7 +10,7 @@ import (
 )
 
 // callableDeclarations declares one of each spelling AsCallable has an answer
-// for, and leaves the value under a constant so a Go test can read it back.
+// for, and leaves the value in a constant so a Go test can read it back.
 const callableDeclarations = `<?php
 
 class Site {
@@ -61,11 +61,11 @@ func constant(t testing.TB, rt *runner.Runtime, name string) any {
 }
 
 // TestAsCallableTakesEverySpellingButAnArray is the host-facing half of the
-// callable contract: AsCallable answers a value another runtime can run and it
-// needs a declaration to run and refuses anything that is not one.
+// callable contract: AsCallable answers a value another runtime can run. It
+// needs a declaration to run and refuses anything else.
 //
 // The two array spellings are the documented refusal (docs/README.md): they stay
-// callable everywhere else. Class::method is not one of them, and the
+// callable everywhere else. Class::method does not belong in that list. The
 // "no PHP function of that name" refusal describes no method a class declares.
 func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 	t.Parallel()
@@ -143,14 +143,14 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 }
 
 // TestCallable_Invoke covers the cross-runtime call a request answered on a
-// separate worker makes: the value crosses and the execution does not and
-// each spelling runs on the runtime passed in.
+// separate worker makes: the value crosses, but the execution does not. Each
+// spelling runs on the runtime passed in.
 //
 // A closure, a bound method and Class::method hold their declaration and run
-// on a runtime that never loaded the source. A name crosses as a name and the
-// runtime running it resolves it against its own function table, and one
-// declaring nothing cannot answer for it. That is the half that lets a host
-// register a binding under the name a script named.
+// on a runtime without the source. A name crosses as a name. The runtime
+// running it resolves the name in its function table; a runtime declaring
+// nothing cannot answer for it. This is the half letting a host register a
+// binding by the name a script named.
 func TestCallable_Invoke(t *testing.T) {
 	t.Parallel()
 	origin := callableRuntime(t)
@@ -198,8 +198,8 @@ func TestCallable_Invoke(t *testing.T) {
 		t.Errorf("Invoke() = %v, want %q", result, "plain b")
 	}
 
-	// Call is the same execution on the runtime that built the value and the
-	// two answers agree where the runtime is the same one.
+	// Call is the same execution on the runtime that built the value. The two
+	// answers agree when the runtime matches.
 	closure, err := origin.AsCallable(constant(t, origin, "CLOSURE"))
 	if err != nil {
 		t.Fatal(err)

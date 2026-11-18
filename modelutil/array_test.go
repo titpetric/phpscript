@@ -8,12 +8,12 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// TestToArray covers the conversion into the one shape PHP mutates. An
-// existing array passes through untouched, a Go slice becomes a list and a
+// TestToArray covers the conversion into the only shape PHP mutates. An
+// existing array passes through untouched, a Go slice becomes a list, a
 // string-keyed map becomes a keyed array.
 //
-// The copy is what the test is for: a script that appends to the result must
-// not write through to the slice a binding returned.
+// The test covers the copy: a script that appends to the result must not write
+// through to the slice a binding returned.
 func TestToArray(t *testing.T) {
 	t.Parallel()
 

@@ -6,7 +6,7 @@
 
 Interface for external iterators, or for objects that walk themselves internally.
 
-A class implementing it declares the five methods `foreach` calls to walk it: `rewind()` to start, `valid()` to report whether there is anything at the current position, `current()` and `key()` to read it, and `next()` to advance.
+A class implementing it declares five methods `foreach` calls to walk it: `rewind()` to start, `valid()` to report whether a value exists at the current position, `current()` and `key()` to read it, plus `next()` to advance.
 
 ## Interface synopsis
 
@@ -44,18 +44,18 @@ phpscript declares none of them. PHP ships `ArrayIterator`, `DirectoryIterator`,
 
 ## Examples
 
-In PHP, `foreach` calls the interface methods in a fixed order: `rewind()`, then `valid()`, `current()` and `key()` on each pass, then `next()`. Writing that order out by hand is what the workaround below does, because phpscript will not call them for you.
+In PHP, `foreach` calls the interface methods in a fixed order: `rewind()`, then `valid()`, `current()` and `key()` on each pass, then `next()`. Writing that order out by hand is the workaround below, because phpscript will not call them for you.
 
 ## See also
 
-[Object iteration](../../control-structures/README.md), and [Value semantics](../../types/value-semantics.md) for what `foreach` binds.
+[Object iteration](../../control-structures/README.md), plus [Value semantics](../../types/value-semantics.md), covering what `foreach` binds.
 
 ## Status
 
-- phpscript has no `Iterator`. The name is not declared, and `instanceof Iterator` is false and `class_exists("Iterator")` returns false.
-- The interface uses `extends`. `interface Iterator extends Traversable` parses here and the parser records the extended name, and `instanceof Traversable` follows it; but nothing arrives through it, because an interface contributes no method body, property or constant in either language. Since Traversable declares no method, flattening the two loses nothing.
-- Interface-based dispatch does not exist. This is the incompatibility that matters: a class can declare all five methods and meet the contract, and `foreach` still will not call them. `foreach` over an object reads its properties, and a loop over an iterator visits the object's internal state and never the sequence the five methods describe.
-- `IteratorAggregate`, `yield` and the [Generator](Generator.md) class are all unavailable, with no second route to a lazy sequence.
+- phpscript declares no `Iterator`. PHP's class name stays undeclared here. `instanceof` answers false, and `class_exists` returns false.
+- The interface uses `extends`. `interface Iterator extends Traversable` parses here, and the parser records the extended name; `instanceof Traversable` follows that name. The relation delivers no members: an interface contributes no method body, property or constant in either language. Traversable declares no method; flattening the two loses nothing.
+- Interface-based dispatch does not exist. This is the incompatibility that matters: a class can declare all five methods and meet the contract, yet `foreach` still will not call them. `foreach` on an object reads its properties; a loop on an iterator ignores the sequence those five methods describe.
+- `IteratorAggregate`, `yield` and the [Generator](Generator.md) class are all unavailable. No other route to a lazy sequence exists.
 
 A workaround, without `extends` and without relying on dispatch:
 

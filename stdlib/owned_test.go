@@ -6,8 +6,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestOwned covers the first area to define a name owning it, one table per
-// kind. A name two areas define belongs to the one that installs first.
+// TestOwned covers the first area to define a name owning it. Tables are per
+// kind. A name two areas define belongs to the area that installs first.
 func TestOwned(t *testing.T) {
 	owned := Owners([]AreaInfo{
 		{Name: `Runtime\PS\A`, Delta: runner.Delta{Funcs: []string{"f"}, Classes: []string{"C"}, Constants: []string{"K"}}},

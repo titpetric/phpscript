@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// limitFor turns seconds into a duration, clamping at MaxInt64 so the multiply cannot wrap.
+// limitFor turns seconds into a duration, clamping at MaxInt64 against wrap.
 func limitFor(seconds int64) time.Duration {
 	const maxSeconds = int64(math.MaxInt64 / int64(time.Second))
 	if seconds > maxSeconds {

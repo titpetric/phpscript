@@ -7,12 +7,12 @@ import (
 )
 
 // epoch is a fixed instant, 2023-11-14 22:13:20 UTC. A test reading a local
-// rendering back computes what it wants from time.Local and the assertions
+// rendering back computes the expected value from time.Local, and the assertions
 // hold in whatever timezone the host runs in.
 const epoch = int64(1700000000)
 
-// TestStrtotime covers the three spellings strtotime answers without reading a
-// layout, each matching what php prints: an @-prefixed epoch truncated to
+// TestStrtotime covers three spellings strtotime answers without reading a
+// layout, each matching php's output: an @-prefixed epoch truncated to
 // whole seconds, "now" resolved against the base the caller passed, and false
 // for the empty string. False and not zero, because zero is a valid timestamp.
 func TestStrtotime(t *testing.T) {
@@ -37,10 +37,10 @@ func TestStrtotime(t *testing.T) {
 	}
 }
 
-// TestStrtotimeReadsWhatDateWrote covers the layout list against the formatter
-// beside it: every layout strtotime tries reads in the local timezone, and the
-// shapes date() writes are among them and a timestamp rendered and read back
-// is the timestamp it started as. A layout list that drifted from the
+// TestStrtotimeReadsWhatDateWrote covers the layout list against the formatter:
+// every layout strtotime tries reads in the local timezone; the shapes date()
+// writes belong as well. A timestamp rendered and read back is the timestamp it
+// started as. A layout list that drifted from the
 // formatter would break that round trip silently.
 func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
 	t.Parallel()
@@ -61,12 +61,11 @@ func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
 	}
 }
 
-// TestDate covers the format characters this shim reads and the one rule for
+// TestDate covers the format characters this shim reads, plus one rule for
 // everything else: a backslash escapes the next character, U is the epoch
-// itself, the 12-hour characters report 12 at midnight and never 0. A
-// character the shim does not know passes through unchanged. php renders
-// the word-and-zone characters; stdlib/ps/time is where a script reaches
-// those. The passthrough is the recorded boundary between the two.
+// itself, the 12-hour characters report 12 at midnight, not 0. A character the
+// shim does not know passes through unchanged. php renders the word-and-zone
+// characters; a script reaches those through stdlib/ps/time. The passthrough is the recorded boundary between the two.
 func TestDate(t *testing.T) {
 	t.Parallel()
 	local := time.Unix(epoch, 0).In(time.Local)
@@ -104,8 +103,8 @@ func TestDate(t *testing.T) {
 	}
 }
 
-// TestDateMidnightIsTwelve covers the one arithmetic in the formatter: PHP's
-// g and h count 1 to 12 and the hour 0 renders as 12 and never as 0.
+// TestDateMidnightIsTwelve covers the single arithmetic in the formatter:
+// PHP's g and h count 1 to 12, and hour 0 renders as 12, not 0.
 func TestDateMidnightIsTwelve(t *testing.T) {
 	t.Parallel()
 	midnight := time.Date(2023, time.November, 14, 0, 0, 0, 0, time.Local).Unix()

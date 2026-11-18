@@ -13,7 +13,7 @@ const DefaultPort = 25
 
 // Config contains the connection and sender settings for one mail server.
 //
-// Config is host configuration and never reaches a script: a provider holds
+// Config is host configuration; it does not reach a script: a provider holds
 // it, reads it inside a delivery, and returns the outcome alone. Config is no
 // binding return type anywhere, which keeps a password out of the runtime
 // scope.
@@ -25,13 +25,13 @@ type Config struct {
 	From     string `yaml:"from" json:"from"`
 
 	// Insecure accepts the STARTTLS certificate without verifying its chain or
-	// names. Hosts that present a self-signed certificate, or one with no
-	// subjectAltName, are unreachable without it.
+	// names. Hosts presenting a self-signed certificate, or one lacking
+	// subjectAltName, are unreachable otherwise.
 	Insecure bool `yaml:"insecure" json:"insecure"`
 }
 
-// String renders the settings that identify a server and elides the two that
-// authenticate to it and a %v in a log line leaks no password.
+// String renders the settings that identify a server, eliding the
+// authentication pair. A %v in a log line leaks no password.
 func (c Config) String() string {
 	auth := "no"
 	if c.Username != "" || c.Password != "" {

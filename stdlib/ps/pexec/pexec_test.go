@@ -13,18 +13,18 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/pexec"
 )
 
-// bindings are every name one call installs: the four that run a command, the
-// two that quote for it, and the two that name the running process.
+// bindings lists every name one call installs: four that run commands, two
+// quoting helpers, plus two naming the running process.
 var bindings = []string{
 	"exec", "system", "passthru", "shell_exec",
 	"escapeshellarg", "escapeshellcmd",
 	"posix_getpid", "getmypid",
 }
 
-// run executes src against a runtime holding the standard library and this
-// package's bindings rooted at dir, and returns what the script printed. It
-// installs the standard library because a script reading $output back calls
-// count() and implode() to do it.
+// run executes src on a runtime holding the standard library and this
+// package's bindings rooted at dir, and returns the script's output. The
+// runtime installs the standard library: a script reading $output back calls
+// count() and implode().
 func run(t *testing.T, dir, src string) string {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -41,8 +41,8 @@ func run(t *testing.T, dir, src string) string {
 	return out.String()
 }
 
-// TestRegister covers the names installed and the root they start a command
-// in. Register is RegisterRoot with no directory and a command runs where the
+// TestRegister covers the installed names, plus the root a command starts in.
+// Register is RegisterRoot taking no directory; a command runs where the
 // process runs, the directory a CLI invocation reads and writes in.
 func TestRegister(t *testing.T) {
 	t.Parallel()
@@ -68,9 +68,9 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterRoot covers the directory a command starts in when a host bound
-// one: a server serving scripts out of a project directory binds that and
+// a root: a server serving scripts out of a project directory binds that, and
 // `pwd` inside a script answers the same thing getcwd() does. It replaces
-// whatever root stands before it and a host calls it after Register.
+// any earlier root; a host calls it after Register.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -102,7 +102,7 @@ func TestRegisterRoot(t *testing.T) {
 }
 
 // TestRegisterNamesTheRunningProcess covers posix_getpid and getmypid: both
-// name the interpreter and never a command it starts and the two report the
+// name the running interpreter. The two report the
 // same number, the test binary's own.
 func TestRegisterNamesTheRunningProcess(t *testing.T) {
 	t.Parallel()

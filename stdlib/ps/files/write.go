@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// fileAppend and lockEx are PHP's FILE_APPEND and LOCK_EX; LOCK_EX parses and the runtime ignores it.
+// fileAppend and lockEx are PHP's FILE_APPEND and LOCK_EX; the runtime ignores LOCK_EX.
 const (
 	fileAppend = 8 // FILE_APPEND
 	lockEx     = 2 // LOCK_EX
@@ -89,8 +89,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return os.Chtimes(name, t, t) == nil, nil
 	})
 
-	// rename modifies both ends: it removes the source as well as creating the
-	// destination and both have to be writable.
+	// rename modifies both ends: it removes the source and creates the
+	// destination. Both must be writable.
 	rt.RegisterFunc("rename", func(from, to string) (bool, error) {
 		src, err := r.resolveWrite("rename", from)
 		if err != nil {
@@ -113,7 +113,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 
 	// A PHP mode argument is a raw Unix mode, an octal literal like 0644, and
 	// runner.FileMode is the same number: both ends of the configuration and
-	// the script agree on what a mode is.
+	// the script agree on the mode's meaning.
 	rt.RegisterFunc("chmod", func(filename string, mode int64) (bool, error) {
 		name, err := r.resolveWrite("chmod", filename)
 		if err != nil {
@@ -122,7 +122,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return os.Chmod(name, runner.FileMode(mode).Mode()) == nil, nil
 	})
 	// PHP takes either a name or a numeric id for both of these, and leaves the
-	// other half of the ownership alone, the meaning -1 has to Chown.
+	// other half of the ownership alone, the meaning -1 holds for Chown.
 	rt.RegisterFunc("chown", func(filename string, owner any) (bool, error) {
 		name, err := r.resolveWrite("chown", filename)
 		if err != nil {

@@ -16,10 +16,10 @@ import (
 // Name is the command title.
 const Name = "Print php script AST"
 
-// NewCommand creates a new ast command.
+// NewCommand creates an ast command.
 //
-// The configuration and the global options are what every command constructor
-// takes and one signature covers them all. This command reads neither.
+// Every command constructor takes the configuration, the global options; one
+// signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "ast",

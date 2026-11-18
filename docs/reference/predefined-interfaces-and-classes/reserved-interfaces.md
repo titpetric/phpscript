@@ -1,8 +1,8 @@
 # Reserved interfaces and classes
 
-The interfaces and classes PHP predefines, in the order the PHP manual lists them at [Predefined Interfaces and Classes](https://www.php.net/manual/en/reserved.interfaces.php), with what phpscript does about each. Every row links to a document describing the name, its synopsis as PHP declares it, and a `Status` section recording where phpscript differs.
+The interfaces and classes PHP predefines, in the order the PHP manual lists them at [Predefined Interfaces and Classes](https://www.php.net/manual/en/reserved.interfaces.php), with phpscript's behavior for each. Every row links to a document describing the name, its synopsis as PHP declares it, plus a `Status` section recording where phpscript differs.
 
-This holds of every row and is not repeated in each: **phpscript declares none of these names except `stdClass`, and nothing dispatches through an interface.** A class may write `implements Countable` and it will load, because a name no `interface` declaration in the same file defines is not a contract and is not checked; but `count()` will not call its `count()` method. Declaring an interface is a claim about shape, and here it stays one.
+This holds of every row and is not repeated in each: **phpscript declares none of these names except `stdClass`, and nothing dispatches through an interface.** A class may write `implements Countable` and it will load. A name that no `interface` declaration in the same file defines is not a contract, and is not checked. But `count()` will not call its `count()` method. Declaring an interface is a claim about shape, and here it stays one.
 
 ## Table of contents
 
@@ -64,10 +64,10 @@ This holds of every row and is not repeated in each: **phpscript declares none o
 
 PHP declares four of the interfaces above with `extends`: [Iterator](classes/Iterator.md) and [IteratorAggregate](classes/IteratorAggregate.md) extend [Traversable](classes/Traversable.md), [Throwable](classes/Throwable.md) extends [Stringable](classes/Stringable.md), and [BackedEnum](classes/BackedEnum.md) extends [UnitEnum](classes/UnitEnum.md).
 
-`interface A extends B` parses here and the parser records the extended names, and `instanceof` answers them; no method moves across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
+`interface A extends B` parses here and the parser records the extended names, and `instanceof` answers them, and no method moves across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
 
 ## See also
 
 - [Predefined interfaces and classes](README.md), the compatibility summary for this chapter
-- [Classes and objects](../classes-and-objects/README.md), for what a class declaration supports
+- [Classes and objects](../classes-and-objects/README.md), for the class declarations it supports
 - [Design decisions](../../design.md), for the names that are decisions

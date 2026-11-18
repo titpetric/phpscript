@@ -1,15 +1,13 @@
-// Package mapmap holds a read-only map with a request-scoped layer of edits
-// over it.
+// Package mapmap holds a read-only map with a request-scoped layer of edits.
 //
-// A script reads a superglobal far more often than it writes one, and what it
-// reads is the request, which holds still for the length of that request.
-// Rendering it into a *model.Array copies every entry into a second
-// representation on the way in, whether the script names the variable or not.
-// A MapMap answers from the request and holds the keys a script wrote and no
-// others.
+// A script reads a superglobal far more often than it writes. The script reads
+// the request, which holds still for that request's length. Rendering the
+// request into a *model.Array copies every entry on the way in, whether the
+// script names the variable or not. A MapMap answers from the request and holds
+// the keys a script wrote.
 //
-// The edits are request-scoped and their map comes from a pool and goes back
-// cleared and never freed.
+// The edits are request-scoped. Their map comes from a pool, goes back cleared,
+// and is never freed.
 package mapmap
 
 import (
@@ -18,10 +16,10 @@ import (
 )
 
 // Source is the read-only half of a MapMap: the request, or a map built for a
-// run that has no request behind it.
+// run that reads no request.
 //
-// A source serves reads for the length of a request and takes no write and
-// every MapMap over one can share it.
+// A source serves reads for one request's length and takes no write. Every
+// MapMap layered on a source can share it.
 type Source interface {
 	// Get answers the value of key and whether the source holds it.
 	Get(key string) (any, bool)
@@ -35,9 +33,9 @@ type Source interface {
 
 // MapMap reads through a Source and writes to a separate layer.
 //
-// Read answers the layer first and a script that assigns to a key sees what it
-// assigned; the write touches no source, which stays shared. No copy leaves
-// out of the source until something reads the whole thing.
+// Read answers the layer first. A script that assigns to a key sees the
+// assigned value. The write touches no source, which stays shared. No copy
+// leaves the source until something reads the whole thing.
 type MapMap struct {
 	src Source
 
@@ -51,7 +49,7 @@ type MapMap struct {
 	edits []edit
 }
 
-// edit is one write or removal; a removal marks the key gone.
+// edit is a write or a removal; a removal marks the key gone.
 type edit struct {
 	key   string
 	value any
@@ -116,7 +114,7 @@ func (m *MapMap) Write(key string, value any) {
 	m.edits = append(m.edits, edit{key: key, value: value})
 }
 
-// Delete forgets key, including one the source holds.
+// Delete forgets key, including a key the source holds.
 func (m *MapMap) Delete(key string) {
 	i := m.find(key)
 	inSource := false
@@ -163,10 +161,10 @@ func (m *MapMap) Len() int {
 	return n
 }
 
-// Range visits the source in its own order, then the keys only the layer holds.
+// Range visits the source in source order, then keys the layer alone holds.
 //
-// A key the layer overwrote arrives in the source's position with the
-// written value and assigning to an existing key does not move it.
+// A key the layer overwrote arrives in the source's position with the written
+// value. Assigning to an existing key does not move the key.
 func (m *MapMap) Range(fn func(key, value any) bool) {
 	if m == nil {
 		return
@@ -201,7 +199,7 @@ func (m *MapMap) Range(fn func(key, value any) bool) {
 }
 
 // Release returns the layer to the pool. The MapMap reads as the source alone
-// afterwards and a caller releases when the request it belongs to is over.
+// afterwards. Call when the request it belongs to ends.
 func (m *MapMap) Release() {
 	if m == nil {
 		return
@@ -209,8 +207,7 @@ func (m *MapMap) Release() {
 	m.edits = nil
 }
 
-// MapSource reads a plain map, and serves a run with no request behind it:
-// every CLI invocation.
+// MapSource reads a plain map for a run that reads no request.
 type MapSource map[string]string
 
 // Get answers the value of key.
@@ -234,8 +231,8 @@ func (s MapSource) Range(fn func(key string, value any) bool) bool {
 }
 
 // ValueSource reads a map whose values are already PHP values, the shape a
-// superglobal holding nested data needs: a query string decodes `a[]=1&a[]=2`
-// to an array under one name, and no map of strings can hold that.
+// superglobal holding nested data needs. A query string decodes `a[]=1&a[]=2`
+// to an array named `a[]`. A map of strings cannot hold that.
 type ValueSource map[string]any
 
 // Get answers the value of key.
@@ -257,14 +254,13 @@ func (s ValueSource) Range(fn func(key string, value any) bool) bool {
 	return true
 }
 
-// RequestSource derives the CGI names from the request itself and serving one
-// builds no map.
+// RequestSource derives the CGI names from the request; serving one builds no
+// map.
 //
-// Extra holds the names the request cannot derive, which are the ones a
-// caller computed: the clock for REQUEST_TIME, and whatever the host decided
-// about the scheme behind a proxy. Its type is Source and a caller passes the
-// map it already has with no copy into another. It serves reads, takes no
-// write, and wins over a derived name.
+// Extra holds names the request cannot derive, each computed by a caller: the
+// clock for REQUEST_TIME, and whatever the host decided about the scheme behind
+// a proxy. Its type is Source. A caller passes the map already held, and copies
+// nothing into another. It serves reads, takes no write, and beats a derived name.
 type RequestSource struct {
 	Request *http.Request
 	Extra   Source
@@ -317,7 +313,7 @@ func (s *RequestSource) Len() int {
 	return n
 }
 
-// Range visits the derived names, then the extras that are not among them.
+// Range visits the derived names, then extras that are not among them.
 func (s *RequestSource) Range(fn func(key string, value any) bool) bool {
 	if s == nil || s.Request == nil {
 		return true
@@ -420,7 +416,7 @@ func (s *lazySource) resolve() Source {
 	return s.src
 }
 
-// Get builds the source on first use, then reads it.
+// Get builds the source lazily, then reads it.
 func (s *lazySource) Get(key string) (any, bool) {
 	src := s.resolve()
 	if src == nil {
@@ -429,7 +425,7 @@ func (s *lazySource) Get(key string) (any, bool) {
 	return src.Get(key)
 }
 
-// Len builds the source on first use, then counts it.
+// Len builds the source lazily, then counts it.
 func (s *lazySource) Len() int {
 	src := s.resolve()
 	if src == nil {
@@ -438,7 +434,7 @@ func (s *lazySource) Len() int {
 	return src.Len()
 }
 
-// Range builds the source on first use, then walks it.
+// Range builds the source lazily, then walks it.
 func (s *lazySource) Range(fn func(key string, value any) bool) bool {
 	src := s.resolve()
 	if src == nil {

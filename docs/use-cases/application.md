@@ -2,7 +2,7 @@
 
 This walkthrough builds a complete phpscript application from an empty directory: a bookmark list with a database, migrations, routed endpoints, compiled templates and an integration test suite.
 
-The finished application is [demos/example](../../demos/example). Every snippet below comes from it, and its [venom suite](../../demos/example/tests/venom.yml) runs in CI and the code here stays true.
+The finished application is [demos/example](../../demos/example). Every snippet below comes from it. Its [venom suite](../../demos/example/tests/venom.yml) runs in CI, and the code here stays true.
 
 ## 1. The layout
 
@@ -41,11 +41,11 @@ env:
   - "PLATFORM_DB_BOOKMARKS=sqlite://bookmarks.db"
 ```
 
-The part after `PLATFORM_DB_` is the connection name PHP names, lowercased: this one is `"bookmarks"`. Pass the file with `-f`; without it, phpscript uses its embedded defaults. See [Configuration](../configuration.md).
+The part after `PLATFORM_DB_` is the connection name PHP names, lowercased: this one is `"bookmarks"`. Pass the file with `-f`; by default, phpscript uses its embedded defaults. See [Configuration](../configuration.md).
 
 ## 3. Create the schema
 
-Migrations are `*.up.sql` files, one per table, holding the table definition and any rows the application needs to start with:
+Migrations are `*.up.sql` files, one for each table, holding the table definition and any rows the application needs to start with:
 
 ```sql
 CREATE TABLE bookmarks (
@@ -58,7 +58,7 @@ CREATE TABLE bookmarks (
 INSERT INTO bookmarks (title, url) VALUES ('phpscript', 'https://github.com/titpetric/phpscript');
 ```
 
-A file with the `@startup` annotation applies them; the server runs that file to completion before it listens:
+The server runs a file with the `@startup` annotation to completion before it listens; that file applies them:
 
 ```php
 <?php
@@ -71,11 +71,11 @@ $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
-Migration files are append only. [Run migrations](database.md#run-migrations) covers what that means for later schema changes.
+Migration files are append only. [Run migrations](database.md#run-migrations) covers how that affects later schema changes.
 
 ## 4. Share setup between endpoints
 
-Every endpoint needs the same database handle and template engine. One file holds both and each endpoint includes it. `bootstrap.php` is not routed and is outside `public/`. No request reaches it directly:
+Every endpoint needs the same database handle and template engine. One file holds both; each endpoint includes it. `bootstrap.php` is not routed and is outside `public/`. No request reaches it directly:
 
 ```php
 <?php
@@ -161,7 +161,7 @@ Keep all `$_GET` and `$_POST` reads in the annotated files. Shared code that rea
 
 ## 6. Render the output
 
-The bundled engine compiles templates to PHP and a template holds the engine's syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
+The bundled engine compiles templates to PHP. A template holds the engine's syntax, not PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
 
 ```php
 $tpl->load("list.tpl");
@@ -169,7 +169,7 @@ $tpl->assign(array("title" => "Bookmarks", "bookmarks" => $bookmarks));
 $tpl->render();
 ```
 
-A template addresses assigned values by name in braces and array elements with a dot. The engine runs a printed value through `htmlspecialchars` on the way out and a bookmark titled `<script>alert(1)</script>` renders as text:
+A template addresses assigned values by name in braces and array elements with a dot. The engine passes a printed value to `htmlspecialchars` before output. A bookmark titled `<script>alert(1)</script>` renders as text:
 
 ```html
 <h1>{title}</h1>
@@ -193,7 +193,7 @@ A template addresses assigned values by name in braces and array elements with a
 </ul>
 ```
 
-The suite has a case for it, and `|unescape` is how a template opts a value out where the markup is the value. [Templating](templating.md) documents the rest of the syntax.
+The suite has a case for it. `|unescape` lets a template opt a value out where the markup is the value. [Templating](templating.md) documents the rest of the syntax.
 
 ## 7. Run it
 
@@ -201,7 +201,7 @@ The suite has a case for it, and `|unescape` is how a template opts a value out 
 phpscript -f config.yml server .
 ```
 
-The server applies the migrations, scans for annotations and prints the address it listens on. Check what it registered:
+The server applies the migrations, scans for annotations and prints the address it listens on. Check its registrations:
 
 ```bash
 phpscript list ./...
@@ -217,7 +217,7 @@ phpscript list ./...
   | @startup                    | [migrate.php](./migrate.php)                 | <none>  |
 ```
 
-A file with no entry point is only reachable through an `include`. If an endpoint is missing from this table, its annotation is wrong. The scan skips `vendor/`: a composer dependency does not publish routes into the application.
+A file without an entry point is only reachable through an `include`. If an endpoint is missing from this table, its annotation is wrong. The scan skips `vendor/`: a composer dependency does not publish routes into the application.
 
 The server parses PHP when it boots and restart it after editing a source file.
 
@@ -241,9 +241,9 @@ testcases:
           - result.body ShouldContainSubstring Venom
 ```
 
-venom follows the redirect and the assertions for a `POST` that succeeds read the page it lands on.
+venom follows the redirect and the assertions after a successful `POST` read the returned page.
 
-Write the suite so it can run twice. No case depends on which row ids exist: each one that adds a bookmark reads back the id the application returned and deletes it again:
+Write the suite so it can run twice. No case depends on which row ids exist: each case that adds a bookmark reads back the id the application returned and deletes it again:
 
 ```yaml
         extracts:
@@ -253,7 +253,7 @@ Write the suite so it can run twice. No case depends on which row ids exist: eac
         url: "{{.host}}/bookmarks/{{.added}}/delete"
 ```
 
-A named capture group in `extracts` becomes a variable for the steps that follow and the suite cleans up after itself and stays independent of what a previous run left behind.
+A named capture group in `extracts` becomes a variable for later steps. The suite cleans up after itself. It stays independent of earlier runs.
 
 Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead; see [Testing](../testing.md).
 

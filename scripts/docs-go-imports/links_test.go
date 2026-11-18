@@ -5,8 +5,8 @@ import (
 )
 
 // TestURL covers the link for a row: a symbol the package declares, a helper
-// the runtime adds beside it, and a class resolving through the Go type its
-// wrapper holds.
+// the runtime adds beside that symbol, a class resolving through the Go type
+// its wrapper holds.
 func TestURL(t *testing.T) {
 	t.Parallel()
 	g := newGenerator()
@@ -21,11 +21,11 @@ func TestURL(t *testing.T) {
 		{`Runtime\Go\Net\HTTP`, "method", `Runtime\Go\Net\HTTP\Mux::handle`, "https://pkg.go.dev/net/http#ServeMux.Handle"},
 		{`Runtime\Go\Net\HTTP`, "method", `Runtime\Go\Net\HTTP\ServeMux::serve_http`, "https://pkg.go.dev/net/http#ServeMux.ServeHTTP"},
 		{`Runtime\Go\Database\SQL`, "constant", `Runtime\Go\Database\SQL\ErrNoRows`, "https://pkg.go.dev/database/sql#ErrNoRows"},
-		// A name the runtime adds beside the package has no page to link.
+		// A name the runtime adds alongside the package has no page to link.
 		{`Runtime\Go\Net\HTTP`, "function", `Runtime\Go\Net\HTTP\Aborted`, ""},
 		{`Runtime\Go\Net\HTTP`, "function", `Runtime\Go\Net\HTTP\IgnoreUserAbort`, ""},
 		{`Runtime\Go\Net\HTTP`, "method", `Runtime\Go\Net\HTTP\Mux::use`, ""},
-		// The builtins answer under the namespace and no import path.
+		// The builtins answer from the namespace; no import path names them.
 		{`Runtime\Go`, "function", `Runtime\Go\len`, ""},
 	} {
 		if got := g.url(tc.area, tc.kind, tc.name); got != tc.want {
@@ -50,8 +50,8 @@ func TestSplitClassName(t *testing.T) {
 	}
 }
 
-// TestNamed covers the cell: a linked name, and a name the package does not
-// hold rendered as plain code.
+// TestNamed covers the cell: a linked name, a name the package does not hold
+// rendered as plain code.
 func TestNamed(t *testing.T) {
 	t.Parallel()
 	g := newGenerator()

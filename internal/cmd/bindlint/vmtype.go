@@ -5,9 +5,9 @@ import (
 	"strings"
 )
 
-// vmTypes are the runtime's own value types. A script value reaches a binding
-// as one of these only when the interpreter built it; the same value built by
-// another binding arrives as a Go slice, map or struct.
+// vmTypes are the runtime value types. A script value reaches a binding in one
+// of these shapes only when the interpreter built the value. Another binding
+// builds the same value as a Go slice, map or struct.
 var vmTypes = map[string]bool{"Array": true, "Object": true}
 
 // paramTypes are the runtime value types and the two interfaces only a runtime
@@ -15,12 +15,12 @@ var vmTypes = map[string]bool{"Array": true, "Object": true}
 var paramTypes = map[string]bool{"Array": true, "Object": true, "Collection": true, "Keyed": true}
 
 // vmType names the runtime value type an expression denotes, pointer, slice,
-// map and variadic wrappers included, and "" for every other type.
+// map and variadic wrappers included, and "" for any other type.
 //
-// It reads the spelling and never a type. The qualifier has to be `model`,
-// the name every file in the tree imports the package under, and a local
-// alias of the type hides it. A rename hides the type from a reader as well,
-// and the type checker is the price of seeing through either.
+// It reads the spelling alone. The qualifier must be `model`. Every file in
+// the tree imports the package under that name. A local alias of the type
+// hides the type. A rename hides the type from a reader as well. The type
+// checker is the price of seeing through either.
 func vmType(e ast.Expr) string {
 	return modelType(e, vmTypes)
 }
@@ -55,13 +55,14 @@ func modelType(e ast.Expr, set map[string]bool) string {
 }
 
 // nativeShape reports whether an expression names a Go-native collection: the
-// shape a value takes when a binding, and not the interpreter, built it. A
-// type switch that has a case for one of these has already routed the native
-// value somewhere, and its *model.Array case is the interpreter's half of the
-// same decision.
+// shape a value takes when a binding built the value. An interpreter-built
+// value is a *model.Array. A type switch with a case for such a shape has already routed
+// the native value
+// somewhere. Its *model.Array case is the interpreter's half of the same
+// decision.
 //
-// A `[]byte` is none. It holds a php string, and a case for one answers for
-// no collection. See phpval.Bytes and modelutil.IsCollection, which agree.
+// A `[]byte` is none. It holds a php string. A `[]byte` case matches no
+// collection. See phpval.Bytes and modelutil.IsCollection, which agree.
 func nativeShape(e ast.Expr) bool {
 	switch t := e.(type) {
 	case *ast.MapType:
@@ -73,9 +74,9 @@ func nativeShape(e ast.Expr) bool {
 	return false
 }
 
-// nativeReaders are the calls that read a value whatever shape it has.
-// A function that makes one of them has a path for the native value, and the
-// type it narrows to is a fast path over it and no refusal of it.
+// nativeReaders are the calls that read a value in any shape. A function that
+// calls one has a path for the native value. The type it narrows to is a fast
+// path over the value. The narrowing refuses nothing.
 var nativeReaders = map[string]bool{
 	"IsCollection": true,
 	"RangeValues":  true,
@@ -86,9 +87,9 @@ var nativeReaders = map[string]bool{
 }
 
 // vmCapabilities are the methods a Go-native value cannot answer: in-place
-// mutation, which a slice behind an interface cannot do, and the typed storage
-// `model.Array` keeps for a list of integers. A narrowing that calls one of
-// them needs the concrete type and is no finding.
+// mutation (a slice behind an interface cannot do that), plus the typed
+// storage `model.Array` keeps for a list of integers. A narrowing that calls such a
+// method needs the concrete type and is no finding.
 var vmCapabilities = map[string]bool{
 	"Append":           true,
 	"Set":              true,
@@ -102,7 +103,7 @@ var vmCapabilities = map[string]bool{
 	"PromoteToMap":     true,
 }
 
-// calledName is the function or method name a call expression names, without
+// calledName is the function or method name a call expression names, minus
 // its qualifier: `modelutil.RangeValues(...)` is RangeValues and `a.Append(v)` is
 // Append. A call of anything but a name answers "".
 func calledName(call *ast.CallExpr) string {
@@ -117,8 +118,8 @@ func calledName(call *ast.CallExpr) string {
 
 // receiverName is the variable a method call reads: `options.Get("path")` is
 // options. A call on anything but a plain name answers "". A package
-// qualifier reads as a receiver and costs no finding, because a receiver
-// answers against model.Array's own method names.
+// qualifier reads as a receiver and costs no finding. A receiver answers
+// against model.Array's method names.
 func receiverName(call *ast.CallExpr) string {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -131,8 +132,8 @@ func receiverName(call *ast.CallExpr) string {
 	return ident.Name
 }
 
-// phpName renders a registered name the way a script types it: the Go source
-// escapes a namespace separator and `Runtime\\Router` is one backslash.
+// phpName renders a registered name in the form a script types: the Go source
+// escapes a namespace separator. `Runtime\\Router` is a single backslash.
 func phpName(name string) string {
 	return strings.ReplaceAll(name, `\\`, `\`)
 }

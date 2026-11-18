@@ -17,12 +17,13 @@ type Env struct {
 	// Scratch is the argument arena scratchCall boxes into, growing across
 	// evaluations and reset when the environment goes back to its pool. The
 	// arena is stack-disciplined: a call pushes its arguments, borrows the
-	// region for the call, and pops it when the call returns and the compiler
-	// puts only the helpers that never keep their argument slice onto it.
+	// region for the call, and pops the region when the call returns. The
+	// compiler puts only the helpers that do not keep their argument slice onto
+	// the arena.
 	Scratch []any
 }
 
-// closure evaluates one node against the runner's evaluation environment.
+// closure evaluates one node in the runner's evaluation environment.
 type closure = func(env *Env) (any, error)
 
 // Helpers holds the typed implementations of the PHP-semantic helper
@@ -48,8 +49,8 @@ type Helpers struct {
 	Negate     func(v any) any
 
 	// PanicError converts a recovered panic into the error the runner's own
-	// call boundary would have produced and a host panic stays catchable as
-	// the same PHP exception on both engines.
+	// call boundary would have produced; a host panic stays catchable as the
+	// same PHP exception on each engine.
 	PanicError func(recovered any) error
 
 	// Slotted reports whether an identifier is a per-evaluation value: a

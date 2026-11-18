@@ -69,7 +69,7 @@ func NewBox() *Box {
 	return &Box{items: model.NewArray()}
 }
 
-// Fill is a method a script calls, with the runtime type in its signature.
+// Fill is a method a script calls, its signature naming the runtime type.
 func (b *Box) Fill(items *model.Array) {
 	b.items = items
 }

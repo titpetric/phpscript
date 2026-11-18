@@ -26,8 +26,8 @@ func class(name string, implements []string, methods ...string) *model.ClassDecl
 	return decl
 }
 
-// TestCheckInterfaces pins what an interface is: a list of names a class has to
-// declare itself. No class here inherits and the only question ever asked is
+// TestCheckInterfaces pins the definition of an interface: a list of names a
+// class must declare. No class here inherits, and the only question asked is
 // whether a name is present.
 func TestCheckInterfaces(t *testing.T) {
 	t.Parallel()
@@ -122,10 +122,10 @@ func TestCheckInterfaces(t *testing.T) {
 	}
 }
 
-// TestInterfaceContractError covers the type a caller recovers the violations
-// through. Both backends raise it where they register classes and a program
-// fails the same way whichever one ran it, and a caller holding the program's
-// source spans reads Decl to report the class's line.
+// TestInterfaceContractError covers the violation type a caller recovers. Both
+// backends raise that type where they register classes. A
+// program fails the same way whichever backend ran. A caller holding the program's source
+// spans reads Decl to report the class's line.
 func TestInterfaceContractError(t *testing.T) {
 	t.Parallel()
 	stmts := []model.Stmt{iface("R", nil, "get", "has"), class("S", []string{"R"}, "get")}
@@ -159,8 +159,8 @@ func TestInterfaceContractError(t *testing.T) {
 }
 
 // TestInterfaceContractError_Error covers the message Error builds for a class
-// missing two methods: it joins the violations into one string and three
-// missing methods are one error and no three.
+// missing two methods: it joins the violations to one string. Three missing
+// methods make one error, not three.
 func TestInterfaceContractError_Error(t *testing.T) {
 	t.Parallel()
 	err := &model.InterfaceContractError{Violations: []model.InterfaceViolation{
@@ -179,14 +179,14 @@ func TestInterfaceContractError_Error(t *testing.T) {
 }
 
 // TestInterfaceNames covers the names `instanceof` answers an interface name
-// from: what the class declared, plus what those interfaces extend, lower-cased
-// and deduplicated. PHP compares a class name without regard to case and the
+// from: the class declaration, plus the interfaces those interfaces extend,
+// lower-cased and deduplicated. PHP compares a class name without regard to case and the
 // deduplication keys on the lower-cased name.
 //
 // InterfaceNames lists a name no interface declaration defines all the same.
 // Such a class goes unchecked, because the name is a php built-in this runtime
-// does not declare, and `$a instanceof Countable` still answers what the
-// author declared.
+// does not declare, and `$a instanceof Countable` still answers the author's
+// declaration.
 func TestInterfaceNames(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

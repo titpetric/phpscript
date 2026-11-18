@@ -7,8 +7,8 @@ import (
 
 // TestThrowable covers the predicate that separates a PHP throwable from an
 // error a Go binding returned. ThrowableClass reads the class off the value,
-// because every SPL name is one Go type here: reflection over the Go type
-// would report "Exception" for an InvalidArgumentException.
+// because every SPL name maps to a single Go type here: reflection would
+// report "Exception" for an InvalidArgumentException.
 func TestThrowable(t *testing.T) {
 	t.Parallel()
 	var thrown Throwable = &TypeError{Name: "str_repeat", Position: 1, Want: "int", Got: "string"}
@@ -21,9 +21,9 @@ func TestThrowable(t *testing.T) {
 }
 
 // TestThrowableClassOf covers routing a catch clause. A value naming its class
-// reports the name, an error from a Go binding reports no class, as does a
-// throwable whose name is blank: matchCatchType reads the false and lets any
-// clause take the error, the contract every host binding relies on.
+// reports the name; an error from a Go binding reports no class. A blank
+// throwable reports none: matchCatchType reads the false and lets any clause
+// take the error, the contract every host binding relies on.
 func TestThrowableClassOf(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -46,7 +46,7 @@ func TestThrowableClassOf(t *testing.T) {
 	}
 }
 
-// blankThrowable implements the interface with no class name, the shape a
+// blankThrowable implements the interface without a class name, the shape a
 // driver type called Error takes when something reads it as PHP's Error class.
 type blankThrowable struct{}
 

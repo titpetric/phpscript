@@ -7,8 +7,8 @@ import (
 
 // TestFunc_Signature covers Signature's two forms. A plain name is
 // declarable and the line prints the function keyword. A Class::method name
-// is not and the line reads the way a script calls it, and pasting the line
-// into a .php file would be a parse error either way round.
+// is not; the line reads the way a script calls it. Pasting the line into a
+// .php file would be a parse error either way round.
 func TestFunc_Signature(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -60,8 +60,8 @@ func TestFunc_Signature(t *testing.T) {
 }
 
 // TestClass_Signature covers the constructor line of a class stub. It prints
-// no return type: PHP's __construct declares none, and the class it builds is
-// the heading above the stub.
+// no return type: PHP's __construct declares none; the class it builds is the
+// heading above the stub.
 func TestClass_Signature(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -153,10 +153,9 @@ func TestRenderParam(t *testing.T) {
 }
 
 // TestRenderWritesOneStubPerRegistration covers the shape of the generated
-// page: functions grouped under the Go package that registered them, classes
-// as PHP class stubs, a one-line doc comment as a line comment and a longer
-// one as a docblock. The aliases line names the extra class names one
-// constructor's registered name.
+// page: functions grouped by the Go package that registered them, classes as
+// PHP class stubs, a one-line doc comment as a line comment, a longer comment
+// as a docblock. The aliases line names the extra class names of one constructor.
 func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 	t.Parallel()
 	funcs := []Func{
@@ -196,8 +195,8 @@ func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 		}
 	}
 
-	// The page ends on exactly one newline. Git tracks the file and a run
-	// that found no change has to write the same bytes.
+	// The page ends on exactly one newline. Git tracks the file; a run that
+	// found no change must write the same bytes.
 	if !strings.HasSuffix(page, "\n") || strings.HasSuffix(page, "\n\n") {
 		t.Errorf("rendered page ends with %q, want one newline", page[max(0, len(page)-8):])
 	}

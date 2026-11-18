@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// semanticHost records what the engine delegated. It implements every method the
-// test programs reach and leaves the rest to the embedded nil interface and a
-// program reaching an unexpected one fails loudly and never silently.
+// semanticHost records the calls the engine delegated. It implements every method
+// the test programs reach and leaves the rest to the embedded nil interface. A
+// program reaching an unexpected method fails loudly at once.
 type semanticHost struct {
 	Host
 	binary  []string
@@ -18,8 +18,8 @@ type semanticHost struct {
 
 func (h *semanticHost) SetGlobal(string, any) bool { return false }
 
-// Truthy answers a bool as itself and a comparison the VM computed drives the
-// jump, and reads "yes" as the one true string.
+// Truthy returns a bool unchanged. A comparison the VM computed drives the
+// jump. Truthy reads "yes" as the true string.
 func (h *semanticHost) Truthy(value any) bool {
 	switch typed := value.(type) {
 	case bool:
@@ -30,8 +30,8 @@ func (h *semanticHost) Truthy(value any) bool {
 	return false
 }
 
-// Binary answers a tag naming itself and a test tells a result the engine
-// computed on its own from one the host returned.
+// Binary returns a tag naming the operator. A test then distinguishes a result
+// the engine computed from a result the host returned.
 func (h *semanticHost) Binary(op string, left, right any) (any, error) {
 	h.binary = append(h.binary, op)
 	return "host(" + op + ")", nil
@@ -44,7 +44,7 @@ func (h *semanticHost) Echo(value any) error {
 	return nil
 }
 
-// runHost compiles source and runs it against host.
+// runHost compiles source and runs the program against host.
 func runHost(t *testing.T, host Host, source string) {
 	t.Helper()
 
@@ -61,10 +61,9 @@ func runHost(t *testing.T, host Host, source string) {
 	}
 }
 
-// TestEntry covers the pair foreach walks. The engine owns iteration state
-// and no value semantics and what a collection holds is the host's answer:
-// Entries renders it to a key and a value per step. The loop binds them in
-// the order the slice holds.
+// TestEntry covers the pair foreach walks. The engine owns iteration state.
+// Value semantics belong to the host: Entries renders each step to a key plus
+// a value. The loop binds them in the order the slice holds.
 func TestEntry(t *testing.T) {
 	t.Parallel()
 	host := &semanticHost{entries: []Entry{
@@ -85,8 +84,7 @@ func TestEntry(t *testing.T) {
 	}
 
 	// A key the source did not name is still a step: a list has an index per
-	// entry and the loop binds the value alone and the engine reads the same
-	// pairs.
+	// entry. The loop binds the value alone. The engine reads the same pairs.
 	host.echoed = nil
 	runHost(t, host, `<?php $row = 0; foreach ($row as $value) { echo $value; }`)
 	if len(host.echoed) != 2 || host.echoed[0] != int64(1) || host.echoed[1] != int64(2) {
@@ -94,12 +92,11 @@ func TestEntry(t *testing.T) {
 	}
 }
 
-// TestHost covers the split the interface draws. The engine owns
-// compilation, operand storage, jumps and iteration state, and PHP value
-// semantics are the host's and an operation on operand types the engine has
-// no path for arrives at Binary and the result it returns is what the script
-// sees. Both backends share one host and a script reads the same semantics
-// either way.
+// TestHost covers the split the interface draws. The engine owns compilation,
+// operand storage, jumps and iteration state. PHP value semantics belong to
+// the host. An operation on operand types the engine has no path for arrives
+// at Binary, and Binary's result reaches the script. Both backends share
+// one host. A script reads the same semantics either way.
 func TestHost(t *testing.T) {
 	t.Parallel()
 	host := &semanticHost{}
@@ -113,9 +110,8 @@ func TestHost(t *testing.T) {
 		t.Fatalf("echoed = %v, want the value the host returned", host.echoed)
 	}
 
-	// The VM answers two int operands itself and never reaches the host: the
-	// fast path covers the arithmetic a hot loop runs. The host takes the
-	// shapes it cannot.
+	// The VM answers two int operands without the host: the fast path covers
+	// the arithmetic a hot loop runs. The host takes the shapes the VM cannot.
 	host.binary, host.echoed = nil, nil
 	runHost(t, host, `<?php $n = 1; echo $n + 2;`)
 	if len(host.binary) != 0 {
@@ -125,8 +121,7 @@ func TestHost(t *testing.T) {
 		t.Errorf("echoed = %v, want the VM's own 3", host.echoed)
 	}
 
-	// Truthiness is the host's: the engine jumps on what Truthy answered and
-	// never on the value itself.
+	// Truthiness is the host's: the engine jumps on the Truthy answer alone.
 	host.echoed = nil
 	runHost(t, host, `<?php $t = "yes"; $f = "no"; if ($t) { echo "taken"; } if ($f) { echo "untaken"; }`)
 	if len(host.echoed) != 1 || host.echoed[0] != "taken" {
@@ -134,10 +129,10 @@ func TestHost(t *testing.T) {
 	}
 }
 
-// TestCoalesceCompiles covers `??` on the bytecode engine: a left side that
-// holds a value answers, the right side never runs, and a null left side drops
-// to the right. The engine owns the null test and no value semantics. Echo
-// sees the two values themselves and the host sees no operator.
+// TestCoalesceCompiles covers `??` on the bytecode engine: a left side holding
+// a value answers, the right side never runs. A null left side drops to the
+// right. The engine owns the null test. Value semantics belong to the host.
+// Echo sees the two values. The host sees no operator.
 func TestCoalesceCompiles(t *testing.T) {
 	t.Parallel()
 	host := &semanticHost{}

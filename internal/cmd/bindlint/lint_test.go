@@ -8,8 +8,8 @@ import (
 
 // TestLintOffenders pins every shape the rules refuse, in the order the
 // findings sort: a parameter of the runtime type on a function, on a slice and
-// on a class method, a parameter of the Go-native shape, and a narrowing in
-// the binding and in a helper of its package.
+// on a class method; a parameter of the Go-native shape; plus a narrowing in
+// the binding and in a helper of the package.
 func TestLintOffenders(t *testing.T) {
 	t.Parallel()
 	findings, err := lint("testdata/offenders")
@@ -34,10 +34,9 @@ func TestLintOffenders(t *testing.T) {
 	}
 }
 
-// TestLintClean covers the four reasons a narrowing has to exist: the
-// collection helpers, the loud refusal the mutators document, a capability a
-// Go-native value has not got, and a type switch with a case for the native
-// shape. A registration whose name a table holds names no function to read and
+// TestLintClean covers the four reasons a narrowing must exist: the collection
+// helpers, the loud refusal the mutators document, a capability missing from a
+// Go-native value, plus a type switch with a case for the native shape. A registration whose name a table holds names no function to read and
 // is no finding either.
 func TestLintClean(t *testing.T) {
 	t.Parallel()
@@ -51,7 +50,7 @@ func TestLintClean(t *testing.T) {
 }
 
 // TestLintMissingRoot covers the walk failing: a path that is no directory is
-// an error and never an empty report that reads as a pass.
+// an error. An empty report would read as a pass.
 func TestLintMissingRoot(t *testing.T) {
 	t.Parallel()
 	if _, err := lint("testdata/absent"); err == nil {

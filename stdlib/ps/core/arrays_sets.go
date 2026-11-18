@@ -17,8 +17,8 @@ func init() {
 // registerArraySets installs the array functions that build a new array from one or two given ones.
 func registerArraySets(rt *runner.Runtime) {
 	// array_fill returns an array of $count copies of $value, keyed from
-	// $start_index upwards. A $count below zero clamps to the empty array, which
-	// is also what a count of zero answers; php 8 raises a ValueError.
+	// $start_index upwards. A $count below zero clamps to the empty array, as a
+	// count of zero does; php 8 raises a ValueError.
 	rt.RegisterFunc("array_fill", func(start_index, count int64, value any) *model.Array {
 		if count < 0 {
 			count = 0
@@ -100,21 +100,21 @@ func registerArraySets(rt *runner.Runtime) {
 		return filterByValue(array, others, false)
 	})
 
-	// array_intersect returns the entries of $array whose value is in every
-	// one of the other arrays, keys kept; it compares values as strings, as
+	// array_intersect returns the entries of $array whose value appears in each
+	// of the other arrays, keys kept; it compares values as strings, as
 	// array_diff compares them.
 	rt.RegisterFunc("array_intersect", func(array any, others ...any) *model.Array {
 		return filterByValue(array, others, true)
 	})
 
 	// array_diff_key returns the entries of $array whose key is in none of
-	// the other arrays, values untouched and never compared.
+	// the other arrays, values untouched, never compared.
 	rt.RegisterFunc("array_diff_key", func(array any, others ...any) *model.Array {
 		return filterByKey(array, others, false)
 	})
 
-	// array_intersect_key returns the entries of $array whose key is in every
-	// one of the other arrays, values untouched and never compared.
+	// array_intersect_key returns the entries of $array whose key appears in
+	// each of the other arrays, values untouched, never compared.
 	rt.RegisterFunc("array_intersect_key", func(array any, others ...any) *model.Array {
 		return filterByKey(array, others, true)
 	})
@@ -148,7 +148,7 @@ func registerArraySets(rt *runner.Runtime) {
 	})
 }
 
-// valueList reads an array's values in order, for pairing two by the same offset.
+// valueList reads an array's values in order, pairing two by offset.
 func valueList(array any) []any {
 	n, _ := modelutil.LenValues(array)
 	out := make([]any, 0, n)
@@ -163,9 +163,9 @@ func valueList(array any) []any {
 func filterByValue(array any, others []any, keep bool) *model.Array {
 	seen := make(map[string]int, len(others))
 	for _, other := range others {
-		// Counting the arrays a value appears in, and never marking it
-		// present, is what lets intersect require every one of them from the
-		// same pass diff uses to require none.
+		// Counting the arrays a value appears in, without marking it present,
+		// lets intersect require each of them from the same pass diff uses to
+		// require none.
 		inThis := make(map[string]bool)
 		modelutil.RangeValues(other, func(_, v any) bool {
 			inThis[phpval.String(v)] = true
@@ -194,7 +194,7 @@ func wanted(count, others int, keep bool) bool {
 	return count == 0
 }
 
-// filterByKey serves array_diff_key and array_intersect_key, comparing keys through phpval.Key.
+// filterByKey serves array_diff_key and array_intersect_key through phpval.Key.
 func filterByKey(array any, others []any, keep bool) *model.Array {
 	seen := make(map[any]int, len(others))
 	for _, other := range others {
@@ -218,7 +218,7 @@ func filterByKey(array any, others []any, keep bool) *model.Array {
 	return out
 }
 
-// edgeKey answers the first or last key without an internal array pointer.
+// edgeKey answers the first or last key without moving an internal array pointer.
 func edgeKey(array any, first bool) any {
 	var found any
 	has := false

@@ -8,8 +8,7 @@ import (
 	"testing"
 )
 
-// directTestWriter answers Write and WriteString, a test double for the
-// response writer the typed bridge serves.
+// directTestWriter answers Write and WriteString, a test double for the typed bridge.
 type directTestWriter struct {
 	strings.Builder
 	stringWrites int

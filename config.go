@@ -8,8 +8,8 @@ import (
 )
 
 // loadConfig delegates to `config.Load`. The command keeps the name it has
-// always called, and the reading itself belongs to the package that owns the
-// model, because a reload reads the file again from inside the server.
+// always called; the reading belongs to the package that owns the
+// model: a reload reads the file again from inside the server.
 func loadConfig(filename string) (config.Config, error) {
 	return config.Load(filename)
 }

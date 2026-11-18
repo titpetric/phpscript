@@ -23,9 +23,9 @@ func benchFixture(b *testing.B, path string) *Fixture {
 	return nil
 }
 
-// The single-shot benchmarks measure what one cold `phpscript test` run pays
-// per fixture and engine: cache scope off builds fresh caches per iteration
-// and a fresh runtime and an iteration is a first run, compile included. The
+// The single-shot benchmarks measure the cost of one cold `phpscript test` run
+// per fixture and engine. Cache scope off builds fresh caches per iteration,
+// plus a fresh runtime. An iteration is a first run, compile included. The
 // parsed AST stays cached on the fixture, as it does for both engines in the
 // harness.
 func benchSingleShot(b *testing.B, path string, runner Runner) {

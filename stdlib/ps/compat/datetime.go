@@ -28,8 +28,8 @@ func registerDatetime(rt *runner.Runtime) {
 		return fmt.Sprintf("%.8f %d", frac, sec)
 	})
 
-	// strtotime parses a datetime string against a fixed list of layouts, most
-	// specific first, and returns the Unix timestamp, or false when none match.
+	// strtotime parses a datetime string through a fixed list of layouts, most
+	// specific first, and returns the Unix timestamp, or false when no name matches.
 	rt.RegisterFunc("strtotime", strtotime)
 
 	// date formats a Unix timestamp with PHP's numeric format characters.

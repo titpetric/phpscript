@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestParseProfile covers the --stdlib values. An unknown name is an error
-// and no fallback, because falling back to every area would narrow no area
-// while reading as a narrowed runtime.
+// TestParseProfile covers the --stdlib values. An unknown name is an error.
+// No fallback applies. A fallback over all areas would narrow no area while
+// reading as a narrowed runtime.
 func TestParseProfile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -43,9 +43,9 @@ func TestParseProfile(t *testing.T) {
 	}
 }
 
-// TestSetProfileNarrowsRegister is what makes --stdlib one flag for the whole
-// process: Register reads the process profile and narrowing it reaches every
-// runtime built afterwards without a call site passing anything.
+// TestSetProfileNarrowsRegister makes --stdlib one flag for the whole process.
+// Register reads the process profile, and narrowing it reaches every runtime
+// built afterwards, and needs no call site to pass anything.
 func TestSetProfileNarrowsRegister(t *testing.T) {
 	t.Cleanup(func() { stdlib.SetProfile(stdlib.All) })
 

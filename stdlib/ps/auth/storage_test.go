@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// stubStorage is a store of one user with no derivation, the substitute for
-// the driver a host writes against its own table. It proves a driver can skip
+// stubStorage is a store of one user, without a derivation, the substitute for
+// the driver a host writes for a host table. It proves a driver can skip
 // this package's file. The interface is the whole surface Session\Manager
 // calls.
 type stubStorage struct {
@@ -36,9 +36,9 @@ func (s stubStorage) Exists() (bool, error) {
 
 var _ Storage = stubStorage{}
 
-// TestStorageContract covers the three answers the interface distinguishes,
-// because a caller branches on them: a user, a refusal that is not an error,
-// and an error that is not a refusal.
+// TestStorageContract covers three answers the interface distinguishes: a
+// user, a refusal that is not an error, or an error that is not a refusal. A
+// caller branches on them.
 func TestStorageContract(t *testing.T) {
 	t.Parallel()
 
@@ -70,7 +70,7 @@ func TestStorageContract(t *testing.T) {
 }
 
 // TestPasswordFileImplementsStorage covers the assignment in Session\Manager:
-// the registered class is what the manager accepts.
+// the manager accepts the registered class.
 func TestPasswordFileImplementsStorage(t *testing.T) {
 	t.Parallel()
 

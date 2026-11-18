@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// TestAreaFunc covers the resolution of a name written through its area: the
-// area has to define the function, the match ignores case, and a name outside
-// Runtime\PS and Runtime\PX never reaches the source.
+// TestAreaFunc covers the resolution of a name written with its area: the area
+// must define the function, the match ignores case; a name outside `Runtime\PS`,
+// `Runtime\PX` never reaches the source.
 func TestAreaFunc(t *testing.T) {
 	SetAreaMembers(func() map[string][]string {
 		return map[string][]string{`Runtime\PS\Test\Strings`: {"probe_len"}}
@@ -33,7 +33,7 @@ func TestAreaFunc(t *testing.T) {
 	}
 }
 
-// TestAreaName covers the spelling a class answers to under its area, including
+// TestAreaName covers the spelling a class answers to in its area, including
 // the folded near-match that keeps DateTime out of Runtime\PX\Datetime.
 func TestAreaName(t *testing.T) {
 	t.Parallel()
@@ -58,9 +58,9 @@ func TestAreaName(t *testing.T) {
 	}
 }
 
-// TestSetAreaClasses covers the class a qualified name resolves to: the area has
-// to install it, the match ignores case, and a name outside Runtime\PS and
-// Runtime\PX never reaches the source.
+// TestSetAreaClasses covers the class a qualified name resolves to: the area
+// must install the class, the match ignores case; a name outside `Runtime\PS`,
+// `Runtime\PX` never reaches the source.
 func TestSetAreaClasses(t *testing.T) {
 	SetAreaClasses(func() map[string][]string {
 		return map[string][]string{`Runtime\PS\Test\Store`: {"Store", `Store\Entry`}}

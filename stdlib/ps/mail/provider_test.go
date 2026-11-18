@@ -46,8 +46,8 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			traceOptions := telemetry.NewOptions("phpscript")
-			// oida records only when the options enable it; a test that reads
-			// its traces back sets Enabled.
+			// oida records only when the options enable recording. A test that
+			// reads its traces back sets Enabled.
 			traceOptions.Enabled = true
 			tracer, err := telemetry.New(traceOptions)
 			if err != nil {
@@ -95,12 +95,12 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 	}
 }
 
-// TestProvider covers what a host builds from its mail block: a fixed set of
+// TestProvider covers the host construction from a mail block: a fixed set of
 // named servers, keyed by the name a script types. The constructor lowercases
-// a name and fills in a missing port and a delivery reads a complete
-// credential. It copies the map, because configuration layering passes one map
-// to every site that declared no mail block, and a normalisation written into
-// it would reach every one.
+// a name and fills in a missing port. A delivery reads a complete credential.
+// It copies the map. Configuration layering passes one map to each site
+// without a mail block. A normalisation written into it would reach each of
+// them.
 func TestProvider(t *testing.T) {
 	t.Parallel()
 	servers := map[string]mailstdlib.Config{
@@ -118,7 +118,7 @@ func TestProvider(t *testing.T) {
 		t.Errorf("the provider wrote port %d back into the caller's map", got)
 	}
 
-	// A provider holding nothing is what a CLI run without a mail block has.
+	// A provider holding nothing matches a CLI run without a mail block.
 	if err := mailstdlib.NewProvider(nil).Configured(""); err == nil {
 		t.Error("an empty provider accepted the default server")
 	}
@@ -126,7 +126,8 @@ func TestProvider(t *testing.T) {
 
 // TestProvider_Configured covers the verdict the constructor reads and `new
 // Mail("marketing")` fails where the delivery would. An empty name is the
-// "default" server, as `new Mail` and mail() both resolve. For a name nobody
+// "default" server; `new Mail` resolves that name, and `mail()` resolves it
+// too. For a name nobody
 // configured, the error repeats the name the call passes and says nothing
 // about the configuration.
 func TestProvider_Configured(t *testing.T) {
@@ -184,8 +185,8 @@ func TestProvider_Send(t *testing.T) {
 	}
 }
 
-// TestProvider_SendMessage covers a whole message against a replaced
-// transport. A Deliver reads the three parts of a plain-text message and the
+// TestProvider_SendMessage covers a whole message over a replaced
+// transport. A Deliver reads three parts of a plain-text message and the
 // provider refuses one with an HTML part or a Reply-To before the transport
 // runs; cut down to the text, it would be a message the script did not send.
 func TestProvider_SendMessage(t *testing.T) {
@@ -221,10 +222,10 @@ func TestProvider_SendMessage(t *testing.T) {
 	}
 }
 
-// TestDeliver covers the one function a host replaces to send by a transport
+// TestDeliver covers the only function a host replaces to send by a transport
 // that is not SMTP. It reads the credential the name resolved to, with the
-// port already filled in, and the three parts of the message; name resolution
-// and tenant isolation run ahead of it and a transport does neither itself.
+// port already filled in, plus the parts of the message. Name resolution and
+// tenant isolation run ahead of the transport. It does neither.
 func TestDeliver(t *testing.T) {
 	t.Parallel()
 	var (
@@ -254,7 +255,7 @@ func TestDeliver(t *testing.T) {
 // TestNewProviderFunc covers the transport swap, the way
 // database.NewDatabaseProvider takes its connector. A host passing nil sends
 // over SMTP and the zero value of the option is the behaviour of a host saying
-// nothing about transport: a dial against a port nobody listens on fails with
+// nothing about transport: a dial to a port nobody listens on fails with
 // the SMTP path's own wording.
 func TestNewProviderFunc(t *testing.T) {
 	t.Parallel()

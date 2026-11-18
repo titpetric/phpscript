@@ -38,11 +38,11 @@ $shm = new SharedMemory;
 echo $shm->get($_REQUEST["key"]);
 ```
 
-A route without a method registers both GET and POST. The annotation spells explicit methods such as PUT or DELETE. There is no specific handling available for HEAD or OPTIONS requests, you have to bind them explicitly.
+A route without a method registers both GET and POST. The annotation spells explicit methods such as PUT or DELETE. HEAD and OPTIONS get no specific handling; bind them explicitly.
 
 ### Path parameters
 
-Three spellings, each arriving in `$_REQUEST` under the name it declares:
+Three spellings, each arriving in `$_REQUEST` with the name it declares:
 
 | Spelling        | Matches                          | `$_REQUEST`                                                   |
 |-----------------|----------------------------------|---------------------------------------------------------------|
@@ -52,7 +52,7 @@ Three spellings, each arriving in `$_REQUEST` under the name it declares:
 
 A name is letters, digits and underscores. The scan refuses anything else: the route is not registered, the server logs it at boot with the file it came from, and `phpscript lint` reports it with a line number. There is no default-value syntax and `{module=users}` is an authoring error.
 
-The bundled server enforces the regex constraint and routes with [chi](https://github.com/go-chi/chi). An application registering these routes on a standard library `http.ServeMux` gets the parameter without the constraint: `ServeMux` has no regex constraint, and rejecting the route there would make the same annotation valid or invalid depending on the host. Constrain in PHP as well when the check has to hold either way.
+The bundled server enforces the regex constraint and routes with [chi](https://github.com/go-chi/chi). An application registering these routes on a standard library `http.ServeMux` gets the parameter without the constraint: `ServeMux` has no regex constraint, and rejecting the route there would make the same annotation valid or invalid depending on the host. Constrain in PHP too when the check must hold either way.
 
 PHP endpoint files handle:
 

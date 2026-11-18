@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-// TestFloatFormatting covers where php switches a float to the exponent form,
-// which the decimal point decides and not Go's 'g' thresholds: 1e16 is still
-// written out at seventeen digits and 1e17 is not, and a small value turns at
-// the third leading zero. The mantissa always holds a fraction and the
-// exponent no leading zero and the spelling is 1.0E+17 and not 1e+17.
+// TestFloatFormatting covers where php switches a float to the exponent form:
+// the decimal point decides, not Go's 'g' thresholds. 1e16 is still written
+// out at seventeen digits; 1e17 is not. A small value turns at the third
+// leading zero. The mantissa always holds a fraction, the exponent no leading
+// zero. The spelling is 1.0E+17 and not 1e+17.
 //
-// echo passes precision=14 where var_dump passes the round-tripping form and
-// one float has two spellings: 1/3 is 0.33333333333333 to echo.
+// echo passes precision=14 where var_dump passes the round-tripping form; one
+// float has two spellings: 1/3 is 0.33333333333333 to echo.
 func TestFloatFormatting(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -26,8 +26,8 @@ echo 1e16, " ", 0.1 + 0.2, " ", 1/3, "\n";`)
 	}
 }
 
-// TestFloatNonFinite covers the three values that are not numbers, which print
-// as names in every renderer and show no sign in var_export.
+// TestFloatNonFinite covers three values that are not numbers; each prints as
+// a name in all renderers, showing no sign in var_export.
 func TestFloatNonFinite(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

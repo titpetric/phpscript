@@ -7,9 +7,9 @@ import (
 )
 
 // TestFileAcceptsNamesAnImportedAreaBinds covers the names an opt-in area
-// installs: a call and a class under an area the file imports resolve, in the
-// go spelling and in the php one. The same name under an area no statement
-// names is the finding the check exists for.
+// installs: a call, or a class, under an imported area resolves, in the go
+// spelling and in the php spelling. The same name under an unimported area is
+// the finding the check exists for.
 func TestFileAcceptsNamesAnImportedAreaBinds(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

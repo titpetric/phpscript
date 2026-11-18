@@ -14,7 +14,7 @@ import (
 // Value coercion mirrors PHP's loose typing where the runner needs a concrete
 // Go type (string output, truthiness for conditionals, integer indices).
 
-// phpString renders v for string contexts, deferring to phpval except for a caught exception.
+// phpString renders v for string contexts, deferring to phpval except exceptions.
 func phpString(v any) string {
 	switch x := v.(type) {
 	case string:
@@ -110,7 +110,7 @@ func namedScalarInt(v any) int64 {
 	return 0
 }
 
-// numericPrefix returns the longest leading PHP number in s and whether it uses float syntax.
+// numericPrefix returns s's longest leading PHP number and its float syntax.
 func numericPrefix(s string) (prefix string, isFloat bool) {
 	i := 0
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\v' || s[i] == '\f') {
@@ -252,7 +252,7 @@ func helperToObject(v any) any {
 	return obj
 }
 
-// isObjectValue reports whether v is an object or host struct, after the collection test.
+// isObjectValue reports an object or host struct, after the collection test.
 func isObjectValue(v any) bool {
 	if _, ok := v.(*model.Object); ok {
 		return true
@@ -302,5 +302,5 @@ func toFloat(v any) float64 {
 // normalizeKey converts an array key to PHP's int or string through phpval.Key.
 func normalizeKey(k any) any { return phpval.Key(k) }
 
-// keyString spells an array key as the string name a model.Keyed answers to.
+// keyString spells an array key as a model.Keyed string name.
 func keyString(k any) string { return phpval.String(phpval.Key(k)) }

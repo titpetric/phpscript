@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// teeResultTable forwards every call to each table, printing to stdout and writing a report.
+// teeResultTable forwards every call to each table, printing and writing a report.
 type teeResultTable []resultTable
 
 func (t teeResultTable) writeGroup(dir string, labels []string) {
@@ -75,7 +75,7 @@ func writeReportHeader(w io.Writer, argv []string) {
 	fmt.Fprint(w, "last. See [testing.md](./testing.md) for the fixture format and how to add one.\n\n")
 }
 
-// openReport creates the -o markdown sink and its header, before the first fixture runs.
+// openReport creates the -o markdown sink and header before the first fixture runs.
 func openReport(opts Options, args []string) (*os.File, error) {
 	if opts.Output == "" {
 		return nil, nil

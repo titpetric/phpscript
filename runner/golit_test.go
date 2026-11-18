@@ -50,7 +50,7 @@ func TestHelperGoLit(t *testing.T) {
 }
 
 // TestGoLitInfer covers the dims-only literal: `[][]{...}` takes its element
-// type from the values, and a mixed number list widens to float64.
+// type from the values. A mixed number list widens to float64.
 func TestGoLitInfer(t *testing.T) {
 	t.Parallel()
 	nums, err := helperGoLit(false, "", "[]",
@@ -88,7 +88,7 @@ func TestGoLitInfer(t *testing.T) {
 }
 
 // TestGoLitNested covers the typed forms that nest: a slice of slices, a map
-// of slices and a slice of maps, each converted entry by entry.
+// of slices, a slice of maps, each converted entry by entry.
 func TestGoLitNested(t *testing.T) {
 	t.Parallel()
 	rows, err := helperGoLit(false, "", "[][]string",

@@ -20,7 +20,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\Core\Lang`, registerLang)
 }
 
-// isObject backs is_object, counting a Go struct but not a collection as an object.
+// isObject backs is_object, counting a Go struct but not a collection.
 func isObject(value any) bool {
 	if value == nil {
 		return false
@@ -51,7 +51,7 @@ func isFloat(value any) bool {
 	return ok && width.Float
 }
 
-// isInt reports whether a value is a phpscript integer, including a non-float Go width.
+// isInt reports a phpscript integer, a non-float Go width included.
 func isInt(value any) bool {
 	switch value.(type) {
 	case int, int64:
@@ -75,9 +75,9 @@ func phpGetType(value any) string {
 	case string, []byte:
 		return "string"
 	}
-	// A typed go value is one of php's two numbers here: a script testing
-	// gettype() reads the value's own type and no width php has a name for.
-	// var_dump is where the width shows.
+	// A typed go value counts as a php number here. Code testing gettype()
+	// reads the value's type. A width php names stays hidden; var_dump shows
+	// the width.
 	if width, ok := model.GoWidthOf(value); ok {
 		if width.Float {
 			return "double"
@@ -90,8 +90,8 @@ func phpGetType(value any) string {
 	if isObject(value) {
 		return "object"
 	}
-	// A closure reaches a binding as a Go func and no instance, but
-	// PHP has it an instance of Closure and it reports as an object.
+	// A closure reaches a binding as a Go func. PHP holds an instance of
+	// Closure that reports as an object.
 	if reflect.ValueOf(value).Kind() == reflect.Func {
 		return "object"
 	}
@@ -101,12 +101,12 @@ func phpGetType(value any) string {
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
-	// STDIN holds the runtime, and no reader of the moment. SetConst stores
-	// the constant once and a runtime can serve more than one program - a
-	// --count loop, a worker reusing its runtime - and each of those brings
-	// its own stdin. Reading through the runtime means STDIN is whatever the
-	// current session's is, the way php://output writes wherever output goes
-	// at the time, and never where it went at the moment of the handle.
+	// STDIN holds the runtime. The reader changes with the session. SetConst
+	// stores the constant once. A runtime can serve more than one program - a
+	// --count loop, a worker reusing its runtime. Each program brings its
+	// stdin. Reading through the runtime means STDIN is whatever the current
+	// session's is, the way php://output writes wherever output goes at the
+	// time. It does not write where the output went at the moment of the handle.
 	rt.SetConst("STDIN", stdinStream{rt: rt})
 	// spl_autoload_register registers $callback as an autoloader, or the
 	// default spl_autoload when $callback is null or omitted; $prepend puts
@@ -138,10 +138,10 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
 	rt.RegisterFunc("get_include_path", rt.IncludePath)
 	// get_defined_constants returns the defined constants as a name-sorted
-	// array; $categorize true groups them under a single "Core" key.
+	// array; $categorize true groups them beneath a single "Core" key.
 	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
-		// The introspection shims keep returning *model.Array: their whole value
-		// is a stable, name-sorted listing, which a Go map cannot express.
+		// The introspection shims keep returning *model.Array. Their whole value
+		// is a stable, name-sorted listing. A Go map cannot express that.
 		defined := rt.DefinedConstants()
 		constants := model.NewArraySize(len(defined))
 		names := make([]string, 0, len(defined))
@@ -204,22 +204,23 @@ func registerLang(rt *runner.Runtime) {
 	})
 	// empty reports whether $value is empty: null, false, "", "0", 0, 0.0 or an empty array.
 	rt.RegisterFunc("empty", func(value any) bool { return !phpval.Truthy(value) })
-	// A binding's []string is as much a PHP array as an *model.Array is and
-	// is_array() answers for the whole value model, and never one Go type.
+	// A binding's []string is as much a PHP array as an *model.Array.
+	// is_array() answers for every shape in the value model, a Go type among
+	// them.
 	rt.RegisterFunc("is_array", modelutil.IsCollection)
 	// is_int reports whether $value is an integer.
 	rt.RegisterFunc("is_int", isInt)
 	// is_float reports whether $value is a float.
 	rt.RegisterFunc("is_float", isFloat)
 	// is_double reports whether $value is a float, php's older spelling of
-	// is_float(). registerLang registers both because a script written for php
-	// uses whichever its author learned.
+	// is_float(). registerLang registers both. A script written for php uses
+	// whichever spelling its author learned.
 	rt.RegisterFunc("is_double", isFloat)
 	// gettype returns $value's type under PHP's legacy names: "integer",
 	// "double", "boolean", "string", "array", "object" or "NULL".
 	rt.RegisterFunc("gettype", phpGetType)
-	// is_string reports whether $value is a string. A binding's []byte is one,
-	// PHP's strings being byte strings; see phpval.Bytes.
+	// is_string reports whether $value is a string. A binding's []byte
+	// qualifies: PHP's strings are byte strings. See phpval.Bytes.
 	rt.RegisterFunc("is_string", func(value any) bool {
 		if _, ok := value.(string); ok {
 			return true
@@ -231,9 +232,9 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("is_bool", func(value any) bool { _, ok := value.(bool); return ok })
 	// is_null reports whether $value is null.
 	rt.RegisterFunc("is_null", func(value any) bool { return value == nil })
-	// is_object reports whether $value is an object. A value a Go binding
-	// returned is one: a script constructs it with new, calls its methods and
-	// reads its properties the same way it does an interpreted object.
+	// is_object reports whether $value is an object. A value from a Go binding
+	// qualifies. A script constructs it with new, calls its methods and reads
+	// its properties the same way it does an interpreted object.
 	rt.RegisterFunc("is_object", isObject)
 	// get_included_files returns the names of the files included or required so far.
 	rt.RegisterFunc("get_included_files", func() []string { return rt.IncludedFiles() })
@@ -358,8 +359,8 @@ func strtolInt(s string, base int64) int64 {
 		neg = s[i] == '-'
 		i++
 	}
-	// strtol takes a 0x prefix only when a hex digit follows; without one it
-	// reads the lone "0" and stops. Both spellings of that are 0 and
+	// strtol takes a 0x prefix only when a hex digit follows. Without a hex
+	// digit it reads the lone "0" and stops. Both spellings of that are 0.
 	// strtolInt takes the prefix unconditionally.
 	switch {
 	case (base == 0 || base == 16) && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X'):

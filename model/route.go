@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-// RouteParam is one {...} segment of an @route path.
+// RouteParam holds one {...} segment of an @route path.
 //
 // modelutil.ParseRoutePath accepts three spellings: {name} for one segment,
-// {name...} for the rest of them joined, {name:regex} for one matching a
-// regex. Neither router takes all three as written and RenderRoutePath
-// translates per router and this grammar is the one an author writes against.
+// {name...} for the rest joined, {name:regex} for a regex match. Neither router
+// takes all three as written; RenderRoutePath translates per router. An author
+// writes against this grammar.
 type RouteParam struct {
 	Name string
 
@@ -22,8 +22,8 @@ type RouteParam struct {
 	Pattern string
 }
 
-// Valid reports the name both routers accept and $_REQUEST can key on, and an
-// error naming the offending parameter.
+// Valid reports the name both routers accept and $_REQUEST can key. An error
+// names the offending parameter.
 //
 // A caller holding the path the parameter came from wraps the error with it.
 func (p RouteParam) Valid() error {
@@ -54,7 +54,6 @@ const (
 	// remaining segments are the bare * wildcard, read as URL param "*".
 	RouteChi RouteDialect = iota
 
-	// RouteServeMux is net/http.ServeMux since Go 1.22: {name} and {name...}
-	// are native. ServeMux takes no regex constraint.
+	// RouteServeMux is net/http.ServeMux since Go 1.22: {name} and {name...} are native.
 	RouteServeMux
 )

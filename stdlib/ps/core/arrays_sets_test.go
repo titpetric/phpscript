@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// setArray builds an array from alternating keys and values and a case table
+// setArray builds an array from alternating keys and values. A case table
 // reads as the PHP literal it names.
 func setArray(pairs ...any) *model.Array {
 	out := model.NewArray()
@@ -18,7 +18,7 @@ func setArray(pairs ...any) *model.Array {
 }
 
 // entries reads an array back as alternating keys and values, the shape
-// setArray takes and a test spells an expected array the same way as an input.
+// setArray takes. A test spells an expected array the same way as an input.
 func entries(a *model.Array) []any {
 	var out []any
 	a.Range(func(k, v any) bool {
@@ -29,8 +29,7 @@ func entries(a *model.Array) []any {
 }
 
 // TestValueList covers reading the values of an array in order. array_combine
-// pairs two arrays at the same offset, which a range over one of them cannot
-// do.
+// pairs two arrays at the same offset. A range across one array cannot do that.
 func TestValueList(t *testing.T) {
 	t.Parallel()
 	got := valueList(setArray("b", int64(2), "a", int64(1)))
@@ -50,8 +49,8 @@ func TestValueList(t *testing.T) {
 // walk and differ in the verdict.
 //
 // Values compare as strings, PHP's documented rule for this family and
-// array_diff([0], ["0"]) is empty. The count of arrays holding a value is what
-// lets one pass answer both questions: with a third array passed, diff drops a
+// array_diff([0], ["0"]) is empty. The count of arrays holding a value lets
+// one pass answer both questions: with a third array passed, diff drops a
 // value the second holds even when the third does not.
 func TestFilterByValue(t *testing.T) {
 	t.Parallel()
@@ -94,9 +93,9 @@ func TestFilterByValue(t *testing.T) {
 }
 
 // TestFilterByKey covers array_diff_key and array_intersect_key. Keys run
-// through phpval.Key first and the integer 1 of an array meets the string "1" a
-// binding's map[string]any holds as one key. Neither one reads a value or
-// compares one.
+// through phpval.Key first. The integer 1 of an array meets the string "1" that
+// a binding's map[string]any holds as a key. Neither reads a value or compares
+// one.
 func TestFilterByKey(t *testing.T) {
 	t.Parallel()
 	named := setArray(int64(1), "a", "b", "c")
@@ -114,9 +113,8 @@ func TestFilterByKey(t *testing.T) {
 }
 
 // TestWanted covers the rule turning "how many of the other arrays hold this"
-// into a verdict. The two are not each other's negation: intersect wants every
-// other array, diff wants none of them and they only coincide while there is
-// one other array.
+// into a verdict. The two are not negations: intersect wants any other array,
+// diff wants no other array. They coincide only with a single other array.
 func TestWanted(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -138,7 +136,7 @@ func TestWanted(t *testing.T) {
 }
 
 // TestEdgeKey covers array_key_first and array_key_last, which read an edge
-// without an internal pointer. PHP's older spelling is reset() plus key(),
+// without moving an internal pointer. PHP's older spelling is reset() plus key(),
 // which moves the pointer the read comes off; this runtime keeps no such
 // pointer and an empty array answers null.
 func TestEdgeKey(t *testing.T) {

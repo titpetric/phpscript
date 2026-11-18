@@ -2,17 +2,17 @@
 
 Pass/fail and per-package duration from `go test`, including the tests that gate the build on an allocation count.
 
-Read this when the artifact needed is a test run. It runs under the contract in [README.md](README.md); that document is not restated here.
+Read this when the artifact needed is a test run. It runs within the contract in [README.md](README.md); that document is not restated here.
 
 ## What this collects
 
-Pass/fail per package and per test, and the wall-clock duration of each package.
+Pass/fail for each package and test, and the wall-clock duration of each package.
 
-Not per-operation cost, and not percentiles. A duration here is one sample.
+Not per-operation cost, and not percentiles. A duration here is a single sample.
 
 ## Preconditions
 
-The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: it holds every core for the length of the suite.
+The contract's lock plus `CGO_ENABLED=0`. A correctness run also takes the lock: it holds every core for the whole suite.
 
 The database fixtures read their connection strings from `.env.testing`:
 
@@ -24,7 +24,7 @@ Exported, not sourced. `. ./.env.testing` does not work: three of the four value
 
 The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression; report it as a missing precondition.
 
-`-count 1` so the test cache answers from this run and no earlier one.
+`-count 1` so the test cache answers from this run, never an earlier one.
 
 ## The run
 
@@ -51,7 +51,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 The package list goes last. `gotestsum` hands everything after `--` to `go test`, and `-coverprofile` writes nothing without complaining when the list precedes the flags.
 
-Under the race detector, over the two packages that hold concurrent state:
+With the race detector, over the two packages that hold concurrent state:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -59,7 +59,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 '
 ```
 
-`-race` requires cgo, the one place the `CGO_ENABLED=0` rule does not hold. A race run produces no number and is never a timing baseline.
+`-race` requires cgo, outside the `CGO_ENABLED=0` rule. A race run produces no number and is no timing baseline.
 
 One package:
 
@@ -69,7 +69,7 @@ CGO_ENABLED=0 go test -count 1 -v ./runner
 
 ## The artifact
 
-`bench-gotest-<side>.json`, which is test2json: one JSON object per line, with `Action` (`run`, `pass`, `fail`, `output`), `Package`, `Test` and `Elapsed`. Already ignored by `bench*.json`.
+`bench-gotest-<side>.json`, which is test2json: one JSON object per line. Each object holds `Action` (`run`, `pass`, `fail`, `output`), `Package`, `Test` and `Elapsed`. Already ignored by `bench*.json`.
 
 `cover/pkg.cov` under `-cover`. Already ignored by `/cover/*` and `*.cov`. The profile runs to tens of megabytes and stays behind for `go tool cover -html`.
 
@@ -83,7 +83,7 @@ The ranking:
 gotestsum tool slowest --jsonfile bench-gotest-after.json
 ```
 
-`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` and `connection_aborted` against the real clock. Report it as excluded, never as the slowest package, or the reading points at a sleep.
+`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` or `connection_aborted` against the real clock. Report it as excluded; the slowest-package label points the reading at a sleep.
 
 `tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/ps/internals` and `stdlib/ps/http` run real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
 
@@ -95,7 +95,7 @@ Three tests fail when they regress; none of them skips. A failure in one is a fi
 | `TestLexOperatorNoAlloc`                   | `parser/lexer_test.go`         | The lexer's operator path started allocating                                                             |
 | `TestNoInheritanceAtRuntime`               | `runner`                       | `model.Class` regrew a `Parent` field. A design guard, not a budget                                      |
 
-The contract's test-immutability rule says what an agent may and may not change in any of them.
+The contract's test-immutability rule governs the changes an agent may make in any of them.
 
 Packages that open a database log a connection line at init. That output is noise.
 

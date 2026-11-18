@@ -57,11 +57,11 @@ func TestRunSourceTree(t *testing.T) {
 	}
 }
 
-// TestNewCommand covers what the constructor sets on the command: the shared
-// -v is this command's verbosity dial and the Run closure has to read it off
-// the global options main filled, and not off a flag the command declares. A
-// command built with -v set prints the binding sections, and one built without
-// it prints the summary alone.
+// TestNewCommand covers the settings the constructor applies to the command:
+// the shared -v is this command's verbosity dial; the Run closure must read it
+// from the global options main filled, not from a flag the command declares. A
+// command built with -v set prints the binding sections; one built without -v
+// prints the summary alone.
 func TestNewCommand(t *testing.T) {
 	command := NewCommand(nil, &flags.Options{})
 

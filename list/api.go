@@ -10,8 +10,8 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// API scans path arguments and returns one row per method of every class and
-// interface the files declare. The API includes interfaces because an `implements`
+// API scans path arguments and returns a row per method of every class and
+// interface the files declare. The API includes interfaces: an `implements`
 // contract is part of the API a reader needs.
 func API(paths []string) ([]MethodRow, error) {
 	files, err := ExpandFiles(paths)
@@ -29,7 +29,7 @@ func API(paths []string) ([]MethodRow, error) {
 	return rows, nil
 }
 
-// APIFile returns the API rows for one PHP source file. A file the parser
+// APIFile returns the API rows of a PHP source file. A file the parser
 // refuses contributes no rows: the token scan that the inventory falls back to
 // can name a class but cannot recover its methods, parameters or docblocks.
 func APIFile(path string) ([]MethodRow, error) {

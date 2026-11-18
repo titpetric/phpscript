@@ -9,7 +9,7 @@ import (
 // apr1Magic is the identifier Apache's md5-crypt variant writes in place of $1$.
 const apr1Magic = "$apr1$"
 
-// apr1Rounds is the algorithm's fixed 1000 md5 iterations, which no parameter raises.
+// apr1Rounds is the algorithm's fixed 1000 md5 iterations, that no parameter raises.
 const apr1Rounds = 1000
 
 // apr1SaltMax is the salt length Apache generates, truncating a longer field.
@@ -19,7 +19,7 @@ const apr1SaltMax = 8
 const apr1Alphabet = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 // APR1Verify reports whether password produced the `$apr1$salt$hash` in stored.
-// A value that is not one returns false, as PasswordVerify does.
+// A different value returns false, as PasswordVerify does.
 func APR1Verify(password, stored string) bool {
 	salt, _, ok := apr1Split(stored)
 	if !ok {
@@ -28,13 +28,13 @@ func APR1Verify(password, stored string) bool {
 	return subtle.ConstantTimeCompare([]byte(apr1Encode(password, salt)), []byte(stored)) == 1
 }
 
-// IsAPR1 reports whether a stored value claims the `$apr1$` format.
+// IsAPR1 reports whether the stored value claims the `$apr1$` format.
 func IsAPR1(stored string) bool {
 	_, _, ok := apr1Split(stored)
 	return ok
 }
 
-// apr1Split reads the salt and tag, the tag serving the shape check alone.
+// apr1Split reads the salt and tag, the tag checked for shape.
 func apr1Split(stored string) (salt, tag string, ok bool) {
 	rest, found := strings.CutPrefix(stored, apr1Magic)
 	if !found {
@@ -72,7 +72,7 @@ func apr1Encode(password, salt string) string {
 
 	// APR zeroes its digest buffer here and then writes one byte from it per
 	// set bit of the password length. The zero byte is the "mixed with a null"
-	// case, and a hash written by htpasswd holds it.
+	// case that htpasswd writes.
 	zero := []byte{0}
 	first := []byte(password)
 	for length := len(password); length != 0; length >>= 1 {
@@ -84,9 +84,9 @@ func apr1Encode(password, salt string) string {
 	}
 	final = ctx.Sum(nil)
 
-	// The rounds are the whole cost. Each one digests the password and the
-	// previous output in an order the index decides and a round waits on the
-	// one before it.
+	// The rounds are the whole cost. Each round digests the password and the
+	// previous output in an order the index decides; a round waits on the round
+	// before it.
 	for i := 0; i < apr1Rounds; i++ {
 		round := md5.New()
 		if i&1 == 1 {
@@ -114,7 +114,7 @@ func apr1Encode(password, salt string) string {
 	out.WriteString("$")
 	// The byte order is APR's and not the digest's. Five groups of three bytes
 	// become four characters each, the last group reaching back to byte 5, and
-	// byte 11 goes out on its own as two characters.
+	// byte 11 goes out alone as two characters.
 	for _, group := range [5][3]int{{0, 6, 12}, {1, 7, 13}, {2, 8, 14}, {3, 9, 15}, {4, 10, 5}} {
 		value := uint32(final[group[0]])<<16 | uint32(final[group[1]])<<8 | uint32(final[group[2]])
 		apr1Base64(&out, value, 4)

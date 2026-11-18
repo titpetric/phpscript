@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// check runs one Valid and matches the error against what the case expects: an
+// check runs one Valid and matches the error against the expected error. An
 // empty want is a value that passes.
 func check(t *testing.T, label string, err error, want string) {
 	t.Helper()
@@ -21,8 +21,8 @@ func check(t *testing.T, label string, err error, want string) {
 	}
 }
 
-// TestParam_Valid covers a parameter a host filled: it names something, and a
-// variadic one declares no default, which php has no syntax for.
+// TestParam_Valid covers a parameter a host filled. It names something. A
+// variadic parameter declares no default, which php has no syntax for.
 func TestParam_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -40,8 +40,8 @@ func TestParam_Valid(t *testing.T) {
 	}
 }
 
-// TestField_Valid covers a property declaration: a name, and a visibility php
-// spells. The empty spelling is the one an undecorated property holds.
+// TestField_Valid covers a property declaration: a name plus a visibility php
+// spells. An undecorated property holds the empty spelling.
 func TestField_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -61,10 +61,9 @@ func TestField_Valid(t *testing.T) {
 }
 
 // TestFuncDecl_Valid covers a function declaration: a name, no parameter
-// declared twice, the variadic one last, and a body matching abstract.
+// declared twice, the variadic parameter last, a body matching abstract.
 //
-// The label names the class where the declaration declares one. The error then
-// identifies the method.
+// The label names the declaring class. The error identifies the method.
 func TestFuncDecl_Valid(t *testing.T) {
 	t.Parallel()
 	body := []model.Stmt{&model.Return{}}
@@ -88,12 +87,12 @@ func TestFuncDecl_Valid(t *testing.T) {
 	}
 }
 
-// TestClassDecl_Valid covers a class declaration: a name, and no member name
-// repeated inside its own group.
+// TestClassDecl_Valid covers a class declaration: a name, no member name
+// repeated in its group.
 //
-// A property and a constant may share a name, because php reads `$c->x` and
-// `C::X` through separate tables. Two methods may not, and the comparison
-// folds case the way php's own method lookup folds it.
+// Properties and constants may share a name. php reads `$c->x` and `C::X`
+// from separate tables. Two methods may not share a name. The comparison
+// folds case as php's method lookup does.
 func TestClassDecl_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -119,8 +118,8 @@ func TestClassDecl_Valid(t *testing.T) {
 	}
 }
 
-// TestClass_Valid covers the resolved form the runtime holds: a name, no nil
-// method table entry, and no property declared twice.
+// TestClass_Valid covers the resolved form the runtime holds: a name, a non-nil
+// method table entry, no property declared twice.
 func TestClass_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -159,8 +158,8 @@ func TestFunc_Valid(t *testing.T) {
 	}
 }
 
-// TestObject_Valid covers the instance: it points at a class, which is the one
-// path to its methods and its property order.
+// TestObject_Valid covers the instance. It points at a class, the only path to
+// its methods and its property order.
 func TestObject_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

@@ -12,8 +12,7 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// coverageBlock finds the block starting at line in file and a test asserts on
-// position and not on ordering.
+// coverageBlock finds the block starting at line in file, keyed by position alone.
 func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int) coverage.Block {
 	t.Helper()
 	for _, b := range blocks {
@@ -25,8 +24,8 @@ func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int)
 	return coverage.Block{}
 }
 
-// TestCoverageCounts covers what the interpreter charges: a loop body once per
-// iteration, the loop header once, and nothing for an untaken branch.
+// TestCoverageCounts covers the interpreter's charge: a loop body once per
+// iteration, the loop header once, nothing for an untaken branch.
 func TestCoverageCounts(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -71,9 +70,9 @@ echo $total;
 	}
 }
 
-// TestCoverageIncludedFiles covers the zero-count baseline: an included file
-// registers every statement and a function body the fixture never calls shows
-// up at zero under the include's own filename.
+// TestCoverageIncludedFiles covers the zero-count baseline. An included file
+// registers every statement. A function body the fixture never calls shows
+// up at zero, keyed to the include's filename.
 func TestCoverageIncludedFiles(t *testing.T) {
 	t.Parallel()
 	root := fstest.MapFS{
@@ -152,18 +151,18 @@ echo "covered";
 }
 
 // stubDatabase and stubMail replace the providers a host configures. Each
-// embeds the interface and declares no method: these tests read which value the
-// runtime answers with and never call through it, and implementing Open would
-// put the sql driver in this package's test binary for nothing.
+// embeds the interface and declares no method. These tests read the value the
+// runtime answers with, never call it. Implementing Open would put the
+// sql driver in this package's test binary for nothing.
 type stubDatabase struct{ model.DatabaseProvider }
 
 type stubMail struct{ model.MailProvider }
 
 // TestRuntimeAnswersForItsOptions covers the accessors a binding reads its
-// configuration through. Each answers what the host passed and nothing it
-// inferred: a runtime with no source root answers nil and no working
-// directory, and no provider and no default, because the binding settles what
-// a missing one falls back to.
+// configuration through. Each answers the host's values and nothing inferred.
+// A runtime holding no source root answers nil for the working directory. It
+// has no provider and lacks a default, since the binding settles a missing
+// provider's fallback.
 func TestRuntimeAnswersForItsOptions(t *testing.T) {
 	t.Parallel()
 	bare := New(io.Discard, Options{})
@@ -227,7 +226,7 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 	}
 
 	// The working directory has two spellings: the fs.FS path a binding
-	// resolves against, and the one a script reads out of getcwd().
+	// resolves against, plus the path a script reads out of getcwd().
 	if got := rt.WorkDir(); got != "app" {
 		t.Errorf("WorkDir() = %q, want the fs path", got)
 	}
@@ -235,8 +234,8 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 		t.Errorf("WorkDirPath() = %q, want the path a script reads", got)
 	}
 
-	// WritablePaths answers a copy and a binding that sorts or filters what
-	// it holds does not edit the host's configuration.
+	// WritablePaths answers a copy. A binding that sorts or filters the
+	// result does not edit the host's configuration.
 	paths := rt.WritablePaths()
 	if len(paths) != 2 {
 		t.Fatalf("WritablePaths() = %v, want both", paths)
@@ -247,11 +246,11 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 	}
 }
 
-// TestRuntime_SetWorkDir covers chdir(): per-runtime state and a script moving
-// it moves nothing another request sees and os.Chdir is never called. A
-// relative path resolves against the current directory, an absolute one
-// against the source root, and neither climbs out of it. A path naming no
-// directory is the false php documents.
+// TestRuntime_SetWorkDir covers chdir(): per-runtime state. A script moving it
+// moves nothing another request sees, and os.Chdir is never called. A relative
+// path resolves against the current directory, an absolute one against the
+// source root; neither climbs out. A path naming no directory is the false
+// php documents.
 func TestRuntime_SetWorkDir(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
@@ -265,8 +264,8 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 	if got := rt.WorkDir(); got != "app" {
 		t.Errorf("WorkDir() = %q, want app", got)
 	}
-	// A relative path resolves through the directory that is current now and a
-	// script's include and its file_get_contents name the same file.
+	// A relative path resolves through the current directory. A script's
+	// include and file_get_contents name the same file.
 	if got := rt.ResolvePath("index.php"); got != "app/index.php" {
 		t.Errorf("ResolvePath(index.php) = %q, want app/index.php", got)
 	}
@@ -278,7 +277,8 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 		t.Errorf("ResolvePath(helper.php) = %q, want app/lib/helper.php", got)
 	}
 
-	// SetWorkDir reads an absolute path from the source root and no host path.
+	// SetWorkDir reads an absolute path from the source root. A host path
+	// never enters.
 	if !rt.SetWorkDir("/app") {
 		t.Fatal("SetWorkDir(/app) refused the root-relative spelling")
 	}
@@ -297,9 +297,9 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 		}
 	}
 
-	// SetWorkDir clamps a climb and never refuses it: the path resolves to the
-	// source root and a script that walked up as far as it liked is at the top
-	// of the tree the host gave it and never above one.
+	// SetWorkDir clamps a climb and refuses none. Its path resolves to the
+	// source root. A script that walked up as far as it liked reaches the top
+	// of the tree the host gave it, never above.
 	if !rt.SetWorkDir("../../..") {
 		t.Fatal("SetWorkDir refused to climb to the root")
 	}
@@ -341,7 +341,7 @@ func TestRuntime_IncludeFile(t *testing.T) {
 	if !slices.Contains(included, "/lib/site.php") {
 		t.Errorf("IncludedFiles = %v, want the file among them", included)
 	}
-	// The snapshot is a copy and a caller walking it cannot edit the record.
+	// The snapshot is a copy; a caller walking it cannot edit the record.
 	included[0] = "edited"
 	if again := rt.IncludedFiles(); slices.Contains(again, "edited") {
 		t.Errorf("IncludedFiles = %v after the caller edited its copy", again)
@@ -362,10 +362,10 @@ func TestRuntime_IncludeFile(t *testing.T) {
 	}
 }
 
-// TestRuntime_Reset covers what a pool does between two programs: ResetSession
+// TestRuntime_Reset covers the pool's work between two programs: ResetSession
 // plus the caches keyed by AST node, which hold the previous tree alive. A
-// runtime handed to the next program must not answer for the last one's
-// classes, constants or parsed files.
+// runtime handed to the next program must not answer for the previous
+// program's classes, constants or parsed files.
 func TestRuntime_Reset(t *testing.T) {
 	t.Parallel()
 	var first strings.Builder
@@ -375,10 +375,9 @@ func TestRuntime_Reset(t *testing.T) {
 			"lib.php": &fstest.MapFile{Data: []byte(`<?php class Site {}`)},
 		},
 	})
-	// The constants a host froze are what a reset returns to and the bindings
-	// stay defined and whatever the program added does not. There is no
-	// define() to use here: the bindings that register one import this
-	// package.
+	// A reset returns to the constants a host froze. The bindings stay
+	// defined, and the program's additions do not. No define() is available
+	// here: the bindings that register one import this package.
 	rt.SetConst("STDLIB_CONST", int64(1))
 	rt.FreezeStdlib()
 	rt.SetConst("LOADED", int64(2))
@@ -427,9 +426,9 @@ func TestRuntime_Reset(t *testing.T) {
 	}
 }
 
-// TestRuntime_Exit covers the value `exit` ends a script with: an error and it
-// unwinds the interpreter, and an ending and no failure, which a host reads
-// through IsExit without naming the type.
+// TestRuntime_Exit covers the value `exit` ends a script with. It returns an
+// error that unwinds the interpreter, plus an ending that reports no failure.
+// A host reads that ending through IsExit without naming the type.
 func TestRuntime_Exit(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -449,17 +448,17 @@ func TestRuntime_Exit(t *testing.T) {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
 
-	// A zero is the ordinary ending and still an ExitError and a host reading
+	// A zero is the ordinary ending and still an ExitError. A host reading
 	// the status does not have to tell the two apart.
 	if exit, ok := IsExit(rt.Exit(0)); !ok || exit.Code != 0 {
 		t.Error("exit(0) is not recognised as an exit")
 	}
 }
 
-// TestScriptEnvironment covers what getenv() reads. A nil environment is the
-// process one, as a CLI run has it; a host that configured one passes it
-// instead, and a virtual host always does: a site sees the variables it
-// declared and the operator's process variables stay out. ScriptEnvironment
+// TestScriptEnvironment covers the values getenv() reads. A nil environment is
+// the process environment, as a CLI run sees. A host that configured one
+// passes it instead. A virtual host always does. A site sees the variables it
+// declared, and the operator's process variables stay out. ScriptEnvironment
 // holds the infrastructure names back either way.
 func TestScriptEnvironment(t *testing.T) {
 	configured := ScriptEnvironment([]string{
@@ -486,7 +485,7 @@ func TestScriptEnvironment(t *testing.T) {
 		t.Error("an entry with no name reached the script environment")
 	}
 
-	// A configured environment is the whole of what a script sees and a
+	// A configured environment holds exactly the variables a script sees. A
 	// variable the process holds and the host did not declare is absent.
 	t.Setenv("PHPSCRIPT_TEST_ONLY_IN_PROCESS", "1")
 	if _, present := configured["PHPSCRIPT_TEST_ONLY_IN_PROCESS"]; present {

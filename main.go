@@ -64,7 +64,7 @@ func start() error {
 	// starts from where it lands.
 	//
 	// What follows the script is the script's own. This sets it aside first
-	// and neither -f nor a flag of run comes out of it.
+	// and no -f or run flag comes out of it.
 	head, scriptArgs := flags.Split(os.Args[1:], isCommand)
 	globals, args, err := flags.Pre(head)
 	if err != nil {
@@ -141,8 +141,7 @@ func start() error {
 	return app.RunWithArgs(args)
 }
 
-// testConfig is phpscript -t, with args holding an application root when the
-// command line names one.
+// testConfig is phpscript -t, args holding an application root when named.
 func testConfig(globals *flags.Options, args []string) error {
 	var root string
 	if len(args) > 0 {
@@ -151,9 +150,9 @@ func testConfig(globals *flags.Options, args []string) error {
 	return server.Check(globals.ConfigFile, root, os.Stdout, os.Stderr)
 }
 
-// commands is every command this binary holds. Every constructor takes the
-// configuration and the global options and the table names them, with no
-// closure per command closing over what it happens to need. A function and a
+// commands is the set of commands this binary holds. Every constructor takes
+// the configuration plus the global options; the table names both. No
+// closure per command closes over the values it needs. A function or a
 // test can bind the same table the binary runs.
 func commands() []registration {
 	return []registration{
@@ -169,8 +168,8 @@ func commands() []registration {
 	}
 }
 
-// registration is one command as main records it: its name, what it does, and
-// how to build it. The list stays because the help document reads from it;
+// registration records one command as main does: its name, its action, and
+// how to build it, feeding a list the help document reads;
 // cli.App holds the same entries and publishes none of them.
 type registration struct {
 	name  string
@@ -189,9 +188,9 @@ func isCommand(name string) bool {
 }
 
 // decorate binds the shared flags onto a command and wraps its Run with the
-// work they imply and no command package repeats either. It also attaches the
-// command's examples, which `phpscript <command> --help` prints under
-// its usage line.
+// work they imply. No command package repeats either. It also attaches the
+// command's examples, which `phpscript <command> --help` prints beneath
+// the usage line.
 func decorate(appConfig *config.Config, globals *flags.Options, command registration) func() *cli.Command {
 	return func() *cli.Command {
 		c := command.new(appConfig, globals)
@@ -235,7 +234,7 @@ func writeHelp(f *os.File, commands []registration) error {
 
 	entries := make([]helpdocs.Command, 0, len(commands))
 	for _, command := range commands {
-		// This builds and binds the command against a throwaway set holding
+		// This builds and binds the command with a throwaway set holding
 		// both, then drops the shared names: the rest is what the command
 		// adds, the one part worth repeating per section.
 		// No configuration and no typed flags: the help lists what a command

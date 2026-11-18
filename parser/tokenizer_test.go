@@ -7,8 +7,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// tokTriple extracts (id, text) from an array-form token, or (-1, str) from a
-// single-char string token.
+// tokTriple reads (id, text) from an array token or (-1, str) from a string.
 func tokTriple(t *testing.T, v any) (int, string) {
 	t.Helper()
 	if s, ok := v.(string); ok {
@@ -83,8 +82,7 @@ func TestTokenTripleIsIsolated(t *testing.T) {
 	}
 }
 
-// TestTokenLineNumbers checks that lines beyond the runtime's interned-int
-// range (0..255) still box correctly through boxInt.
+// TestTokenLineNumbers checks that lines past the interned-int range still box via boxInt.
 func TestTokenLineNumbers(t *testing.T) {
 	t.Parallel()
 	src := "<?php\n" + strings.Repeat("$a;\n", 1500) + "$last;"
@@ -188,10 +186,9 @@ const benchTemplate = `<html>
 `
 
 // TestTokenIDs covers the table that publishes the ids a host registers as PHP
-// constants. A script comparing a token against a name it did not read from
-// here would be comparing against nothing and this table and the one
-// token_get_all emits have to be each other's inverse, and no two names may
-// share an id.
+// constants. A script comparing a token to a name it did not read from
+// here would compare against nothing. This table and the table token_get_all
+// emits must be inverses. No two names may share an id.
 func TestTokenIDs(t *testing.T) {
 	t.Parallel()
 	ids := parser.TokenIDs()
@@ -199,9 +196,9 @@ func TestTokenIDs(t *testing.T) {
 		t.Fatal("TokenIDs() is empty")
 	}
 
-	// Every published name reads back as itself and the pair is an inverse.
-	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon and the
-	// name a script has to compare against.
+	// Every published name round-trips; each pair is an inverse.
+	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon, and the
+	// name a script must compare against.
 	for _, name := range []string{"T_VARIABLE", "T_STRING", "T_INLINE_HTML", "T_PAAMAYIM_NEKUDOTAYIM"} {
 		id, known := ids[name]
 		if !known {
@@ -229,8 +226,8 @@ func TestTokenIDs(t *testing.T) {
 		t.Errorf("TokenName(-1) = %q, want %q", got, "UNKNOWN")
 	}
 
-	// The table is a copy per call and a script that writes into what it read
-	// back cannot move the ids the next caller reads.
+	// The table is a copy per call. A script that writes into the returned copy
+	// cannot move the ids the next caller reads.
 	ids["T_VARIABLE"] = -99
 	if parser.TokenIDs()["T_VARIABLE"] == -99 {
 		t.Error("a write into the returned map reached the table behind it")

@@ -42,8 +42,7 @@ func TestParseRoutePath(t *testing.T) {
 	}
 }
 
-// Every rejected spelling is one a router would otherwise accept and answer
-// wrongly. chi registers {module=users} as a parameter of that literal name,
+// Every rejected spelling would otherwise reach a router and answer wrongly. chi registers {module=users} as a parameter of that literal name,
 // matches every request to the segment and exports nothing.
 func TestParseRoutePathRejects(t *testing.T) {
 	t.Parallel()
@@ -78,7 +77,7 @@ func TestParseRoutePathRejects(t *testing.T) {
 
 // Each router receives the rendered pattern. The expectations come from chi
 // v5.3.2 and net/http.ServeMux: chi 404s on {tail...} and ServeMux panics on
-// {id:[0-9]+} and neither dialect is the authored one.
+// {id:[0-9]+}; neither dialect is the authored one.
 func TestRenderRoutePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -107,13 +106,12 @@ func TestRenderRoutePath(t *testing.T) {
 	}
 }
 
-// TestRouteDialect covers the two router syntaxes RenderRoutePath writes and
-// the distinct values behind them: a dialect selects the rewrite and two
-// dialects sharing one value would render a single syntax for both routers.
+// TestRouteDialect covers the two router syntaxes RenderRoutePath writes, plus
+// the distinct values behind both. A dialect selects the rewrite; two dialects
+// sharing one value would render a single syntax for both routers.
 //
-// chi 404s on {tail...} and ServeMux panics on {id:[0-9]+} and neither syntax
-// is the authored one and the zero value has to name a real router. RouteChi
-// takes it and a caller rendering without naming a dialect writes chi's syntax.
+// chi 404s on {tail...} and ServeMux panics on {id:[0-9]+}; neither syntax is
+// the authored form. The zero value must name a real router. RouteChi names chi. A caller rendering without a dialect writes chi's syntax.
 func TestRouteDialect(t *testing.T) {
 	t.Parallel()
 	if model.RouteChi == model.RouteServeMux {

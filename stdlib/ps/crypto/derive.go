@@ -44,7 +44,7 @@ func bcryptCost(hash string) (int, error) {
 	return bcrypt.Cost([]byte(hash))
 }
 
-// bcryptEncoded reports whether a stored hash has the full 60-byte bcrypt body a comparison needs.
+// bcryptEncoded reports whether a stored hash has the full 60-byte bcrypt body.
 func bcryptEncoded(hash string) bool {
 	const (
 		bcryptLen      = 60

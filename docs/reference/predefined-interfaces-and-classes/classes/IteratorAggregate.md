@@ -6,7 +6,7 @@
 
 Interface to create an external iterator.
 
-A class implementing it returns a separate `Traversable` to iterate, such as an `ArrayIterator` or a generator, and declares none of the five [Iterator](Iterator.md) methods itself.
+A class implementing it returns a separate `Traversable` to iterate, such as an `ArrayIterator` or a generator, and declares none of the [Iterator](Iterator.md) methods itself.
 
 ## Interface synopsis
 
@@ -28,7 +28,7 @@ public function getIterator(): Traversable
 
 ## Status
 
-- phpscript has no `IteratorAggregate`. The name is not declared.
+- phpscript lacks `IteratorAggregate`; the name is not declared.
 - The interface uses `extends`. The parser accepts `extends Traversable` and records it for `instanceof`; the clause confers nothing. Traversable declares no method, and flattening it loses nothing.
 - Interface-based dispatch does not exist: `foreach` never calls `getIterator()`. The usual return values are unavailable too: `ArrayIterator` is not declared and `yield` is a documented won't-build.
 - Return an array from a method and loop over that. An array is the sequence type this runtime iterates.

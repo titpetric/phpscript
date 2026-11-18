@@ -4,10 +4,9 @@ import (
 	"context"
 )
 
-// RequestState is what BeginRequest saves, held on the caller's frame and
-// handed back to EndRequest. A value and no closure, because the restore
-// closure EnterRequest builds is one heap allocation per request on the
-// serving path.
+// RequestState holds what BeginRequest saves, on the caller's frame and handed
+// back to EndRequest. A plain value, since the restore closure EnterRequest
+// builds would cost one heap allocation per request on the serving path.
 type RequestState struct {
 	client      context.Context
 	clientDone  <-chan struct{}

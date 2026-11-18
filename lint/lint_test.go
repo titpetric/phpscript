@@ -42,9 +42,9 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 }
 
 // TestFlatstackPaths covers the path-expanding half of the compatibility
-// check: one diagnostic per file the patterns selected, in filename order and
-// a caller pointing at a directory reads a verdict for every file in it and
-// never one for the directory.
+// check: one diagnostic per file the patterns selected, in filename order. A
+// caller pointing at a directory reads a verdict for every file in that
+// directory, never for the directory itself.
 func TestFlatstackPaths(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -152,9 +152,9 @@ func TestFileReportsInterfaceContract(t *testing.T) {
 	}
 }
 
-// A class satisfying its contract, and one naming an interface no declaration
-// defines, both lint clean: the second is a built-in name such as Countable,
-// which phpscript does not declare.
+// A class satisfying its contract, or naming an interface no declaration
+// defines, lints clean: the second is a built-in name such as Countable, which
+// phpscript does not declare.
 func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\n\nclass Store implements Reader, Countable {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
@@ -168,8 +168,8 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 }
 
 // The linter reports a JSON_* constant as a warning. The runtime defines no
-// name: the constant arrives as null and json_encode ignores it. The call runs
-// and encodes, and what the author loses is the formatting they wrote.
+// such name: the constant arrives as null and json_encode ignores it. The call
+// runs and encodes. The author loses the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -193,8 +193,8 @@ func TestLintJSONFlags(t *testing.T) {
 			lines: nil,
 		},
 		{
-			// The name inside a string is not a use and a script probing for
-			// the constant reads as written.
+			// The name inside a string is not a use; a script probing for the
+			// constant reads as written.
 			name:  "a string is not a use",
 			src:   "<?php\nvar_dump(defined(\"JSON_PRETTY_PRINT\"));\n$s = \"JSON_HEX_TAG\";\n",
 			lines: nil,
@@ -227,8 +227,8 @@ func TestLintJSONFlags(t *testing.T) {
 
 // A call to a function nothing defines is the "call to undefined function"
 // error waiting for the line to run; the linter reports it first. A name the
-// file declares (at any nesting), a registered binding, or one the source
-// guards with function_exists lints clean.
+// file declares (at any nesting), a registered binding, or a name the source
+// guards with function_exists, all lint clean.
 func TestFileReportsUndefinedFunctions(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -308,11 +308,11 @@ $d = Missing::$prop;
 	}
 }
 
-// A function declared twice, or declared over a name the runtime registers, is
+// A function declared twice, or declared on a name the runtime registers, is
 // the RedeclareError waiting for the runtime to hoist the file; the linter
-// reports it first. A single declaration, a class method, and a name the
-// source guards with function_exists all lint clean; the last is the polyfill
-// idiom, where declaring over an absent built-in is what the case covers.
+// reports it first. A single declaration, a class method, or a name the source
+// guards with function_exists, all lint clean; the last is the polyfill idiom:
+// declaring over an absent built-in is the case under test.
 func TestFileReportsRedeclaredFunctions(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -403,8 +403,8 @@ func TestLintTypeReassign(t *testing.T) {
 			var lines []int
 			for _, d := range diags {
 				if strings.Contains(d.Message, "no reassignment") {
-					// Advisory by decision: the runtime retypes the way PHP
-					// does and the finding must not fail the lint run.
+					// Advisory by decision: the runtime retypes as PHP does.
+					// The finding must not fail the lint run.
 					if d.Fatal {
 						t.Errorf("finding %q is fatal, want advisory", d.Message)
 					}

@@ -8,7 +8,7 @@ import (
 )
 
 // fieldHolder is the shape a binding with readable properties takes: exported
-// fields a script reads, machinery it does not, and a field holding a
+// fields a script reads, machinery it does not read, plus a field holding a
 // registered class.
 type fieldHolder struct {
 	Bridge     *fieldBridge
@@ -36,10 +36,10 @@ func TestField(t *testing.T) {
 	}
 }
 
-// TestReflectFieldsSkipsUnexported pins the one rule on which properties reach
-// a listing. Runtime.structField resolves a property read to an exported field
-// and reports an unexported one as absent, and a listing naming one would name
-// a property no script can read.
+// TestReflectFieldsSkipsUnexported pins the rule governing which properties
+// reach a listing. Runtime.structField resolves a property read to an exported
+// field and reports an unexported field as absent; a listing naming an
+// unexported property would name something no script can read.
 func TestReflectFieldsSkipsUnexported(t *testing.T) {
 	t.Parallel()
 	for _, f := range reflectFields(reflect.TypeOf(&fieldHolder{}), nil) {
@@ -50,8 +50,8 @@ func TestReflectFieldsSkipsUnexported(t *testing.T) {
 }
 
 // TestReflectFieldsKeepsDeclarationOrder pins the order properties print in:
-// the order the struct declares them, the order `go doc` prints a struct in. A
-// reader comparing the two reads the same list.
+// the order the struct declares them; `go doc` prints a struct in the same
+// order. A reader comparing the two reads the same list.
 func TestReflectFieldsKeepsDeclarationOrder(t *testing.T) {
 	t.Parallel()
 	want := []string{"bridge", "id", "is_readonly"}
@@ -67,8 +67,8 @@ func TestReflectFieldsKeepsDeclarationOrder(t *testing.T) {
 }
 
 // TestReflectFieldsNoStruct covers the types that publish no property: a named
-// scalar a constructor returns, which Time\Duration is, and a struct declaring
-// every field unexported, which HTTP\Client's bound type does.
+// scalar a constructor returns, which Time\Duration is, plus a struct
+// declaring every field unexported, which HTTP\Client's bound type does.
 func TestReflectFieldsNoStruct(t *testing.T) {
 	t.Parallel()
 	if got := reflectFields(reflect.TypeOf(time.Duration(0)), nil); got != nil {
@@ -79,16 +79,16 @@ func TestReflectFieldsNoStruct(t *testing.T) {
 	}
 }
 
-// fieldOpaque is the shape HTTP\Client's bound type takes: it holds a standard
-// library client and a timeout, and publishes neither.
+// fieldOpaque is the shape HTTP\Client's bound type takes: it holds a
+// standard library client, plus a timeout, publishing neither.
 type fieldOpaque struct {
 	client  *http.Client
 	timeout time.Duration
 }
 
 // TestFieldType covers the type a property read answers with. A field holding
-// a registered class reports that class, the way a return value does, and every
-// other field maps through the PHP spelling of its Go kind.
+// a registered class reports that class, as a return value does. A field of
+// any other kind maps through the PHP spelling of its Go kind.
 func TestFieldType(t *testing.T) {
 	t.Parallel()
 	classTypes := map[reflect.Type]string{reflect.TypeOf(&fieldBridge{}): "Database\\Bridge"}

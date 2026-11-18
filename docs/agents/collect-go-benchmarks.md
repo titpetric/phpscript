@@ -2,25 +2,25 @@
 
 `ns/op`, `B/op` and `allocs/op` from the Go benchmarks, as benchstat input.
 
-Read this when the artifact needed is a benchmark sweep. It runs under the contract in [README.md](README.md); that document is not restated here.
+Read this when the artifact needed is a benchmark sweep. It follows the contract in [README.md](README.md); that document is not restated here.
 
 ## What this collects
 
 Three numbers per benchmark, and the benchstat comparison between two sets of them.
 
-No percentiles: a Go benchmark reports a mean over its iterations. No custom metrics, because there is no `b.ReportMetric` anywhere in the tree.
+No percentiles: a Go benchmark averages its iterations. No custom metrics, because there is no `b.ReportMetric` anywhere in the tree.
 
 ## Preconditions
 
-The contract's lock, private binary and `CGO_ENABLED=0`. A sweep takes minutes of pinned CPU and is out of the default pipeline.
+The contract's lock, private binary and `CGO_ENABLED=0` all apply. A sweep takes minutes of pinned CPU and is out of the default pipeline.
 
-No other work may run on the box. The lock is what enforces that against other agents; the operator enforces it against everything else.
+No other work may run on the box. The lock enforces that against other agents; the operator enforces the rest.
 
 ## The run
 
-`-run XXX` matches no test and the sweep runs benchmarks only. Without it every test runs first and its time lands in the same wall clock.
+`-run XXX` matches no test. The sweep runs benchmarks only. Otherwise every test runs first. Its time lands in the same wall clock.
 
-The pinned job, which is every serial benchmark:
+The pinned job covers every serial benchmark:
 
 ```sh
 PARALLEL='BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
@@ -32,7 +32,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 '
 ```
 
-The unpinned job, over the three parallel benchmarks:
+The unpinned job covers all parallel benchmarks:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -50,9 +50,9 @@ CGO_ENABLED=0 taskset -c 3 nice -n -20 go test \
   -run XXX -bench '^BenchmarkEngineExprHeavy$' -benchmem -count 6 ./tests/flatstack
 ```
 
-`-benchtime 1s`, not a fixed iteration count and a benchmark that got faster takes more iterations and keeps its sample size.
+`-benchtime 1s` lets a faster benchmark take more iterations and keep its sample size.
 
-The binding families are the exception. `../allocation-performance.md` publishes their `ns/op` to the nanosecond and sweeps them at a fixed `-benchtime 200000x`, to hold the iteration count still across a shape change. A `1s` sweep of the same rows reports an interval wider than the differences that document publishes and a sweep that contradicts its table has not found a regression - it has measured something else. Re-measure those rows the way that document does before reading anything into them.
+The binding families are the exception. `../allocation-performance.md` publishes their `ns/op` to the nanosecond and sweeps them at a fixed `-benchtime 200000x`, to hold the iteration count still across a shape change. A `1s` sweep of the same rows reports an interval wider than the differences that document publishes. A sweep that contradicts its table has not found a regression - it has measured something else. Re-measure those rows the way that document does before reading anything into them.
 
 ## The artifact
 
@@ -74,7 +74,7 @@ benchstat -col /engine bench-go-after.txt
 
 ## Reading it
 
-Ninety-four benchmarks in eighteen files across ten packages. What each file prices:
+Ninety-four benchmarks in eighteen files across ten packages. The table prices each file:
 
 | File                                                         | What it prices                                                                                                                                                                                                              |
 |--------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -96,11 +96,11 @@ Three subtest naming conventions, each meaning something:
 - `go`, `pooled`, `pooled_reset`, `fresh` on `BenchmarkLookupHandler`: four host shapes for reaching PHP from Go, from a native handler to a runtime per request.
 - `interpreter` or `flatstack` crossed with `lazy` or `precompiled` on `BenchmarkServeEntrypoint`.
 
-How to read benchstat: `~` means the change is within the noise for the samples given, and the p-value beside it says how confident that is. A `~` is an instruction to take more samples, or to accept that the change did not move this number.
+How to read benchstat: `~` means the change is within the noise for the samples given, and the p-value printed there says how confident that is. A `~` is an instruction to take more samples, or to accept that the change did not move this number.
 
-An engine benchmark means nothing unless `flatstack.Supports` gates its program. A program that falls back records the interpreter's result and its cost under the flatstack name. `tests/flatstack/benchmark_test.go` fails the benchmark when `Supports` refuses the program. That is the pattern a new one copies. [../flatstack.md](../flatstack.md) argues why.
+An engine benchmark means nothing unless `flatstack.Supports` gates its program. A program that falls back records the interpreter's result, plus its cost, in the flatstack row. `tests/flatstack/benchmark_test.go` fails the benchmark when `Supports` refuses the program. That is the pattern a new one copies. [../flatstack.md](../flatstack.md) argues why.
 
-A pinned number for one of the three parallel benchmarks describes a single goroutine. Do not report it.
+A pinned number for a parallel benchmark describes a single goroutine. Do not report it.
 
 ## What this cannot answer
 

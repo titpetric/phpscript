@@ -12,8 +12,8 @@ func registerEscape(rt *runner.Runtime) {
 	rt.RegisterFunc("escapeshellarg", phpEscapeshellarg)
 	// escapeshellcmd returns $command with the shell metacharacters in it
 	// backslash-escaped, leaving quotes that come in pairs alone;
-	// escapeshellarg is the one to call, since this leaves a quoted
-	// argument's own contents live.
+	// escapeshellarg is the call to use, since this leaves a quoted
+	// argument's contents live.
 	rt.RegisterFunc("escapeshellcmd", phpEscapeshellcmd)
 }
 
@@ -22,17 +22,17 @@ func phpEscapeshellarg(arg string) string {
 	return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
 }
 
-// shellMeta are the bytes escapeshellcmd escapes, the ones a shell reads as syntax.
+// shellMeta lists the bytes escapeshellcmd escapes, that a shell reads as syntax.
 const shellMeta = "#&;`|*?~<>^()[]{}$\\\x0a\xff"
 
 // phpEscapeshellcmd escapes shell metacharacters, leaving a paired quote and its contents live.
 func phpEscapeshellcmd(command string) string {
 	var b strings.Builder
 	b.Grow(len(command))
-	// pending is where the open quote closes, or -1
-	// when none is open. Opening one looks ahead for its partner and leaves
-	// both alone; a quote with no partner, and one of the other kind found
-	// while a quote is open, is a stray and gets escaped.
+	// pending names where the open quote closes, or -1 when no quote is open.
+	// Opening one looks ahead for its partner and leaves both alone. A quote
+	// without a partner, or one of the other kind found while a quote is open,
+	// is a stray and gets escaped.
 	pending := -1
 	for i := 0; i < len(command); i++ {
 		c := command[i]

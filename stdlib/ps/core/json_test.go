@@ -29,17 +29,17 @@ func runPHP(t *testing.T, src string) string {
 }
 
 // TestNoJSONFlagConstants is the executable form of a design decision: this
-// runtime has one JSON encoding and no flags to vary it. If this test fails,
-// read docs/design.md before changing it.
+// runtime has a single JSON encoding. No flags vary it. If this test fails,
+// read docs/design.md before changing that.
 //
-// The flags exist in PHP because its encoder makes choices a caller then has
-// to undo. Escaping a forward slash is the clearest: PHP writes "one\/two",
+// The flags exist in PHP because its encoder makes choices a caller then must
+// undo. Escaping a forward slash is the clearest: PHP writes "one\/two",
 // which is legal JSON that no other language emits, and JSON_UNESCAPED_SLASHES
 // exists to turn it off. Go's encoder leaves it literal and the flag has no
 // work to do here.
 //
-// The rest are presentation. A consumer needing indented JSON runs it
-// through jq or its own pretty printer; a producer that indents its output is
+// The rest are presentation. A consumer needing indented JSON runs the value
+// through jq or another pretty printer; a producer that indents its output is
 // deciding for a reader it cannot see.
 func TestNoJSONFlagConstants(t *testing.T) {
 	t.Parallel()
@@ -52,8 +52,8 @@ func TestNoJSONFlagConstants(t *testing.T) {
 	}
 }
 
-// json_encode takes $flags and ignores it, as json_decode takes $depth and
-// $flags and a literal one changes nothing.
+// json_encode takes $flags and ignores it, as json_decode takes $depth,
+// $flags. A literal flag changes nothing.
 func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	t.Parallel()
 	tests := []string{
@@ -81,7 +81,7 @@ func TestJSONFlagConstantThrows(t *testing.T) {
 	}
 }
 
-// The encoder writes a forward slash as itself, which is Go's behaviour and
+// The encoder writes a forward slash literally, which is Go's behaviour and
 // legal JSON. php escapes it unless the caller passes JSON_UNESCAPED_SLASHES.
 func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 	t.Parallel()
@@ -94,9 +94,9 @@ func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 	}
 }
 
-// TestJSONEncoder covers the one difference between this encoder and Go's: the
-// encoder takes a PHP value and a *model.Array converts the way json_encode()
-// converts one. NewJSONEncoder needs a stream, because fopen() answers false
+// TestJSONEncoder covers the single difference between this encoder and Go's:
+// the encoder takes a PHP value and converts a *model.Array the way
+// json_encode() converts one. NewJSONEncoder needs a stream, because fopen() answers false
 // for a file it could not open and false is no stream.
 func TestJSONEncoder(t *testing.T) {
 	t.Parallel()
@@ -123,7 +123,7 @@ func TestJSONEncoder(t *testing.T) {
 
 // TestJSONEncoder_Encode covers the key order a PHP array keeps through the
 // stream. encoding/json sorts a Go map's keys; the encoder writes an array in
-// the order the script set its keys and a row encoded for a client reads back
+// the order the script set its keys. A row encoded for a client reads back
 // in assembly order. Every value ends with a newline, separating one from the
 // next.
 func TestJSONEncoder_Encode(t *testing.T) {
@@ -182,9 +182,9 @@ func TestJSONEncoder_SetIndent(t *testing.T) {
 	}
 }
 
-// TestJSONDecoder covers UseNumber being on, as json_decode() has it: a whole
-// number decodes to an int and a fractional one to a float and the 7 in a
-// document does not come back as 7.0.
+// TestJSONDecoder covers UseNumber being on, as json_decode() has. A whole
+// number decodes to an int; a fractional one to a float. The 7 in a document
+// does not come back as 7.0.
 func TestJSONDecoder(t *testing.T) {
 	t.Parallel()
 	dec, err := core.NewJSONDecoder(strings.NewReader(`[7, 7.5, "x", true, null]`))
@@ -248,7 +248,7 @@ func TestJSONDecoder_Decode(t *testing.T) {
 }
 
 // TestJSONDecoder_More covers what ends a decode loop. A null is a legal JSON
-// value and a loop testing what Decode answered would stop one value early;
+// value. A loop testing what Decode answered would stop one value early;
 // More reads the stream and not the value.
 func TestJSONDecoder_More(t *testing.T) {
 	t.Parallel()
@@ -273,7 +273,7 @@ func TestJSONDecoder_More(t *testing.T) {
 }
 
 // TestJSONEncodeDecode covers the exported pair the Runtime\Go\Encoding\JSON
-// area wraps, on a value that round-trips and a document that does not parse.
+// area wraps, on a value that round-trips, plus a document that fails to parse.
 func TestJSONEncodeDecode(t *testing.T) {
 	t.Parallel()
 	encoded, err := core.JSONEncode(map[string]any{"a": []any{int64(1), true}})

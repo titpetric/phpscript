@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-// areaMembers holds the source of area function names, read once on first use.
+// areaMembers holds the source of area function names, read once at first use.
 var areaMembers struct {
 	sync.Mutex
 	current *areaTable
 }
 
-// areaTable is the membership read from one source, built on first use.
+// areaTable is the membership read from one source, built at first use.
 type areaTable struct {
 	source func() map[string][]string
 	once   sync.Once
@@ -61,21 +61,20 @@ func areaFunc(name string) (string, bool) {
 	return fn, true
 }
 
-// areaClasses holds the source of area class aliases, read once on first use.
+// areaClasses holds the source of area class aliases, read once at first use.
 var areaClasses struct {
 	sync.Mutex
 	current *classTable
 }
 
-// classTable is the alias map built from one source on first use.
+// classTable is the alias map built from one source at first use.
 type classTable struct {
 	source  func() map[string][]string
 	once    sync.Once
 	byAlias map[string]string
 }
 
-// SetAreaClasses installs the source of the classes each area installs, read on
-// the first qualified lookup.
+// SetAreaClasses installs each area's class source, read on the first qualified lookup.
 func SetAreaClasses(source func() map[string][]string) {
 	areaClasses.Lock()
 	defer areaClasses.Unlock()
@@ -85,7 +84,7 @@ func SetAreaClasses(source func() map[string][]string) {
 	}
 }
 
-// AreaName is the name a class answers to under the area that installs it:
+// AreaName is the name a class answers with inside the area that installs it:
 // \Runtime\PS\Database for Database and \Runtime\PS\Database\Migrate for
 // Database\Migrate. docs/reference/extensions/runtime-areas.md has the rule.
 func AreaName(area, class string) string {
@@ -103,7 +102,7 @@ func AreaName(area, class string) string {
 	return area + `\` + strings.TrimPrefix(name, leaf+`\`)
 }
 
-// nameRoot is the namespace prefix of every area, which a class name repeats.
+// nameRoot is the namespace prefix of every area, repeated by a class name.
 const nameRoot = `Runtime\`
 
 // areaClass resolves an area-qualified class name to the name it registered under.

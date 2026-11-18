@@ -12,8 +12,8 @@ import (
 )
 
 // TestStorageMemory_Load covers the copy Load returns. A map the storage owns
-// holds the data and handing out the stored slice would let a caller mutate
-// another request's session through it.
+// holds the data; handing out the stored slice would let a caller mutate
+// another request's session through the slice.
 func TestStorageMemory_Load(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -41,15 +41,15 @@ func TestStorageMemory_Load(t *testing.T) {
 	}
 
 	// An ID nothing saved reports fs.ErrNotExist, the same error the disk
-	// backend returns and a manager reads one condition from either storage.
+	// backend returns; a manager reads one condition from either storage.
 	if _, err := storage.Load(ctx, "missing"); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("Load of an unknown ID = %v, want fs.ErrNotExist", err)
 	}
 }
 
-// TestStorageMemory_Delete covers logging a session out. Deleting an ID that is
-// not there reports fs.ErrNotExist and a caller can tell a session it removed
-// from one that had already gone.
+// TestStorageMemory_Delete covers logging a session out. Deleting a missing ID
+// reports fs.ErrNotExist; a caller can tell a session it removed from one that
+// had already gone.
 func TestStorageMemory_Delete(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -70,7 +70,7 @@ func TestStorageMemory_Delete(t *testing.T) {
 }
 
 // TestStorageMemory_Prune covers the sweep that bounds how long the map grows.
-// Prune measures age from the last Save and a session written again survives a
+// Prune measures age from the last Save; a session written again survives a
 // sweep that would have taken the version before it.
 func TestStorageMemory_Prune(t *testing.T) {
 	t.Parallel()
@@ -93,8 +93,8 @@ func TestStorageMemory_Prune(t *testing.T) {
 		}
 	}
 
-	// A negative maxAge puts the cutoff in the future and every session is past
-	// it and Prune empties the map.
+	// A negative maxAge puts the cutoff in the future; every session is already
+	// past the cutoff; Prune empties the map.
 	if err := storage.Prune(ctx, -time.Second); err != nil {
 		t.Fatalf("Prune: %v", err)
 	}

@@ -30,8 +30,7 @@ func runRedeclare(t *testing.T, src string, files fstest.MapFS) (string, error) 
 	return out.String(), runErr
 }
 
-// TestRedeclaringAFunctionFails pins the two shapes of the refusal and their
-// messages, which are php's own text.
+// TestRedeclaringAFunctionFails pins both refusal shapes and their php messages.
 func TestRedeclaringAFunctionFails(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -41,8 +40,8 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 	}{
 		{
 			// A program parsed straight from a string has no
-			// entrypoint to name and the site falls back to naming
-			// one, and never points at an empty path.
+			// entrypoint to name and the site falls back to a name,
+			// never pointing at an empty path.
 			name: "twice in one file",
 			src:  "<?php\nfunction a() { return 1; }\nfunction a() { return 2; }\n",
 			want: "Cannot redeclare function a() (previously declared in an earlier declaration)",
@@ -65,8 +64,8 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 			if !errors.As(err, &redeclared) {
 				t.Fatalf("error is %T, want *runner.RedeclareError", err)
 			}
-			// Exception and no distinct name and the clause a
-			// script would write for it takes it.
+			// Exception, with the same name; the clause a script
+			// would write for it catches it.
 			if got := redeclared.ThrowableClass(); got != "Exception" {
 				t.Errorf("ThrowableClass() = %q, want %q", got, "Exception")
 			}
@@ -100,8 +99,8 @@ try {
 
 // TestRedeclareNamesTheWholePathBelowTheRoot pins the spelling of the file in
 // the message. php prints host paths; a runtime whose scripts may come out of
-// an fs.FS has no host path to print and the path is the one the script named,
-// resolved against the root. What it must not do is shorten to a basename: two
+// an fs.FS has no host path to print and the path is the path the script named,
+// resolved against the root. It must not shorten to a basename: two
 // files called helpers.php in different folders is exactly the case the
 // message exists to tell apart.
 func TestRedeclareNamesTheWholePathBelowTheRoot(t *testing.T) {
@@ -123,8 +122,7 @@ include "a/b/c/deep.php";
 
 // TestDeclaringTheSameFunctionAfterResetSucceeds pins the session boundary. The
 // fixture harness and any host that reuses a runtime run the same program more
-// than once through it, and the second run has to be a fresh slate and not
-// a collision with the first.
+// than once. The second run must be a fresh slate.
 func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 	t.Parallel()
 	src := "<?php\nfunction reused() { return 7; }\necho reused();"
@@ -157,12 +155,12 @@ func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 	}
 }
 
-// TestRedeclareError_Error covers the four messages the one error renders,
-// which are PHP's own text for the same condition minus the clauses a missing
-// site leaves empty. A declaration refused against a registered binding names no
-// earlier site, because there is no PHP declaration to point at, and a program
-// a host assembled has no file and Error drops the location clauses and
-// never writes one empty.
+// TestRedeclareError_Error covers each message that error renders, which
+// are PHP's own text for the same condition minus the clauses a missing site
+// leaves empty. A declaration refused for a registered binding names no
+// earlier site, because there is no PHP declaration to point at. A program a
+// host assembled has no file. Error drops the location clauses, never writing
+// an empty one.
 func TestRedeclareError_Error(t *testing.T) {
 	t.Parallel()
 	at := runner.FuncSite{File: "app/index.php", Line: 12}
@@ -196,10 +194,10 @@ func TestRedeclareError_Error(t *testing.T) {
 	}
 }
 
-// TestRedeclareError_GetMessage and TestRedeclareError_GetCode cover what a
-// script reads off the caught value. The message is the error's own text and a
-// `catch` printing getMessage() prints what a Go host received from Run. The
-// code is PHP's zero because there is no error number for this.
+// TestRedeclareError_GetMessage and TestRedeclareError_GetCode cover the fields
+// a script reads off the caught value. The message is the error's own text. A
+// `catch` printing getMessage() prints the text a Go host received from Run.
+// The code is PHP's zero because there is no error number for this.
 func TestRedeclareError_GetMessage(t *testing.T) {
 	t.Parallel()
 	err := &runner.RedeclareError{

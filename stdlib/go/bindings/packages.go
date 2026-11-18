@@ -56,7 +56,7 @@ var linked = []string{
 	"unicode", "unicode/utf16", "unicode/utf8",
 }
 
-// Linked reports whether the build links path, which a binding may bind.
+// Linked reports whether the build links path, the only paths a binding binds.
 func Linked(path string) bool {
 	return slices.Contains(linked, path)
 }

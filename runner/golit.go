@@ -24,7 +24,7 @@ func helperGoLit(mapLit bool, keyType, valType string, items ...model.ArrayItemV
 	return goLitSlice(valType, items)
 }
 
-// goLitDimsOnly reports whether valType is `[]` nesting with no base name.
+// goLitDimsOnly reports whether valType is `[]` nesting that names no base type.
 func goLitDimsOnly(valType string) bool {
 	if valType == "" {
 		return false
@@ -80,7 +80,7 @@ func goLitTyped(v any) any {
 	return out
 }
 
-// goLitUnify answers the type two literal values share, any for none.
+// goLitUnify answers the type two literals share, or any when they share none.
 func goLitUnify(a, b reflect.Type) reflect.Type {
 	if a == b {
 		return a

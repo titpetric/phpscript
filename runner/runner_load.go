@@ -53,9 +53,9 @@ func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 // LoadFile reads and parses a PHP file from the runtime source FS.
 //
 // Options.Precompile makes the include cache answer for entrypoints as well as
-// for includes: the runtime parses the file once per process and each request
-// reads back the bytecode and the compiled expressions keyed by that AST.
-// Without it every load reads and parses the file again.
+// for includes: the runtime parses the file once per process. Each request
+// reads back the bytecode and the compiled expressions keyed by the AST.
+// Otherwise a load reads and parses the file again.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
 	rt.UpdateStatus(telemetry.StateReading)
@@ -114,7 +114,7 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), n.Once, scope)
 }
 
-// markIncluded records a file as loaded without running it, which *_once answers off.
+// markIncluded records a file as loaded without running it, for the `*_once` forms.
 func (rt *Runtime) markIncluded(path string) {
 	name := rootPath(rt.resolveFSPath(path))
 	if slices.Contains(rt.included, name) {
@@ -175,7 +175,7 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 		return value, nil
 	}
 	// PHP include/require constructs answer 1 when the included file
-	// reaches its end without an explicit return.
+	// reaches its end with no explicit return.
 	return int64(1), nil
 }
 
@@ -202,9 +202,9 @@ func (rt *Runtime) autoload(class string, scope *Scope) error {
 	return nil
 }
 
-// UnregisterAutoloader removes a callback from the SPL autoload queue, matching
-// it the way PHP does: by the function, object and method it names, and not
-// by identity, since each `array($this, "loadClass")` is a fresh array.
+// UnregisterAutoloader removes a callback from the SPL autoload queue. It
+// matches the function, object and method a callback names, not by identity,
+// since each `array($this, "loadClass")` is a fresh array.
 func (rt *Runtime) UnregisterAutoloader(callback any) bool {
 	want := autoloaderKey(callback)
 	for i, loader := range rt.autoloaders {
@@ -329,7 +329,7 @@ func clampFSPath(p string) string {
 	return clean
 }
 
-// rootPath spells an fs.FS path with a leading slash; a root path survives resolveFSPath.
+// rootPath spells an fs.FS path with a leading slash, which resolveFSPath keeps.
 func rootPath(p string) string {
 	clean := clampFSPath(p)
 	if clean == "." {

@@ -21,10 +21,10 @@ echo "replace";
 }
 
 // TestRoutedMethodsAreExplicit covers which requests reach an endpoint. A tag
-// with no method routes GET and POST and the router answers HEAD, OPTIONS and
-// PUT on its own and no PHP runs. A method named on the tag is the only one that
-// reaches that endpoint and PUT is reachable where the author wrote it and
-// nowhere else.
+// without a method routes GET and POST; the router answers HEAD, OPTIONS and
+// PUT itself. No PHP runs. A method named on the tag is the only one that
+// reaches that endpoint. PUT is reachable where the author wrote it, nowhere
+// else.
 func TestRoutedMethodsAreExplicit(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()

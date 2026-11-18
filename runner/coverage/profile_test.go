@@ -54,8 +54,7 @@ func TestColumns(t *testing.T) {
 	})
 }
 
-// TestWriteProfile pins the format, which is the one go test writes and go tool
-// cover reads.
+// TestWriteProfile pins the format go test writes and go tool cover reads.
 func TestWriteProfile(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

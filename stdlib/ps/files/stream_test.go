@@ -41,7 +41,7 @@ echo stream_get_contents(fopen("php://input", "r"), -1, 2);`)
 }
 
 // TestPHPInputCLIStream is the same split through a handle: fopen returns the
-// live stdin stream under the cli SAPI.
+// live stdin stream in the CLI SAPI.
 func TestPHPInputCLIStream(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{SAPI: "cli", Stdin: strings.NewReader("line in")}

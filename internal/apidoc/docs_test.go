@@ -10,8 +10,8 @@ import (
 )
 
 // TestDocs covers the index shape a shipped binary answers out of. The index
-// keys a class by the PHP name a script types, and a member by the Go import
-// path and type name the class binds.
+// keys a class by the PHP name a script types; a member by the Go import path
+// and type name the class binds.
 func TestDocs(t *testing.T) {
 	t.Parallel()
 	d := &Docs{
@@ -28,8 +28,8 @@ func TestDocs(t *testing.T) {
 	}
 }
 
-// TestSymbolDocs covers what one declaration says: its comment and the PHP
-// spelling of each parameter, which reflection has to invent.
+// TestSymbolDocs covers the content of one declaration: its comment and the PHP
+// spelling of each parameter, which reflection must invent.
 func TestSymbolDocs(t *testing.T) {
 	t.Parallel()
 	s := SymbolDocs{Comment: []string{"get sends a GET request."}, Params: []string{"url"}}
@@ -51,9 +51,9 @@ func TestTypeDocs(t *testing.T) {
 }
 
 // TestEmbedded covers the index this binary embeds. The pipeline generates it
-// from the Go source and the binary embeds it, because a shipped binary holds
-// no source tree and the two things a scan of one recovers are a doc comment
-// and the PHP spelling of a parameter name.
+// from the Go source; the binary embeds it, since a shipped binary holds no
+// source tree. A scan of one recovers two things: a doc comment and the PHP
+// spelling of a parameter name.
 func TestEmbedded(t *testing.T) {
 	t.Parallel()
 	docs := Embedded()
@@ -76,7 +76,7 @@ func TestEmbedded(t *testing.T) {
 	}
 }
 
-// TestScanDocs covers the generator over a scratch tree: the class comment,
+// TestScanDocs covers the generator across a scratch tree: the class comment,
 // the property comment and the method comment all reach the index. The
 // parameter names come from the declaration and not from the Go types.
 func TestScanDocs(t *testing.T) {
@@ -145,7 +145,7 @@ func (h *scannedHolder) Query(statement string) string { return statement }
 	}
 }
 
-// TestDocs_Apply covers the entries the index fills in and the ones it leaves alone. The
+// TestDocs_Apply covers the entries the index fills in and those it leaves alone. The
 // structure is reflection's answer about this build and the index holds the
 // prose; a member the index does not name keeps the name reflection invented.
 func TestDocs_Apply(t *testing.T) {
@@ -194,9 +194,9 @@ func TestDocsApplyKeepsReflectedNamesOnMismatch(t *testing.T) {
 	}
 }
 
-// TestDocsPrune covers what the generated file holds: the source text that
-// exists and no empty entry around it, and a type documenting nothing leaves no
-// line in the index.
+// TestDocsPrune covers the generated file's content: source text that exists,
+// and no empty entry. A type documenting nothing leaves no line in
+// the index.
 func TestDocsPrune(t *testing.T) {
 	t.Parallel()
 	d := &Docs{

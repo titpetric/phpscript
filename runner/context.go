@@ -17,8 +17,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
-// Context holds HTTP request data exposed to PHP as superglobals, header
-// functions and staged response headers.
+// Context holds request data exposed to PHP as superglobals and headers.
 type Context struct {
 	Get     map[string]string
 	Post    map[string]string
@@ -29,34 +28,33 @@ type Context struct {
 	Headers map[string]string
 	Argv    []string
 
-	// ServerSource is what $_SERVER reads through when the source can derive a
-	// name without a map. A request answers most of them itself and
-	// serving one fills Server with the few it cannot and leaves the rest for
-	// the first read that reaches them to derive.
+	// ServerSource backs the $_SERVER names the source can derive without a
+	// map. A request answers most names itself. Serving one fills Server with
+	// the few it cannot, and leaves the rest to the first read that reaches
+	// them.
 	//
-	// Nil reads Server alone, as a run with no request behind it
-	// has. Server still answers the keys a host sets either way: they are the
-	// source's extras, and an extra wins over a derived name.
+	// Nil reads Server alone, as a run without a request behind it. Server
+	// still answers the keys a host sets either way: they are the source's
+	// extras, and an extra wins over a derived name.
 	ServerSource mapmap.Source
 
 	// GetVars, PostVars and CookieVars are the same fields decoded through
 	// PHP's bracket syntax, and seed $_GET, $_POST and $_COOKIE.
 	//
-	// The flat maps above are not the same information. They hold one string
-	// per literal field name, the shape a Go host reads and what
-	// Session\Manager looks a cookie up in. They cannot express what the
-	// decoder needs: `a[]=1&a[]=2` is one repeated name and a map keeps only
-	// the second value.
+	// The flat maps above hold different information. They hold one string per
+	// literal field name, the shape a Go host reads, and the shape
+	// Session\Manager looks a cookie up in. They cannot express the decoder's
+	// need: `a[]=1&a[]=2` repeats one name; a map keeps only the second value.
 	//
-	// Nil for a Context built from no request; Register falls back
-	// to the flat map and Register still reads a c.Get a host filled itself.
+	// Nil for a Context built for no request; Register falls back to the flat
+	// map; it still reads a c.Get a host filled itself.
 	GetVars    *model.Array
 	PostVars   *model.Array
 	CookieVars *model.Array
 
 	// Files holds the file parts of a multipart body keyed by form field name,
-	// in the order sent. A field holds more than one file when the
-	// form repeats it, which HTML spells as a "name[]" field.
+	// in the order sent. A field holds more than one file when the form
+	// repeats it. HTML spells that as a "name[]" field.
 	Files map[string][]*UploadedFile
 
 	// response collects headers set by the PHP header() function. The field is
@@ -66,22 +64,22 @@ type Context struct {
 	status   *int
 	// errors holds what went wrong with the request itself, before any script
 	// ran: a body refused for its size. A pointer for the same reason status
-	// is and a copy of a Context reports what another copy recorded.
+	// is; a copy of a Context reports what another copy recorded.
 	errors *[]error
 
 	// rawBody holds the request body bytes php://input answers with. A pointer
-	// for the same reason status is and a copy of a Context reads
-	// what another copy buffered.
+	// for the same reason status is; a copy of a Context reads what another
+	// copy buffered.
 	rawBody *[]byte
 
-	// decode holds the request and what decoding has pulled out of it so far. A
-	// Context built by a host leaves it nil: no bytes wait to decode, and the
-	// fields above are what it holds. A pointer for the same reason status is,
-	// and a decode through one copy shows in every other.
+	// decode holds the request and the data decoding pulled out. A Context
+	// built by a host leaves it nil: no bytes wait to decode, and the fields
+	// above hold the data. A pointer for the same reason status is; a decode
+	// in one copy shows in the others.
 	decode *decoder
 }
 
-// decoder defers reading a request until a script reads what it holds.
+// decoder defers reading a request until a script reads the request.
 type decoder struct {
 	request *http.Request
 	options Options
@@ -90,17 +88,15 @@ type decoder struct {
 	body    sync.Once
 	cookies sync.Once
 
-	// The decoded forms, held here and not on the Context because a
-	// Context is a value: a method that assigned to its field would be
-	// assigning to a copy. The exported fields stay what a host sets, and
-	// win over these.
+	// The decoded forms, held here and not on the Context: a Context is a
+	// value. A method that assigned to its field would assign to a copy. The
+	// exported fields stay as a host sets them; they win over these.
 	getVars    *model.Array
 	postVars   *model.Array
 	cookieVars *model.Array
 
-	// The flat forms, allocated by the decode that fills them. A request that
-	// reads no query allocates no query map and they are not in
-	// NewContext with the rest.
+	// A single decode allocates the flat forms. A request that reads no query
+	// allocates no query map; NewContext leaves them out with the rest.
 	get     map[string]string
 	post    map[string]string
 	cookie  map[string]string
@@ -160,7 +156,7 @@ func routePattern(r *http.Request) string {
 	return r.Pattern
 }
 
-// FromRequest builds a Context with no size limit on the body.
+// FromRequest builds a Context without a size limit on the body.
 func FromRequest(r *http.Request) Context {
 	return FromRequestOptions(r, Options{})
 }
@@ -176,20 +172,20 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	c.decode = &decoder{request: r, options: opts}
 
 	// The query, the body and the cookie header are not read here. The first
-	// read that needs one decodes it and a page that names no superglobal
-	// parses nothing; see decoder.
+	// read that needs one decodes it. Parsing waits for a superglobal read;
+	// see decoder.
 	//
-	// This check refuses a body over post_max_size here and not later, because
-	// PHP says so in its log whether the script reads $_POST or not, and
-	// comparing the announced length costs no read.
+	// This check refuses a body over post_max_size here, not later: PHP logs it
+	// whether the script reads $_POST. Comparing the announced length costs no
+	// read.
 	if opts.PostMaxSize.Exceeds(r.ContentLength) {
 		c.recordError(fmt.Errorf("POST Content-Length of %d bytes exceeds the post_max_size limit of %d bytes",
 			r.ContentLength, opts.PostMaxSize.Bytes()))
 		c.decode.body.Do(func() {})
 	}
 
-	// Server variables ($_SERVER). The request is the source and Server holds
-	// the extras and a read goes to both and copies neither.
+	// Server variables ($_SERVER). The request is the source; Server holds the
+	// extras. A read goes to both and copies neither.
 	c.serverVars(r)
 	c.ServerSource = &mapmap.RequestSource{Request: r, Extra: mapmap.MapSource(c.Server)}
 
@@ -206,9 +202,9 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 // GetMap, PostMap, CookieMap and FileMap answer the flat form of each input,
 // decoding the request on the first call.
 //
-// The fields behind them are what a host sets; these are what anything reading
-// a request built from an *http.Request resolves through, because the field
-// holds nothing until one of them runs.
+// A host sets the fields behind them. Anything reading a request built from an
+// *http.Request resolves through these, because the field holds nothing until
+// one of them runs.
 
 // GetMap answers the query string, one value per name.
 func (c Context) GetMap() map[string]string {
@@ -229,7 +225,7 @@ func (c Context) PostMap() map[string]string {
 }
 
 // CookieMap answers the request's cookies, one value per name. Session\Manager
-// reads a session id through it.
+// reads a session id through this map.
 func (c Context) CookieMap() map[string]string {
 	c.decodeCookies()
 	if c.Cookie != nil || c.decode == nil {
@@ -373,7 +369,7 @@ func (c Context) decodeCookies() {
 	})
 }
 
-// decodeForm fills $_POST, $_FILES and php://input from the one body read.
+// decodeForm fills $_POST, $_FILES and php://input from a single body read.
 func (c Context) decodeForm() {
 	if c.decode == nil {
 		return
@@ -383,12 +379,12 @@ func (c Context) decodeForm() {
 	})
 }
 
-// pathValues fills c.Path from the pattern's declared names, reading a rest parameter under "*".
+// pathValues fills c.Path from the pattern's names, reading a rest under "*".
 func (c Context) pathValues(r *http.Request) {
 	params, err := modelutil.ParseRoutePath(routePattern(r))
 	if err != nil {
-		// The linter reports a path the grammar refuses and registration skips
-		// it and reaching here means a host registered it directly.
+		// The linter reports a path the grammar refuses, and registration skips
+		// it. Reaching here means a host registered it directly.
 		return
 	}
 	for _, param := range params {
@@ -402,18 +398,18 @@ func (c Context) pathValues(r *http.Request) {
 	}
 }
 
-// serverVars fills the $_SERVER keys the request answers, leaving the SAPI keys to the host.
+// serverVars fills the request's $_SERVER keys, leaving SAPI keys to the host.
 func (c Context) serverVars(r *http.Request) {
 	// REQUEST_METHOD, REQUEST_URI, QUERY_STRING, HTTP_HOST and SERVER_PROTOCOL
 	// are not written here. The request answers all five, and mapmap derives
-	// them on the read that asks and a script that never names one costs
-	// no time for it. What follows is what the request cannot answer alone.
+	// them on the read that asks. A script that names none costs no time. The
+	// keys below are the ones the request cannot answer alone.
 
 	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
 	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
-	// An IPv6 address arrives bracketed and leaves without, as PHP writes it.
-	// A Go host is free to put anything in the field and a value that does not
-	// parse lands in REMOTE_ADDR whole and REMOTE_PORT stays unset.
+	// An IPv6 address arrives bracketed; the split removes the brackets,
+	// matching PHP. The field accepts anything a host puts there; a value that
+	// does not parse lands in REMOTE_ADDR whole, and REMOTE_PORT stays unset.
 	if addr, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		c.Server["REMOTE_ADDR"] = addr
 		c.Server["REMOTE_PORT"] = port
@@ -421,12 +417,11 @@ func (c Context) serverVars(r *http.Request) {
 		c.Server["REMOTE_ADDR"] = r.RemoteAddr
 	}
 
-	// The scheme is the one this process is serving, r.TLS, and not the one
-	// X-Forwarded-Proto claims: that header is the client's to send, and a
-	// script deciding from it whether it talks over TLS would be deciding on
-	// what the client said. A host behind a proxy that terminates TLS is the
-	// one that knows whether to trust the proxy, and sets the two keys itself.
-	// HTTPS is unset on a plain request, never "off" and an
+	// The scheme comes from this process, r.TLS, not from what
+	// X-Forwarded-Proto claims: that header belongs to the client; a script
+	// deciding TLS support from it would decide on the client's word. A host
+	// behind a TLS-terminating proxy knows whether to trust the proxy, and sets
+	// the two keys itself. HTTPS is unset on a plain request, never "off"; an
 	// isset($_SERVER["HTTPS"]) test works in PHP.
 	c.Server["REQUEST_SCHEME"] = "http"
 	if r.TLS != nil {
@@ -444,9 +439,9 @@ func (c Context) serverVars(r *http.Request) {
 		c.Server["CONTENT_LENGTH"] = length
 	}
 
-	// REQUEST_TIME_FLOAT is when the request started, to the microsecond, and
-	// REQUEST_TIME the whole second of it. One clock read fills both, here and
-	// not per key and the two cannot disagree about which second the request
+	// REQUEST_TIME_FLOAT is when the request started, to the microsecond.
+	// REQUEST_TIME holds the whole second. One clock read fills both, here and
+	// not per key, and the two cannot disagree about the second the request
 	// began in.
 	start := time.Now()
 	c.Server["REQUEST_TIME"] = strconv.FormatInt(start.Unix(), 10)
@@ -472,7 +467,7 @@ func (c Context) recordError(err error) {
 	*c.errors = append(*c.errors, err)
 }
 
-// Errors returns what the request got wrong before any script ran, which no
+// Errors returns the request faults raised before any script ran, faults no
 // script can catch: a body or a file part refused for its size.
 func (c Context) Errors() []error {
 	if c.errors == nil {
@@ -484,8 +479,8 @@ func (c Context) Errors() []error {
 // memoryFootprint estimates the host-side bytes this Context holds, excluding runtime copies.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
-	// What decoding has filled in, not what it could: forcing a parse to
-	// measure one would be the accounting doing the work it measures.
+	// The decoded size, not the possible one: forcing a parse to measure it
+	// would be the accounting doing the work it measures.
 	for _, m := range c.decodedMaps() {
 		total += DeepSize(m, visited)
 	}
@@ -515,7 +510,7 @@ func (c Context) GetAllHeaders() *model.Array {
 }
 
 // RequestContext returns the request data registered on a runtime context.
-// Request-aware Go bindings such as session management read through it.
+// Request-aware Go bindings such as session management read through this call.
 func RequestContext(ctx context.Context) (Context, bool) {
 	c, ok := ctx.Value(requestContextKey{}).(Context)
 	return c, ok

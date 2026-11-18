@@ -55,7 +55,7 @@ func percentOf(covered, total int) int {
 	return int(float64(covered)/float64(total)*100 + 0.5)
 }
 
-// folderCoverage measures each fixture group against the files its own include root loaded.
+// folderCoverage measures each fixture group against the files its include root loaded.
 func folderCoverage(groups []fixtureGroup) []folderCover {
 	out := make([]folderCover, 0, len(groups))
 	for _, group := range groups {
@@ -64,7 +64,7 @@ func folderCoverage(groups []fixtureGroup) []folderCover {
 		for _, r := range rows {
 			// A file holding no runnable statement, a bag of declarations,
 			// has nothing left to reach and counts as reached.
-			// coverage.Row.Percent counts it the same way.
+			// coverage.Row.Percent counts the file the same way.
 			if r.Covered > 0 || r.Total == 0 {
 				summary.FilesCovered++
 			}
@@ -76,7 +76,7 @@ func folderCoverage(groups []fixtureGroup) []folderCover {
 	return out
 }
 
-// folderSummary is one folder's row without a fixture table, with coverage when measured.
+// folderSummary holds a folder's row without a fixture table, with coverage when measured.
 type folderSummary struct {
 	groupTotals
 	cover *folderCover
@@ -86,7 +86,7 @@ type folderSummary struct {
 func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool) {
 	headers := []string{"Path", "Fixtures", "Passed", "Failed"}
 	// A matrix run records a duration per engine, and the folder rows split
-	// theirs into a column per runner beside the wall-clock one.
+	// theirs into a column per runner next to the wall-clock column.
 	var engines []engineDuration
 	if len(rows) > 0 {
 		engines = rows[0].Engines

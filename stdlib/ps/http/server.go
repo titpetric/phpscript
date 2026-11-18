@@ -14,9 +14,9 @@ import (
 // shutdownGrace bounds a graceful shutdown at one second for requests in flight.
 const shutdownGrace = time.Second
 
-// Server listens and answers, as net/http's Server does and as a
-// ServeMux does not. The vocabulary is Go's: listen(), then shutdown() to let
-// the requests in flight finish, or close() to drop them.
+// Server listens and answers, like net/http's Server. A ServeMux answers
+// neither way. The vocabulary is Go's: listen(), then shutdown() to let the
+// requests in flight finish, or close() to drop them.
 type Server struct {
 	rt      *runner.Runtime
 	addr    string
@@ -24,9 +24,9 @@ type Server struct {
 	workers int
 	queue   int
 
-	// mu guards the running server. listen starts it and shutdown stops it, and
-	// a register_shutdown_function callback reaches the second from a different
-	// place in the script than the first.
+	// mu guards the running server. listen starts the server, and shutdown
+	// stops the server. A register_shutdown_function callback reaches shutdown
+	// from a different place in the script than listen.
 	mu      sync.Mutex
 	server  *nethttp.Server
 	bound   string
@@ -35,11 +35,11 @@ type Server struct {
 
 // NewServer builds a server for $addr answering through $handler, an HTTP\Mux
 // or anything else that answers a request. Building one binds no address:
-// listen() does that.
+// listen() binds the address.
 //
 // $workers is how many requests the server answers at once, the number of
 // cores when omitted; the next argument sets the queue depth, 1024 when
-// omitted. docs/use-cases/http-server.md is what to size them by.
+// omitted. docs/use-cases/http-server.md states the sizing rules.
 func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
@@ -58,8 +58,8 @@ func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (
 	return &Server{rt: rt, addr: addr, handler: routed, workers: count, queue: depth}, nil
 }
 
-// listen binds the address and starts answering, and returns the address it
-// bound. It does not block: the script goes on, and calls wait() when its work
+// listen binds the address, starts answering, and returns the address it
+// bound. It does not block: the script goes on. It calls wait() when its work
 // completes.
 func (s *Server) Listen() (string, error) {
 	s.mu.Lock()
@@ -93,7 +93,7 @@ func (s *Server) Listen() (string, error) {
 	return s.bound, nil
 }
 
-// Wait blocks until the script runs out of time or its client goes away.
+// Wait blocks until the script runs out of time or its client leaves.
 func (s *Server) Wait() {
 	<-s.rt.Context().Done()
 }

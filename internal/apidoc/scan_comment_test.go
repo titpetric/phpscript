@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// TestCleanComment covers what a comment loses on the way to the reference: the
-// marker and one space per line, a blank line at either end, and a `//nolint`
-// or build directive, which is instruction to a tool and not prose.
+// TestCleanComment covers the text a comment loses on the way to the reference:
+// the marker, one space per line, a blank line at either end, plus a `//nolint`
+// or build directive. That directive instructs a tool, not prose.
 func TestCleanComment(t *testing.T) {
 	t.Parallel()
 	group := &ast.CommentGroup{List: []*ast.Comment{
@@ -28,7 +28,7 @@ func TestCleanComment(t *testing.T) {
 }
 
 // TestDeclCommentRewritesTheSymbol covers the godoc fallback: a registration
-// with no comment takes the declaration's, with the Go name the
+// without a comment takes the declaration's, with the Go name the
 // comment opens on replaced by the name a script types. A comment opening on
 // something else travels unchanged.
 func TestDeclCommentRewritesTheSymbol(t *testing.T) {

@@ -12,8 +12,8 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// telemetryRecorder is a runtime observer recording into a separate trace and
-// the tests can assert on what the interpreter reported without a server.
+// telemetryRecorder is a runtime observer recording into a separate trace.
+// Tests assert on the interpreter's reports without a server.
 type telemetryRecorder struct {
 	states    []telemetry.State
 	filenames []string
@@ -159,9 +159,9 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 }
 
 // TestRuntimeContextLineAfterNestedCall covers a binding called in the same
-// statement as a PHP call that ran before it, the shape of
-// `$this->conn->db()->get(...)`: the call returns into that statement and the
-// binding's span belongs to its line and not to the last line the callee ran.
+// statement as a PHP call that ran before it. That shape is
+// `$this->conn->db()->get(...)`: the call returns into that statement; the
+// binding's span belongs to the calling line.
 func TestRuntimeContextLineAfterNestedCall(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -356,9 +356,9 @@ var includeTree = fstest.MapFS{
 	"two.php":    {Data: []byte(`<?php $two = 2;`)},
 }
 
-// TestRuntimeObserverReceivesIncludedFileCount covers the count, which every
-// level publishes, and the span per include, which is the debug level's: the
-// default collapses those into one span, covered below.
+// TestRuntimeObserverReceivesIncludedFileCount covers the count, published at
+// every level, and the span per include, which belongs to the debug level: the
+// default collapses those into a single span, covered below.
 func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -415,11 +415,11 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 	}
 }
 
-// TestRuntimeObserverCollapsesIncludes covers what the default level reports
-// of a request's includes: one span at the end naming the files, where the
-// debug level publishes a span per file. An application that autoloads a class
-// per file includes dozens of them, and a name and a microsecond each turns
-// the trace into a file listing.
+// TestRuntimeObserverCollapsesIncludes covers the default level's report of a
+// request's includes: one span at the end naming the files, where the debug
+// level publishes a span per file. An application that autoloads a class per
+// file includes dozens of files; a name plus a microsecond each turns the
+// trace into a file listing.
 func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -459,9 +459,9 @@ func TestRuntimeObserverCollapsesIncludes(t *testing.T) {
 }
 
 // TestRuntimeObserverTraceLevelMarksFrames covers the mark the default level
-// puts on a frame, which is the whole of how a trace of an interpreter stays
-// readable: the recorder keeps the slow frames and drops the rest,
-// and the debug level asks it to keep them all.
+// puts on a frame, the mark that keeps a trace of an interpreter readable: the
+// recorder keeps the slow frames and drops the rest; the debug level asks it
+// to keep them all.
 func TestRuntimeObserverTraceLevelMarksFrames(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -498,9 +498,9 @@ func TestRuntimeObserverTraceLevelMarksFrames(t *testing.T) {
 }
 
 // TestRuntimeObserverTraceLevelOff covers the level that silences the
-// interpreter: no frame, no include, no inventory. What a binding or a script
-// measured is not the interpreter's own work and still records. The error of
-// a run that failed records too.
+// interpreter: no frame, no include, no inventory. A binding or script
+// measurement is not the interpreter's own work and still records. The error
+// of a run that failed records too.
 func TestRuntimeObserverTraceLevelOff(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -586,7 +586,7 @@ class Database {
 }
 
 // TestRuntimeObserverStaticCallOpensNoSpan pins that a static call is not
-// measured: a library calls static helpers by the hundred, and a span each
+// measured: a library calls static helpers by the hundred; a span for each
 // buries the requests and the includes a reader opens the trace for.
 func TestRuntimeObserverStaticCallOpensNoSpan(t *testing.T) {
 	t.Parallel()
@@ -732,8 +732,8 @@ func TestIncludeObserver(t *testing.T) {
 	}
 }
 
-// statusOnlyObserver implements the required half of the observer contract and
-// neither optional one, the shape the runtime has to tolerate.
+// statusOnlyObserver implements the required half of the observer contract; it
+// skips both optional halves. The runtime must tolerate that shape.
 type statusOnlyObserver struct{}
 
 func (*statusOnlyObserver) UpdateStatus(context.Context, telemetry.State) {}

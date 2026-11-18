@@ -8,17 +8,17 @@ import (
 
 // refTestHost is the part of the host contract these tests exercise: the
 // frame handle a real host holds, the snapshot-before-call and write-back-
-// after ordering of its slow path, plus the calls themselves. Every other
-// method falls to the embedded nil interface and a test program that
-// reaches one fails loudly, and never silently.
+// after ordering of its slow path, plus the calls themselves. Every remaining
+// method falls to the embedded nil interface; a test program that reaches one
+// fails loudly, never silently.
 type refTestHost struct {
 	Host
 	frame  FrameLocals
 	locals map[string]any
 	echoed []any
-	// calls names what each call does, keyed by function name: it either
-	// writes the by-reference setter it holds, or writes a local through
-	// the snapshot the way a host binding that touches the scope does.
+	// calls names the action of each entry, keyed by function name: it writes
+	// either the by-reference setter it holds, or a local through the
+	// snapshot, as a host binding that touches the scope does.
 	calls map[string]func(h *refTestHost, args []any)
 }
 
@@ -29,8 +29,8 @@ func (h *refTestHost) BindFrame(frame FrameLocals) { h.frame = frame }
 func (h *refTestHost) TakeFrame() FrameLocals { return h.frame }
 
 // Call takes the slow path a scope-reading binding takes: snapshot before the
-// body runs, write the snapshot back after. That ordering is what the
-// by-reference mark tests pin.
+// body runs, write the snapshot back after. The by-reference mark tests pin
+// that ordering.
 func (h *refTestHost) Call(name, fallback string, args []any) (any, error) {
 	h.locals = h.frame.Snapshot()
 	if fn, ok := h.calls[name]; ok {
@@ -106,7 +106,7 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 }
 
 // An uninitialised target is the case that always worked: the snapshot does
-// not hold it and nothing overwrites it. It has to keep working.
+// not hold it; nothing overwrites it. It must keep working.
 func TestVMRefSetterWritesFreshLocal(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -121,8 +121,7 @@ func TestVMRefSetterWritesFreshLocal(t *testing.T) {
 	}
 }
 
-// The marks cover one call. A later call that changes the same variable
-// through the scope, with no setter involved, still takes effect.
+// The marks cover one call; a later call's scope write still takes effect.
 func TestVMRefMarksDoNotOutliveTheCall(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -140,8 +139,8 @@ func TestVMRefMarksDoNotOutliveTheCall(t *testing.T) {
 }
 
 // A by-reference call inside a user function marks that function's frame. The
-// caller's variable of the same name is a different slot in a different frame
-// and its own write-back must still reach it.
+// caller's variable of the same name is a different slot in a different frame;
+// its write-back must still reach the caller.
 func TestVMRefMarksArePerFrame(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -164,10 +163,10 @@ func TestVMRefMarksArePerFrame(t *testing.T) {
 	}
 }
 
-// release has to zero the whole backing array, not just the live prefix. The
-// pool holds the buffers for the life of the process and a value left above
-// the high-water mark of a later, smaller program would stay reachable
-// through the pool. The collector would never free it.
+// release must zero the whole backing array, not just the live prefix. The
+// pool holds the buffers for the life of the process; a value left above the
+// high-water mark of a later, smaller program would stay reachable through the
+// pool. The collector would never free it.
 func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	st := &execState{
 		stack:       make([]any, 0, 8),
@@ -225,15 +224,15 @@ func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	}
 }
 
-// An empty state is what the pool returns for the first program with no
-// locals, and release must not panic on it.
+// The pool returns an empty state for the first program without locals;
+// release must not panic on it.
 func TestExecStateReleaseEmpty(t *testing.T) {
 	st := &execState{}
 	st.release()
 }
 
 // memoryTestHost is a Host that also accounts memory. A type assertion finds
-// the capability and implementing the four methods is the whole opt-in.
+// the capability and implementing four methods is the whole opt-in.
 type memoryTestHost struct {
 	semanticHost
 	interval int
@@ -253,9 +252,8 @@ func (h *memoryTestHost) PushLiveWalker(walk func(yield func(any))) {
 
 func (h *memoryTestHost) PopLiveWalker() { h.popped++ }
 
-// CheckMemory walks the live values while the run holds them, which is the
-// window the walker is valid in: the state goes back to the pool once Run
-// returns.
+// CheckMemory walks the live values while the run holds them, in the only
+// window where the walker is valid. The state goes back to the pool once Run returns.
 func (h *memoryTestHost) CheckMemory() error {
 	h.checks++
 	if h.walk != nil {
@@ -294,8 +292,8 @@ func TestMemoryHost(t *testing.T) {
 		t.Errorf("the walk visited %d values and none was the script's local", len(host.seen))
 	}
 
-	// A zero interval turns the checks off. The walker is still registered,
-	// and a host that only answers usage queries keeps seeing VM state.
+	// A zero interval turns the checks off. The walker is still registered; a
+	// host that only answers usage queries keeps seeing VM state.
 	quiet := &memoryTestHost{}
 	runHost(t, quiet, `<?php $marker = "retained"; for ($i = 0; $i < 60; $i = $i + 1) { $marker = "retained"; }`)
 	if quiet.checks != 0 {
@@ -317,11 +315,7 @@ func (h *deadlineTestHost) CheckDeadline() error {
 	return nil
 }
 
-// TestDeadlineHost covers the deadline hook. The interval is a constant in
-// the engine and not something the host settles once per run, because a
-// script can call set_time_limit after the run started. A run that answers
-// nil continues to the end and the cost of a script with no limit and no
-// client is the call itself.
+// TestDeadlineHost covers the deadline hook, a constant in the engine: set_time_limit works mid-run.
 func TestDeadlineHost(t *testing.T) {
 	t.Parallel()
 	long := &deadlineTestHost{}
@@ -334,8 +328,8 @@ func TestDeadlineHost(t *testing.T) {
 		t.Errorf("echoed = %v, want the loop to have run to the end", long.echoed)
 	}
 
-	// A program shorter than the check interval is never asked and a small
-	// script pays nothing for the capability.
+	// A program shorter than the check interval is never asked; a small script
+	// pays nothing for the capability.
 	short := &deadlineTestHost{}
 	runHost(t, short, `<?php echo "hi";`)
 	if short.checks != 0 {

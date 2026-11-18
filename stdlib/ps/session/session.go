@@ -1,16 +1,16 @@
 // Package session implements Session\Manager and the Session\Storage\*
 // family: an HTTP-only cookie with an opaque, randomly generated session
 // ID, and the storage that holds the data behind that ID. Memory storage lasts
-// as long as the process; disk storage is a file per session under a directory
+// as long as the process; disk storage is a file per session in a directory
 // the host chooses, and prunes by modification time.
 //
-// A manager wraps whichever storage it receives for tracing and a request's
-// trace shows which backend it paid for and whether the session exists. The
-// trace omits the session ID: that ID is the credential in the cookie.
+// A manager wraps whichever storage it receives for tracing. A request's trace
+// shows which backend it paid for and whether the session exists. The trace
+// omits the session ID: that ID is the credential in the cookie.
 //
-// Who a session belongs to is stdlib/ps/auth's subject. A manager holds the user
-// database a host gave it and puts one question to that, in login();
-// everything else here is the cookie and the storage.
+// Who a session belongs to is stdlib/ps/auth's subject. A manager holds the
+// user database a host supplied. It puts one question to that database, in
+// login(); everything else here is the cookie and the storage.
 //
 // Importing the package wires it in; stdlib/imports.go does that.
 package session
@@ -32,9 +32,9 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the session classes with disk storage rooted at dir. A
-// $storage_path the script names resolves against dir, cannot climb out of it,
-// and must sit inside the runtime's writable_paths and the directory it creates
-// is one the script could also have written a file into.
+// $storage_path the script names resolves against dir and cannot climb out. It
+// must sit inside the runtime's writable_paths. The directory it creates is a
+// place the script could also have written a file into.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	// Session\Storage\Memory is session storage backed by process memory;
 	// sessions vanish when the process exits.
@@ -69,7 +69,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	})
 }
 
-// defaultStorage returns disk storage under the root, warning and falling back to memory when it fails.
+// defaultStorage returns disk storage rooted at dir, warning and falling back to memory when it fails.
 func defaultStorage(rt *runner.Runtime, dir string) Storage {
 	disk, err := newRootedStorageDisk(rt, dir)
 	if err == nil {

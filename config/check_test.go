@@ -9,7 +9,7 @@ import (
 )
 
 // TestConfig_Validate covers everything that would stop a server from
-// starting, without starting one: the check opens no listener and builds no
+// starting, without starting a server: the check opens no listener and builds no
 // trace store. A command runs it ahead of the server so a bad file fails the
 // invocation and not the first request.
 func TestConfig_Validate(t *testing.T) {
@@ -22,10 +22,10 @@ func TestConfig_Validate(t *testing.T) {
 	})
 
 	t.Run("an empty root is the working directory", func(t *testing.T) {
-		// Check falls back to "." and a server started with no root
+		// Check falls back to ".". A server started without a root
 		// validates the tree it runs in. This package directory holds
-		// no public and the document root check is what reports it, against a
-		// path relative to the working directory.
+		// no public, and the document root check reports it on a path relative
+		// to the working directory.
 		err := config.New().Check("config.yml", "")
 		if err == nil {
 			t.Fatal("a tree with no document root validated")
@@ -94,9 +94,8 @@ func TestConfig_Validate(t *testing.T) {
 
 // TestConfig_ValidateRoot covers the single application root the same way the
 // cases above cover an entry of the virtual host list. Config.Check falls
-// through to it when the configuration lists no sites. fs.Sub does not stat,
-// and a document root that is not there otherwise answers 404 on the first
-// request.
+// through to it when the configuration lists no sites. fs.Sub does not stat.
+// A missing document root otherwise answers 404 on the first request.
 func TestConfig_ValidateRoot(t *testing.T) {
 	t.Parallel()
 	t.Run("a root holding its document root", func(t *testing.T) {
@@ -143,7 +142,7 @@ func TestConfig_ValidateRoot(t *testing.T) {
 }
 
 // TestErrRootWithVirtualHosts covers the wording of the refusal. The
-// virtual host entries name their own roots and a root typed on the command
+// virtual host entries name their own roots. A root typed on the command
 // line has no entry to belong to, and the message quotes it back.
 func TestErrRootWithVirtualHosts(t *testing.T) {
 	t.Parallel()

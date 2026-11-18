@@ -4,10 +4,10 @@ import (
 	"reflect"
 )
 
-// Type discovery is why a binding package names functions and no types. The
+// Type discovery lets a binding package name functions, not types. The
 // signature of `http.NewRequest` names `*http.Request`, whose fields name
-// `http.Header` and `url.URL`, and the types a script can reach are the ones
-// the bound signatures already imply. The walk collects them; a type no
+// `http.Header` and `url.URL`; the types a script can reach are the ones the
+// bound signatures already imply. The walk collects those types; a type no
 // signature mentions binds under no name.
 //
 // The technique is gozero's, which discovers the types behind its bindings the
@@ -28,14 +28,14 @@ func (s *Set) Types() map[string]reflect.Type {
 	return w.out
 }
 
-// walk collects the types bound signatures reach into one name per type.
+// walk collects the types bound signatures reach, one name per type.
 type walk struct {
 	path  string
 	out   map[string]reflect.Type
 	depth map[reflect.Type]int
 }
 
-// visit records kind under its own name when the package owns it, then walks its reach.
+// visit records kind with a local name when the package owns it, then walks its reach.
 func (w *walk) visit(kind reflect.Type, depth int) {
 	if kind == nil || depth > discoverDepth {
 		return
@@ -54,8 +54,8 @@ func (w *walk) visit(kind reflect.Type, depth int) {
 		w.visit(kind.Key(), depth+1)
 		w.visit(kind.Elem(), depth+1)
 	case reflect.Struct:
-		// A field type counts because a script reads a field: `$req->Header`
-		// has to name the type behind it.
+		// A field type counts when a script reads a field: `$req->Header`
+		// must name the type behind it.
 		for i := range kind.NumField() {
 			if field := kind.Field(i); field.PkgPath == "" {
 				w.visit(field.Type, depth+1)

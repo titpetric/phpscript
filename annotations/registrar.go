@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// Registrar binds a handler to an HTTP method and path, the one type a
+// Registrar binds a handler to an HTTP method and path, the single type a
 // discovered route and whichever router the application runs both speak.
 type Registrar interface {
 	Handle(method string, path string, handler http.Handler)

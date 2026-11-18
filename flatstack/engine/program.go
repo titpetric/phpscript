@@ -1,5 +1,5 @@
 // Package engine compiles model AST programs into flat bytecode and executes
-// them against a PHP semantics bridge the host supplies.
+// them on a PHP semantics bridge the host supplies.
 package engine
 
 import (
@@ -20,8 +20,8 @@ const (
 	opStore
 	opArray
 	opIndex
-	// opSetIndex writes one element. a selects the operand order: 0 is the
-	// value under the container and the key, 1 is the value over them, which
+	// opSetIndex writes one element. a selects the operand order: 0 puts the
+	// value below the container and key, 1 puts the value above both, which
 	// an assignment emits because php resolves its target first.
 	opSetIndex
 	opIncDecLocal
@@ -39,7 +39,7 @@ const (
 	opCallMethod
 	opGetProperty
 	// opSetProperty writes one property. a selects the operand order, as
-	// opSetIndex does: 0 is the receiver over the value, 1 the value over it.
+	// opSetIndex does: 0 is the receiver over the value, 1 the value above it.
 	opSetProperty
 	opEcho
 	opIterInit
@@ -61,26 +61,25 @@ const (
 	opClassConst
 	opCast
 	opClosure
-	// opDefineConst pops the value and declares it under the name a top-level
+	// opDefineConst pops the value and declares it by the name a top-level
 	// `const` statement wrote, through the same host table define() uses.
 	opDefineConst
 	// opDefer pops the callable and registers it on the frame in flight; the
 	// VM runs the registrations LIFO when the frame returns.
 	opDefer
-	// opInvoke calls a callable held in a value: a args, then the callee
-	// beneath them. A string callee naming a compiled function takes a VM
+	// opInvoke calls a callable held in a value: a args with the callee
+	// beneath. A string callee naming a compiled function takes a VM
 	// frame; everything else goes to the host's InvokeValue.
 	opInvoke
 	// opIncDecProp is `$obj->prop++` and friends: pops the receiver, reads the
 	// property, steps it, writes it back. b selects postfix, name is the
 	// property, extra the operator.
 	opIncDecProp
-	// opUnsetProp pops the receiver and removes the named property through the
-	// host, PHP's unset($obj->prop).
+	// opUnsetProp pops the receiver and removes the named property, PHP's unset($obj->prop).
 	opUnsetProp
-	// opCompactInit pushes the empty map[string]any that compact() fills. A
-	// native map and no script array, the shape the binding
-	// returns and what the allocation rules prefer.
+	// opCompactInit pushes the empty map[string]any that compact() fills. The
+	// native map holds no script array, the shape the binding
+	// returns, which the allocation rules prefer.
 	opCompactInit
 	// opCompactEntry writes one name into the map on top of the stack, which
 	// it leaves there: a is the local's slot and name is the key. It skips a
@@ -89,7 +88,7 @@ const (
 	opCompactEntry
 	// opCompactDynamic is opCompactEntry for a name the compiler could not
 	// read off the source: it pops the name and looks the slot up in the
-	// table the program holds. compact($which) and compact(name()) take
+	// table the program holds. compact($which) or compact(name()) take
 	// this path.
 	opCompactDynamic
 	// opCallStatic is `Class::method(args...)`: a args, name the class
@@ -109,15 +108,14 @@ const (
 	opStaticSeeded
 	// opStaticLoad and opStaticStore read and write one name in a
 	// function-static bag: a indexes the *model.StaticVar node, name is the
-	// variable. The bag is live shared storage and a recursive call observes
+	// variable. The bag is live shared storage. A recursive call observes
 	// the writes of the frame above it. opStaticStore mirrors opStore's b
 	// (keep) and compound-operator name handling through extra.
 	opStaticLoad
 	opStaticStore
-	// opIncDecStatic is opIncDecLocal against a function-static bag entry.
+	// opIncDecStatic is opIncDecLocal for a function-static bag entry.
 	opIncDecStatic
-	// opInitialized pushes whether slot a holds a value, the test a parameter
-	// default's prologue jumps on.
+	// opInitialized pushes whether slot a holds a value, the default prologue's test.
 	opInitialized
 	// opCallable takes a callable without calling it, php 8.1's `callable(...)`.
 	// b=0 pops the function name or the callee value and reads the namespace
@@ -203,13 +201,13 @@ type userFuncDef struct {
 	// compile time the way closureDef's are. An argument the caller did not
 	// pass leaves the slot uninitialized.
 	paramSlots []int
-	// variadicSlot is the slot of a trailing `...$rest` parameter, -1 without
-	// one. paramSlots leaves it out: the caller binds it to an array of the
+	// variadicSlot is the slot of a trailing `...$rest` parameter, -1 when
+	// absent. paramSlots leaves it out: the caller binds it to an array of the
 	// leftover arguments, empty when the caller stops short of it.
 	variadicSlot int
 }
 
-// closureDef is one compiled anonymous function, its slot numbers frame offsets shared across frames.
+// closureDef covers a compiled anonymous function and its frame-offset slot numbers.
 type closureDef struct {
 	entryPC int
 	// paramSlots holds one slot per declared parameter, in order. An argument
@@ -226,7 +224,7 @@ type closureDef struct {
 	thisSlot int
 }
 
-// catchClause is one compiled catch clause, with declaredType verbatim and local -1 when unbound.
+// catchClause covers a compiled catch clause, with declaredType verbatim and unbound local -1.
 type catchClause struct {
 	declaredType string
 	local        int
@@ -238,12 +236,12 @@ type Program struct {
 	code       []instruction
 	constants  []any
 	localNames []string
-	// nameSlots is the inverse of localNames, built once by the compiler so
-	// run-time name resolution is a map hit and no linear scan.
+	// nameSlots is the inverse of localNames, built once by the compiler.
+	// Run-time name resolution is then a map hit. It does not scan linearly.
 	nameSlots map[string]int
 	userFuncs map[string]userFuncDef
 	// userFuncsFold indexes userFuncs by lowercased name; PHP function and
-	// class names are case-insensitive and a fold collision is already a
+	// class names are case-insensitive. A fold collision is already a
 	// redeclaration error before the compiler builds this map.
 	userFuncsFold map[string]userFuncDef
 	classes       []*model.Class
@@ -255,7 +253,7 @@ type Program struct {
 	closures []closureDef
 }
 
-// Entry is one key/value pair produced for foreach.
+// Entry holds a key/value pair produced for foreach.
 type Entry struct {
 	Key   any
 	Value any
@@ -270,33 +268,33 @@ type Host interface {
 	GetProperty(any, string) any
 	SetProperty(any, string, any, string) error
 	Lookup(string) any
-	// SetGlobal passes a whole-variable store to the host before the frame
-	// keeps it. A host claims names with cross-frame semantics (PHP's
+	// SetGlobal passes a whole-variable store to the host, ahead of frame
+	// storage. A host claims names with cross-frame semantics (PHP's
 	// superglobals) by returning true; the engine then leaves the frame slot
 	// cold and later reads keep resolving through Lookup.
 	SetGlobal(string, any) bool
-	// Constant resolves a bare name. The error is what an undefined one
-	// raises, which Lookup has no way to report.
+	// Constant resolves a bare name. The error reports an undefined name,
+	// which Lookup cannot.
 	Constant(string) (any, error)
 	// SetConstant declares a constant, the write side of Constant. A
-	// top-level `const` entry resolves through it so both spellings of a global
-	// constant share one table.
+	// top-level `const` entry resolves through the same call. Both spellings of
+	// a global constant share one table.
 	SetConstant(string, any)
 	Array([]model.ArrayItemValue) any
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error
 	// SetEntry writes value into container at key when container is a value the
-	// script owns. A collection a binding returned belongs to the host and
-	// SetEntry leaves it alone and reports no error, matching what a
-	// by-reference foreach over one does in the interpreter.
+	// script owns. A collection a binding returned belongs to the host.
+	// SetEntry leaves that collection alone and reports no error, matching the
+	// interpreter's by-reference foreach.
 	SetEntry(container, key, value any) error
 	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a
-	// key that is not there is not an error.
+	// key that is missing is not an error.
 	//
 	// It answers the container to store back, or nil for a removal in place.
-	// A native slice cannot hold a hole and cannot shrink through the
-	// interface value holding it and removing from one answers a shorter
-	// slice for the caller to assign.
+	// A native slice cannot hold a hole. It cannot shrink through the
+	// interface value holding it. Removing from one answers a shorter slice
+	// for the caller to assign.
 	UnsetIndex(container, key any) (replacement any, err error)
 	// MatchCatch reports whether a catch clause declaring declaredType handles
 	// err. The host owns the class hierarchy, the `A|B` union form and the
@@ -305,11 +303,11 @@ type Host interface {
 	MatchCatch(declaredType string, err error) bool
 	// Throw turns a thrown value into the error it travels as. A built-in
 	// throwable is an error already; Throw wraps an instance of a declared
-	// class so a clause can filter on its declared class, and a catch
-	// binding it gets the object back.
+	// class so a clause can filter on its declared class. A catch
+	// binding gets the object back.
 	Throw(value any) error
-	// CatchValue returns what a catch clause binds for err: the object
-	// for a thrown instance and the error itself for everything else.
+	// CatchValue returns the value a catch clause binds for err: the object
+	// for a thrown instance, and the error itself for everything else.
 	CatchValue(err error) any
 	// ClassConst reads the constant name off class. The compiler has already
 	// collapsed `self`, `static` and `parent` to the enclosing class and the
@@ -330,7 +328,7 @@ type Host interface {
 
 // The optional host capabilities, discovered by type assertion the way
 // MemoryHost and the include hook are. A Host built before these constructs
-// compiled keeps building; a program that reaches one against a host without
+// compiled keeps building; a program that reaches one when the host lacks
 // it reports the missing capability and misbehaves nowhere.
 
 // invokeHost calls a callable held in a value, `$fn(...)`, resolving every callable spelling.
@@ -338,7 +336,7 @@ type invokeHost interface {
 	InvokeValue(args []any, callee any) (any, error)
 }
 
-// globalHost holds the variables a host seeded, written into the top-level frame by Run.
+// globalHost holds variables a host seeded, written into the top-level frame by Run.
 type globalHost interface {
 	Globals() map[string]any
 }

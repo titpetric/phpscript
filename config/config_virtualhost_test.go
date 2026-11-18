@@ -11,8 +11,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
-// writeSite creates an application root holding a phpscript.yml and a document
-// root, and returns the application root.
+// writeSite creates an application root with a phpscript.yml and document root.
 func writeSite(t *testing.T, source string, documentRoots ...string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -45,7 +44,7 @@ func TestDefaultConfigVirtualHosts(t *testing.T) {
 }
 
 // TestVirtualHostLoadLayersOverBase pins the overlay a site gets: a key the
-// site file does not name keeps the operator's value, one it names wins.
+// site file does not name keeps the operator's value; a key the site names wins.
 func TestVirtualHostLoadLayersOverBase(t *testing.T) {
 	t.Parallel()
 	root := writeSite(t, `
@@ -67,7 +66,7 @@ telemetry:
 	if result.Telemetry.Path != "/debug/site" {
 		t.Errorf("telemetry path = %q, want /debug/site", result.Telemetry.Path)
 	}
-	// Keys the site left out keep what the base configuration says.
+	// Keys the site left out keep the base configuration's value.
 	if result.Telemetry.ServiceName != base.Telemetry.ServiceName {
 		t.Errorf("service name = %q, want %q", result.Telemetry.ServiceName, base.Telemetry.ServiceName)
 	}
@@ -77,8 +76,9 @@ telemetry:
 }
 
 // TestVirtualHostAutoindexIsTheSitesOwn pins who decides directory listings.
-// They describe what one site publishes, not how the process listens and the
-// key is the site's to set, and stays off for a site that says nothing.
+// They describe the content one site publishes. The process listener is a
+// separate concern. The site sets the key. It stays off for a site that says
+// nothing.
 func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 	t.Parallel()
 	base := config.New()
@@ -139,7 +139,7 @@ virtualhost:
 }
 
 // TestVirtualHostLoadRequiresConfigFile pins that a root without a
-// phpscript.yml fails, and never serves the site under the operator's
+// phpscript.yml fails. It never serves the site beneath the operator's
 // defaults.
 func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
 	t.Parallel()
@@ -156,8 +156,8 @@ func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
 }
 
 // TestVirtualHostServerBlockIsHeldToBase pins the guard after the rejection:
-// the loaded configuration holds the operator's server block and no nested
-// sites whatever the file said.
+// the loaded configuration holds the operator's server block. It holds no
+// nested sites whatever the file said.
 func TestVirtualHostServerBlockIsHeldToBase(t *testing.T) {
 	t.Parallel()
 	root := writeSite(t, "routes:\n  enabled: false\n")
@@ -233,7 +233,7 @@ func TestVirtualHostDocumentRootPrecedence(t *testing.T) {
 }
 
 // TestVirtualHostNormalize pins the comparison a Host header gets: lowercase,
-// no trailing dot, and every name the entry lists.
+// no trailing dot, plus every name the entry lists.
 func TestVirtualHostNormalize(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -273,7 +273,7 @@ func TestVirtualHostDomains(t *testing.T) {
 }
 
 // TestValidateVirtualHosts covers the checks over the list as a whole. Each
-// case names its own domain, which the error has to name.
+// case names a domain, and the error must name that domain.
 func TestValidateVirtualHosts(t *testing.T) {
 	t.Parallel()
 	site := func(t *testing.T, source string, documentRoots ...string) string {
@@ -460,11 +460,11 @@ func TestValidateVirtualHosts(t *testing.T) {
 // TestVirtualHostMailIsTheSitesOwn pins the mail overlay across every spelling
 // a site's file can use.
 //
-// The rule is the one env is already held to: a site that names servers gets
-// only the ones it named. A table covers it where two assertions
-// because the previous shape, a single unnamed block, did not hold it. A
-// struct merges field by field and a site setting only a host kept the
-// operator's username and password and went on sending as the operator. The
+// The rule is the rule env already follows: a site that names servers gets only
+// the servers it named. A table covers this case, because the previous shape, a
+// single unnamed block, did not hold the rule. A struct merges field by field. A site
+// setting only a host kept the operator's username and password and went on
+// sending as the operator. The
 // test that covered it checked the host and the from address, which are
 // exactly the two fields the site did set, and passed throughout.
 func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
@@ -496,8 +496,8 @@ func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
 			want: config.Mail{},
 		},
 		// A null node is the spelling the decoder leaves as the inherited
-		// value and without the guard in OverlayBytes this is the one way a
-		// site declaring it had no servers would inherit the operator's.
+		// value. Without the guard in OverlayBytes, a site declaring it would
+		// inherit the operator's servers. This is the only way that happens.
 		"naming the key with nothing under it is no servers": {
 			file: "mail:\n",
 			want: nil,

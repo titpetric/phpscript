@@ -13,7 +13,7 @@ import (
 // RuntimeFunc customizes a PHP runtime before an annotated PHP file executes.
 type RuntimeFunc func(*runner.Runtime)
 
-// newRuntime builds the job runtime, calling register and the configured hooks after the standard library.
+// newRuntime builds the runtime, calling register and configured hooks after the standard library.
 func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi string, register ...RuntimeFunc) *runner.Runtime {
 	options := c.runnerOptions
 	options.RootFS = root
@@ -42,7 +42,7 @@ func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi 
 	return rt
 }
 
-// cover installs a per-run collector and returns the function that adds its counts to the aggregator.
+// cover installs a per-run collector and returns the function adding counts to it.
 func (c config) cover(rt *runner.Runtime) func() {
 	if c.coverage == nil {
 		return func() {}

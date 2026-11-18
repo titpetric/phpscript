@@ -8,16 +8,15 @@ import (
 	"github.com/titpetric/oida/storage"
 )
 
-// oida defines the recorded data and the recorder. These aliases spell
-// them the way the rest of phpscript spells its own types and instrumenting a
-// package needs this import alone.
+// oida defines the recorded data and the recorder. These aliases use the
+// spelling the rest of phpscript uses for its types. Instrumenting a package
+// needs this import alone.
 type (
-	// Trace is one recorded unit of work: an HTTP request, a startup step or a
+	// Trace records one unit of work: an HTTP request, a startup step or a
 	// background job.
 	Trace = oida.Trace
 
-	// Span is one timed operation within a trace. Every method tolerates a nil
-	// receiver.
+	// Span records one timed operation within a trace, tolerating a nil receiver.
 	Span = oida.Span
 
 	// Attributes is a set of key/value pairs recorded on a span.
@@ -74,9 +73,9 @@ const (
 	StateError      = oida.StateError
 )
 
-// The names a host and a script agree on: where the platform mounts the front
-// end, the header that sends a trace identifier and the label a trace with no
-// request behind it takes.
+// The names a host and script agree on: the platform's front-end mount path,
+// the header that sends a trace identifier, and the label for a trace holding
+// no request behind.
 const (
 	// DefaultPath is the mount path of the debug front end.
 	DefaultPath = oida.DefaultPath
@@ -85,11 +84,11 @@ const (
 	// response.
 	RequestIDHeader = oida.RequestIDHeader
 
-	// BackgroundHost is the host label of traces that did not arrive over the
-	// network: startup steps, cron ticks, queue consumers. oida stopped
-	// re-exporting it from its root package; the constant itself is still the
-	// recorded data's and this reads it from model and invents no
-	// second label for the same group.
+	// BackgroundHost is the host label of traces from outside the network:
+	// startup steps, cron ticks, queue consumers. oida stopped
+	// re-exporting it from its root package. The constant still belongs to the
+	// recorded data. This reads it from model and invents no other label for
+	// the group.
 	BackgroundHost = model.BackgroundHost
 )
 
@@ -114,7 +113,7 @@ func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
 }
 
-// Start records a span in the trace ctx holds and returns a context holding it.
+// Start records a span in ctx's trace and returns a context holding it.
 func Start(ctx context.Context, name string, kind ...Kind) (context.Context, *Span) {
 	ctx, span := oida.Start(ctx, name, kind...)
 	return ctx, withSource(ctx, span)

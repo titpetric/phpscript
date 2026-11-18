@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// TestDerive covers both derivations through the one entry point
-// password_hash() uses: a bcrypt hash holds php's revision marker and the
-// cost it derives at, an argon2 hash holds the PHC string form, and each
-// one verifies.
+// TestDerive covers both derivations through the entry point
+// password_hash() uses: a bcrypt hash holds php's revision marker plus the
+// cost it derives at; an argon2 hash holds the PHC string form. Each
+// derivation verifies.
 func TestDerive(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -78,14 +78,14 @@ const phpBcryptHash = "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEb
 // TestBcryptVerifyPinsTheRevision covers the dispatch answering what php
 // answers across the revision markers, on one php-written body. php reads
 // $2a$, $2b$, $2x$ and $2y$; its crypt answers the failure string "*0" for
-// the 1997 "$2$" spelling with no minor revision and for a marker it never
-// wrote and password_verify answers false for both:
+// the 1997 "$2$" spelling, which has no minor revision, and for a marker php
+// never wrote. password_verify answers false for both:
 //
 //	php -r 'var_dump(password_verify("hunter2hunter2", "$2$04$j1zOEF..."));'  // bool(false)
 //	php -r 'var_dump(password_verify("hunter2hunter2", "$2c$04$j1zOEF..."));' // bool(false)
 //
-// x/crypto parses both spellings and verifies the body and the refusal is the
-// dispatch's and not the library's.
+// x/crypto parses both spellings and verifies the body. The refusal comes from
+// the dispatch, not from the library.
 func TestBcryptVerifyPinsTheRevision(t *testing.T) {
 	t.Parallel()
 	body := strings.TrimPrefix(phpBcryptHash, "$2y")
@@ -111,7 +111,7 @@ func TestBcryptVerifyPinsTheRevision(t *testing.T) {
 
 // TestArgon2Key covers the two variants being different derivations. The same
 // password, salt and work factors under argon2i and argon2id answer different
-// tags and a hash written as one cannot verify as the other.
+// tags; a hash written with one variant cannot verify with the other.
 func TestArgon2Key(t *testing.T) {
 	t.Parallel()
 	p := params{algo: algoArgon2id, memory: 8, time: 1, lanes: 1}

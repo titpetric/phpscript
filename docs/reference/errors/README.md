@@ -15,13 +15,13 @@ phpscript uses one error path for explicit `throw` statements and errors returne
 
 Use `try` and `catch` for failures script code can recover from. The runtime returns an uncaught failure to the Go host. See [Exceptions](../exceptions/README.md).
 
-Installing `Runtime.OnError` changes that propagation: the runtime passes each non-exit statement error to the callback and execution continues. The runtime consumes the error at that point and the callback can prevent an enclosing script `try`/`catch` from seeing it.
+Installing `Runtime.OnError` changes that propagation: the runtime passes each non-exit statement error to the callback, and execution continues. The runtime consumes the error at that point. The callback can prevent an enclosing script `try`/`catch` from seeing it.
 
 ## Errors a script cannot catch
 
-Some failures belong to the request and not to the script: a body larger than `post_max_size`, a file part larger than `upload_max_filesize`. They happen before the first statement runs and there is no statement to wrap in `try`/`catch` and nothing throws. All a script sees is the result: an empty `$_POST` and `$_FILES`, or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`.
+Some failures belong to the request and not to the script: a body larger than `post_max_size`, a file part larger than `upload_max_filesize`. They happen before the first statement runs. There is no statement to wrap in `try`/`catch`, and nothing throws. A script sees only the result: an empty `$_POST` and `$_FILES`, or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`.
 
-A Go host sees the reason. `Runtime.RecordError` is where they arrive. It does two things with each: records it on the trace of the request, where it shows up in the debug front end under a `php error` span, and passes it to a handler installed with `Runtime.OnError`. `Context.Errors` holds the same list, for a host that would rather answer the request itself, with a 413 say, than run the script at all.
+A Go host sees the reason. `Runtime.RecordError` receives the errors. The call does two things with each: it records the error on the request trace, where it shows up in the debug front end in a `php error` span. It passes the error to a handler installed with `Runtime.OnError`. `Context.Errors` holds the same list, for a host that would rather answer the request itself, with a 413 say, than run the script at all.
 
 ```go
 rt.OnError(func(err error) { log.Printf("request: %v", err) })

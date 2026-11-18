@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestZeroModule covers the embedded module the server's own modules share: it
-// reports the name Options.Modules filters on and answers every hook a module
+// TestZeroModule covers the embedded module the server's own modules share. It
+// reports the name Options.Modules filters on. It answers every hook a module
 // leaves alone; coverageModule writes Mount alone.
 func TestZeroModule(t *testing.T) {
 	t.Parallel()
@@ -27,9 +27,9 @@ func TestZeroModule(t *testing.T) {
 }
 
 // TestManager covers what this package asks of a Manager before it serves: the
-// configured options reach it, and the setup hook it holds takes the Service
-// those options built. The manager stays idle until Run and the hook has not
-// fired here.
+// configured options reach the manager. The setup hook it holds takes the
+// Service those options built. The manager stays idle until Run. The hook has
+// not fired here.
 func TestManager(t *testing.T) {
 	t.Parallel()
 	cfg := config.NewTestConfig()
@@ -54,10 +54,10 @@ func TestManager(t *testing.T) {
 	}
 }
 
-// TestLogger covers the one call this package makes through a Logger: the
+// TestLogger covers the single call this package makes through a Logger: the
 // reload warning, which names the keys a running server cannot pick up. A
-// reload that changed nothing frozen says nothing, and a nil logger is the
-// quiet server, which warns nowhere and does not panic.
+// reload that changed no frozen key says nothing. A nil logger is the quiet
+// server, which warns nowhere and does not panic.
 func TestLogger(t *testing.T) {
 	t.Parallel()
 	started := config.NewTestConfig()
@@ -80,9 +80,9 @@ func TestLogger(t *testing.T) {
 	warnFrozen(nil, started, reloaded)
 }
 
-// TestTelemetryModule states what the recorder is: a module the platform
-// mounts like any other and the
-// interpreter observes onto the trace it started and setup holds it as one.
+// TestTelemetryModule states the recorder's role: a module the platform mounts
+// like the rest. The interpreter observes onto the trace it started, and
+// setup holds that trace as a single trace.
 func TestTelemetryModule(t *testing.T) {
 	t.Parallel()
 	var recorder *TelemetryModule
@@ -91,9 +91,9 @@ func TestTelemetryModule(t *testing.T) {
 	}
 }
 
-// recordingLogger is a Logger that keeps every message. Every other method of
-// the interface panics: a call to one would be a claim on the library that
-// this package never makes.
+// recordingLogger is a Logger that keeps every message. Every remaining
+// interface method panics: a call to it would claim behaviour of the library
+// that this package never makes.
 type recordingLogger struct {
 	Logger
 	messages []string
@@ -104,9 +104,9 @@ func (l *recordingLogger) Info(msg string, _ ...any) {
 	l.messages = append(l.messages, msg)
 }
 
-// TestRouterMountsAHandler covers what a Router is to this package: the mux a
-// module registers a handler on, under a method and a path. A chi router is
-// one, and router.go returns it.
+// TestRouterMountsAHandler covers the Router's role in this package: the mux a
+// module registers a handler on, with a method plus a path. A chi router serves
+// that role, and router.go returns it.
 func TestRouterMountsAHandler(t *testing.T) {
 	t.Parallel()
 	var mounted Router = newRouter()

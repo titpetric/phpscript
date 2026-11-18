@@ -1,25 +1,25 @@
 // Package gd implements PHP's image functions over the standard library's image
 // packages and golang.org/x/image.
 //
-// The surface is the one a ported image class actually calls: decode, create,
-// resample, draw, write. Not every one of ext/gd, and not everything ext/gd
-// would let you register: a binding is here because something needs it, and
-// the text family is absent because nothing did.
+// The surface covers the calls a ported image class makes: decode, create,
+// resample, draw, write. It omits part of ext/gd and some ext/gd registrations:
+// a binding belongs here because something needs the binding, and the
+// text family is absent because nothing did.
 //
-// This package registers imagetypes and never omits it, because ported code
-// branches on it. One decoder set answers every call and imagetypes always
-// reports the same three formats.
+// This package always registers imagetypes, since ported code branches on the
+// list. One decoder set answers every call; imagetypes always reports the same
+// three formats.
 //
 // image.Decode reads whichever formats the process registered. The registration
 // is an init: png and jpeg arrive with the encoders this package calls by name,
-// and gif has no encoder here to call. A program decides what
-// it links and the phpscript main package names all three and a host embedding
-// this one answers imagecreatefromgif() once it does the same.
+// while gif has no encoder here to call. A program decides its linked formats;
+// the phpscript main package names all three. A host embedding this one answers
+// imagecreatefromgif() once it does the same.
 //
-// A GD image reaches a script as a *Image, the way fopen returns a stream.
-// A colour reaches it as an int packed the way libgd packs one,
-// 0xAARRGGBB with alpha in the top byte and a script holds a colour in a
-// variable and passes it to any drawing call.
+// A GD image reaches a script as a *Image, the way fopen returns a stream. A
+// colour reaches it as an int packed the way libgd packs one, 0xAARRGGBB with
+// alpha in the top byte; a script holds a colour in a variable and passes it to
+// any drawing call.
 package gd
 
 import (
@@ -38,7 +38,7 @@ import (
 )
 
 // Image is a GD image handle. A script never looks inside the handle; it holds
-// one and passes it back to the drawing and writing functions.
+// the handle and passes it back to the drawing and writing functions.
 type Image struct {
 	m Drawable
 	// truecolor records which constructor made it. imagecreate produced a
@@ -87,7 +87,7 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the image functions rooted at dir. Reads cannot climb
-// out and a write obeys the runtime's writable_paths too, as in stdlib/ps/files.
+// out; a write also obeys the runtime's writable_paths, as in `stdlib/ps/files`.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{dir: dir, writable: files.WritableRoots(dir, rt.WritablePaths())}
 

@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-// Field is one exported Go struct field a script reads as a PHP property.
+// Field is an exported Go struct field a script reads as a PHP property.
 // Signature renders it as a property declaration.
 type Field struct {
 	// Name is the snake_case spelling Runtime.structField resolves back to

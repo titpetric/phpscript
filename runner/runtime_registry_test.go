@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// TestRuntimeSymbolTables covers what the introspection functions read. Each
-// answers a sorted snapshot, because php guarantees no order and a diagnostic
-// that reads differently per run is one nothing can diff.
+// TestRuntimeSymbolTables covers the introspection functions' output. Each
+// returns a sorted snapshot: php guarantees no order. A diagnostic that varies
+// per run defeats a diff.
 func TestRuntimeSymbolTables(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -66,8 +66,8 @@ function declared_in_php() { return 1; }
 		t.Error("LookupConstructor found a php class, which has no Go constructor")
 	}
 
-	// Method lookup is php's, which is case-insensitive, and answers only for
-	// an interpreted class: a caller reflects over a host-backed one itself.
+	// Method lookup follows php's case-insensitive rule. It answers only for an
+	// interpreted class: a caller reflects over the host-backed class itself.
 	if !rt.MethodExists("Site", "HELLO") {
 		t.Error("MethodExists is case-sensitive, want php's case-insensitive lookup")
 	}
@@ -91,9 +91,9 @@ function declared_in_php() { return 1; }
 	}
 }
 
-// TestRuntime_SetConst covers a constant registered from Go, which is visible
-// in every scope the way define() is and unlike a global, which php confines to
-// the global one.
+// TestRuntime_SetConst covers a constant registered from Go, which is visible in
+// all scopes the way define() is, unlike a global, which php confines to global
+// scope.
 func TestRuntime_SetConst(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -124,9 +124,9 @@ func TestRuntime_SetConst(t *testing.T) {
 }
 
 // TestRuntime_RegisterShutdown covers the callbacks php runs at the end of a
-// program, in registration order and a registered flush reaches the output of
-// a script that already finished. The run consumes each and the next program
-// on a pooled runtime does not run the previous one's.
+// program, in registration order. A registered flush reaches the output of a
+// script that already finished. The run consumes every callback; the next
+// program on a pooled runtime does not run the previous one's.
 func TestRuntime_RegisterShutdown(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -158,8 +158,8 @@ func TestRuntime_RegisterShutdown(t *testing.T) {
 		t.Errorf("the callbacks ran again on the next program: %v", ran)
 	}
 
-	// An error a callback reports reaches the host, because a shutdown that
-	// could not finish is a run that did not.
+	// An error a callback reports reaches the host. A shutdown that could not
+	// finish is an unfinished run.
 	rt.RegisterShutdown(func() (any, error) { return nil, errors.New("the flush failed") })
 	if err := rt.Run(program); err == nil {
 		t.Error("a failing shutdown callback did not reach the host")
@@ -167,8 +167,8 @@ func TestRuntime_RegisterShutdown(t *testing.T) {
 }
 
 // TestRuntime_PutEnv covers the copy-on-write over the frozen environment:
-// a write never lands in the snapshot FreezeStdlib took, and a reset restores
-// the snapshot whole.
+// a write never lands in the snapshot FreezeStdlib took. A reset restores the
+// snapshot whole.
 func TestRuntime_PutEnv(t *testing.T) {
 	rt := New(io.Discard, Options{Env: []string{"KEPT=host"}})
 	rt.FreezeStdlib()
@@ -191,8 +191,8 @@ func TestRuntime_PutEnv(t *testing.T) {
 	}
 }
 
-// TestRuntime_OnReset covers the reset hooks: each registered one runs once
-// per reset and a binding's own state leaves with the program's.
+// TestRuntime_OnReset covers the reset hooks: each registered hook runs once
+// per reset. A binding's own state leaves with the program's.
 func TestRuntime_OnReset(t *testing.T) {
 	rt := New(io.Discard, Options{})
 	var calls int

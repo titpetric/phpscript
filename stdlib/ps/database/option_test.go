@@ -5,9 +5,9 @@ import (
 )
 
 // TestDatabaseOption covers the pool sizes a provider opens each driver with.
-// sqlite keeps two idle connections out of ten and mysql keeps ten out of ten,
-// because a mysql handshake costs a round trip and reopening one per request
-// reads as latency, while an idle sqlite handle holds a file open for nothing.
+// sqlite keeps two idle connections out of ten; mysql keeps ten out of ten. A
+// mysql handshake costs a round trip, and reopening one each request reads as
+// latency, while an idle sqlite handle holds a file open for nothing.
 // A driver the table does not name is the zero value, which leaves the pool
 // unbounded and keeps none of it idle.
 func TestDatabaseOption(t *testing.T) {
@@ -28,10 +28,10 @@ func TestDatabaseOption(t *testing.T) {
 	}
 }
 
-// TestDatabaseOption_Apply covers writing the sizes onto a pool, and the nil
+// TestDatabaseOption_Apply covers writing the sizes onto a pool, plus the nil
 // receiver a caller holding no option passes. A nil option leaves the pool as
-// the sql package built it and a provider with no entry for a driver still
-// opens one.
+// the sql package built that pool. A provider lacking an entry for a driver
+// still opens one.
 func TestDatabaseOption_Apply(t *testing.T) {
 	t.Parallel()
 	db, err := Open("sqlite", ":memory:")

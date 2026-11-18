@@ -9,8 +9,8 @@ import (
 )
 
 // TestGetClass covers the name get_class answers with. An interpreted object
-// reports its declared class, and a missing or null argument is
-// false, which is php's answer for the call that names nothing.
+// reports its declared class. A missing or null argument is false, php's
+// answer for the call that names nothing.
 func TestGetClass(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -25,10 +25,10 @@ var_dump(get_class($s), get_class(null));`)
 }
 
 // TestGetClassOfAHostValue pins a divergence the field doc states: a value a Go
-// constructor returns reports its Go type name, never the constructor's
-// registered name. The two agree whenever the registered name matches the Go
-// type; where a host registers "Storage" for a Go type called storage they
-// differ, and a script comparing get_class($x) === "Storage" reads false.
+// constructor returns reports its Go type name. The constructor's registered
+// name does not appear. The two agree when the registered name matches the Go
+// type. Where a host registers "Storage" for a Go type called storage they
+// differ. A script comparing get_class($x) === "Storage" reads false.
 func TestGetClassOfAHostValue(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -49,8 +49,8 @@ func TestGetClassOfAHostValue(t *testing.T) {
 }
 
 // TestNoParentClass is the executable form of a design decision: phpscript has
-// no inheritance and no class has a parent to report and no object is an
-// instance of a subclass. A guard written as `is_subclass_of($o, "Exception")
+// no inheritance. No class has a parent to report. No object is an instance of
+// a subclass. A guard written as `is_subclass_of($o, "Exception")
 // || get_class($o) === "Exception"` falls through to the name comparison, which
 // is the check that answers here. If this fails, read docs/design.md.
 func TestNoParentClass(t *testing.T) {
@@ -66,10 +66,10 @@ var_dump(get_parent_class($s), is_subclass_of($s, "Site"), get_class($s) === "Si
 	}
 }
 
-// TestGetObjectVars covers the properties an object reads back, in the order it
-// reads them. A property named for its digits becomes an integer key as an
-// array entry and `(object) array("a", "b")` reads back as a list and a
-// foreach over the result counts from zero.
+// TestGetObjectVars covers the properties an object reads back, in read order.
+// A property named for its digits becomes an integer key as an
+// array entry. `(object) array("a", "b")` reads back as a list. A foreach over
+// the result counts from zero.
 func TestGetObjectVars(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -115,11 +115,11 @@ var_dump(method_exists("Site", "hello"), method_exists("Nope", "hello"));`)
 	}
 }
 
-// TestPropertyExists covers a property set on the instance and one the class
-// declared, both of which answer true.
+// TestPropertyExists covers a property on the instance, plus a property the
+// class declared. Both answer true.
 //
-// A class name answers false, which php does not: there property_exists("Site",
-// "greeting") is true. The declaration is reachable only through an instance
+// A class name answers false; php answers true for property_exists("Site",
+// "greeting"). The declaration is reachable only through an instance
 // here and the call that names a class has nothing to read.
 func TestPropertyExists(t *testing.T) {
 	t.Parallel()
@@ -137,7 +137,7 @@ var_dump(property_exists("Site", "greeting"));`)
 }
 
 // TestSPLObjectIdentity covers the identity php exposes, which is opaque and
-// stable for as long as the object is alive. That is the only guarantee php
+// stable while the object is alive. That is the only guarantee php
 // makes either. Two objects differ, one object reads the same twice; the
 // hash is the id in the 32 hex digits php writes it in.
 func TestSPLObjectIdentity(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 )
 
 // TestWriteJSONReport covers the machine-readable report a run writes.
-// WriteJSONReport counts the total off the results and a reader has the count
-// without walking the list, and every TestResult field keeps its json tag name.
+// WriteJSONReport counts the total from the results. A reader holds the count
+// without walking the list. Every TestResult field keeps its json tag name.
 func TestWriteJSONReport(t *testing.T) {
 	var out strings.Builder
 	results := []*TestResult{
@@ -55,7 +55,7 @@ func TestWriteHTMLReport(t *testing.T) {
 			t.Errorf("the report does not carry %q", want)
 		}
 	}
-	// html/template escapes what a failure message holds and a fixture whose
+	// html/template escapes the content of a failure message. A fixture whose
 	// expected output is markup cannot write tags into the report.
 	if strings.Contains(html, "<script>alpha") {
 		t.Error("the report carries an unescaped tag out of a failure message")

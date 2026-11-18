@@ -7,13 +7,13 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestRegisterLog covers where error_log() puts a message, and what it answers.
+// TestRegisterLog covers the destination error_log() writes to and its answer.
 //
-// php's error_log writes to the SAPI's log and the SAPI decides what that is.
-// Here a host that installed a handler with OnError receives it there and the
-// message reaches the application and no process error stream; the stream is
-// the fallback for a run with nothing listening, because an error log that
-// discards is worse than none. The call answers true either way.
+// php's error_log writes to the SAPI's log; the SAPI decides the destination.
+// For a host that installed a handler with OnError, the message reaches the
+// application, and the process error stream stays empty. The stream is the fallback for a
+// run with nothing listening: an error log that discards is worse than none.
+// This call answers true either way.
 func TestRegisterLog(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

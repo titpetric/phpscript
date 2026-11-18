@@ -7,9 +7,9 @@ import (
 )
 
 // TestGoArith covers arithmetic at a typed value's width. Two values of one
-// width answer that width and wrap in it, a typed value against one of php's
-// numbers answers the typed width, and two different widths answer a
-// TypeError, as go refuses the pair outright.
+// width answer that width and wrap. A typed value with a php number answers
+// the typed width. Two different widths answer a TypeError, as go refuses the
+// pair outright.
 func TestGoArith(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -43,10 +43,10 @@ func TestGoArith(t *testing.T) {
 	}
 }
 
-// TestGoArithOperands covers the two operand pairs no width computes over.
-// Two of php's own numbers keep php's arithmetic and its overflow to float,
-// and two different widths answer the class php words a refusal between
-// operand types under.
+// TestGoArithOperands covers the two operand pairs outside any width.
+// A pair of php numbers keeps php's arithmetic and its overflow to float. Two
+// different widths answer the class php names for a refusal between operand
+// types.
 func TestGoArithOperands(t *testing.T) {
 	t.Parallel()
 	if _, typed, err := goArith("+", int64(1), 0.5); typed || err != nil {
@@ -95,8 +95,8 @@ func TestGoArithOperands(t *testing.T) {
 }
 
 // TestGoBitwise covers & | ^ << >> at a width. The result narrows to the
-// width and a shift past it leaves zero, as go's does, and a right shift
-// reads the width's own sign. A negative count has no answer and raises the
+// width. A shift past the width leaves zero, as go's does. A right shift reads
+// the width's own sign. A negative count has no answer and raises the
 // class php raises for it.
 func TestGoBitwise(t *testing.T) {
 	t.Parallel()
@@ -137,9 +137,9 @@ func TestGoBitwise(t *testing.T) {
 	}
 }
 
-// TestGoUnary covers `-` and `~` at a width. Both wrap in it: negating the
-// smallest int8 answers itself, and inverting the bits of an unsigned zero
-// answers the width's largest value where php's int answers -1.
+// TestGoUnary covers `-` and `~` at a width. Both wrap: negating the smallest
+// int8 answers itself. Inverting the bits of an unsigned zero answers the
+// width's largest value where php's int answers -1.
 func TestGoUnary(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

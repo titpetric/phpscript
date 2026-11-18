@@ -11,11 +11,11 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerStat installs the path questions, resolving every one through the read resolver.
+// registerStat installs the path questions, resolving each through the read resolver.
 func registerStat(rt *runner.Runtime, r root) {
 	// is_file reports whether $filename names an ordinary file, in the source
-	// filesystem or on the host; a directory is not one and a missing path is
-	// not one.
+	// filesystem or on the host. A directory does not qualify. Nor does a
+	// missing path.
 	rt.RegisterFunc("is_file", func(filename string) bool {
 		info, ok := r.stat(filename)
 		return ok && info.Mode().IsRegular()
@@ -38,8 +38,8 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// is_writable reports whether a script could write $filename, which reads
 	// writable_paths and not the file mode; a path the allowlist refuses is
-	// not writable whatever the host's permissions say, and a path it allows
-	// is writable even when the file does not exist yet.
+	// not writable whatever the host's permissions say. A path it allows is
+	// writable even when the file does not exist yet.
 	rt.RegisterFunc("is_writable", func(filename string) bool {
 		_, err := r.resolveWrite("is_writable", filename)
 		return err == nil
@@ -63,10 +63,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return info.Size()
 	})
 
-	// filetype returns "file", "dir" or "link" for what $filename names, or
-	// false when nothing is there; it answers "file" for the exotic types php
-	// can name - fifo, block, char, socket - because nothing inside a source
-	// filesystem can be one.
+	// filetype returns "file", "dir" or "link" for the type $filename names,
+	// or false when nothing is there; it answers "file" for the exotic types
+	// php can name - fifo, block, char, socket - because nothing inside a
+	// source filesystem can have that type.
 	rt.RegisterFunc("filetype", func(filename string) any {
 		info, ok := r.stat(filename)
 		if !ok {
@@ -81,10 +81,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return "file"
 	})
 
-	// realpath returns $path written from the root, with . and .. resolved,
-	// or false when nothing is there; php answers a host path, and a runtime
-	// that may serve its scripts out of an embedded tree has no host path to
-	// answer with and this answers the spelling getcwd() and __DIR__ use.
+	// realpath returns $path written from the root, after resolving . and ..,
+	// or false when nothing is there. php answers a host path. A runtime that
+	// may serve its scripts out of an embedded tree has no host path to answer
+	// with. This answers the spelling getcwd() and __DIR__ use.
 	rt.RegisterFunc("realpath", func(path string) any {
 		if _, ok := r.stat(path); !ok {
 			return false
@@ -96,9 +96,8 @@ func registerStat(rt *runner.Runtime, r root) {
 		return "/" + strings.TrimPrefix(name, "/")
 	})
 
-	// scandir returns the names in the directory $directory, sorted, with "."
-	// and ".." first as php lists them; false when $directory is not a
-	// directory.
+	// scandir returns the names in the directory $directory, sorted, listing
+	// "." and ".." first as php does; false when $directory is not a directory.
 	rt.RegisterFunc("scandir", func(directory string) any {
 		names, ok := r.readDir(directory)
 		if !ok {
@@ -115,9 +114,9 @@ func registerStat(rt *runner.Runtime, r root) {
 	})
 
 	// pathinfo returns the parts of $path as an array of dirname, basename,
-	// extension and filename; a path with no dot returns no extension key,
-	// which php leaves out and never empties. It never touches
-	// the filesystem and it answers about a path that does not exist.
+	// extension and filename; a path that has no extension dot returns no
+	// extension key, which php omits. The call touches no filesystem and answers about a path
+	// that does not exist.
 	rt.RegisterFunc("pathinfo", func(path string) *model.Array {
 		out := model.NewArraySize(4)
 		out.Set("dirname", stdpath.Dir(strings.TrimRight(path, "/")))

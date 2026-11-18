@@ -75,7 +75,7 @@ func phpArsort(array any) (bool, error) {
 	return sortEntries("arsort", array, func(x, y arrayEntry) bool { return sortLess(y.val, x.val) })
 }
 
-// callbackLess adapts a script comparator to a less function, treating an error as not less.
+// callbackLess adapts a script comparator to a less function, an error not less.
 func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	r, err := fn(x, y)
 	if err != nil {
@@ -84,7 +84,7 @@ func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	return phpval.Int(r) < 0
 }
 
-// sortEntries sorts a *model.Array in place by less, preserving keys and refusing a Go slice.
+// sortEntries sorts a *model.Array in place by less, keeping keys.
 func sortEntries(name string, array any, less func(x, y arrayEntry) bool) (bool, error) {
 	a, err := arrayTarget(name, array)
 	if err != nil {
@@ -108,7 +108,7 @@ func phpUsort(cmp func(...any) (any, error), a any) bool {
 	})
 }
 
-// phpSort orders a list with PHP's default comparison, discarding keys and reindexing from zero.
+// phpSort orders a list by PHP's default comparison, discarding keys and reindexing.
 func phpSort(array any) bool {
 	if sortInt64Array(array, false) {
 		return true
@@ -148,7 +148,7 @@ func sortLess(x, y any) bool {
 	return phpval.Compare(x, y) < 0
 }
 
-// sortValues reorders a list in place, rebuilding a *model.Array as a 0-indexed list.
+// sortValues reorders a list in place into a 0-indexed *model.Array.
 func sortValues(a any, less func(x, y any) bool) bool {
 	switch target := a.(type) {
 	case nil:

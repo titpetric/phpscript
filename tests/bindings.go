@@ -1,10 +1,10 @@
 package tests
 
 // This file is the reference set of *binding return shapes*. Every function
-// here answers the same question, "how does a forwarded Go function return a
-// collection back to the PHP VM?", with a different Go type and that
-// bindings_test.go can assert both semantics (does the VM understand it?) and
-// cost (how many allocations did it take?).
+// here answers one question: how does a forwarded Go function return a
+// collection to the PHP VM? Each uses a different Go type. bindings_test.go can
+// assert semantics (does the VM understand the value?) and cost (how many
+// allocations did it take?).
 //
 // The runtime never requires *model.Array on the way out. runner.invokeAny
 // calls a registered function through reflection, and callResult boxes the
@@ -59,7 +59,7 @@ func (r BindingRecord) Label() string {
 var bindingWords = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
 // RegisterBindings installs the example bindings. stdlib.Register takes it as
-// an extra installer, the same way a host contributes its own symbols.
+// an extra installer, the same way a host adds its symbols.
 func RegisterBindings(rt *runner.Runtime) {
 	for name, fn := range BindingFuncs() {
 		rt.RegisterFunc(name, fn)
@@ -71,7 +71,7 @@ func BindingFunc(name string) any {
 	return BindingFuncs()[name]
 }
 
-// BindingFuncs returns the example bindings keyed by the PHP name each one
+// BindingFuncs returns the example bindings keyed by the PHP name each
 // registers under.
 func BindingFuncs() map[string]any {
 	funcs := map[string]any{}
@@ -117,17 +117,16 @@ func registerBindings(rt registrar) {
 		}
 		return out
 	})
-	// bind_list_shared returns the backing slice with no copy at all: zero
-	// allocations for a read-only result. PHP arrays are value types and this
-	// is only correct when the script does not mutate the result, which also
-	// holds for every *model.Array a binding returns today, each one by
-	// pointer.
+	// bind_list_shared returns the backing slice without copying: zero
+	// allocations for a read-only result. PHP arrays are value types. This is
+	// only correct when the script does not mutate the result. That also
+	// holds for every *model.Array a binding returns today, all by pointer.
 	rt.RegisterFunc("bind_list_shared", func() []string { return bindingWords })
 
 	// --- the `any` question ------------------------------------------------
 	//
 	// Declaring the return type as `any` in place of a concrete type costs no
-	// allocation: callResult calls reflect.Value.Interface() either way, and a
+	// allocation: callResult calls reflect.Value.Interface() either way. A
 	// slice header already lives behind an interface once returned. These two
 	// exist so the benchmark can prove that, and assert nothing.
 
@@ -170,9 +169,9 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_map", func() map[string]any {
 		return map[string]any{"id": int64(1), "name": "alpha"}
 	})
-	// A list a binding keyed by position and never packed into a slice. The
-	// shape keeps PHP's numbering through an unset, because a map holds the
-	// hole a slice cannot.
+	// A list a binding keyed by position, never packed into a slice. The
+	// shape keeps PHP's numbering through an unset; a map holds the hole a
+	// slice cannot.
 	rt.RegisterFunc("bind_list_keyed", func() map[int]string {
 		keyed := make(map[int]string, len(bindingWords))
 		for i, w := range bindingWords {
@@ -204,7 +203,8 @@ func registerBindings(rt registrar) {
 
 	// --- object shape ------------------------------------------------------
 	//
-	// For comparison: what a PHP-side object costs (class pointer + props map).
+	// For comparison: the cost of a PHP-side object (class pointer + props
+	// map).
 
 	bindingClass := &model.Class{Name: "BindingRecord", Methods: map[string]*model.FuncDecl{}}
 	rt.RegisterFunc("bind_object", func() *model.Object {
@@ -226,9 +226,9 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_small_int", func() int64 { return 7 })
 	rt.RegisterFunc("bind_string", func() string { return "alpha" })
 	rt.RegisterFunc("bind_bool", func() bool { return true })
-	// A []byte is a string, and no slice shape reading as a list of
-	// integers: PHP's strings are byte strings, and Go's own text APIs declare
-	// []byte half the time. regexp.Regexp.Find is the case that brought it in.
+	// A []byte is a string. Treating it as a list of integers is wrong: PHP's
+	// strings are byte strings, and Go's own text APIs declare []byte half the
+	// time. regexp.Regexp.Find is the case that brought it in.
 	rt.RegisterFunc("bind_bytes", func() []byte { return []byte("alpha") })
 	rt.RegisterFunc("bind_bytes_empty", func() []byte { return nil })
 	rt.RegisterFunc("bind_bytes_list", func() [][]byte {
@@ -254,25 +254,25 @@ func registerBindings(rt registrar) {
 
 	// --- callback shapes ---------------------------------------------------
 	//
-	// One per shape a binding declares its callback in. The uniform one is what
-	// Runtime.Callable answers; the rest are Go's own terms, the shape a
-	// library's method set already looks like, and reflect.MakeFunc fills them
-	// over the declared signature.
+	// One binding for each callback shape. The uniform shape matches
+	// Runtime.Callable's; the rest use Go's terms, already matched by a
+	// library's method set. reflect.MakeFunc fills them over the declared
+	// signature.
 
-	// bind_callback_uniform declares the shape Runtime.Callable answers, which
-	// is the one a binding gets handed without a reflect.MakeFunc wrapper, and
-	// the only one with a slot for an error the callback reports.
+	// bind_callback_uniform declares the shape Runtime.Callable answers. A
+	// binding gets it without a reflect.MakeFunc wrapper. It alone has a slot
+	// for an error the callback reports.
 	rt.RegisterFunc("bind_callback_uniform", func(s string, fn func(...any) (any, error)) (any, error) {
 		return fn(s)
 	})
 	// bind_callback is the mapper shape, as regexp.Regexp's
-	// ReplaceAllStringFunc declares it: the one a binding declares most often
-	// and the one coerceArgOn could not fill at all.
+	// ReplaceAllStringFunc declares it. A binding declares this shape most
+	// often; coerceArgOn could not fill it at all.
 	rt.RegisterFunc("bind_callback", func(s string, fn func(string) string) string {
 		return fn(s)
 	})
-	// bind_callback_bool is the predicate shape, where the declared result is
-	// one a PHP value does not always fit into.
+	// bind_callback_bool is the predicate shape, where a PHP value does not
+	// always fit the declared result.
 	rt.RegisterFunc("bind_callback_bool", func(s string, fn func(string) bool) string {
 		if fn(s) {
 			return "kept"
@@ -295,8 +295,8 @@ func registerBindings(rt registrar) {
 	// --- stdlib before/after ----------------------------------------------
 	//
 	// bind_explode_legacy is the *model.Array implementation stdlib's explode()
-	// had before, kept so the benchmarks measure the change and not
-	// asserting it. bind_explode_native is what it does now.
+	// had before. The benchmarks measure the change without asserting it.
+	// bind_explode_native is the current implementation.
 
 	rt.RegisterFunc("bind_explode_legacy", func(delim, s string) *model.Array {
 		out := model.NewArray()
@@ -323,7 +323,7 @@ func registerBindings(rt registrar) {
 	})
 }
 
-// errEmptySeparator is what bind_split returns to exercise the error path.
+// errEmptySeparator is the error bind_split returns to exercise the error path.
 var errEmptySeparator = bindingError("bind_split: empty separator")
 
 type bindingError string

@@ -16,25 +16,25 @@
 
 A Go host installs these arrays when it creates and registers a request context. Their values are ordinary phpscript arrays, while their reserved names remain visible in function scopes like PHP superglobals.
 
-A context built from an HTTP request fills what that request sent. A context built without one, as the `phpscript` CLI and a startup job build it, installs the same arrays empty. A script reads them without failing on an undefined name.
+A context built from an HTTP request fills whatever that request sent. The `phpscript` CLI builds a context without a request. A startup job does the same. The same arrays install empty there. A script reads them without failing on an undefined name.
 
 ## `$_GET`
 
-Contains URL query parameters. A key sent more than once keeps the last value, as it does in PHP.
+Contains URL query parameters. A key sent more than once keeps the last value, as in PHP.
 
 ```php
 $page = $_GET["page"];
 ```
 
-The decoder turns bracket syntax in a field name into nested arrays and the query `a[b]=1&ids[]=7&ids[]=9` arrives as `$_GET["a"]["b"]` and a two-element `$_GET["ids"]`, not as the literal keys `a[b]` and `ids[]`. `parse_str()` is the same decoder applied to a string, and [Arrays](../types/README.md#keys) covers which field names become integer keys.
+The decoder turns bracket syntax in a field name into nested arrays and the query `a[b]=1&ids[]=7&ids[]=9` arrives as `$_GET["a"]["b"]`, plus a two-element `$_GET["ids"]`, not as the literal keys `a[b]` and `ids[]`. `parse_str()` is the same decoder applied to a string, and [Arrays](../types/README.md#keys) covers which field names become integer keys.
 
-The order is the request's own, and two limits bound what a hostile query can build: `max_input_vars` (1000) and `max_input_nesting_level` (64). The decoder drops the whole field when its name nests past the limit. Both are [configurable](../../configuration.md).
+The order is the request's. Two limits bound a hostile query: `max_input_vars` (1000) and `max_input_nesting_level` (64). The decoder drops the whole field when its name nests past the limit. Both are [configurable](../../configuration.md).
 
 ## `$_POST`
 
 Contains parsed form-body values, last one wins. The decoder reads both body encodings a browser form produces: `application/x-www-form-urlencoded` and `multipart/form-data`. The value parts of a multipart body land here; its file parts land in `$_FILES`.
 
-The decoder reads field names the same way it reads them in `$_GET` and a repeating form row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES` is the exception: its entries are still keyed by the literal field name and a file input named `docs[]` is one entry `docs[]`, with no nesting.
+The decoder reads field names as `$_GET` does. A repeating form row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES` is the exception: its entries stay keyed by the literal field name. A file input named `docs[]` arrives as a single entry `docs[]`, without nesting.
 
 ## `$_FILES`
 
@@ -56,21 +56,21 @@ if ($file["error"] === 0) {
 | `error`     | `UPLOAD_ERR_OK` (0), or 1, 4, 6, 7 for a part nothing stored. |
 | `size`      | Bytes written to `tmp_name`.                                  |
 
-A field named `files[]` collects every file sent under it. Its entry holds one array per key, not one value: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent under it, the way a repeated form value assigns over the one before it.
+A field named `files[]` collects every file sent under it. The entry holds one array per key, with each array listing the files in order: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent for that field, as a repeated form value assigns over the earlier one.
 
-The temporary copy lives for the duration of one request; a host handler removes it after writing the response. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce, as does `is_uploaded_file()`. Both arrive with the rest of the filesystem shims and the destination resolves against the same root.
+The temporary copy lives for the duration of one request; a host handler removes it after writing the response. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce. `is_uploaded_file()` follows the same rule. Both arrive with the rest of the filesystem shims and the destination resolves against the same root.
 
 A stored upload takes the `upload_file_mode` of the runner, `0644` by default, because the temporary copy it came from is readable by nobody but this process. See [Configuration](../../configuration.md#upload-file-mode).
 
 ### Size limits
 
-`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them; see [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored and its entry holds `UPLOAD_ERR_INI_SIZE` and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all and both `$_POST` and `$_FILES` are empty.
+`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them; see [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored, its entry holds `UPLOAD_ERR_INI_SIZE`, and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all; `$_POST` and `$_FILES` are both empty.
 
-An entry for a part nothing stored, for any of the error codes, describes only what the client sent: `name` and `full_path` hold it, `type` and `tmp_name` are empty and `size` is `0`.
+An entry for a part nothing stored, for any error code, describes only the client's input: `name` and `full_path` hold it, `type` and `tmp_name` are empty and `size` is `0`.
 
 Neither limit is catchable: they happen before the script runs. The runner reports why to the Go host through `Runtime.RecordError`; see [Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
 
-PHP's per-form `MAX_FILE_SIZE` field is unavailable. The `UPLOAD_ERR_FORM_SIZE` and `UPLOAD_ERR_PARTIAL` constants exist, and no upload produces either one.
+PHP's per-form `MAX_FILE_SIZE` field is unavailable. The `UPLOAD_ERR_FORM_SIZE` and `UPLOAD_ERR_PARTIAL` constants exist, though no upload produces either one.
 
 ## `$_COOKIE`
 
@@ -100,33 +100,33 @@ Contains the part of PHP's server array that the request alone answers for:
 | `SERVER_NAME`, `SERVER_PORT` | The name the request arrived under, and its port when it had one. |
 | `SERVER_SOFTWARE`            | `phpscript`.                                                      |
 
-`SERVER_NAME` is the requested host, where PHP reads it from the listening socket, because this server routes by `Host`: the name a request arrived under is the site it reached. `X-Forwarded-Proto` is not consulted for `REQUEST_SCHEME`, since a client can send it; a host behind a proxy it trusts sets the two scheme keys itself.
+`SERVER_NAME` is the requested host, where PHP reads it from the listening socket, because this server routes by `Host`: the name a request arrived under is the site it reached. `X-Forwarded-Proto` is not consulted for `REQUEST_SCHEME`: any client can send it. A host behind a proxy it trusts sets the two scheme keys itself.
 
 `GATEWAY_INTERFACE` and `PATH_INFO` are absent.
 
 ## `$_ENV`
 
-Installed, and empty unless a Go host puts something in the request context it registers. `$_ENV` is not the process environment: `getenv()` and `putenv()` read and write a separate map seeded from the process, and neither one is visible in `$_ENV`.
+Installed, and empty unless a Go host puts something in the request context it registers. `$_ENV` is not the process environment: `getenv()` and `putenv()` read and write a separate map seeded from the process. None of those names is visible in `$_ENV`.
 
 ## `$argc` and `$argv`
 
-Filled by `phpscript run` the way the php CLI fills them: `$argv[0]` is the script as named on the command line, and everything after it arrives verbatim, flags included and `phpscript app.php -v` and a shebang script both read `-v` as their own. A scheduled job gets the file and whatever its `// @schedule` annotation put after `--`. Everywhere else they are `0` and an empty array.
+Filled by `phpscript run` the way the php CLI fills them: `$argv[0]` is the script as named on the command line, and everything after it arrives verbatim, flags included. A shebang script and `phpscript app.php -v` both read `-v` as their own. A scheduled job gets the file and whatever its `// @schedule` annotation put after `--`. Everywhere else they are `0` and an empty array.
 
 ## `$_REQUEST`
 
-Contains the query, form and cookie fields merged the way PHP's default `request_order` merges them (`$_GET`, then `$_POST`, then `$_COOKIE`, a later source overwriting an earlier one), and then the values captured by the matched route pattern, such as `{id}` or `{rest...}`, written over all three.
+Contains the query, form and cookie fields merged the way PHP's default `request_order` merges them (`$_GET`, then `$_POST`, then `$_COOKIE`, with each later source overwriting the earlier), and then the values captured by the matched route pattern, such as `{id}` or `{rest...}`, written over all three.
 
 ```php
 // @route GET /users/{id}
 $id = $_REQUEST["id"];
 ```
 
-The path values are the one divergence from PHP, whose `$_REQUEST` lists no route parameters: a path parameter is request input here. It arrives under PHP's own name. A request field spelled like a path parameter is overwritten by it and `/users/42?id=abc` answers `"42"`.
+The path values are the sole divergence from PHP, whose `$_REQUEST` lists no route parameters: a path parameter is request input here. It arrives under PHP's own name. A request field spelled like a path parameter is overwritten by it. `/users/42?id=abc` answers `"42"`.
 
-`$_REQUEST` is its own array, as in PHP: writing to it changes none of the arrays merged into it. Writes to those arrays do not appear in it.
+`$_REQUEST` is a separate array, as in PHP: writing to it changes none of the arrays merged into it. Writes to those arrays do not appear in it.
 
 The path values arrive in `$_REQUEST`. There is no `$_PATH`.
 
 ## Request headers
 
-Request headers reach a script two ways: as `HTTP_*` keys in `$_SERVER`, and through `getallheaders()`, `get_all_headers()`, or `apache_request_headers()`, which return them under their canonical names.
+Request headers reach a script two ways: as `HTTP_*` keys in `$_SERVER`, or through `getallheaders()`, `get_all_headers()`, and `apache_request_headers()`, which return them with canonical names.

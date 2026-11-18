@@ -34,7 +34,7 @@ func runCtx(t *testing.T, ctx runner.Context, src string) string {
 	return runSAPI(t, ctx, "", src)
 }
 
-// runSAPI is runCtx under a named SAPI, for the cases that answer differently
+// runSAPI is runCtx with a named SAPI, for the cases that answer differently
 // on the command line than they do for a request.
 func runSAPI(t *testing.T, ctx runner.Context, sapi, src string) string {
 	t.Helper()
@@ -84,8 +84,8 @@ func TestFromRequestPost(t *testing.T) {
 }
 
 // TestFromRequestRepeatedValues pins the flattening rule for a key sent more
-// than once. PHP's parser assigns each repetition over the one before it and
-// the last value is the one a script sees.
+// than once. PHP's parser assigns each repetition over the previous value. A
+// script sees the last assigned value.
 func TestFromRequestRepeatedValues(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit?tag=a&tag=b", strings.NewReader("name=bob&name=alice"))
@@ -97,7 +97,7 @@ func TestFromRequestRepeatedValues(t *testing.T) {
 	}
 }
 
-// multipartFile is one file part of a request body built by multipartRequest.
+// multipartFile names one file part of a request body built by multipartRequest.
 type multipartFile struct {
 	field    string
 	filename string
@@ -167,7 +167,7 @@ echo read_job();
 
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
 // asserts the key is absent and PHP says "not this kind of request":
-// no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
+// no HTTPS on a plain request, no CONTENT_LENGTH on a chunked request.
 func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()
 	for key, value := range want {
@@ -187,8 +187,8 @@ func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 }
 
 // TestServerVarsPlainGet covers the keys a bodyless HTTP request produces. The
-// expected shape is what php 8.5's built-in server writes for the same request,
-// less the keys that need a document root and a script file.
+// expected shape matches what php 8.5's built-in server writes for the same
+// request, minus the keys that need a document root or a script file.
 func TestServerVarsPlainGet(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/index.php?a=1&b=two", nil)
@@ -204,8 +204,8 @@ func TestServerVarsPlainGet(t *testing.T) {
 		"REMOTE_ADDR":     "127.0.0.1",
 		"REMOTE_PORT":     "56138",
 		"REQUEST_SCHEME":  "http",
-		// A request with no body and no headers describing one has neither
-		// key, and a plain request has no HTTPS at all.
+		// A request without body or headers has neither key. A plain request
+		// has no HTTPS at all.
 		"HTTPS":          "",
 		"CONTENT_TYPE":   "",
 		"CONTENT_LENGTH": "",
@@ -213,7 +213,7 @@ func TestServerVarsPlainGet(t *testing.T) {
 }
 
 // TestServerVarsRemoteAddr covers the split of Go's "address:port" into the two
-// keys PHP has for it. An IPv6 peer arrives bracketed and lands the way PHP
+// keys PHP expects. An IPv6 peer arrives bracketed and lands the way PHP
 // writes it, without brackets.
 func TestServerVarsRemoteAddr(t *testing.T) {
 	t.Parallel()
@@ -224,8 +224,8 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 	}{
 		{remote: "127.0.0.1:56138", addr: "127.0.0.1", port: "56138"},
 		{remote: "[::1]:37154", addr: "::1", port: "37154"},
-		// A Go host may put anything in the field; one without a port lands
-		// whole, and the split guesses at nothing.
+		// A Go host may put anything in the field; a value without a port
+		// lands whole, and the split guesses at nothing.
 		{remote: "unix-socket", addr: "unix-socket", port: ""},
 		{remote: "", addr: "", port: ""},
 	}
@@ -241,8 +241,9 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 }
 
 // TestServerVarsContentHeaders covers the two keys that describe a body. PHP
-// mirrors the headers and not the body and a GET that sent a content type
-// has CONTENT_TYPE, and a body of zero bytes that announced its length has
+// mirrors the headers and leaves the body alone. A GET that sent a content
+// type has
+// CONTENT_TYPE. A body of zero bytes that announced its length has
 // CONTENT_LENGTH "0".
 func TestServerVarsContentHeaders(t *testing.T) {
 	t.Parallel()
@@ -317,8 +318,8 @@ func TestServerVarsTLS(t *testing.T) {
 }
 
 // TestServerVarsRequestTime covers the request start time. The seconds key is
-// the whole second of the float one, and PHP types the first as an integer and
-// the second as a float where every other key holds a string.
+// the whole second of the float key. PHP types the first as an integer and the
+// second as a float, where any other key holds a string.
 func TestServerVarsRequestTime(t *testing.T) {
 	t.Parallel()
 	before := time.Now()
@@ -393,8 +394,8 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 }
 
 // TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
-// "HTTP/1.0 404 Not Found" holds a status alone, with no name and no value,
-// and without this branch it falls out for want of a name:value shape.
+// "HTTP/1.0 404 Not Found" holds a status alone, without a name or value.
+// Without this branch it falls out for want of a name:value shape.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -427,7 +428,7 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 
 // TestHTTPResponseCode pins PHP's two answers. A web request starts out
 // answering 200 and there is always a status to report and always a previous
-// one to return. On the command line a script starts with none: false means
+// one to return. On the command line a script starts without a status: false means
 // no status to report, and true means no previous status to return for the
 // first one set.
 //
@@ -468,7 +469,7 @@ echo json_encode([
 }
 
 // TestHTTPResponseCodeIgnoresANonStatus pins that a zero, and anything that is
-// not a number at all, is not a status: PHP reads the call as the reporting one
+// not a number at all, is not a status: PHP reads the call as a reporting call
 // and leaves the response alone.
 func TestHTTPResponseCodeIgnoresANonStatus(t *testing.T) {
 	t.Parallel()
@@ -492,7 +493,7 @@ echo json_encode([
 
 // TestStatusArgumentIsCoerced pins PHP's coercion of the int parameter both
 // functions take. It matters for an error page: $_SERVER holds every value as
-// a string and a page handing REDIRECT_STATUS back is handing over "404".
+// a string. A page returning REDIRECT_STATUS returns "404".
 func TestStatusArgumentIsCoerced(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -579,7 +580,7 @@ func TestFromRequestBracketNames(t *testing.T) {
 	}
 }
 
-// A cookie name takes bracket syntax too, and Go leaves it percent-encoded.
+// A cookie name takes bracket syntax too. Go leaves it percent-encoded.
 func TestFromRequestCookieBracketNames(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
@@ -605,7 +606,7 @@ func TestFromRequestMultipartBracketNames(t *testing.T) {
 	}
 }
 
-// The decode drops a field nested past the limit whole; the rest still arrive.
+// The decode drops a field nested past the limit; the rest still arrive.
 func TestFromRequestInputLimits(t *testing.T) {
 	t.Parallel()
 	deep := "a" + strings.Repeat("[x]", 65) + "=1&b=kept"
@@ -618,9 +619,9 @@ func TestFromRequestInputLimits(t *testing.T) {
 }
 
 // TestWithRoutePattern covers which pattern the path values come from: the
-// one the route's author declared, and not the one the router matched. chi
-// registers /c/{tail...} as /c/* and reports that back and a value exported
-// under a name would have no name at all with r.Pattern as the only source.
+// route author's declared pattern, while the router matches another. chi
+// registers /c/{tail...} as /c/* and reports that back. r.Pattern as the only
+// source leaves the value no name to export under.
 func TestWithRoutePattern(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/c/deep/path", nil)
@@ -641,8 +642,8 @@ func TestWithRoutePattern(t *testing.T) {
 		t.Errorf("Path = %v with no declared pattern, want nothing", got)
 	}
 
-	// A declared pattern wins over a matched one that names the same parameter
-	// differently and one route reads the same under either router.
+	// A declared pattern beats a matched pattern that names the same
+	// parameter differently. A route reads the same under either router.
 	mux := httptest.NewRequest("GET", "/users/42", nil)
 	mux.Pattern = "GET /users/{id}"
 	mux.SetPathValue("id", "42")
@@ -652,9 +653,10 @@ func TestWithRoutePattern(t *testing.T) {
 	}
 }
 
-// TestRequestContext covers how a request-aware Go binding reaches the request:
-// Register puts the Context on the runtime's context. The binding reads it
-// back off the context it holds. A context with no request answers false: a
+// TestRequestContext covers the route a request-aware Go binding takes to the
+// request: Register puts the Context on the runtime's context. The binding
+// reads it back off the context it holds. A context without a request answers
+// false: a
 // session binding on a CLI run reports the absence and reads no zero Context
 // as an empty request.
 func TestRequestContext(t *testing.T) {
@@ -689,8 +691,8 @@ func TestContext_AddResponseHeader(t *testing.T) {
 	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 2 {
 		t.Fatalf("Set-Cookie = %v, want both values", got)
 	}
-	// header() replaces unless told not to and the two are not one call under
-	// two names: what a script writes through header() drops the earlier value.
+	// header() replaces unless told not to. The two names describe separate
+	// calls. A script writing through header() drops the earlier value.
 	ctx.Header("Set-Cookie: c=3")
 	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 1 || got[0] != "c=3" {
 		t.Errorf("Set-Cookie = %v after header(), want the one value it set", got)
@@ -698,8 +700,8 @@ func TestContext_AddResponseHeader(t *testing.T) {
 }
 
 // TestContext_GetAllHeaders covers the array getallheaders() answers with. A
-// host-built context has no request and answers an empty array, and a
-// script indexing the result on a CLI run reads a missing key and no error.
+// host-built context has no request and answers an empty array. A script
+// indexing the result on a CLI run reads a missing key. The run raises no error.
 func TestContext_GetAllHeaders(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
@@ -735,9 +737,9 @@ func TestContext_GetAllHeaders(t *testing.T) {
 
 // TestContext_HTTPResponseCode covers the Go-facing call behind
 // http_response_code(), which takes the SAPI as an argument. A web SAPI starts
-// out answering 200; the command line starts with no status at all and php
-// answers false until something sets one and true for that first call, having
-// no previous number to report.
+// out answering 200; the command line starts without a status. php answers
+// false until something sets one, then true for that first call; it has no
+// previous number to report.
 func TestContext_HTTPResponseCode(t *testing.T) {
 	t.Parallel()
 	web := runner.NewContext()
@@ -772,7 +774,7 @@ func TestContext_HTTPResponseCode(t *testing.T) {
 		t.Errorf("staged status = %d, want 503", got)
 	}
 
-	// A zero, a null and a false name no status and each is the reporting call
+	// A zero, null or false names no status. Each reports the current status
 	// and stages nothing.
 	for _, arg := range []any{int64(0), nil, false} {
 		if got := cli.HTTPResponseCode("cli", arg); got != int64(503) {

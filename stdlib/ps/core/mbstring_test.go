@@ -5,8 +5,8 @@ import (
 )
 
 // TestMultibyteLength covers the whole reason the family exists: mb_strlen
-// counts characters where strlen counts bytes and "héllo" is five to one and
-// six to the other.
+// counts characters where strlen counts bytes: "héllo" is five by one count,
+// six by the other.
 func TestMultibyteLength(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -19,8 +19,8 @@ var_dump(mb_strlen("héllo"), strlen("héllo"), mb_strlen(""), mb_strlen("abc"))
 }
 
 // TestMultibyteSubstr covers the offsets, which are in characters: a negative
-// start counts back from the end, a missing length runs to it, and a start past
-// the end is the empty string and no error.
+// start counts back from the end, a missing length runs to the end, a start
+// past the end returns the empty string; no error follows.
 func TestMultibyteSubstr(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -34,9 +34,9 @@ var_dump(mb_substr("héllo", 0, 0), mb_substr("héllo", 1, -1), mb_substr("héll
 	}
 }
 
-// TestMultibyteStrpos covers the position, which is a character offset and not
-// a byte one, and the false a needle nothing holds answers with. The offset
-// argument is where the search starts, also counted in characters.
+// TestMultibyteStrpos covers the position, counted in characters, plus the
+// false answer when nothing holds the needle. The offset
+// argument marks where the search starts, also counted in characters.
 func TestMultibyteStrpos(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -65,10 +65,10 @@ var_dump(mb_str_split("abc", 1));`)
 	}
 }
 
-// TestMultibyteStrPad covers the padding, measured in characters, and the three
-// directions. Padding to a width the string already exceeds leaves it alone,
-// and mb_str_pad cuts a pad string longer than the gap to fit and the result is
-// exactly the width the call names.
+// TestMultibyteStrPad covers the padding, measured in characters, and all three
+// directions. Padding to a width the string already exceeds leaves it alone;
+// mb_str_pad cuts a pad string longer than the gap to fit. The result is exactly
+// the width the call names.
 func TestMultibyteStrPad(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -83,7 +83,7 @@ var_dump(mb_strlen(mb_str_pad("hé", 5, "-")), mb_str_pad("héllo", 2, "-"), mb_
 }
 
 // TestMultibyteCaseOfTheFirstCharacter covers mb_ucfirst and mb_lcfirst, which
-// change one character and leave the rest: the character is multibyte and a
+// change one character and leave the rest: the character is multibyte; a
 // byte-wise ucfirst would write a broken sequence where this writes É.
 func TestMultibyteCaseOfTheFirstCharacter(t *testing.T) {
 	t.Parallel()

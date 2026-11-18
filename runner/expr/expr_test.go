@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// concatHelpers is the helper table a string concatenation reads. It fills
-// no other table and a chain that reaches another helper panics on a nil func
-// and the test names it.
+// concatHelpers is the helper table a string concatenation reads. It fills no
+// other table. A chain reaching another helper panics on a nil func. The test
+// names it.
 func concatHelpers() *Helpers {
 	return &Helpers{
 		Concat: func(a, b any) string { return fmt.Sprint(a) + fmt.Sprint(b) },
@@ -44,10 +44,9 @@ func TestProgram(t *testing.T) {
 }
 
 // TestRun covers evaluation against the runner's environment, and the single
-// recover the chain holds. The guard is at the root and not at each helper
-// call and a panic anywhere down the chain surfaces as the error PanicError
-// built, and a host panic stays catchable as one PHP exception on both
-// engines.
+// recover the chain holds. The guard is at the root, not at each helper call.
+// A panic anywhere down the chain surfaces as the error PanicError builds. A
+// host panic stays catchable as a PHP exception in both engines.
 func TestRun(t *testing.T) {
 	t.Parallel()
 	expression := &model.Binary{
@@ -74,8 +73,8 @@ func TestRun(t *testing.T) {
 		t.Errorf("Run() = %#v, want %q", value, "hello ada")
 	}
 
-	// Run reports a helper that panics mid-chain through PanicError, with no
-	// value beside the error.
+	// Run reports a helper that panics mid-chain through PanicError, holding
+	// no value.
 	panicking := &Helpers{
 		Concat:     func(a, b any) string { panic("nil map") },
 		PanicError: func(recovered any) error { return fmt.Errorf("host panic: %v", recovered) },
@@ -94,8 +93,8 @@ func TestRun(t *testing.T) {
 }
 
 // TestProgram_Slots covers the identifier spelling the table keys on.
-// The compiler reuses the transpiler's prefixes, `v_` for a PHP variable and
-// `c_` for a bare name and `$FOO` and `FOO` take separate slots. One
+// The compiler reuses the transpiler's prefixes: `v_` for a PHP variable, `c_`
+// for a bare name. `$FOO` and `FOO` take separate slots. One
 // identifier read twice shares the slot it got the first time and the runner
 // resolves a name once per expression.
 func TestProgram_Slots(t *testing.T) {
@@ -128,7 +127,7 @@ func TestProgram_Slots(t *testing.T) {
 }
 
 // TestProgram_NumSlots covers the size Run reads the Vars slice at: one entry
-// per distinct identifier and every slot read lands inside the slice. It
+// per distinct identifier. Every slot read lands inside the slice. It
 // matches the length of Vars, which is the list the runner fills.
 func TestProgram_NumSlots(t *testing.T) {
 	t.Parallel()

@@ -12,7 +12,7 @@ const (
 // defaultTrimChars is the character list trim strips when a call names none.
 const defaultTrimChars = " \t\n\r\x00\x0B"
 
-// phpTrim builds a trim over PHP's optional byte charlist, which strings.Trim cannot express.
+// phpTrim builds a trim over PHP's byte charlist, beyond strings.Trim.
 func phpTrim(side trimSide, def string) func(string, ...string) string {
 	defMask := charMask(def)
 	return func(s string, chars ...string) string {
@@ -35,7 +35,7 @@ func phpTrim(side trimSide, def string) func(string, ...string) string {
 	}
 }
 
-// charMask reads a trim list into a byte set, expanding each "a..z" range.
+// charMask reads a trim list into a byte set, expanding ranges.
 func charMask(list string) [256]bool {
 	var mask [256]bool
 	for i := 0; i < len(list); {

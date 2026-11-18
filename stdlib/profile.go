@@ -8,23 +8,22 @@ import (
 )
 
 // Profile selects which contributed binding areas Mount installs. Every area
-// that reaches outside the sandbox is its own bit and a host's call site names
-// each insecure area it enables: Mount(rt, stdlib.Secure|stdlib.Exec).
+// that reaches outside the sandbox gets its bit. A host's call site names each
+// insecure area it enables: Mount(rt, stdlib.Secure|stdlib.Exec).
 type Profile = runner.Profile
 
-// Secure is every binding confined to the runtime's sandbox boundaries.
+// Secure holds the bindings confined to the runtime's sandbox boundaries.
 const (
 	Secure = runner.ProfileSecure
 	// Exec is process execution, the stdlib/ps/pexec package: exec, system,
 	// passthru, shell_exec, the shell quoting pair and the pid pair.
 	Exec = runner.ProfileExec
 
-	// Default is the profile for a host running untrusted scripts: the secure
-	// surface alone.
+	// Default is the profile for a host running untrusted scripts, secure alone.
 	Default = Secure
 )
 
-// All is every area. AreaNames are the --stdlib spellings.
+// All holds every area. AreaNames are the --stdlib spellings.
 const All = ^Profile(0)
 
 const AreaNames = "all, secure, exec"
@@ -35,8 +34,8 @@ var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
 var profile = All
 
 // ParseProfile reads a --stdlib value: area names separated by commas, empty
-// meaning All. It refuses an unknown name, because a typo that fell back to
-// All would read as a narrowed runtime and serve an unnarrowed one.
+// meaning All. It refuses an unknown name, since a typo falling back to All
+// would read as a narrowed runtime and serve an unnarrowed one.
 func ParseProfile(value string) (Profile, error) {
 	if strings.TrimSpace(value) == "" {
 		return All, nil

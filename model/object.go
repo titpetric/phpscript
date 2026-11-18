@@ -8,11 +8,11 @@ import (
 // Because the Class holds the methods (resolved by the runtime), an Object
 // passed into expr-lang exposes its Props for `$obj->field` style access.
 //
-// Props is a Go map with no inherent order and order records the sequence
-// the properties arrive in. Every reader passes through Names or Range and
-// than ranging the map, because PHP reads properties back in a defined order
-// and a script can see it: json_encode, print_r, var_dump, get_object_vars, the
-// `(array)` cast and `foreach` all read them back in it.
+// Props is a Go map without inherent order. The order slice records the
+// sequence the properties arrive in. A reader passes through Names or Range;
+// none ranges the map, because PHP reads properties back in a defined order. A
+// script can see that order: json_encode, print_r, var_dump,
+// get_object_vars, the `(array)` cast and `foreach` all read them back in it.
 type Object struct {
 	Class *Class
 	Props map[string]any
@@ -35,8 +35,7 @@ func (o *Object) SetID(id string) {
 }
 
 // SetProp writes a property, recording the name on its first write.
-// Assigning over a property that is already set leaves its position alone,
-// as PHP does.
+// Assigning to a property already set leaves its position alone, as PHP does.
 func (o *Object) SetProp(name string, v any) {
 	if o.Props == nil {
 		o.Props = map[string]any{}
@@ -78,8 +77,8 @@ func (o *Object) Len() int {
 // declared fields first, in declaration order, then the properties the script
 // added, in the order it added them.
 //
-// A property written straight into Props, bypassing SetProp, is still reported;
-// it sorts after the recorded ones and never disappears and a missed call
+// Any property written straight into Props, bypassing SetProp, is still reported.
+// It sorts after the recorded properties. It does not disappear. A missed call
 // site degrades to the order this type had before it recorded one.
 func (o *Object) Names() []string {
 	out := make([]string, 0, len(o.Props))
@@ -105,7 +104,7 @@ func (o *Object) Names() []string {
 	return out
 }
 
-// appendUnrecorded adds the properties Names missed, sorted so a direct Props write lists stably.
+// appendUnrecorded adds the properties Names missed, sorted for a stable Props list.
 func (o *Object) appendUnrecorded(out []string) []string {
 	have := make(map[string]bool, len(out))
 	for _, name := range out {
@@ -121,8 +120,7 @@ func (o *Object) appendUnrecorded(out []string) []string {
 	return append(out, rest...)
 }
 
-// Range calls fn for each property in Names order, stopping early if it
-// returns false.
+// Range calls fn per property in Names order, stopping on false.
 func (o *Object) Range(fn func(name string, v any) bool) {
 	for _, name := range o.Names() {
 		if !fn(name, o.Props[name]) {

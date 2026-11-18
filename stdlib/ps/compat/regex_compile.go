@@ -9,7 +9,7 @@ import (
 	"github.com/dlclark/regexp2"
 )
 
-// pattern is one compiled PCRE, held by whichever engine can express it.
+// pattern is a compiled PCRE, stored in whichever engine can express it.
 type pattern struct {
 	re2   *regexp.Regexp
 	body  string
@@ -57,7 +57,7 @@ func backtrackGroupCount(re *regexp2.Regexp) int {
 	return highest
 }
 
-// findIndex returns the first match at or after start as byte index pairs, nil for none.
+// findIndex returns the first match from start onwards as byte index pairs, or nil when no match exists.
 func (p *pattern) findIndex(subject string, start int) []int {
 	if p.re2 != nil && start == 0 {
 		return p.re2.FindStringSubmatchIndex(subject)
@@ -73,7 +73,7 @@ func (p *pattern) findIndex(subject string, start int) []int {
 	return backtrackIndex(match, backtrackGroupCount(re), newRuneOffsets(subject))
 }
 
-// findAllIndex returns every match at or after start in findIndex's shape.
+// findAllIndex returns every match from start onwards in findIndex's shape.
 func (p *pattern) findAllIndex(subject string, start int) [][]int {
 	if p.re2 != nil && start == 0 {
 		return p.re2.FindAllStringSubmatchIndex(subject, -1)
@@ -218,8 +218,8 @@ func compilePCRE(source string) (*pattern, error) {
 		}
 	}
 	// Compiling the backtracking engine here turns a syntax error into a
-	// compile failure for the caller; a first-use compile would report a
-	// no-match instead.
+	// compile failure for the caller; a first-use compile would report no
+	// match instead.
 	if _, err := p.backtracker(); err != nil {
 		return nil, err
 	}

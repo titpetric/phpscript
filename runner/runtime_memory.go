@@ -34,7 +34,7 @@ func (rt *Runtime) CompiledTree() (programs, expressions int, heap int64) {
 func (rt *Runtime) Precompiled() bool { return rt.opts.Precompile }
 
 // AccountRequest folds host-owned request values into the baseline the memory
-// walk starts from, as an estimate and no audit.
+// walk starts from, as an estimate only.
 func (rt *Runtime) AccountRequest(values ...any) {
 	visited := make(visitedSet)
 	for _, v := range values {
@@ -97,7 +97,7 @@ func (rt *Runtime) lastMemoryUsage() int64 {
 	return rt.memUsage
 }
 
-// checkMemory walks and reports a RuntimeException when usage exceeds MemoryLimit, nil without one.
+// checkMemory reports a RuntimeException past MemoryLimit, nil when it holds zero.
 func (rt *Runtime) checkMemory() error {
 	if rt.opts.MemoryLimit <= 0 {
 		return nil

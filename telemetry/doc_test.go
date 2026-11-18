@@ -8,7 +8,7 @@ import (
 
 // TestInstrumentationUnderADisabledTracer covers the nil safety this package
 // claims. A tracer nothing enables starts no trace and Start, StartSpan
-// and Do all run against a context holding none: the span is nil, every method
+// and Do all run on a context holding none: the span is nil, every method
 // on it does nothing, and Do still calls fn and returns its error unchanged.
 // A binding can then instrument without testing whether telemetry is on.
 func TestInstrumentationUnderADisabledTracer(t *testing.T) {

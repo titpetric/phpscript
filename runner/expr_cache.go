@@ -114,8 +114,7 @@ func (c *ExprCache) GetExpr(e model.Expr) (*expr.Compiled, bool) {
 	return dc, ok
 }
 
-// SetExpr stores a direct-compiled expression by node identity. Evicts one
-// item at the maxEntries limit.
+// SetExpr stores a direct-compiled expression by node identity, evicting at maxEntries.
 func (c *ExprCache) SetExpr(e model.Expr, dc *expr.Compiled) {
 	if c == nil {
 		return

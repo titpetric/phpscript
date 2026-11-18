@@ -11,9 +11,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// writeTree fills a temporary directory and makes it the working directory and
-// a run resolves the suite files the way an invocation from an application root
-// does.
+// writeTree fills a temporary directory and makes the directory the working
+// directory. A run then resolves the suite files the way an invocation from an
+// application root does.
 func writeTree(t *testing.T, files map[string]string) string {
 	t.Helper()
 	tmp := t.TempDir()
@@ -39,8 +39,8 @@ ok
 `
 
 // TestSuiteIncludeIsAPreludeWithoutTheFlag covers the setting the whole feature
-// exists for: a suite root names its prelude in its own file, and the fixtures
-// below it load it with nothing on the command line.
+// exists for: a suite root names its prelude in the suite file. The fixtures
+// below load the prelude with nothing on the command line.
 func TestSuiteIncludeIsAPreludeWithoutTheFlag(t *testing.T) {
 	writeTree(t, map[string]string{
 		"phpscript.yml":   "test:\n  include: bootstrap.php\n",
@@ -80,8 +80,9 @@ func TestSuiteHooksRunOncePerSession(t *testing.T) {
 }
 
 // TestSuiteTeardownRunsAfterAFailure covers the half of the contract a passing
-// run cannot show: a suite releases what it took even where the fixtures
-// failed, and the run still reports the failure and not the hook.
+// run cannot show: a suite releases its reservations even where the fixtures
+// failed. The run reports the fixture failure; the hook's own failure stays
+// separate.
 func TestSuiteTeardownRunsAfterAFailure(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  hooks:\n    teardown: teardown.php\n",
@@ -101,9 +102,9 @@ func TestSuiteTeardownRunsAfterAFailure(t *testing.T) {
 	}
 }
 
-// TestSuiteSetupFailureStopsTheRun covers why a setup failure is fatal: the
-// fixtures below it assert against state nothing laid down, and reporting
-// each of them says the same thing many times and names none of it.
+// TestSuiteSetupFailureStopsTheRun covers the reason a setup failure is fatal:
+// the fixtures below assert against state nothing laid down. Reporting each
+// fixture says the same thing many times and names none of it.
 func TestSuiteSetupFailureStopsTheRun(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  hooks:\n    setup: setup.php\n",
@@ -126,8 +127,8 @@ func TestSuiteSetupFailureStopsTheRun(t *testing.T) {
 }
 
 // TestSuiteEnvIsTheOnlyConnectionsBelowIt covers the replacement rule a virtual
-// host is already held to: a suite that names its connections gets those and
-// never the run's own.
+// host already follows: a suite naming its connections gets those, replacing
+// the run's own.
 func TestSuiteEnvIsTheOnlyConnectionsBelowIt(t *testing.T) {
 	writeTree(t, map[string]string{
 		"suite/phpscript.yml": "env:\n  - \"PLATFORM_DB_AREA=sqlite://:memory:\"\n",
@@ -159,8 +160,8 @@ no configuration found for database: [sqlite_test]
 }
 
 // TestSuiteBelowTheRunRootMayNotSetRunKeys covers the tenant rule applied to a
-// suite: --parallel describes one run of the command and two folders cannot
-// both answer for it.
+// suite: --parallel describes one run of the command. Two folders cannot both
+// answer for it.
 func TestSuiteBelowTheRunRootMayNotSetRunKeys(t *testing.T) {
 	writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  parallel: 4\n",
@@ -176,8 +177,9 @@ func TestSuiteBelowTheRunRootMayNotSetRunKeys(t *testing.T) {
 	}
 }
 
-// TestRunSuiteSetsFlagDefaults covers the same keys where a file may set them:
-// the file the run itself is under supplies them, and the run picks them up.
+// TestRunSuiteSetsFlagDefaults covers the same keys where a file may set such
+// values. The file containing the run supplies the values. The run picks them
+// up.
 func TestRunSuiteSetsFlagDefaults(t *testing.T) {
 	writeTree(t, map[string]string{
 		"phpscript.yml": "test:\n  parallel: 4\n  cache: off\n",

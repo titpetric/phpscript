@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// phpFormatFloat renders f with precision significant digits, a negative precision naming the shortest round-trip form.
+// phpFormatFloat renders f with precision significant digits, negative precision the shortest form.
 func phpFormatFloat(f float64, precision int) string {
 	switch {
 	case math.IsInf(f, 1):

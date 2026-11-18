@@ -5,10 +5,10 @@ import (
 )
 
 // TestRegisterPanicBindings covers the two signatures that pin the panic
-// boundary. invokeAny calls a func(any) any from its type switch and reaches
-// a func(any) (any, error) only through reflect.Value.Call and a binding that
-// panics has to exist for each: one registration of the wrong shape would
-// leave the reflective path unchecked.
+// boundary. invokeAny calls a function from any to any from its type switch; it
+// reaches the two-result form only through reflect.Value.Call. A binding that
+// panics must exist for both signatures: one registration of the wrong shape
+// would leave the reflective path unchecked.
 func TestRegisterPanicBindings(t *testing.T) {
 	funcs := map[string]any{}
 	registerPanicBindings(&collector{funcs: funcs})
@@ -30,8 +30,7 @@ func TestRegisterPanicBindings(t *testing.T) {
 	}
 }
 
-// recovered answers the value fn panicked with, or nil for a call that
-// returned.
+// recovered answers the value fn panicked with, or nil for a return.
 func recovered(fn func()) (value any) {
 	defer func() { value = recover() }()
 	fn()

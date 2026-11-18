@@ -11,8 +11,8 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// The coverage vocabulary is the runner's; these names are what the test
-// command's own code reads and the two spell the same thing.
+// The coverage vocabulary belongs to the runner; these names hold the values
+// the test command's code reads. Both spellings mean the same thing.
 const (
 	DefaultCoverFile = coverage.DefaultCoverFile
 	CoverLine        = coverage.ModeLine
@@ -20,10 +20,10 @@ const (
 	CoverFile        = coverage.ModeFile
 )
 
-// profileBlock is one line of a written profile.
+// profileBlock holds a written profile line.
 type profileBlock = coverage.ProfileBlock
 
-// writeCoverage renders one profile per fixture under --split and the merged profile at opts.CoverFile.
+// writeCoverage renders one profile per fixture under --split, else the merged profile.
 func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	if opts.Split {
 		for _, fx := range fixtures {
@@ -58,7 +58,7 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	return nil
 }
 
-// mergeCoverBlocks folds every fixture's blocks into one profile, adding the counts of a shared statement.
+// mergeCoverBlocks folds every fixture's blocks into one profile, adding shared counts.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
 	for _, fx := range fixtures {
@@ -97,7 +97,7 @@ type profileKey struct {
 	endLine   int
 }
 
-// coverFilePath resolves a collected filename to the fixture path when it exists, the bare path otherwise.
+// coverFilePath resolves a collected filename to the fixture path, else the bare path.
 func coverFilePath(fx *tests.Fixture, file string) string {
 	joined := filepath.ToSlash(filepath.Join(fx.RootDir(), file))
 	if _, err := os.Stat(filepath.FromSlash(joined)); err == nil {
@@ -109,7 +109,7 @@ func coverFilePath(fx *tests.Fixture, file string) string {
 	return joined
 }
 
-// fixtureCoverBlocks renders one fixture's coverage with include paths resolved as the union served them.
+// fixtureCoverBlocks renders one fixture's coverage with include paths as the union served them.
 func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 	sources := map[string][]string{}
 	lines := func(file string) []string {

@@ -8,12 +8,12 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestInit covers the wiring this package does for itself. init() contributes
-// Register, the way a program wires in a database/sql driver and a host that
-// calls stdlib.Register gets the HTTP surface by having imported the package
-// and names nothing. Reaching it through stdlib.Register and no direct call is
-// the point: a dropped init() leaves `new HTTP\Client` as a class nothing
-// declares, and every test calling Register itself would pass.
+// TestInit covers the wiring this package performs itself. init() contributes
+// Register, the way a program wires in a database/sql driver; a host that
+// calls stdlib.Register gets the HTTP surface by having imported the package,
+// naming nothing. A test must reach it via stdlib.Register: a dropped init()
+// leaves `new HTTP\Client` as a class nothing
+// declares. A suite calling Register itself would pass.
 func TestInit(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

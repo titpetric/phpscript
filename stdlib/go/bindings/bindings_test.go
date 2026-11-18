@@ -8,7 +8,7 @@ import (
 )
 
 // TestFor covers what opens a set: the path maps to the area a script reaches
-// the package through, and a path outside the linked subset is a defect the
+// the package through; a path outside the linked subset is a defect the
 // binding package hears about at once.
 func TestFor(t *testing.T) {
 	t.Parallel()

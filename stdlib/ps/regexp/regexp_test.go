@@ -11,10 +11,9 @@ import (
 	phpregexp "github.com/titpetric/phpscript/stdlib/ps/regexp"
 )
 
-// TestRegister covers the two classes this package installs and the difference
-// between them. Both compile the same expression; POSIX matching is
-// leftmost-longest and an alternation answers with its longest branch where
-// Perl syntax answers with its first.
+// TestRegister covers both classes this package installs. Both compile the
+// same expression. POSIX matching is leftmost-longest. An alternation answers
+// with its longest branch; Perl syntax answers with its first.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -44,10 +43,10 @@ echo (new Regexp\CompilePOSIX('a|ab'))->find_string("abc");`)
 	}
 }
 
-// run executes src on both engines and returns what the interpreter printed,
+// run executes src on each engine and returns the interpreter output,
 // failing when the two disagree. Both engines reach the binding through
-// reflection and a divergence would be the bytecode engine taking a different
-// path to the same registration and no different regexp.
+// reflection. A divergence would mean the bytecode engine takes a different
+// path to the same registration. The regexp itself stays the same.
 func run(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -98,7 +97,7 @@ func TestRegexpCompile(t *testing.T) {
 			want: "a1b2",
 		},
 		{
-			// A []byte return is the text it holds, and no list of integers.
+			// A []byte return is the text it holds. No list of integers appears.
 			name: "find returns bytes as a string",
 			src: `$b = (new Regexp\Compile('\d+'))->find("abc 42 def");
 				echo $b, ":", strlen($b), ":", gettype($b);`,

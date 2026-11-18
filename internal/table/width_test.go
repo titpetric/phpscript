@@ -4,8 +4,9 @@ import (
 	"testing"
 )
 
-// TestWidth covers the measurement every column size rests on: plain text is
-// its rune count, a colour code is nothing, and a box drawing rune is one cell.
+// TestWidth covers the measurement every column size rests on: plain text
+// measures its rune count; a colour code measures nothing; a box drawing rune
+// measures one cell.
 func TestWidth(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -23,8 +24,8 @@ func TestWidth(t *testing.T) {
 	}
 }
 
-// TestStrip covers the plain reading of a coloured cell. A redirected table
-// and a test comparing one against literal text both read it.
+// TestStrip covers the plain reading of a coloured cell. A redirected table,
+// or a test comparing against literal text, both read the plain form.
 func TestStrip(t *testing.T) {
 	t.Parallel()
 	coloured := ColorAmber + "SKIP" + ColorReset
@@ -37,7 +38,7 @@ func TestStrip(t *testing.T) {
 }
 
 // TestTruncate covers the cut a cell wider than its column takes: the result
-// measures the column width, and a string already that narrow comes back whole.
+// measures the column width. A string already that narrow comes back whole.
 func TestTruncate(t *testing.T) {
 	t.Parallel()
 	if got, want := Truncate("abcdef", 3), "abc"; got != want {

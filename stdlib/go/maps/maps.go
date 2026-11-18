@@ -1,8 +1,8 @@
 // Package maps binds the day-to-day functions of go's maps package as the
-// Runtime\Go\Maps namespace. A script imports it with `use Runtime\Go\Maps;`
-// and calls `Maps\Keys($m)`; the default runtime installs none of these names.
-// A php array keeps its keys in order, and every function here reads and
-// answers in that order. Go's maps range in no order at all.
+// Runtime\Go\Maps namespace. A script imports it with `use Runtime\Go\Maps;`.
+// It calls `Maps\Keys($m)`; the default runtime installs none of these names.
+// A php array keeps its keys in order; every function here reads and answers
+// in that order. Go's maps range in no order at all.
 package maps
 
 import (

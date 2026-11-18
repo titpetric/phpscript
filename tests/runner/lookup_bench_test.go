@@ -13,10 +13,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// benchLookupTree holds the two spellings of one handler: the function a lookup
+// benchLookupTree holds both spellings of one handler: the function a lookup
 // calls, and the whole-file entrypoint a request runs. Both answer the same
-// string off the same request and the two figures differ by what the host does
-// around the PHP and not by what the PHP does.
+// string off the same request. Both figures differ by host overhead around
+// the PHP, not by PHP work.
 var benchLookupTree = fstest.MapFS{
 	"handler.php": {Data: []byte(`<?php
 namespace App\Handler;
@@ -32,30 +32,30 @@ echo $_SERVER["REQUEST_METHOD"], " ", $_SERVER["REQUEST_URI"];
 
 var lookupBenchmarkSink int
 
-// BenchmarkLookup decomposes what reaching PHP from Go costs, every part of it
-// parallel over one shared cache pair with a runtime per goroutine, which is
-// the contract a host calling a looked-up symbol concurrently keeps.
+// BenchmarkLookup decomposes the cost of reaching PHP from Go. Every part runs
+// in parallel across a shared cache pair, with a runtime per goroutine. A host
+// calling a looked-up symbol concurrently keeps that contract.
 //
-// The parts are separate because a host pays them at different times, and
-// reading one for another is the mistake the split exists to prevent:
+// The parts are separate: a host pays them at different times. Reading one for
+// another is the mistake the split exists to prevent:
 //
 //   - bind resolves the symbol and builds the closure. Paid per runtime.
 //   - invoke calls the closure. Paid per call, and the only figure that scales
 //     with traffic.
 //   - callable is the same call through rt.Callable, the untyped API that
-//     existed before this one and the difference prices the signature bridge
-//     and not the call.
-//   - runtime builds a runtime and registers the standard library onto it,
+//     existed before the current API. The difference prices the signature
+//     bridge. The call itself adds nothing.
+//   - runtime builds a runtime and registers the standard library on it,
 //     running no PHP.
-//   - request is the shape a host reaches PHP through today: that runtime, the
-//     request decoded into superglobals over it, the entrypoint read back out
-//     of the include cache and the file run top to bottom.
+//   - request is the shape a host reaches PHP through today: that runtime; the
+//     request decoded into superglobals on the runtime; the entrypoint read
+//     back out of the include cache; the file run top to bottom.
 //
-// request less runtime is what the script cost; the rest is the host getting
-// ready to run it, which is the part a lookup on a reused runtime skips.
+// request less runtime is the script cost; the rest is the host getting ready
+// to run the file. That is the part a lookup on a reused runtime skips.
 //
-// Run with -cpu 1,2,4 for the parallel scaling. No invocation shares what it
-// allocates and the only contention is the two caches' read locks, while
+// Run with -cpu 1,2,4 for the parallel scaling. No invocation shares its
+// allocations, and the only contention is both caches' read locks, while
 // request allocates ninety kilobytes a go and stops scaling where the
 // collector becomes the limit.
 func BenchmarkLookup(b *testing.B) {
@@ -80,9 +80,8 @@ func BenchmarkLookup(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
-			// Resolved once outside the loop and the figure is what binding the
-			// second handler of a tree costs, and not what installing the
-			// first one does.
+			// Resolved once outside the loop. The figure measures binding the
+			// second handler of a tree, not installing the first.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
 				b.Error(err)
 				return
@@ -117,8 +116,8 @@ func BenchmarkLookup(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
-			// Callable resolves against the function table and the declaration
-			// has to be there; a lookup installs it. This is the same install
+			// Callable resolves against the function table, and the declaration
+			// must be there; a lookup installs it. This is the same install
 			// without the typed wrapper on top.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
 				b.Error(err)
@@ -144,9 +143,9 @@ func BenchmarkLookup(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				// No PHP at all: the runtime a request builds and the standard
-				// library registered onto it, which is the share of the figure
-				// below that the script does not touch.
+				// No PHP at all: the runtime a request builds, plus the standard
+				// library registered onto the runtime. That share of the figure
+				// below comes from code the script does not touch.
 				lookupBenchmarkSink = len(newRuntime(io.Discard).Env)
 			}
 		})
@@ -174,8 +173,8 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	})
 
-	// This checks the control once and never per iteration and the comparison
-	// does not pay for the comparison.
+	// This check runs once, outside the loop. The comparison then costs
+	// nothing per iteration.
 	verify := func(name, got string) {
 		if got != want {
 			b.Fatalf("%s produced %q, want %q", name, got, want)
@@ -200,8 +199,8 @@ func BenchmarkLookup(b *testing.B) {
 	verify("request", out.text)
 }
 
-// responseBuffer counts what an entrypoint echoed without the comparison
-// allocating a string per iteration; it keeps the text for the one check.
+// responseBuffer counts the bytes an entrypoint echoed without the comparison
+// allocating a string per iteration; it keeps the text for the single check.
 type responseBuffer struct {
 	n    int
 	text string
@@ -214,10 +213,10 @@ func (r *responseBuffer) Write(p []byte) (int, error) {
 }
 
 // BenchmarkLookupTreeSize holds the symbol index to constant time. Resolving a
-// name is a walk of every statement of every program in the tree, and a host
-// serving concurrently binds per runtime and so per goroutine, which is often
-// per request: paying the size of the application there is the cost this
-// guards against coming back.
+// name is a walk of every statement of every program in the tree. A host
+// serving concurrently binds per runtime, hence per goroutine and often per
+// request. Paying the application size there is the cost this guards against
+// coming back.
 func BenchmarkLookupTreeSize(b *testing.B) {
 	for _, files := range []int{2, 50, 200, 800} {
 		b.Run(fmt.Sprintf("files=%d", files), func(b *testing.B) {
@@ -260,8 +259,8 @@ function helper_b() { return 2; }
 	}
 }
 
-// lookupHandlerTree is one PHP handler answering through the net/http values it
-// holds and the shapes below differ by what the host does around it.
+// lookupHandlerTree holds one PHP handler answering through the net/http values
+// it reads. The shapes below differ by host work around the handler.
 var lookupHandlerTree = fstest.MapFS{"h.php": {Data: []byte(`<?php
 namespace App;
 function index($w, $r) {

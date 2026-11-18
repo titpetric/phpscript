@@ -8,9 +8,9 @@ import (
 // goDocHost is the reference site a standard library citation links to.
 const goDocHost = "https://pkg.go.dev/"
 
-// Citation is one Go symbol the listing names: the package that declares it,
-// the symbol, the reference page for a standard library symbol, and the
-// spelling a script types when the runtime honours one.
+// Citation holds one Go symbol the listing names: its package, the symbol, a
+// reference page for a standard library symbol, and the spelling a script types
+// when the runtime honours one.
 type Citation struct {
 	Package string `json:"package,omitempty"` // import path, empty for a builtin
 	Name    string `json:"name,omitempty"`
@@ -37,7 +37,7 @@ func (c Citation) Short() string {
 }
 
 // Link renders the citation as markdown. A standard library symbol links to
-// its reference page; the listing names every other symbol bare.
+// its reference page; the listing names the other symbols bare.
 func (c Citation) Link() string {
 	if c.URL == "" {
 		return c.Symbol()
@@ -45,8 +45,8 @@ func (c Citation) Link() string {
 	return "[" + c.Symbol() + "](" + c.URL + ")"
 }
 
-// Clause is the name an implements clause prints: the PHP spelling when a
-// script can type one, the Go spelling otherwise.
+// Clause is the name an implements clause prints: the PHP spelling whenever a
+// script can type it; otherwise the Go spelling.
 func (c Citation) Clause() string {
 	if c.PHP != "" {
 		return c.PHP
@@ -54,7 +54,7 @@ func (c Citation) Clause() string {
 	return c.Short()
 }
 
-// cite names the Go type t, filling in the reference page for a standard library type.
+// cite names the Go type t, filling the stdlib reference page.
 func cite(t reflect.Type) Citation {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
@@ -64,14 +64,14 @@ func cite(t reflect.Type) Citation {
 	case isStdlib(c.Package):
 		c.URL = goDocHost + c.Package + "#" + c.Name
 	case c.Package == "" && c.Name == "error":
-		// error is the one interface the language itself declares, and
-		// builtin is where its page lives.
+		// error is the only interface the language declares; the builtin page
+		// holds its documentation.
 		c.URL = goDocHost + "builtin#error"
 	}
 	return c
 }
 
-// isStdlib reports whether an import path's first element holds no dot, as the go command tests.
+// isStdlib reports whether an import path's first element holds no dot.
 func isStdlib(pkg string) bool {
 	if pkg == "" {
 		return false

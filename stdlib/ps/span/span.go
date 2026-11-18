@@ -1,15 +1,15 @@
-// Package span exposes telemetry spans to PHP as the start_span() binding and
-// a script can measure its own region of work next to the spans the
-// interpreter records for it.
+// Package span exposes telemetry spans to PHP as the start_span() binding.
+// A script can measure a region of its work alongside the spans the
+// interpreter records for the script. The span is the telemetry span itself.
 //
-// The span is the telemetry span, not a copy of it: methods on the returned
+// Methods on the returned
 // value are the Go methods spelled the way PHP spells them.
 //
 //	$span = start_span("getUser", "database");
 //	$span->set_attribute("user_id", 42);
 //	$span->end();
 //
-// Without a trace in the context, as a CLI run without telemetry has it,
+// Without a trace in the context, as in a CLI run without telemetry,
 // start_span returns a span whose methods do nothing.
 package span
 

@@ -39,7 +39,7 @@ func TestRunFixtureOnPHPReportsFatal(t *testing.T) {
 	if !strings.Contains(res.FailureReason, "boom") {
 		t.Errorf("failure reason = %q, want it to name the php error", res.FailureReason)
 	}
-	// The throwaway copy php ran is not what a reader has in front of them.
+	// The throwaway copy php ran is not the copy a reader has in front of them.
 	if strings.Contains(res.FailureReason, ".php_fatal.") {
 		t.Errorf("failure reason names the temporary script: %q", res.FailureReason)
 	}

@@ -4,7 +4,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// BoundClosure is one compiled closure literal: the synthetic identifier,
+// BoundClosure holds a compiled closure literal: the synthetic identifier,
 // the declaration Eval binds a callable for, and its slot.
 type BoundClosure struct {
 	ID   string

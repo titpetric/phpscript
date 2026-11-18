@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-// CoverRelaunch starts a coverage build again with GOCOVERDIR set, where the environment sets none.
+// CoverRelaunch restarts a coverage build with GOCOVERDIR when the environment lacks it.
 func CoverRelaunch() {
 	if os.Getenv("GOCOVERDIR") != "" || !BuiltWithCover() {
 		return

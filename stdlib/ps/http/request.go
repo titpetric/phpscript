@@ -12,7 +12,7 @@ import (
 //
 // The value is a net/http request: $request->method, $request->host, and
 // $request->header->set($name, $value) for headers. A lowercase method is
-// upper-cased and never sent as written.
+// upper-cased. phpscript never sends the request as written.
 func NewRequest(ctx context.Context, method, url string, body ...string) (*nethttp.Request, error) {
 	if method == "" {
 		return nil, fmt.Errorf("HTTP\\Request: method is required")
@@ -26,9 +26,9 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 		reader = strings.NewReader(body[0])
 	}
 
-	// A nil *strings.Reader held in an io.Reader is not a nil io.Reader, and
-	// net/http would then read from it and the call below passes the two cases
-	// separately and not through one variable.
+	// A nil *strings.Reader held in an io.Reader is not a nil io.Reader.
+	// net/http would then read from a non-nil interface. The call below passes
+	// the two cases separately, and keeps each case in a separate argument.
 	var (
 		request *nethttp.Request
 		err     error

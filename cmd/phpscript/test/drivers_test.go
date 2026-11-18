@@ -1,7 +1,7 @@
-// The database/sql drivers this command's tests open a connection with. They are
-// here and not in the package because a blank import decides what a binary
-// links, and a test binary is a program too; the command itself names the same
-// three in main.go.
+// The database/sql drivers this command's tests open a connection with. They
+// live here, not in the package: a blank import decides the links of a binary. A
+// test binary is also a program. The command itself names the same three in
+// main.go.
 package test_test
 
 import (

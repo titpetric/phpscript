@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// TestNewCommand covers the one flag this command owns. -l is the pipeline
-// form: it reports what a rewrite would touch and writes nothing and a job can
-// fail on an unformatted tree without changing it. The constructor takes the
+// TestNewCommand covers the single flag this command owns. -l is the pipeline
+// form: it reports the files a rewrite would touch and writes nothing. A job
+// can then fail on an unformatted tree without a change. The constructor takes the
 // configuration and the global options because one signature covers all nine
 // commands. This command reads neither; both arguments are nil here.
 func TestNewCommand(t *testing.T) {
@@ -46,8 +46,8 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestRun covers both halves of the command over the same file: the default
-// rewrites it in place and names it on stdout, and -l names it and leaves the
-// bytes alone. The test writes spaces for indentation and no trailing
+// rewrites it in place and names it on stdout; -l names the file and leaves
+// the bytes alone. The test writes spaces for indentation, without a trailing
 // newline, both of which the formatter normalises and the file needs
 // formatting by construction.
 func TestRun(t *testing.T) {
@@ -125,8 +125,8 @@ func TestRunReportsSkippedFiles(t *testing.T) {
 	}
 }
 
-// captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run writes to os.Stdout directly and the file descriptor is the only place
+// captureStdout runs fn with os.Stdout on a pipe and returns the captured
+// output. Run writes to os.Stdout directly, and the file descriptor is the only place
 // to read its output from.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()

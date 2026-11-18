@@ -42,8 +42,8 @@ func TestRunPrintsMarkdownResultsAndSummary(t *testing.T) {
 }
 
 // TestRunGroupsResultsByFolder checks the per-folder layout: each folder gets
-// a separate table headed by the folder, closed by its own summary line,
-// with the run's total after the last one.
+// a separate table headed by the folder and closed by a summary line. The
+// run's total follows the last table.
 func TestRunGroupsResultsByFolder(t *testing.T) {
 	dir := t.TempDir()
 	writeLintFile(t, dir, "pass.php", `<?php echo "ok";`)
@@ -95,8 +95,8 @@ func TestRunFlatstackUsesOneResultPerFile(t *testing.T) {
 }
 
 // TestRunWritesMarkdownReport checks the -o file against the markdown that a
-// redirected stdout produces: the report is the same table plus a header and
-// one run can print to a terminal and record the findings at once.
+// redirected stdout produces: the report is the same table plus a header. One
+// run can print to a terminal and record the findings at once.
 func TestRunWritesMarkdownReport(t *testing.T) {
 	dir := t.TempDir()
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
@@ -124,8 +124,7 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 	dir := t.TempDir()
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
 
-	// A pipe is not a terminal and this builds the table directly to check
-	// what a terminal would show.
+	// This builds the table that checks terminal output, for a pipe.
 	var buf bytes.Buffer
 	tbl := newTable(&buf, false, "src")
 	tbl.Row(table.Colored(statusColor(statusWarn), statusWarn), table.Text("warn.php"), table.Text("1"), table.Text("finding"))
@@ -139,10 +138,10 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 	}
 }
 
-// TestNewCommand covers the two flags this command owns and the shared one it
-// reads. --flatstack and -o are its own; --include is global, and the Run
-// closure copies it into the options at call time, because main fills the
-// global options from the configuration past the command's construction.
+// TestNewCommand covers the two flags this command owns and the shared flag it
+// reads. --flatstack and -o are local; --include is global. The Run closure
+// copies it into the options at call time, because main fills the global
+// options from the configuration after constructing the command.
 func TestNewCommand(t *testing.T) {
 	command := NewCommand(nil, &flags.Options{})
 
@@ -180,10 +179,10 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestRun covers the exported entry point: run() pointed at stdout.
-// A folder holding one failing file fails the command, because a parse error
-// is a finding the run cannot report around; the table is still printed and
-// the operator reads what failed and not only that something did.
+// TestRun covers the exported entry point: run() pointed at stdout. A folder
+// holding one failing file fails the command. A parse error is a finding the
+// run cannot report around. The table is still printed. The operator reads
+// what failed.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
 	writeLintFile(t, dir, "fail.php", `<?php class Foo {`)
@@ -203,9 +202,9 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run picks os.Stdout itself and the file descriptor is the only place to
-// read its output from.
+// captureStdout runs fn with os.Stdout on a pipe and returns the written output.
+// Run picks os.Stdout. The file descriptor is the only place to read its
+// output from.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

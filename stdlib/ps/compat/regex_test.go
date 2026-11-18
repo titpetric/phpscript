@@ -6,8 +6,8 @@ import (
 )
 
 // TestPregQuoteEscapes covers preg_quote(): every PCRE metacharacter comes
-// back escaped, as does a delimiter the call names. The result goes inside a
-// pattern written with that delimiter.
+// back escaped; the call also escapes a named delimiter. The result goes
+// inside a pattern written with that delimiter.
 func TestPregQuoteEscapes(t *testing.T) {
 	t.Parallel()
 	if got := phpPregQuote("a.b*c"); got != `a\.b\*c` {
@@ -21,9 +21,9 @@ func TestPregQuoteEscapes(t *testing.T) {
 	}
 }
 
-// TestPregMatchWritesGroups covers what the matches reference receives: the
-// whole match first and one entry per group and $m[1] is the first capture.
-// The return is the match count php answers, which is 1 or 0 for preg_match.
+// TestPregMatchWritesGroups covers the values the matches reference receives:
+// the whole match first, plus one entry per group; $m[1] is the first capture.
+// The return is the match count php answers, 1 or 0 for preg_match.
 func TestPregMatchWritesGroups(t *testing.T) {
 	t.Parallel()
 	cache := newRegexpCache()
@@ -49,7 +49,7 @@ func TestPregMatchWritesGroups(t *testing.T) {
 }
 
 // TestPregSplitNoEmpty covers PREG_SPLIT_NO_EMPTY, which drops the empty
-// piece two adjacent separators leave between them.
+// piece between adjacent separators.
 func TestPregSplitNoEmpty(t *testing.T) {
 	t.Parallel()
 	cache := newRegexpCache()

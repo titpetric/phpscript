@@ -7,11 +7,11 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestPHPString covers the three renderings kept inline because concatenation
-// and echo run through them: a string is itself, an int64 has one spelling, and
-// a caught exception prints its error text. Everything that has ever disagreed
-// about a rendering goes to phpval and echo, implode and var_dump cannot
-// differ about a float's precision.
+// TestPHPString covers three renderings kept inline for concatenation and
+// echo: a string is itself, an int64 has a single spelling, a caught exception
+// prints its error text. Everything that has ever disagreed about a rendering
+// goes to phpval. echo, implode and var_dump cannot differ about a float's
+// precision.
 func TestPHPString(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -32,9 +32,9 @@ func TestPHPString(t *testing.T) {
 	}
 }
 
-// TestPHPTruthy covers what if/while/ternary reads. "0" is falsey where every
-// other non-empty string is true, an empty array is falsey, and an empty Go
-// collection is falsey whatever its type and a binding returning a []string
+// TestPHPTruthy covers the values if/while/ternary read. "0" is falsey where
+// any other non-empty string is true. An empty array is falsey. An empty Go
+// collection is falsey whatever its type. A binding returning a []string
 // behaves in `if ($rows)` the way one returning an array does.
 func TestPHPTruthy(t *testing.T) {
 	t.Parallel()
@@ -98,9 +98,9 @@ func TestNumericPrefix(t *testing.T) {
 }
 
 // TestToInt covers the coercion an array index and `%` use. A float truncates
-// toward zero, float syntax in a string truncates the same way, an out-of-range
-// integer saturates the way C's strtol saturates, and a named Go scalar reads
-// as the integer it holds and `$t->month() + 1` counts months.
+// toward zero; float syntax in a string truncates the same way. An out-of-range
+// integer saturates as C's strtol saturates. A named Go scalar reads as the
+// integer it holds. `$t->month() + 1` counts months.
 func TestToInt(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -127,9 +127,9 @@ func TestToInt(t *testing.T) {
 	}
 }
 
-// TestToFloat covers the float coercion `(float)` and a float operand use. A
-// string reads its numeric prefix and (float)"2.5kg" is 2.5 and a string with
-// no leading number is zero.
+// TestToFloat covers the `(float)` coercion in both spellings: explicit, and
+// as a float operand. A string reads its numeric prefix; (float)"2.5kg" is
+// 2.5. A string without a leading number is zero.
 func TestToFloat(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -184,7 +184,7 @@ func TestHelperCast(t *testing.T) {
 
 // TestHelperCastArray covers `(array)`. Null produces an empty array, a scalar
 // becomes a one-entry array, an object reads its properties out in the order
-// the object reads them back, and a Go collection converts with its keys kept.
+// the object reads them back. A Go collection converts with its keys kept.
 func TestHelperCastArray(t *testing.T) {
 	t.Parallel()
 	if got := helperCast("array", nil).(*model.Array); got.Len() != 0 {
@@ -210,10 +210,9 @@ func TestHelperCastArray(t *testing.T) {
 	}
 }
 
-// TestHelperToObject covers `(object)`. An array becomes a stdClass whose
-// properties are its entries, a scalar lands under `scalar`, null produces an
-// object with nothing in it, and an object passes through untouched and
-// `(object) $o === $o`.
+// TestHelperToObject covers `(object)`. An array becomes a stdClass with its
+// entries as properties. A scalar lands under `scalar`; null produces an object
+// with nothing inside. An object passes through untouched: `(object) $o === $o`.
 func TestHelperToObject(t *testing.T) {
 	t.Parallel()
 	empty := helperToObject(nil).(*model.Object)
@@ -239,9 +238,9 @@ func TestHelperToObject(t *testing.T) {
 	}
 }
 
-// TestKeyString covers the name keyString reads off a model.Keyed. PHP
-// normalises an index to an int or a string and a Keyed holds a string name,
-// and an int index reads as its decimal spelling.
+// TestKeyString covers the name keyString reads from a model.Keyed. PHP
+// normalises an index to an int or a string; a Keyed holds a string name. An
+// int index reads as its decimal spelling.
 func TestKeyString(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -260,9 +259,9 @@ func TestKeyString(t *testing.T) {
 }
 
 // TestNormalizeKey covers array key canonicalisation. PHP has int keys and
-// string keys alone and a numeric string becomes the int it spells
-// and a bool becomes 0 or 1. There is one definition of the rule, shared with
-// array_key_exists() and array_flip().
+// string keys alone. A numeric string becomes the int it spells; a bool
+// becomes 0 or 1. One definition of the rule serves array_key_exists() and
+// array_flip().
 func TestNormalizeKey(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

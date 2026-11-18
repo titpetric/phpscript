@@ -36,9 +36,9 @@ func TestMapFixturesRunsConcurrentlyWithSerialBarrier(t *testing.T) {
 	}
 }
 
-// TestMapFixturesSerialRun covers the path a run with no --parallel takes: the
-// fixtures execute in order on the caller's goroutine, each worker numbered
-// zero and a cache scoped to a worker is one cache for the run.
+// TestMapFixturesSerialRun covers a run without --parallel: the fixtures
+// execute in order on the caller's goroutine. mapFixtures numbers each worker
+// zero; a worker-scoped cache is a single cache for the run.
 func TestMapFixturesSerialRun(t *testing.T) {
 	fixtures := []*tests.Fixture{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
@@ -63,8 +63,8 @@ func TestMapFixturesSerialRun(t *testing.T) {
 		}
 	}
 
-	// One fixture is one fixture whatever --parallel says and mapFixtures
-	// skips the batching and never enters it with a single job in it.
+	// A single fixture stays single whatever --parallel says. mapFixtures
+	// skips the batching and does not enter it with one job.
 	results := mapFixtures(fixtures[:1], 8, func(worker int, _ int, fx *tests.Fixture) string {
 		if worker != 0 {
 			t.Errorf("the only fixture ran on worker %d", worker)
@@ -77,9 +77,9 @@ func TestMapFixturesSerialRun(t *testing.T) {
 }
 
 // TestGroupFixtures covers the bucketing the per-area tables print from.
-// groupFixtures keeps discovery order both between folders and inside one and
-// two runs over one tree print the same report and a diff of two reports is a
-// diff of the results.
+// groupFixtures keeps discovery order between folders and within a folder. Two
+// runs over the same tree print the same report. A diff of two reports reflects
+// the results.
 func TestGroupFixtures(t *testing.T) {
 	fixtures := []*tests.Fixture{
 		{Name: "b"}, {Name: "a"}, {Name: "s"}, {Name: "root"},
@@ -110,8 +110,8 @@ func TestGroupFixtures(t *testing.T) {
 		t.Errorf("fixtures = %+v, want the two of that folder in order", first.Fixtures)
 	}
 
-	// A fixture in the run directory is its own group, under the name
-	// the table prints for it.
+	// A fixture in the run directory forms a separate group, named as the
+	// table prints it.
 	last := groups[len(groups)-1]
 	if last.Dir != "." {
 		t.Errorf("the run directory group is %q, want \".\"", last.Dir)

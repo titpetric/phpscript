@@ -12,11 +12,11 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 )
 
-// TestNewCommand covers what the constructor closes over. The configuration
-// arrives as a pointer so one signature covers all nine commands. This one
-// reads it and a nil pointer has to resolve to the zero configuration before
-// the Run closure captures it. The command declares no flags: a run takes a
-// script path and the shared flags.
+// TestNewCommand covers the constructor's captured state. The configuration
+// arrives as a pointer; one signature covers all nine commands. This one
+// reads the value; a nil pointer must resolve to the zero configuration
+// before the Run closure captures it. Flags come from the shared set: a run takes a
+// script path plus the shared flags.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, &flags.Options{})
@@ -36,8 +36,8 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestRun covers one generation of the loop: runOnce reads the script, builds
-// the runtime around it and writes the output to os.Stdout. The run returns
-// once the script ends, because nothing sent SIGHUP and no reload is pending.
+// the runtime around the program, and writes output to os.Stdout. The run
+// returns once the script ends. No SIGHUP arrived; no reload is pending.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte("<?php echo \"from the script\\n\";\n"), 0o644); err != nil {
@@ -74,8 +74,8 @@ func TestRun(t *testing.T) {
 // TestResolveEntrypoint pins which scripts re-root the runtime. A path the
 // working directory can name keeps it as the root, because PHP resolves an
 // include against the working directory; anything the working directory cannot
-// name has to root at the script instead, or cleanFSPath strips the leading
-// slash and the runtime looks for the file in the wrong place.
+// name must root at the script instead. cleanFSPath would strip the leading
+// slash. The runtime would look for the file in the wrong place.
 func TestResolveEntrypoint(t *testing.T) {
 	dir := t.TempDir()
 	nested := filepath.Join(dir, "sub")
@@ -111,8 +111,7 @@ func TestResolveEntrypoint(t *testing.T) {
 	}
 }
 
-// TestResolveEntrypointClimbingOut covers the sibling directory case, which
-// looks relative but the working directory still cannot name it.
+// TestResolveEntrypointClimbingOut covers the sibling directory the working directory cannot name.
 func TestResolveEntrypointClimbingOut(t *testing.T) {
 	dir := t.TempDir()
 	here := filepath.Join(dir, "here")

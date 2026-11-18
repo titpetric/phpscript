@@ -33,8 +33,7 @@ func writeFile(t *testing.T, lines ...string) *PasswordFile {
 	return store
 }
 
-// refuseFile is writeFile for a file the constructor has to refuse, answering
-// the error it refused with.
+// refuseFile is writeFile for a file the constructor must refuse, returning the error.
 func refuseFile(t *testing.T, lines ...string) error {
 	t.Helper()
 
@@ -49,9 +48,9 @@ func refuseFile(t *testing.T, lines ...string) error {
 	return err
 }
 
-// TestPasswordFileAuthenticate covers one line per accepted format, because
-// each line names its own and a file mixes them: a store moving from
-// htpasswd's default to bcrypt holds both until the rewrite finishes.
+// TestPasswordFileAuthenticate covers one line per accepted format. A file
+// mixes formats: a store moving from htpasswd's default to bcrypt holds both
+// until the rewrite finishes.
 func TestPasswordFileAuthenticate(t *testing.T) {
 	t.Parallel()
 
@@ -77,9 +76,9 @@ func TestPasswordFileAuthenticate(t *testing.T) {
 	}
 }
 
-// TestPasswordFileRefusesACredential covers the three ways a login fails. All
-// three answer a nil user and no error and nothing a caller can read says
-// which, and a login page cannot leak which usernames exist.
+// TestPasswordFileRefusesACredential covers three ways a login fails. All
+// three answer a nil user, without error; nothing a caller reads says which. A
+// login page cannot leak which usernames exist.
 func TestPasswordFileRefusesACredential(t *testing.T) {
 	t.Parallel()
 
@@ -105,10 +104,10 @@ func TestPasswordFileRefusesACredential(t *testing.T) {
 	}
 }
 
-// TestPasswordFileRefusesTheFile covers what construction will not read. Each
-// one is a file an operator has to fix and the message names the line and
-// the parse stops there. A file half of which authenticates hides the other
-// half until it locks a user out.
+// TestPasswordFileRefusesTheFile covers files construction will not read. Each
+// is a file an operator must fix; the message names the line. The parse stops
+// there. A file that half authenticates hides the other half until it
+// locks a user out.
 func TestPasswordFileRefusesTheFile(t *testing.T) {
 	t.Parallel()
 
@@ -196,7 +195,7 @@ func TestPasswordFileReadsAroundNothing(t *testing.T) {
 }
 
 // TestPasswordFileUsers covers the listing a caller rebuilds a table from:
-// ordered by username, one record each, and no hash anywhere in it.
+// ordered by username, one record each, holding no hash anywhere.
 func TestPasswordFileUsers(t *testing.T) {
 	t.Parallel()
 
@@ -224,9 +223,8 @@ func TestPasswordFileUsers(t *testing.T) {
 }
 
 // TestPasswordFileExists covers the question a default store rests on. A
-// file that is not there is no error, because a tree with no user database
-// still has to construct one; a directory in its place is, because that is a
-// path somebody got wrong.
+// missing file is no error: a tree without a user database still constructs a
+// store. A directory in its place is an error: somebody got that path wrong.
 func TestPasswordFileExists(t *testing.T) {
 	t.Parallel()
 
@@ -246,13 +244,13 @@ func TestPasswordFileExists(t *testing.T) {
 		t.Errorf("Exists() = %v, %v, want false and no error", exists, err)
 	}
 
-	// A missing file authenticates nobody, and says why: a misconfiguration,
-	// where a refusal is a wrong password.
+	// A missing file authenticates nobody, naming a misconfiguration; a
+	// refusal there means a wrong password.
 	if _, err := absent.Authenticate(context.Background(), "admin", testPassword); err == nil {
 		t.Error("Authenticate() against a missing file = nil, want an error naming the file")
 	}
-	// The listing is empty and reports no error and a caller rebuilding a
-	// table writes no rows and its startup job still finishes.
+	// The listing is empty and reports no error. A caller rebuilding a table
+	// writes no rows, and its startup job still finishes.
 	users, err := absent.Users(context.Background())
 	if err != nil || len(users) != 0 {
 		t.Errorf("Users() = %v, %v, want none and no error", users, err)
@@ -265,10 +263,10 @@ func TestPasswordFileExists(t *testing.T) {
 	}
 }
 
-// TestPasswordFileExistsNeedsAnAccount covers the file that is there and holds
+// TestPasswordFileExistsNeedsAnAccount covers a file that exists and holds
 // nobody: comments and blank lines parse to no accounts, and an empty file is
-// the same state. exists() answers false for both and a login page says there
-// are no accounts where a form refusing every password would name no cause.
+// the same state. exists() answers false for both. A login page then says there
+// are no accounts; a form refusing every password names no cause.
 func TestPasswordFileExistsNeedsAnAccount(t *testing.T) {
 	t.Parallel()
 
@@ -285,7 +283,7 @@ func TestPasswordFileExistsNeedsAnAccount(t *testing.T) {
 		}
 
 		// The listing stays empty and reports no error, as for a missing
-		// file and a caller rebuilding a table writes no rows.
+		// file. A caller rebuilding a table writes no rows.
 		users, err := store.Users(context.Background())
 		if err != nil || len(users) != 0 {
 			t.Errorf("%s: Users() = %v, %v, want none and no error", name, users, err)
@@ -294,8 +292,8 @@ func TestPasswordFileExistsNeedsAnAccount(t *testing.T) {
 }
 
 // TestPasswordFileExistsOnADirectory covers a path that turns into a directory
-// after construction, the one way Exists meets one: the constructor's own read
-// refuses it otherwise and this is a tree that changed under a running server.
+// after construction. Exists meets the case only this way: the constructor's
+// read refuses it otherwise. This tree changed during a server run.
 func TestPasswordFileExistsOnADirectory(t *testing.T) {
 	t.Parallel()
 
@@ -324,8 +322,8 @@ func TestPasswordFileExistsOnADirectory(t *testing.T) {
 	}
 }
 
-// TestPasswordFileEmptyPath covers the Go host's constructor refusing what it
-// cannot resolve. A script never reaches it: an omitted path is the default
+// TestPasswordFileEmptyPath covers the Go host's constructor refusing an
+// unresolvable path. A script never reaches it. An omitted path is the default
 // file, which TestNewPasswordFileRoot covers.
 func TestPasswordFileEmptyPath(t *testing.T) {
 	t.Parallel()
@@ -336,12 +334,12 @@ func TestPasswordFileEmptyPath(t *testing.T) {
 }
 
 // TestNewPasswordFileRoot covers the rooted constructor as a Go caller reaches
-// it, which stdlib/ps/session does for the store `new Session\Manager` takes by
-// default: an omitted path is DefaultPasswordFile in the root, and a named one
+// it. stdlib/ps/session does so for the store `new Session\Manager` takes by
+// default: an omitted path is DefaultPasswordFile in the root; a named one
 // resolves inside the root.
 //
 // auth_test.go covers the confinement itself, through the registered class,
-// where a script does the naming.
+// with a script doing the naming.
 func TestNewPasswordFileRoot(t *testing.T) {
 	t.Parallel()
 
@@ -363,7 +361,7 @@ func TestNewPasswordFileRoot(t *testing.T) {
 		t.Fatalf("Authenticate() = %v, %v", user, err)
 	}
 
-	// A path the caller names resolves as named, and a tree with no file at
+	// A path the caller names resolves as named. A tree without a file at
 	// that path still constructs.
 	named, err := NewPasswordFileRoot(rt, root, "config/users")
 	if err != nil {
@@ -376,9 +374,9 @@ func TestNewPasswordFileRoot(t *testing.T) {
 
 // TestDefaultPasswordFileRoot covers the store `new Session\Manager` takes
 // when the script names none: construction opens the default file and defers
-// the parse and a broken file constructs and the first call that reads it
-// refuses it naming the line. What still refuses at construction is a
-// directory in the file's place, and a missing file still constructs.
+// the parse. A broken file constructs; the first call that reads it refuses,
+// naming the line. Construction still refuses a directory in the file's place.
+// A missing file still constructs.
 func TestDefaultPasswordFileRoot(t *testing.T) {
 	t.Parallel()
 
@@ -415,7 +413,7 @@ func TestDefaultPasswordFileRoot(t *testing.T) {
 		t.Errorf("Users() = %v, want the refusal naming line 2", err)
 	}
 
-	// A missing file constructs, the state a site with no login is in.
+	// A missing file constructs, the state of a site without a login.
 	absent, err := DefaultPasswordFileRoot(rt, t.TempDir())
 	if err != nil {
 		t.Fatalf("DefaultPasswordFileRoot with no file = %v, want a store", err)
@@ -425,7 +423,7 @@ func TestDefaultPasswordFileRoot(t *testing.T) {
 	}
 
 	// A directory in the file's place refuses at construction, a tree an
-	// operator has to fix before any login runs.
+	// operator must fix before any login runs.
 	dir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(dir, DefaultPasswordFile), 0o700); err != nil {
 		t.Fatal(err)
@@ -436,8 +434,8 @@ func TestDefaultPasswordFileRoot(t *testing.T) {
 }
 
 // TestPasswordFileRereadsTheFile is the property that makes a reload enough to
-// add a user: the store caches nothing and an edited file takes effect on the
-// next call and nothing anywhere needs invalidating.
+// add a user: the store caches nothing; an edited file takes effect on the
+// next call. No cache needs invalidating.
 func TestPasswordFileRereadsTheFile(t *testing.T) {
 	t.Parallel()
 
@@ -468,9 +466,8 @@ func TestPasswordFileRereadsTheFile(t *testing.T) {
 	}
 }
 
-// TestPasswordFileCancelledContext covers the contract a read holds to the
-// request it runs under: a cancelled context ends the call and leaves the
-// filesystem alone.
+// TestPasswordFileCancelledContext covers the contract a read holds with the
+// request: a cancelled context ends the call and leaves the filesystem alone.
 func TestPasswordFileCancelledContext(t *testing.T) {
 	t.Parallel()
 

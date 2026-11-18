@@ -43,7 +43,7 @@ func (f *fileStream) Seek(offset int64, whence int) (int64, error) {
 // AtEOF reports php's end of file: the read that ran out raised it.
 func (f *fileStream) AtEOF() bool { return f.eof }
 
-// atEOF reports php's end flag on stream, false for a handle without one.
+// atEOF reports php's end flag on stream, false when the handle holds no flag.
 func atEOF(stream any) bool {
 	r, ok := stream.(interface{ AtEOF() bool })
 	return ok && r.AtEOF()

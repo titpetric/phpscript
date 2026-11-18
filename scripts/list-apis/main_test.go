@@ -11,13 +11,13 @@ import (
 )
 
 // TestGenerate covers the wiring the listing depends on. The generator reads a
-// runtime, and what it names is what a script can call: an
+// runtime. The names it publishes are the calls a script can make: an
 // installer left out of generate publishes a reference with a whole area
-// missing, and the committed docs/reference/extensions/implemented-apis.md
-// would read as though those functions do not exist.
+// missing. The committed docs/reference/extensions/implemented-apis.md would
+// then read as though those functions do not exist.
 //
 // The root is the module root, two directories up, because the generator reads
-// doc comments and parameter names out of the Go source tree below it.
+// doc comments and parameter names from the Go source tree below.
 func TestGenerate(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -31,7 +31,7 @@ func TestGenerate(t *testing.T) {
 	}
 
 	// One name per installer the command wires in: a core binding, a file
-	// system one that only RegisterFS installs, and a superglobal that only
+	// system one that only RegisterFS installs, plus a superglobal that only
 	// the request context registers.
 	for _, want := range []string{"strlen", "file_get_contents", "getallheaders"} {
 		if !strings.Contains(document, want) {
@@ -41,8 +41,8 @@ func TestGenerate(t *testing.T) {
 }
 
 // TestIndex covers the committed doc index against the source tree it comes
-// from. The index is what a shipped binary answers `phpscript list --classes`
-// with, and a comment edited without regenerating it ships the old prose under
+// from. A shipped binary answers `phpscript list --classes` from the index. A
+// comment edited without regenerating the index ships the old prose beneath
 // the new code.
 func TestIndex(t *testing.T) {
 	t.Parallel()

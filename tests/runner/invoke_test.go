@@ -11,8 +11,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// runBinding registers fn under name, runs src, and returns what the script
-// printed along with the run error.
+// runBinding registers fn under name, runs src, and returns the script's
+// printed output along with the run error.
 func runBinding(t *testing.T, name string, fn any, src string) (string, error) {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -102,11 +102,11 @@ func TestInvokeTooManyArguments(t *testing.T) {
 	}
 }
 
-// The two numbers in the refusal are the ones a script can act on: the
-// parameters it may fill and the arguments it wrote. A binding declaring the
-// runtime context arrives with it prepended, and the Go signature is one longer
-// for it, and a count including it names a limit the signature does not accept
-// and a call at that limit fails with the same message.
+// The refusal reports the two numbers a script can act on: the parameters it
+// may fill and the arguments it wrote. A binding declaring the runtime context
+// arrives with that context prepended. The Go signature counts one extra
+// parameter. A count including the context names a limit the signature does
+// not accept. A call at that limit fails with the same message.
 func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -148,7 +148,7 @@ func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
 }
 
 // Fewer arguments than the binding declares stays legal: a Go binding spells
-// PHP's optional parameters as extra ones and the runtime zero-pads them.
+// PHP's optional parameters as extra parameters; the runtime zero-pads them.
 func TestInvokeTooFewArgumentsPads(t *testing.T) {
 	t.Parallel()
 	out, err := runBinding(t, "shout", func(a, b string) string { return "[" + a + "|" + b + "]" }, `<?php echo shout("a");`)
@@ -168,8 +168,8 @@ type counter struct{}
 func (counter) Add(a, b string) string { return a + b }
 
 // Tally declares a runtime context, and the method path counts its argument
-// numbers and positions against a signature one parameter longer than the one
-// a script calls.
+// numbers and positions for a signature with one parameter more than a
+// script calls.
 func (counter) Tally(_ context.Context, a string, _ int64) string { return a }
 
 func TestInvokeMethodArgumentRules(t *testing.T) {
@@ -233,7 +233,7 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 }
 
 // runInstant runs src with the standard library registered and $t bound to a
-// known instant, and returns what the script printed.
+// known instant, and returns the script's printed output.
 //
 // The prelude builds the instant with the bindings a script uses, and the PHP
 // spelling in these tests is the spelling the runtime actually ships. A
@@ -255,7 +255,7 @@ func runInstant(t *testing.T, src string) string {
 	return out.String()
 }
 
-// instant is what runInstant's prelude constructs, as a Go value. A test
+// instant is the value runInstant's prelude constructs, as a Go value. A test
 // states its expectation as time.Time's own rendering, never by copying a
 // string out of a previous run.
 var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
@@ -270,10 +270,10 @@ func TestInvokeMethodParsesDurationString(t *testing.T) {
 	}
 }
 
-// A Go callable declaring two or more results hands PHP a list, in declaration
-// order. Keeping only the first would answer a different question than the one
-// asked: time.Time.ISOWeek returns (year, week), and dropping the tail reduces
-// $t->iso_week() to the year.
+// A Go callable with a multi-value result hands PHP a list, in declaration
+// order. Keeping only the first answers a different question: time.Time.ISOWeek
+// returns (year, week), and dropping the tail reduces $t->iso_week() to the
+// year.
 func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -326,10 +326,10 @@ func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
 	}
 }
 
-// A Go value that spells itself echoes that way and never as the empty
-// string, and a named Go integer counts as an integer in arithmetic. Both
-// reach PHP through automatic method dispatch, where no hand-written shim is
-// there to convert them.
+// A Go value that spells itself echoes that spelling, even when empty.
+// A named Go integer counts as an integer in arithmetic. Both reach PHP
+// through automatic method dispatch, without a hand-written shim to convert
+// them.
 func TestGoValueStringAndIntConversion(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -353,7 +353,7 @@ func TestGoValueStringAndIntConversion(t *testing.T) {
 }
 
 // runBindingWithStdlib is runBinding with the standard library registered, for
-// scripts that need count() or var_dump() to observe what a binding returned.
+// scripts that need count() or var_dump() to observe a binding's return value.
 func runBindingWithStdlib(t *testing.T, name string, fn any, src string) (string, error) {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -430,9 +430,9 @@ type probeError string
 
 func (e probeError) Error() string { return string(e) }
 
-// A thrown Exception reports its own code, and never the
-// zero the Throwable fallback supplies for a bare Go error. This needs the
-// standard library, which registers the Exception class.
+// A thrown Exception reports its code. The Throwable fallback supplies zero
+// for a bare Go error. This needs the standard library, which registers the
+// Exception class.
 func TestThrownExceptionKeepsItsCode(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php try { throw new Exception("m", 7); } catch (Throwable $e) { echo $e->getMessage() . ":" . $e->getCode(); }`)
@@ -452,8 +452,8 @@ func TestThrownExceptionKeepsItsCode(t *testing.T) {
 
 // The argument check refuses an argument that converts to no declared
 // parameter type before reflect.Value.Call sees it, as a PHP TypeError naming
-// the function, the position and the types involved, and no host panic a
-// script cannot distinguish from a bug in the binding.
+// the function, the position and the types involved. A host panic a script
+// cannot distinguish from a binding bug never surfaces.
 func TestInvokeUnconvertibleArgument(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -496,8 +496,8 @@ func TestInvokeUnconvertibleArgument(t *testing.T) {
 	}
 }
 
-// Calling a function no table knows reports the condition the way the flatstack
-// engine reports it, where the VM would say "cannot call nil".
+// Calling a function no table knows reports the condition as the flatstack
+// engine does. The VM would say "cannot call nil".
 func TestUndefinedFunctionMessage(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php nope();`)

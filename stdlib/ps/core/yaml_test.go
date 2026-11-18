@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestYAMLDecode covers the shapes a document arrives in, which are the ones
-// json_decode answers with: a mapping is an array keyed by its field names and
-// a sequence is a list and a settings file reads the same in either spelling.
+// TestYAMLDecode covers the shapes a document arrives in, which are the shapes
+// json_decode answers with. A mapping is an array keyed by its field names. A
+// sequence is a list. A settings file reads the same in either spelling.
 func TestYAMLDecode(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -23,11 +23,11 @@ var_dump(yaml_decode("a: 1\nb: two\nc:\n  - 1\n  - 2\n"));`)
 	}
 }
 
-// TestYAMLDecodeKeysAreSorted covers a decision of this runtime's own.
-// The decoder answers a Go map and a Go map has no order and reading one
-// document twice would build two differently ordered arrays. A script reads a
-// settings file by name and sorting costs nothing and the same input decodes
-// the same way every time.
+// TestYAMLDecodeKeysAreSorted covers a decision of this runtime. The decoder
+// answers a Go map. A Go map has no order. Reading one document twice
+// would build two differently ordered arrays. A script reads a settings file
+// by name. Sorting costs nothing, and the same input decodes the same way
+// every time.
 func TestYAMLDecodeKeysAreSorted(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -40,9 +40,9 @@ foreach (yaml_decode("z: 1\nm: 2\na: 3\n") as $key => $value) {
 	}
 }
 
-// TestYAMLDecodeWholeNumbersAreInts covers the one conversion that is not the
-// decoder's. `max_pages: 400` compared against a count has to be an int; a
-// float that happens to be whole would print as 400 and behave as 400.0.
+// TestYAMLDecodeWholeNumbersAreInts covers the single conversion that is not
+// the decoder's. `max_pages: 400` compared to a count must be an int. A
+// float that happens to be whole would print 400 and behave as 400.0.
 func TestYAMLDecodeWholeNumbersAreInts(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -58,7 +58,7 @@ var_dump($doc["whole"] === 400);`)
 
 // TestYAMLDecodeRefusesWhatItCannotRead pins this binding's divergence:
 // invalid input raises an error where php's yaml_decode answers null.
-// A settings file that does not parse is a configuration the caller has to know
+// A settings file that does not parse is a configuration the caller must know
 // about. A null reads as an empty document.
 func TestYAMLDecodeRefusesWhatItCannotRead(t *testing.T) {
 	t.Parallel()
@@ -75,9 +75,9 @@ try {
 	}
 }
 
-// TestYAMLEncode covers what the encoder writes back: an array that is a list
-// becomes a sequence, any other array a mapping in key order, and a scalar its
-// own plain spelling.
+// TestYAMLEncode covers the encoder's output: an array that is a list becomes
+// a sequence. Any other array becomes a mapping in key order. A scalar keeps
+// its plain spelling.
 func TestYAMLEncode(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

@@ -10,9 +10,9 @@ import (
 )
 
 // php://memory and php://temp are the handles a script opens for a buffer it
-// owns, with no file behind either: a CSV written before the response, a zip
+// owns, without a file behind either: a CSV written before the response, a zip
 // assembled in pieces, a body read twice. php's temp spills to a temporary
-// file past a threshold, which no call through the handle API can observe, and
+// file past a threshold, a spill no call through the handle API can observe, and
 // the `php://temp/maxmemory:1024` suffix it takes resolves to the same buffer.
 func init() {
 	RegisterWrapper("memory", openMemory)
@@ -36,7 +36,7 @@ func streamBounds(args []any) (length, offset int64) {
 	return read(0), read(1)
 }
 
-// openMemory answers the handle for both schemes, refusing a temp suffix other than maxmemory.
+// openMemory answers both schemes' handle, refusing a temp suffix other than maxmemory.
 func openMemory(_ *runner.Runtime, scheme, mode string) (any, error) {
 	if name, arg, cut := strings.Cut(strings.ToLower(scheme), "/"); cut {
 		if name != "temp" || !strings.HasPrefix(arg, "maxmemory:") {
@@ -64,7 +64,7 @@ type memoryStream struct {
 	closed   bool
 }
 
-// Read copies bytes at the position and reports io.EOF for a read that finds none.
+// Read copies bytes at the position, reporting io.EOF on an empty read.
 func (m *memoryStream) Read(p []byte) (int, error) {
 	if m.closed {
 		return 0, errStreamClosed

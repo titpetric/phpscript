@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// interfaceSet lists every interface reflectImplements cites, each with the PHP name a script types.
+// interfaceSet lists every interface reflectImplements cites, with the PHP name a script types.
 var interfaceSet = []struct {
 	typ reflect.Type
 	php string

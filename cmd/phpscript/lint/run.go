@@ -30,8 +30,8 @@ type Options struct {
 
 // NewCommand creates a new lint command. The file --include names puts the
 // application's classes and functions in the name registry: the flag that
-// makes a request find them makes the checks know them. One signature covers
-// every command, and main fills the globals this one reads.
+// makes a request find them makes the checks know the names. One signature
+// covers every command, and main fills the globals this one reads.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	var opts Options
 
@@ -169,7 +169,7 @@ func (s sink) summary(format string, args ...any) {
 	fmt.Fprintf(s.w, "\n%s\n", text)
 }
 
-// collect lints every file and reports one result per finding and per clean file.
+// collect lints every file and reports one result per finding or clean file.
 func collect(args []string, checkFlatstack bool) ([]result, error) {
 	files, err := list.ExpandFiles(args)
 	if err != nil {
@@ -256,7 +256,7 @@ func line(n int) string {
 	return strconv.Itoa(n)
 }
 
-// writeReportHeader opens a markdown report with its title plus the command that produced it.
+// writeReportHeader opens a markdown report with its title and producing command.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
 

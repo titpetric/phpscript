@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestPlatformOptions covers what the alias names: the options a server
-// starts under, assembled from the server block and the telemetry one. The
-// type is platform.Options, which this package names in one file alone.
+// TestPlatformOptions covers the alias: the options a server starts under,
+// assembled from the server block and the telemetry block. The type is
+// platform.Options, which this package names in one file alone.
 func TestPlatformOptions(t *testing.T) {
 	t.Parallel()
 	result := config.New()
@@ -25,8 +25,7 @@ func TestPlatformOptions(t *testing.T) {
 }
 
 // TestPlatformOptionsCarryStorage pins that the driver of the telemetry block
-// reaches the platform: the recorder it builds is the one that has to keep
-// traces on disk.
+// reaches the platform: the recorder it builds must keep traces on disk.
 func TestPlatformOptionsCarryStorage(t *testing.T) {
 	t.Parallel()
 	result := config.New()
@@ -43,7 +42,7 @@ func TestPlatformOptionsCarryStorage(t *testing.T) {
 }
 
 // TestPlatformOptionsRejectAnUnknownDriver pins that a bad telemetry block
-// fails the server and never starts it without the storage it named.
+// fails the server, never starting it without the storage it named.
 func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
 	t.Parallel()
 	result := config.New()

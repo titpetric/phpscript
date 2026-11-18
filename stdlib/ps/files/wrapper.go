@@ -68,7 +68,7 @@ func writeStream(rt *runner.Runtime, scheme, data string) any {
 	return int64(n)
 }
 
-// openWrapper opens a scheme's handle, resolving a name with an argument at the first slash.
+// openWrapper opens a scheme's handle, resolving a named argument at the first slash.
 func openWrapper(rt *runner.Runtime, scheme, mode string) (handle any, ok bool, err error) {
 	name := strings.ToLower(scheme)
 	wrappers.RLock()

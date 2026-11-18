@@ -7,8 +7,8 @@ import (
 	"github.com/titpetric/phpscript/lint"
 )
 
-// messages collects the findings of one source and a case asserts on text and
-// never on index positions a new check shifts.
+// messages collects the findings of a source. A case asserts on text and ignores
+// index positions a new check shifts.
 func messages(t *testing.T, src string) []string {
 	t.Helper()
 	found, err := lint.File("index.php", src)
@@ -34,8 +34,8 @@ func has(found []string, want string) bool {
 
 // TestReassignReportsADriftingType covers the convention the flat VM's typed
 // operator selection leans on: the first literal assigned to a name declares
-// its type, and a later literal of another type is the drift. It stays
-// advisory and the finding is never fatal and the program still runs.
+// its type; a later literal of another type is the drift. It stays advisory:
+// the finding is never fatal, and the program still runs.
 func TestReassignReportsADriftingType(t *testing.T) {
 	t.Parallel()
 	found, err := lint.File("index.php", `<?php
@@ -57,10 +57,10 @@ function render() {
 	}
 }
 
-// TestReassignIsOneScopePerBody covers where the type table lives: one per
-// function body, with branches sharing it. An if arm assigning a string where
-// the else arm assigns an int is the drift the rule names, and the same name
-// in a second function is a second variable and no conflict.
+// TestReassignIsOneScopePerBody covers the type table: one table for each
+// function body, shared across branches. An if arm assigning a string where the
+// else arm assigns an int is the drift the rule names. The same name in a second
+// function is a second variable, without conflict.
 func TestReassignIsOneScopePerBody(t *testing.T) {
 	t.Parallel()
 	branches := messages(t, `<?php
@@ -87,10 +87,9 @@ function second() {
 	}
 }
 
-// TestReassignIgnoresComputedValues covers what records no type and conflicts
-// with none: a call, another variable or any computed value says nothing about
-// what a name holds, and null is how PHP initialises a variable before the
-// real value arrives.
+// TestReassignIgnoresComputedValues covers values that record no type: a call,
+// another variable, any computed value says nothing about a name's contents.
+// null is how PHP initialises a variable before the real value arrives.
 func TestReassignIgnoresComputedValues(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{
@@ -122,9 +121,9 @@ function render() {
 }
 
 // TestReassignReportsAStringOffset covers the second finding this file
-// produces: $s[$i] on a name declared as a string counts bytes and a
-// multi-byte character reads as one of its bytes. The check stays silent for
-// an array under the same syntax, where indexing is what arrays are for.
+// produces. $s[$i] on a name declared as a string counts bytes; a multi-byte
+// character contributes one of its bytes. The check stays silent for an array with
+// the same syntax, where indexing suits arrays.
 func TestReassignReportsAStringOffset(t *testing.T) {
 	t.Parallel()
 	onAString := messages(t, `<?php

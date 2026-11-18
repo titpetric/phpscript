@@ -6,7 +6,7 @@ A bookmark list: the application built step by step in [Building an application]
 phpscript -f config.yml server .
 ```
 
-Then open the address printed by the server (normally `http://localhost:8080`). `config.yml` registers the SQLite connection as `bookmarks`, and the first start creates the database next to the sources.
+Then open the address printed by the server (normally `http://localhost:8080`). `config.yml` registers the SQLite connection as `bookmarks`, and the first start creates the database beside the sources.
 
 | Route                         | File                                         |
 |-------------------------------|----------------------------------------------|
@@ -25,4 +25,4 @@ Then open the address printed by the server (normally `http://localhost:8080`). 
 cd tests && atkins test
 ```
 
-The suite leaves the database as it found it: each case that adds a bookmark extracts the new id and deletes it again. Run it as often as you like.
+The suite leaves the database unchanged: each case that adds a bookmark extracts the new id and deletes it again. Run it as often as you like.

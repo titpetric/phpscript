@@ -21,7 +21,7 @@ type sourceEntry struct {
 	results []string
 }
 
-// declInfo is one function declaration the scan indexed for resolution.
+// declInfo is a single function declaration the scan indexed for resolution.
 type declInfo struct {
 	pkg      string
 	recvType string // empty for a plain function
@@ -75,7 +75,7 @@ func emptySources() *sources {
 	}
 }
 
-// scan parses every non-test Go file under root for registrations, declarations and type docs.
+// scan parses non-test Go files under root for registrations, declarations and type docs.
 func scan(root string) (*sources, error) {
 	src := emptySources()
 
@@ -168,7 +168,7 @@ func scan(root string) (*sources, error) {
 	return src, nil
 }
 
-// collect walks one function body for RegisterFunc and RegisterConstructor calls with a literal name.
+// collect walks a body for RegisterFunc and RegisterConstructor calls with a literal name.
 func (src *sources) collect(pkg, area string, body *ast.BlockStmt, cmap ast.CommentMap) {
 	var stack []ast.Node
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -235,7 +235,7 @@ func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr 
 		}
 	case *ast.SelectorExpr:
 		// The qualifier has to agree with the package holding the declaration
-		// found in. Without that check a registration of regexp.Compile reads
+		// found in. Without the check a registration of regexp.Compile reads
 		// the signature of flatstack/engine.Compile, which shares the name and
 		// that alone, and publishes its parameters.
 		if qualifier, ok := fn.X.(*ast.Ident); ok {
@@ -266,7 +266,7 @@ func (src *sources) method(typeName, goName string) *sourceEntry {
 	return nil
 }
 
-// lookupDecl finds a declaration by name, preferring pkg and, with samePkg, excluding any other.
+// lookupDecl finds a declaration by name, preferring pkg and excluding any other.
 func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	var fallback *declInfo
 	for _, info := range src.decls[name] {
@@ -283,7 +283,7 @@ func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	return fallback
 }
 
-// lookupDeclIn resolves a qualified selector to a same-package function or a method on the qualifier.
+// lookupDeclIn resolves a qualified selector to a local function or a method.
 func (src *sources) lookupDeclIn(pkg, qualifier, name string) *declInfo {
 	var method *declInfo
 	for _, info := range src.decls[name] {

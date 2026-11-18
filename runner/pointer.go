@@ -134,7 +134,7 @@ func (rt *Runtime) assignDeref(tgt *model.Deref, op string, value model.Expr, sc
 	return stored, err
 }
 
-// writePointer applies next to the value the pointer addresses and stores it.
+// writePointer applies alongside the value the pointer addresses and stores it.
 func writePointer(v any, next func(current any) (any, error)) error {
 	if p, ok := v.(*Pointer); ok {
 		current, err := p.Get()

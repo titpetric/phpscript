@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// The conversions a script's option array needs. PHP is dynamically typed and
-// an option arrives as whatever the script wrote and these helpers read each
-// one the way PHP would read it in that position and never type-assert it.
+// The conversions a script's option array needs. PHP is dynamically typed;
+// an option arrives as whatever the script wrote. These helpers read each
+// parameter as PHP would read it in that position, never type-asserting.
 
 // toString renders a value the way PHP renders it in a string context.
 func toString(value any) string {
@@ -24,7 +24,7 @@ func toString(value any) string {
 	}
 }
 
-// toBool follows PHP truthiness, reading "false", "off", "no" and "0" as false.
+// toBool follows PHP truthiness, reading "false", "off", "no", "0" as false.
 func toBool(value any) bool {
 	switch v := value.(type) {
 	case nil:
@@ -65,7 +65,7 @@ func toInt(value any) int64 {
 	}
 }
 
-// toDuration reads a timeout, seconds for a bare number and a Go duration for a unit.
+// toDuration reads a timeout, seconds bare or a Go duration with a unit.
 func toDuration(value any) time.Duration {
 	switch v := value.(type) {
 	case string:

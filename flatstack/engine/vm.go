@@ -26,8 +26,8 @@ type execState struct {
 	locals      []any
 	initialized []bool
 	// extras holds variables a host call introduced under names the compiler
-	// never saw. It starts nil and the first write makes the map and a program
-	// that never gains one pays nothing.
+	// did not know. It starts nil. The first write allocates the map; a program
+	// without extras pays nothing.
 	extras     map[string]any
 	refWrites  []bool
 	iterators  []*iteratorState
@@ -37,10 +37,10 @@ type execState struct {
 	pc         int
 
 	// spareLocals/spareInits hold cleared frame arrays returned by popped
-	// user-function frames and a call loop reuses two slabs and costs no
-	// allocation per call. Safe because nothing outlives the frame that
-	// borrowed them: the host call that pushed an opRef setter consumes it,
-	// and closures copy their seeds at creation.
+	// user-function frames. A call loop reuses two slabs and allocates nothing
+	// per call. Safe because nothing outlives the frame that borrowed them.
+	// Each host call that pushed an opRef setter consumes it; closures copy
+	// their seeds at creation.
 	spareLocals [][]any
 	spareInits  [][]bool
 
@@ -50,7 +50,7 @@ type execState struct {
 	walker func(yield func(any))
 }
 
-// frameSlots returns a locals and initialized pair for a fresh frame, reusing a stashed slab.
+// frameSlots returns locals and initialized for a fresh frame, reusing a stashed slab.
 func (st *execState) frameSlots(n int) ([]any, []bool) {
 	if k := len(st.spareLocals) - 1; k >= 0 {
 		locals, init := st.spareLocals[k], st.spareInits[k]
@@ -123,9 +123,9 @@ func (st *execState) armWalker() {
 					yield(frame.locals[i])
 				}
 			}
-			// A suspended frame's foreach still holds its listing and
-			// the walk has to reach it or a recursive walk under-reports
-			// everything but the innermost loop.
+			// A suspended frame's foreach still holds its listing. The walk
+			// must reach it, or a recursive walk under-reports everything but
+			// the innermost loop.
 			yieldIterators(frame.iterators, yield)
 		}
 		yieldIterators(st.iterators, yield)
@@ -143,7 +143,7 @@ func (st *execState) pop() (any, error) {
 	return value, nil
 }
 
-// args returns the top count operands borrowed from the stack and valid only for the call.
+// args returns count operands borrowed from the stack, valid only for the call.
 func (st *execState) args(count int) ([]any, error) {
 	if count < 0 || count > len(st.stack) {
 		return nil, fmt.Errorf("argument stack underflow")
@@ -179,8 +179,8 @@ func (st *execState) handle(runErr error) bool {
 	}
 	// exit() and die() are not catchable in PHP: a script that ends
 	// inside a try ends there. They unwind as an error here only because
-	// that is how the VM gets back to the top and a handler declines
-	// them and never binding them to a catch variable.
+	// the VM needs that path to the top. A handler declines them, binding no
+	// catch variable.
 	var exiting scriptExit
 	if errors.As(runErr, &exiting) {
 		return false
@@ -203,7 +203,7 @@ func (st *execState) handle(runErr error) bool {
 		st.refWrites = frame.refWrites
 		st.iterators = frame.iterators
 	}
-	// The host decides what a clause sees: the throwable itself, or the root cause.
+	// The host decides what a clause sees: the throwable or the root cause.
 	var clauses []catchClause
 	if handler.group >= 0 {
 		clauses = st.program.catchGroups[handler.group]
@@ -216,8 +216,8 @@ func (st *execState) handle(runErr error) bool {
 			st.locals[clause.local], st.initialized[clause.local] = st.host.CatchValue(runErr), true
 		}
 		// A throw out of the clause body is this try's to see through
-		// its finally block, but not to catch: PHP does not re-enter a
-		// sibling clause. group -1 is a handler with no clauses, armed
+		// the finally block, but not to catch: PHP does not re-enter a
+		// sibling clause. group -1 is a handler holding no clauses, armed
 		// over the clause bodies and dropped by the jump that leaves
 		// them for the finally block.
 		st.handlers = append(st.handlers, errorHandler{
@@ -232,9 +232,9 @@ func (st *execState) handle(runErr error) bool {
 		st.pc = clause.target
 		return true
 	}
-	// No clause declared a type that matches. The error keeps
-	// propagating, but this try's finally block still has to run first,
-	// and park it and let opRethrow pick it up on the other side.
+	// No clause declared a matching type. The error keeps
+	// propagating, but this try's finally block must run first.
+	// Park the error and let opRethrow pick it up on the other side.
 	if handler.pending < 0 || handler.pending >= len(st.locals) {
 		return false
 	}
@@ -243,7 +243,7 @@ func (st *execState) handle(runErr error) bool {
 	return true
 }
 
-// enterUserFrame pushes a frame for def and binds its receiver, positionals and variadic tail.
+// enterUserFrame pushes def's frame, binding its receiver, positionals and variadic tail.
 func (st *execState) enterUserFrame(def userFuncDef, receiver any, hasReceiver bool, arguments []any) {
 	st.callFrames = append(st.callFrames, callFrame{
 		returnPC:    st.pc,
@@ -301,14 +301,14 @@ func (st *execState) setIterator(n int, it *iteratorState) {
 type iteratorState struct {
 	entries []Entry
 	index   int
-	// source and key are what a by-reference loop writes its target back into:
-	// the container the entries came from, and the key of the entry now
+	// source and key back the by-reference loop target: source is the
+	// container the entries came from, and key is the entry's key now
 	// bound to the loop variable.
 	source any
 	key    any
 }
 
-// yieldIterators passes the walker each container a frame's foreach loops walk and its entries.
+// yieldIterators passes the walker each container a frame's foreach loops walk.
 func yieldIterators(iterators []*iteratorState, yield func(any)) {
 	for _, iterator := range iterators {
 		if iterator == nil {
@@ -323,8 +323,8 @@ func yieldIterators(iterators []*iteratorState, yield func(any)) {
 }
 
 type errorHandler struct {
-	// target is the finally block of the try, entered either by a matching
-	// catch clause falling through it or by an unmatched error on its way out.
+	// target is the finally block of the try. A matching catch clause falls
+	// through into it. Any unmatched error passes through while on its way out.
 	target int
 	// group indexes Program.catchGroups; pending is the hidden local an
 	// unmatched error waits in while the finally block runs.
@@ -344,9 +344,9 @@ type callFrame struct {
 	refWrites   []bool
 
 	// iterators is the caller's live foreach state. The compiler numbers
-	// iterators per function and a callee reuses the numbers its caller is
-	// using, and a recursive call reuses them exactly. Saving the slice
-	// here and handing the callee an empty one stops the call from closing a
+	// iterators per function. A callee reuses the numbers its caller is
+	// using. A recursive call reuses them exactly. Saving the slice here
+	// and handing the callee an empty one stops the call from closing a
 	// foreach the caller has in flight.
 	iterators []*iteratorState
 
@@ -364,7 +364,7 @@ type MemoryHost interface {
 	// checks; zero disables checking. Live-value registration happens either
 	// way and usage queries still see VM state.
 	MemoryCheckInterval() int
-	// PushLiveWalker registers an enumerator over every live VM value;
+	// PushLiveWalker registers an enumerator over each live VM value;
 	// PopLiveWalker removes it. Calls nest across nested Run invocations.
 	PushLiveWalker(func(yield func(any)))
 	PopLiveWalker()
@@ -377,10 +377,10 @@ type MemoryHost interface {
 // implements it has runs interrupted when the script runs out of time, or when
 // the client it answers goes away.
 //
-// The interval is a constant and not something the host decides once per
-// run, because a script sets its own limit with set_time_limit and may do it
-// after the run has started. CheckDeadline answers cheaply when there is no
-// limit and no client, which is the cost of a run with neither.
+// The interval is a constant; the host does not decide it once per run.
+// A script sets its limit with set_time_limit and may do it after the run
+// started. CheckDeadline answers cheaply when no limit or client exists, the
+// cost of a run having none.
 type DeadlineHost interface {
 	// CheckDeadline reports the script having run out of time, or its client
 	// having gone away, as the error that ends the run.
@@ -397,11 +397,11 @@ type localSeed struct {
 }
 
 // FrameLocals is the engine's view of the frame in flight, bound to the host
-// once per run and never copied around every call. Snapshot materialises the
-// frame's variables only when a callee actually needs them, and WriteBack
-// applies the mutations such a call made. The host keeps the ordering the old
-// map handshake had, snapshot before call, because it decides both moments:
-// it snapshots before the binding body runs and writes back after.
+// once per run. FrameLocals is not copied around every call. Snapshot materialises the
+// frame's variables only when a callee needs them. WriteBack applies the
+// mutations such a call made. The host keeps the ordering the old map
+// handshake had, snapshot before call, because it decides both moments:
+// snapshot before the binding body runs, write-back after.
 type FrameLocals interface {
 	Snapshot() map[string]any
 	WriteBack(vars map[string]any)
@@ -460,7 +460,7 @@ func Run(host Host, program *Program) error {
 	return run(program, host, 0, nil, globals, nil)
 }
 
-// run executes one frame from entryPC, a closure call re-entering without a frame.
+// run executes the frame at entryPC for Run and for a closure call.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
 	st := statePool.Get().(*execState)
 	st.armWalker()
@@ -481,9 +481,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 		}
 	}
 	if len(globals) > 0 {
-		// A name the program never mentions has no slot and goes to extras and
-		// get_defined_vars() at the top level lists it the way it does in the
-		// interpreter's global scope.
+		// A name the program never mentions has no slot and goes to extras.
+		// At top level, get_defined_vars() lists it as the interpreter's
+		// global scope does.
 		st.extras = applyNamedValues(program, st.locals, st.initialized, st.extras, globals, st.refWrites)
 	}
 
@@ -514,7 +514,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 
 	// The frame handle replaces the per-call locals copy: the host holds it
 	// for the whole run and snapshots only when a callee needs the scope. A
-	// nested run (a closure invoked from a binding) binds its own state here
+	// nested run (a closure invoked from a binding) binds its state here
 	// and puts the caller's back on the way out, as the old restoreHostLocals
 	// defer did.
 	if binder, ok := host.(hostFrame); ok {
@@ -575,7 +575,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 			value, constErr := host.Constant(name)
 			if constErr != nil {
-				// Through handle and a catch clause binds it the way it binds
+				// Through handle, a catch clause binds it as it binds
 				// an error a binding returned.
 				if st.handle(constErr) {
 					continue
@@ -592,8 +592,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					value: loadLocal(host, program, st.locals, st.initialized, st.extras, slot),
 				})
 			}
-			// The capture skips an unbound `$this` and never stores null and
-			// the closure body reads it the way it reads any other unset local.
+			// The capture skips an unbound `$this`; it stores no null; the
+			// closure body reads it as any other unset local.
 			if def.thisSlot >= 0 && st.initialized[def.thisSlot] {
 				captured = append(captured, localSeed{slot: def.thisSlot, value: st.locals[def.thisSlot]})
 			}
@@ -898,8 +898,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 		case opInitialized:
 			st.stack = append(st.stack, st.initialized[inst.a])
 		case opBinary, opBinLL, opBinLC, opBinTC:
-			// One body for the stack form and the fused register forms; only
-			// where the operands come from differs. See fuse.go.
+			// One body for the stack form and the fused register forms.
+			// The operands come from different places. See fuse.go.
 			var left, right any
 			switch inst.op {
 			case opBinLL:
@@ -926,10 +926,10 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					return popErr
 				}
 			}
-			// The compiler resolved the operator to a class; fastBinary runs
+			// The compiler resolved the operator to a class. fastBinary runs
 			// the both-int64 and both-string shapes inline through the same
-			// phpval rules phpArith reads, and every other operand shape
-			// falls through to the host with the operator name.
+			// phpval rules phpArith reads. Any other operand shape falls
+			// through to the host with the operator name.
 			value, ok := any(nil), false
 			if inst.b != binNone {
 				value, ok = fastBinary(inst.b, left, right)
@@ -997,11 +997,11 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 			st.stack = append(st.stack, host.Truthy(value))
 		case opJump:
-			// A jump out of a try's pc range discards its handler; that is how
-			// leaving the region disarms the catch. The range only means
-			// anything in the frame that armed it: a callee's pcs lie outside
-			// the caller's try body and a jump there - an if, a loop, the skip
-			// over an inline closure - must leave the caller's st.handlers alone.
+			// A jump out of a try's pc range discards its handler; leaving the
+			// region disarms the catch. The range only matters in the frame
+			// that armed it. Callee pcs lie outside the caller's try body,
+			// while a jump there - an if, a loop, the skip over an inline
+			// closure - must leave the caller's st.handlers alone.
 			for len(st.handlers) > 0 {
 				handler := st.handlers[len(st.handlers)-1]
 				if handler.frameDepth != len(st.callFrames) {
@@ -1034,8 +1034,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				continue
 			}
 		case opRef:
-			// The setter writes the frame holding the call; a user function
-			// called before the setter runs installs its own st.locals. This
+			// The setter writes the frame holding the call. A user function
+			// called before the setter runs installs fresh st.locals. This
 			// one keeps pointing at the caller's.
 			if st.refWrites == nil {
 				st.refWrites = make([]bool, len(st.locals))
@@ -1060,8 +1060,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			} else {
 				class := inst.name
 				if inst.b != 0 {
-					// `new $cls(...)`: the class name value sits beneath the
-					// arguments, stringified under the host's rules.
+					// `new $cls(...)`: the class name value is below the
+					// arguments, stringified under host rules.
 					nameValue, popErr := st.pop()
 					if popErr != nil {
 						return popErr
@@ -1297,8 +1297,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			}
 			// A removal the host could not make in place answers the
 			// container to put back. The compiler emits a slot in a only
-			// when the base is a local, which is the one lvalue still
-			// reachable from here.
+			// when the base is a local, the only lvalue still reachable
+			// from here.
 			if replacement != nil && inst.a >= 0 {
 				st.locals[inst.a], st.initialized[inst.a] = replacement, true
 			}
@@ -1332,9 +1332,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			if popErr != nil {
 				return popErr
 			}
-			// A thrown throwable is already an error and propagates as
-			// itself and a catch clause binds the object and not a
-			// rendering of it. A bare value still renders.
+			// A thrown throwable is already an error and propagates
+			// unchanged. A catch clause binds the object itself. A bare
+			// value still renders.
 			throwErr := host.Throw(value)
 			if st.handle(throwErr) {
 				continue
@@ -1471,7 +1471,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	return nil
 }
 
-// loadLocal reads a frame slot, falling back to a host-introduced extra then the host.
+// loadLocal reads a frame slot, then a host-introduced extra, then the host.
 func loadLocal(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, slot int) any {
 	if initialized[slot] {
 		return locals[slot]
@@ -1487,8 +1487,8 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 	return func(args ...any) (any, error) {
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
 		seeds = append(seeds, captured...)
-		// Parameters follow the captures and a parameter of the same
-		// name wins; php rejects that overlap outright. An argument the
+		// Parameters follow the captures; a parameter of the same
+		// name wins. php rejects that overlap outright. An argument the
 		// caller omitted binds null, matching the interpreter's bindParams.
 		for i, slot := range def.paramSlots {
 			var value any
@@ -1497,9 +1497,9 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 			}
 			seeds = append(seeds, localSeed{slot: slot, value: value})
 		}
-		// run binds its own frame handle and puts the caller's back on the
-		// way out and the snapshot usort() took before invoking this
-		// comparator stays the one usort()'s write-back sees.
+		// run binds a fresh frame handle and puts the caller's back on the
+		// way out. The snapshot usort() took before invoking this
+		// comparator stays visible to usort()'s write-back.
 		var result any
 		if err := run(program, host, def.entryPC, seeds, nil, &result); err != nil {
 			return nil, err
@@ -1508,7 +1508,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 	}
 }
 
-// fastBinary computes a classified operator on two int64 or concat operands, reporting false otherwise.
+// fastBinary computes a classified operator on int64 or concat operands, reporting false otherwise.
 func fastBinary(class int, left, right any) (any, bool) {
 	if class == binConcat {
 		if l, ok := left.(string); ok {
@@ -1516,7 +1516,7 @@ func fastBinary(class int, left, right any) (any, bool) {
 			case string:
 				return l + r, true
 			case int64:
-				// The one mixed shape hot loops build ($tag . $i);
+				// The mixed shape hot loops build ($tag . $i);
 				// FormatInt is exactly phpString's int spelling.
 				return l + strconv.FormatInt(r, 10), true
 			}

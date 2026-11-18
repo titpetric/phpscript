@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// TestMatrixRowLabel covers what a cell shows for a row. The label is the
-// basename the table prints; a row built without one falls back to the display
-// path and a cell is never blank.
+// TestMatrixRowLabel covers the cell a row shows. The label is the
+// basename the table prints. The display path is the fallback for a row built
+// without a label. A cell is never blank.
 func TestMatrixRowLabel(t *testing.T) {
 	t.Parallel()
 	labelled := matrixRow{DisplayPath: "tests/fixtures/arrays/a.phpt", Label: "a.phpt"}
@@ -28,9 +28,9 @@ func TestMatrixRowLabel(t *testing.T) {
 }
 
 // TestMatrixRowFailed covers the verdict a row reports to the run. Only a
-// failure fails it: a skip is a runner the fixture opted out of or one the
-// machine does not have, and counting either as a failure would fail every run
-// on a machine with no php.
+// failure fails the row: a skip is a runner the fixture opted out of, or a
+// runner the machine lacks. Counting either as a failure would fail every run
+// on a machine without php.
 func TestMatrixRowFailed(t *testing.T) {
 	t.Parallel()
 	for name, row := range map[string]matrixRow{
@@ -63,9 +63,10 @@ func TestMatrixRowFailed(t *testing.T) {
 }
 
 // TestEngineOrder covers the order every table and summary line prints the
-// per-engine durations in, which is the run's own runner order and never the
-// map's. A runner whose fixtures all opted out reports 0ms and stays in the
-// report and a column does not appear and vanish between folders.
+// per-engine durations in, which is the run's own runner order; the map does
+// not decide it. A runner whose fixtures all opted out reports 0ms and stays
+// in the report.
+// A column does not appear and vanish between folders.
 func TestEngineOrder(t *testing.T) {
 	t.Parallel()
 	runners := []tests.Runner{tests.RunnerFlatstack, tests.RunnerRuntime, tests.RunnerPHP}

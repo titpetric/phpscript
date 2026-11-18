@@ -41,7 +41,7 @@ A class declares a property with `var` or with a visibility modifier, and the de
 
 ## Static members
 
-A `static` property is storage on the class, not on an instance. Every instance, and every static call, reads and writes the same value. The value outlives the object that first set it.
+A `static` property is storage on the class, not on an instance. Every instance and static call reads and writes that value. The value outlives the object that first set it.
 
 ```php
 class Registry
@@ -62,15 +62,15 @@ echo count(Registry::all());          // 1
 echo Registry::class;                 // Registry
 ```
 
-`self::` and `static::` both resolve to the class of the running method. There is no inheritance: late static binding has nothing to bind late to, and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()` and the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound in its body, as in PHP.
+`self::` and `static::` resolve to the class of the running method. There is no inheritance: late static binding has nothing to bind late to, and the two spellings resolve to the same class. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()` and the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound in its body, as in PHP.
 
-`new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-build recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, which is the one class either keyword could ever name here.
+`new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-build recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, the only class either keyword could name here.
 
-`Class::method` is also a callable value and `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
+`Class::method` is also a callable value. `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
 
 ## Interfaces
 
-An interface names method signatures, and a class that declares `implements` must declare every one of them itself. The check runs before the program does, and a class that passes it has exactly the members it wrote.
+An interface names method signatures; a class that declares `implements` must declare each signature itself. The check runs before the program does. A passing class has exactly the members it wrote.
 
 ```php
 interface Reader
@@ -92,11 +92,11 @@ class Store implements Listing
 }
 ```
 
-`interface A extends B, C` widens the contract: the check tests a class against the union of the names every listed interface declares. A class receives nothing from them, because an interface declares no body and holds no storage.
+`interface A extends B, C` widens the contract: the check tests a class against the union of the names every listed interface declares. A class receives nothing from those interfaces: an interface declares no body and holds no storage.
 
 `phpscript lint` reports a missing method, which raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked and `implements Countable` loads: phpscript does not declare PHP's built-in interfaces.
 
-`instanceof` tests the class name and every interface name the class declares, following `extends` on an interface, and `$store instanceof Reader` is true for the example above. A constant declared on an interface reads through `Interface::NAME`; a class that implements the interface acquires none of its constants.
+`instanceof` tests the class name plus each interface name the class declares, following `extends` on an interface; `$store instanceof Reader` is true for the example above. A constant declared on an interface reads through `Interface::NAME`; a class that implements the interface acquires none of its constants.
 
 ## Host-backed objects
 

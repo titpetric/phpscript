@@ -50,14 +50,13 @@ func TestRenderTerminal(t *testing.T) {
 	if !strings.Contains(got, "\u256d") || !strings.Contains(got, "\u2502") {
 		t.Errorf("render has no box-drawing table:\n%s", got)
 	}
-	// The parser consumes the separator row and never prints it as data.
+	// The parser consumes the separator row. It does not print that row as data.
 	if strings.Contains(got, "|---|") {
 		t.Errorf("the markdown separator row leaked into the render:\n%s", got)
 	}
 }
 
-// TestRender pins that a document of prose alone comes out whole, table
-// markers that lead nowhere included.
+// TestRender pins that prose alone comes out whole, including table markers leading nowhere.
 func TestRender(t *testing.T) {
 	t.Parallel()
 	src := "one\ntwo\n| not a table because nothing follows it\n"
@@ -70,8 +69,7 @@ func TestRender(t *testing.T) {
 	}
 }
 
-// TestExamples covers the per-command documents, the files
-// `phpscript <command> --help` prints under its usage line.
+// TestExamples covers the per-command documents `phpscript <command> --help` prints beneath usage.
 func TestExamples(t *testing.T) {
 	t.Parallel()
 	got := helpdocs.Examples("test", true)
@@ -112,8 +110,9 @@ func TestFS(t *testing.T) {
 	}
 }
 
-// TestWrite covers the whole document: the commands, the shared flags once, and
-// a section per command holding the flags it defines and its examples.
+// TestWrite covers the whole document: the commands, the shared flags once,
+// plus a section per command. That section holds the flags the command defines
+// and its examples.
 func TestWrite(t *testing.T) {
 	t.Parallel()
 	shared := helpdocs.NewFlagSet("phpscript")

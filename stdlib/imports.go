@@ -1,8 +1,8 @@
 package stdlib
 
 // Blank imports wire the standard binding packages into any binary that uses
-// stdlib: each one contributes its runtime installer through runner.
-// RegisterArea in its init(), and Register runs them. A host needing a
+// stdlib: each package contributes its runtime installer through runner.
+// RegisterArea in its init(). Register runs the installers. A host needing a
 // different set constructs its Runtime without this package, or passes extra
 // bindings to Register.
 import (

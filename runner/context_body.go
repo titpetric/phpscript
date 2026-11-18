@@ -26,7 +26,7 @@ func isMultipart(r *http.Request) bool {
 	return mediaType(r) == "multipart/form-data"
 }
 
-// isURLEncoded reports a urlencoded form body, one of the two shapes that fill $_POST.
+// isURLEncoded reports a urlencoded body, one of two shapes filling $_POST.
 func isURLEncoded(r *http.Request) bool {
 	return mediaType(r) == "application/x-www-form-urlencoded"
 }
@@ -39,7 +39,7 @@ func mediaType(r *http.Request) string {
 	return parsed
 }
 
-// parseBody decodes the body into $_POST and $_FILES once, buffering it for php://input.
+// parseBody decodes the body into $_POST and $_FILES, buffering php://input.
 func (c *Context) parseBody(r *http.Request, opts Options) {
 	capBody(r, opts.PostMaxSize)
 
@@ -94,7 +94,7 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 	c.PostVars = c.decodeBody(r, opts)
 }
 
-// decodeBody builds $_POST from form fields, sorting multipart names to keep a fixed order.
+// decodeBody builds $_POST from form fields, sorting multipart names for fixed order.
 func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	limits := opts.inputLimits()
 	if isURLEncoded(r) {
@@ -117,7 +117,7 @@ func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	return shared.ParsePairs(limits, pairs)
 }
 
-// capBody caps an unannounced-length body so a chunked request cannot exceed post_max_size.
+// capBody caps an unannounced-length body at post_max_size.
 func capBody(r *http.Request, limit Size) {
 	if limit <= 0 || r.Body == nil || r.ContentLength >= 0 {
 		return
@@ -137,7 +137,7 @@ func (c Context) RawBody() []byte {
 }
 
 // SetRawBody stores the bytes php://input answers with, for a host that
-// builds its Context by hand, with no *http.Request behind it.
+// builds its Context by hand and has no *http.Request behind it.
 func (c Context) SetRawBody(body []byte) {
 	if c.rawBody != nil {
 		*c.rawBody = body

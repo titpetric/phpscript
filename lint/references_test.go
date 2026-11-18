@@ -28,8 +28,9 @@ function load() { return 1; }
 	}
 
 	// A chained statement whose value is a handle, or a name whose type the
-	// source does not settle, draws one finding, whatever scope encloses it,
-	// and a chain of three names draws one too and not one per link.
+	// source does not settle, draws one finding, whatever scope encloses the
+	// chain. A chain of three names draws one finding too. It does not draw a
+	// finding per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
 		t.Fatalf("got %d diagnostics, want %d: %+v", len(diags), len(wantLines), diags)
@@ -45,9 +46,8 @@ function load() { return 1; }
 }
 
 // The check leaves a chain that ends in a literal alone. A scalar is
-// immutable and neither name can reach the other through it. The parser
-// splits an array literal into one allocation per name, with no value
-// left to share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
+// immutable; neither name can reach the other. The parser splits an array
+// literal to one allocation per name, leaving no value to share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
 func TestFileAcceptsChainedLiterals(t *testing.T) {
 	t.Parallel()
 	src := `<?php

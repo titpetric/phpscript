@@ -13,9 +13,9 @@ func init() {
 
 func registerClosure(rt *runner.Runtime) {
 	// Closure::bind rebinds a closure's scope. phpscript enforces no property
-	// visibility and a scope change has nothing to alter and the call answers
-	// the closure unchanged. Rebinding `$this` would change what the body
-	// sees and the call refuses it with an error and ignores nothing.
+	// visibility. A scope change has nothing to alter. The call answers the
+	// closure unchanged. Rebinding `$this` would change the body's view. The
+	// call refuses that with an error, and ignores nothing.
 	rt.RegisterFunc("Closure::bind", func(closure any, args ...any) (any, error) {
 		if len(args) > 0 && args[0] != nil {
 			return nil, fmt.Errorf("Closure::bind(): rebinding $this is not supported")

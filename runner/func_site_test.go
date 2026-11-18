@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-// TestFuncSite covers the three shapes a declaration site prints in. PHP's
-// fatal error for a redeclared function names the first site, and for a script
-// with two declarations through a doubled include that file is the only
-// thing naming the include.
+// TestFuncSite covers the shapes a declaration site prints in. PHP's fatal
+// error for a redeclared function names the first site. For a script with two
+// declarations through a doubled include, that file is the only thing naming
+// the include.
 //
-// A site with no file is what a host passes in when it built the AST itself,
-// and a site with no line is a program with no line table. Both answer
-// something a caller can write a message around.
+// A site holding no file arrives when a host built the AST itself. A site
+// holding no line is a program whose line table is empty. Both answer something a
+// caller can write a message around.
 func TestFuncSite(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

@@ -10,8 +10,8 @@ import (
 )
 
 // TestMemoryMode covers every fopen mode php accepts, as php's own wrapper
-// answers them: "r", "x" and "c" refuse a write, a "+" on any of the three
-// takes one, where an append mode writes at the end.
+// answers them: "r", "x" and "c" refuse a write, while a "+" appended to any of
+// them takes one, where an append mode writes at the end.
 func TestMemoryMode(t *testing.T) {
 	t.Parallel()
 	for mode, want := range map[string][2]bool{
@@ -29,7 +29,7 @@ func TestMemoryMode(t *testing.T) {
 }
 
 // TestMemoryStreamAppends covers the write an append mode moves: php writes at
-// the end wherever the handle sits, where every other mode writes in place.
+// the end wherever the handle sits, where a non-append mode writes in place.
 func TestMemoryStreamAppends(t *testing.T) {
 	t.Parallel()
 	m := &memoryStream{writable: true, appends: true}
@@ -74,7 +74,7 @@ func TestStreamBounds(t *testing.T) {
 }
 
 // TestMemoryStreamPadsAGap covers the write php pads: a seek past the end
-// leaves NUL bytes behind, which no fixture can spell in its expected output.
+// leaves NUL bytes behind that no fixture can spell in its expected output.
 func TestMemoryStreamPadsAGap(t *testing.T) {
 	t.Parallel()
 	m := &memoryStream{writable: true}
@@ -99,8 +99,7 @@ func TestMemoryStreamPadsAGap(t *testing.T) {
 	}
 }
 
-// TestMemoryStreamRefusesAWrite covers a handle opened for reading: the write
-// fails, which fwrite reports as false.
+// TestMemoryStreamRefusesAWrite covers a handle opened for reading, whose write fails.
 func TestMemoryStreamRefusesAWrite(t *testing.T) {
 	t.Parallel()
 	m := &memoryStream{}
@@ -110,7 +109,7 @@ func TestMemoryStreamRefusesAWrite(t *testing.T) {
 }
 
 // TestMemoryStreamAfterClose covers the calls php answers with a TypeError:
-// each one fails here, reporting the handle as closed.
+// each call fails here, reporting the handle as closed.
 func TestMemoryStreamAfterClose(t *testing.T) {
 	t.Parallel()
 	m := &memoryStream{writable: true}

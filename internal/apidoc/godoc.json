@@ -51,20 +51,21 @@
         "Database\\Migrate loads a set of SQL migrations from the script filesystem",
         "and runs them against the named connection.",
         "",
-        "The first name is also the project name mig records under and two",
-        "schemas sharing one database keep separate records when they open",
-        "under separate names. A script that names no connection migrates",
+        "The first name is also the project name mig records under; two schemas",
+        "sharing one database keep separate records when they open under separate",
+        "names. A script that names no connection migrates",
         "\"default\": the connection an unnamed one resolves to anyway.",
         "",
-        "The constructor tries each name as \"\u003cname\u003e:migrate\" before \"\u003cname\u003e\" and a",
-        "deployment can point migrations at a user allowed to alter tables while",
-        "the script queries through one that is not, without the script naming",
-        "either. The project stays \"\u003cname\u003e\" whichever credential answered: what a",
-        "migration connects with is not what it records under. A \"\u003cname\u003e:migrate\"",
+        "The constructor tries each name as \"\u003cname\u003e:migrate\" before \"\u003cname\u003e\". A",
+        "deployment can point migrations at a user allowed to alter tables, while",
+        "the script queries through a user lacking that right, without naming",
+        "either. The project stays \"\u003cname\u003e\" whichever credential answered: a",
+        "migration records the project; the credential is only how it connects. A",
+        "\"\u003cname\u003e:migrate\"",
         "credential cannot come from the PLATFORM_DB_\u003cNAME\u003e=\u003cdsn\u003e environment",
-        "form, because an environment variable name holds no colon; it arrives",
-        "through Database::register and a virtual host owning its own connections",
-        "already supplies them.",
+        "form: an environment variable name holds no colon. It arrives through",
+        "Database::register; a virtual host that owns the connections already",
+        "supplies the connections.",
         "",
         "A name longer than 16 characters fails the run with mig's ErrNoProject,",
         "because 16 is the width of the project column."
@@ -164,8 +165,8 @@
       "comment": [
         "JSON\\Decoder returns a decoder reading from $stream.",
         "",
-        "UseNumber is on, as in json_decode(): a whole number comes back an int and",
-        "only a fractional one a float, the way php answers."
+        "UseNumber is on, as in json_decode(): a whole number comes back an int;",
+        "only a fractional number becomes a float, the way php answers."
       ],
       "params": [
         "stream"
@@ -384,9 +385,9 @@
           "comment": [
             "authenticate reports the user $key names when $secret is theirs.",
             "",
-            "A missing user and a wrong password are one answer, separable by time alone:",
-            "a key the file does not hold costs no derivation. Rate limiting bounds what",
-            "that is worth, see docs/reference/extensions/hashing.md."
+            "A missing user gets the same answer as a wrong password, separable by time",
+            "alone: a key the file does not hold costs no derivation. Rate limiting bounds",
+            "the value of that; see docs/reference/extensions/hashing.md."
           ],
           "params": [
             "key",
@@ -395,20 +396,19 @@
         },
         "Exists": {
           "comment": [
-            "exists reports whether there is a user database to ask: the password file",
-            "is there, and at least one of its lines is an account. A file of comments",
-            "and blank lines alone answers false and a login page says there are no",
-            "accounts where a form refusing every password would name no cause."
+            "exists reports whether a user database exists: the password file is present,",
+            "with at least one account among its lines. A file of comments and blank lines",
+            "alone answers false. A login page then says there are no accounts; a",
+            "form refusing every password names no cause."
           ]
         },
         "Users": {
           "comment": [
-            "users is every record in the file, ordered by username.",
+            "users returns all records in the file, ordered by username.",
             "",
-            "It holds no hash and a script may keep it: everything above here sees a",
-            "table of two columns, and the third column never leaves this package. A",
-            "caller writes the rows into its own table and rebuilds it when the file",
-            "changes."
+            "It holds no hash; a script may keep it. The code above sees a table of two",
+            "columns, and the third column stays in this package. A caller writes the rows",
+            "into its table and rebuilds that table when the file changes."
           ]
         }
       }
@@ -417,7 +417,7 @@
       "methods": {
         "Decode": {
           "comment": [
-            "decode reads the next value from the stream, throwing at the end of it."
+            "decode reads the next value from the stream, throwing at the end."
           ]
         },
         "More": {
@@ -443,8 +443,8 @@
         },
         "SetIndent": {
           "comment": [
-            "set_indent is json.Encoder.SetIndent: $indent per level under $prefix, and",
-            "two empty strings go back to one line per value."
+            "set_indent is json.Encoder.SetIndent: $indent per level under $prefix. Two",
+            "empty strings go back to a single line per value."
           ],
           "params": [
             "prefix",
@@ -532,16 +532,16 @@
           "pinning and the result accessors stay available, since a read-only",
           "transaction is a read.",
           "",
-          "The restriction is a boundary for the code holding this client, and no",
-          "sandbox around the script: the script that set it can unset it. A",
-          "connection that must not write belongs to a database user without the",
-          "grant to. This flag marks the code that must not write."
+          "The restriction is a boundary for the code holding this client. The",
+          "boundary does not sandbox the script: the script that set it can unset it.",
+          "Any connection that must not write belongs to a database user without",
+          "the grant to. This flag marks the code that must not write."
         ]
       },
       "methods": {
         "Begin": {
           "comment": [
-            "begin starts a transaction and opens the span measuring it. The span stays",
+            "begin starts a transaction and opens the span measuring the transaction. The span stays",
             "open until Commit or Rollback ends it."
           ]
         },
@@ -564,8 +564,8 @@
           "comment": [
             "get returns the first result row, or false when the query matches no rows.",
             "",
-            "A row is a native map: foreach walks it, $row[\"col\"] indexes it and",
-            "unset($row[\"col\"]) takes a column out. A map holds no column order; a script",
+            "A row is a native map: foreach walks the row, a column name indexes it.",
+            "unset() takes a column out. A map holds no column order; a script",
             "that needs one names its columns in the SELECT and indexes them."
           ],
           "params": [
@@ -649,9 +649,9 @@
         },
         "Run": {
           "comment": [
-            "run applies the loaded migrations. It opens one span and not one per file:",
-            "migrations run at startup, where what matters is how long the schema took and",
-            "whether it failed, with no row per statement."
+            "run applies the loaded migrations. It opens a single span, never one for each",
+            "file: migrations run at startup, where the useful facts are the schema's",
+            "duration and whether it failed. No row per statement."
           ]
         }
       }
@@ -669,11 +669,11 @@
         "Parallel": {
           "comment": [
             "parallel sends every request in $requests at once and returns the responses",
-            "under the same keys. The call takes as long as the slowest request.",
+            "keyed the same way. The call takes as long as the slowest request.",
             "$requests is an array of HTTP\\Request keyed by a name the script chooses,",
             "each bounded by the client's timeout.",
             "",
-            "One request failing does not fail the others and does not throw: that",
+            "One request failing does not fail the others and does not throw. That",
             "response reports $response-\u003eok() as false and $response-\u003eerr() as the",
             "reason. A script sees every outcome. A throw means the argument is no",
             "array of requests."
@@ -694,7 +694,7 @@
         "Send": {
           "comment": [
             "send sends $request and returns the response. A transport failure or a",
-            "timeout throws; an HTTP error status does not and check $response-\u003estatus()."
+            "timeout throws. An HTTP error status does not; check $response-\u003estatus()."
           ],
           "params": [
             "request"
@@ -719,10 +719,10 @@
             "handle registers $handler for $pattern, which is ServeMux.HandleFunc's",
             "pattern, with {name} segments the handler reads through $r-\u003epath_value($name).",
             "",
-            "$handler is a callable: a closure, a method read off its receiver as",
-            "$this-\u003efnName, or the name of a declared function. The mux calls it with the",
-            "response writer and the request, what it echoes reaches the response, and a",
-            "throw becomes a 500. docs/use-cases/http-server.md is the contract."
+            "$handler is a callable: a closure, a method read from its receiver, spelled",
+            "`$this-\u003efnName`, or the name of a declared function. The mux calls it with the",
+            "response writer and the request. Its echo reaches the response. A throw",
+            "becomes a 500. docs/use-cases/http-server.md is the contract."
           ],
           "params": [
             "pattern",
@@ -748,7 +748,7 @@
         },
         "UsePoolForTest": {
           "comment": [
-            "use_pool_for_test is usePool under a name a test can reach."
+            "use_pool_for_test exposes usePool to a test."
           ],
           "params": [
             "pool"
@@ -772,8 +772,8 @@
         },
         "Listen": {
           "comment": [
-            "listen binds the address and starts answering, and returns the address it",
-            "bound. It does not block: the script goes on, and calls wait() when its work",
+            "listen binds the address, starts answering, and returns the address it",
+            "bound. It does not block: the script goes on. It calls wait() when its work",
             "completes."
           ]
         },
@@ -788,7 +788,7 @@
         },
         "Wait": {
           "comment": [
-            "wait blocks until the script runs out of time or its client goes away."
+            "wait blocks until the script runs out of time or its client leaves."
           ]
         }
       }
@@ -797,9 +797,9 @@
       "methods": {
         "Send": {
           "comment": [
-            "send sends an email through the server this client names, as",
-            "`$mail-\u003esend($to, $subject, $body, $html, $reply_to)` with the last two",
-            "optional. It throws, sending nothing, when $reply_to is not one address."
+            "send sends an email via the server this client names:",
+            "`$mail-\u003esend($to, $subject, $body, $html, $reply_to)`, with the last two",
+            "optional. It throws, sending nothing, when $reply_to is not a single address."
           ],
           "params": [
             "recipient",
@@ -833,9 +833,9 @@
             "destroy ends the current session: it drops the data behind the cookie and",
             "expires the cookie on the way out.",
             "",
-            "A session that is not there is no error. Logging out twice, and logging out",
-            "of a session a prune already took, are the same request to the client, and",
-            "both end with no session and no cookie."
+            "A missing session is no error. Logging out twice, and logging out of a",
+            "session a prune already took, are the same request to the client. Both end",
+            "without a session or cookie."
           ]
         },
         "Get": {
@@ -847,10 +847,10 @@
           "comment": [
             "login authenticates $key and $secret against the user database and starts a",
             "session for the user it names. It reports whether the credential held; a",
-            "wrong password is false and no error.",
+            "wrong password answers false, plus no error.",
             "",
             "The session holds the user's primary key. The username stays in the user",
-            "database and a caller that needs it reads it there."
+            "database; a caller that needs it reads the value there."
           ],
           "params": [
             "key",
@@ -867,8 +867,7 @@
         },
         "SetStorage": {
           "comment": [
-            "set_storage replaces the storage that holds sessions, wrapping it for tracing",
-            "as the constructor does."
+            "set_storage replaces the session storage, wrapping it for tracing as the constructor does."
           ],
           "params": [
             "storage"
@@ -902,9 +901,9 @@
         },
         "DeleteByUser": {
           "comment": [
-            "delete_by_user removes every session file holding userID, counting what it",
-            "took. The walk reads each session because the payload is the only place the",
-            "user appears: a file's name is its session id alone."
+            "delete_by_user removes every session file holding userID and counts the files.",
+            "The walk reads each session: the payload is the only place the user appears.",
+            "A file's name holds only the session id."
           ],
           "params": [
             "user_id"

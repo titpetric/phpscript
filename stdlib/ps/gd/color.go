@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// alphaOpaque is 0 and alphaTransparent 127 on GD's alpha scale, where 0 is opaque.
+// alphaOpaque is 0 and alphaTransparent 127 on GD's alpha scale.
 const (
 	alphaOpaque      = 0
 	alphaTransparent = 127
@@ -86,7 +86,7 @@ func clampComponent(v, max int64) int64 {
 	return v
 }
 
-// rgba converts a packed identifier into a Go colour, flipping GD's alpha to 0..255.
+// rgba converts a packed identifier into a Go colour, GD's alpha as 0..255.
 func rgba(packed int64) color.RGBA {
 	r, g, b, a := unpackColor(packed)
 	return color.RGBA{R: r, G: g, B: b, A: byteFromAlpha(a)}

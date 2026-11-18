@@ -9,10 +9,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// runScript parses and runs src against a runtime with the stdlib installed,
-// returning its output. It drives the shims through the VM because that is
-// where their return shape has to hold up: foreach, indexing, count() and
-// property writes all reach the value through reflection.
+// runScript parses and runs src on a runtime with the stdlib installed,
+// returning its output. It drives the shims via the VM; the return shape
+// must hold up there: foreach, indexing, count() and property writes all reach
+// the value through reflection.
 func runScript(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -29,8 +29,8 @@ func runScript(t *testing.T, src string) string {
 }
 
 // TestExceptionSemantics covers what returning *Exception in place of a struct
-// value buys: the instance the script holds is addressable and its fields are
-// writable and a write is visible through the accessors.
+// value buys: the instance the script holds is addressable, its fields are
+// writable. A write is visible by the accessors.
 func TestExceptionSemantics(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -65,9 +65,9 @@ func TestExceptionSemantics(t *testing.T) {
 		},
 		{
 			name: "reference semantics across a call",
-			// The helper avoids the name rename(), which php refuses: a
-			// built-in holds the name, and declaring over one is a fatal
-			// error there and a RedeclareError here.
+			// The helper avoids the name rename(), which php refuses. A
+			// built-in holds the name; declaring a function with that name is a
+			// fatal error in php. The runtime answers a RedeclareError here.
 			php: `<?php
 function relabel($e) { $e->message = "renamed"; }
 $e = new Exception("boom");
@@ -85,7 +85,7 @@ echo $e->getMessage();`,
 	}
 }
 
-// TestArrayMergeScript pins array_merge's behaviour through the VM: the list
+// TestArrayMergeScript pins array_merge's behaviour in the VM: the list
 // fast path must be indistinguishable from the *model.Array it replaced for
 // everything except appending.
 func TestArrayMergeScript(t *testing.T) {
@@ -194,9 +194,9 @@ func TestStringShimsScript(t *testing.T) {
 	}
 }
 
-// TestRandomBindingsScript covers what the .phpt fixture cannot: the error
-// contract (a bad bound or length surfaces as a catchable throw) and the
-// hex2bin false returns, which under the php binary arrive with a warning.
+// TestRandomBindingsScript covers the gap the .phpt fixture leaves: the error
+// contract (a bad bound or length surfaces as a catchable throw), plus the
+// hex2bin false returns, which arrive with a warning in the php binary.
 func TestRandomBindingsScript(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -221,8 +221,8 @@ func TestRandomBindingsScript(t *testing.T) {
 		},
 		{
 			name: "random_bytes length is honoured",
-			// strlen counts characters and this case reads a binary length
-			// through its hex spelling; see docs/README.md, known divergences.
+			// strlen counts characters; this case reads a binary length in its
+			// hex spelling; see docs/README.md, known divergences.
 			php:  `<?php echo strlen(bin2hex(random_bytes(1))) / 2, " ", strlen(bin2hex(random_bytes(64))) / 2;`,
 			want: "1 64",
 		},
@@ -251,8 +251,7 @@ func TestRandomBindingsScript(t *testing.T) {
 	}
 }
 
-// BenchmarkScriptHTMLSpecialChars measures the shim the way a template does:
-// through the VM's reflection call path.
+// BenchmarkScriptHTMLSpecialChars measures the shim as a template does, via reflection.
 func BenchmarkScriptHTMLSpecialChars(b *testing.B) {
 	prog, err := parser.Parse(`<?php echo htmlspecialchars("<a href=\"/x?a=1&b=2\">Tom & Jerry's</a>");`)
 	if err != nil {

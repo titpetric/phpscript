@@ -26,12 +26,12 @@ type TestResult struct {
 	Skipped       bool   `json:"skipped,omitempty"`
 }
 
-// RunFixture executes a single fixture against the default runtime.
+// RunFixture executes a single fixture using the default runtime.
 func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 	return RunFixtureOn(ctx, f, RunnerRuntime)
 }
 
-// RunFixtureOn executes a single fixture against one runner. The same expected
+// RunFixtureOn executes a single fixture with one runner. The same expected
 // output holds for every runner; the runner only decides how the source runs.
 func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 	start := time.Now()

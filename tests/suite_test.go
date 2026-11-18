@@ -29,17 +29,16 @@ func writeTree(t *testing.T, files ...string) string {
 	return dir
 }
 
-// writeSuite is writeTree with body written to the phpscript.yml a suite root
-// configures itself with.
+// writeSuite is writeTree writing the phpscript.yml a suite root configures itself with.
 func writeSuite(t *testing.T, body string, files ...string) string {
 	t.Helper()
 	return writeTree(t, append([]string{SuiteFile, body}, files...)...)
 }
 
-// TestSuite covers reading one phpscript.yml off a suite root: the directory
-// as the caller spelled it, the settings the file named, and the keys it
-// named apart from the ones it inherited. A folder holding no such file is no
-// suite root and the load answers nothing and no error.
+// TestSuite covers reading one phpscript.yml from a suite root: the directory
+// as spelled by the caller, the settings the file named, and the keys it named
+// apart from inherited keys. A folder holding no such file is no suite root;
+// the load answers nothing and returns no error.
 func TestSuite(t *testing.T) {
 	dir := writeSuite(t, "test:\n  include: prelude.php\n  hooks:\n    setup: hooks/up.php\n    teardown: hooks/down.php\n")
 
@@ -74,8 +73,8 @@ func TestSuite(t *testing.T) {
 
 // TestSuite_run covers the keys a run of the whole command owns. Two folders
 // answering differently for parallel would leave the run with nothing to act
-// on and LoadSuite refuses a file discovered below the invocation root and
-// names the key.
+// on. LoadSuite refuses a file discovered below the invocation root, and names
+// the key.
 func TestSuite_run(t *testing.T) {
 	dir := writeSuite(t, "test:\n  parallel: 4\n")
 
@@ -94,10 +93,10 @@ func TestSuite_run(t *testing.T) {
 	}
 }
 
-// TestLoadSuiteFS covers the same read over a tree that is not on disk. The
-// test binary reaches its compiled-in fixtures this way, and LoadSuiteFS
-// refuses the run-wide keys for every one of them: an embedded tree has no
-// invocation root above it.
+// TestLoadSuiteFS covers the same read on a tree that is not on disk. The
+// test binary reaches its compiled-in fixtures this way. LoadSuiteFS refuses
+// the run-wide keys for each of them: an embedded tree has no invocation root
+// above it.
 func TestLoadSuiteFS(t *testing.T) {
 	root := fstest.MapFS{
 		"area/phpscript.yml": &fstest.MapFile{Data: []byte("test:\n  include: prelude.php\n")},
@@ -127,10 +126,10 @@ func TestLoadSuiteFS(t *testing.T) {
 	}
 }
 
-// TestSuite_Provider covers the connections the fixtures below a suite root
-// resolve. A folder that named no env answers nothing and the
-// binding stays on the process environment; one that named an env gets only
-// what it named, the rule a virtual host is already held to.
+// TestSuite_Provider covers the connections the fixtures below one suite root
+// resolve. A folder that named no env answers nothing; the binding stays on
+// the process environment. A folder that named an env gets only the names
+// only those names, the rule a virtual host is already held to.
 func TestSuite_Provider(t *testing.T) {
 	declared := writeSuite(t, "env:\n  - \"PLATFORM_DB_DEFAULT=sqlite://:memory:\"\n")
 	suite, err := LoadSuite(declared, config.New(), true)
@@ -161,9 +160,9 @@ func TestSuite_Provider(t *testing.T) {
 }
 
 // TestSuite_Mail covers the mail servers a fixture may name. A suite that
-// declared no mail block answers nothing and a fixture cannot reach the
-// operator's credentials; one that declared the key holds the servers it
-// named and no others.
+// declared no mail block answers nothing; a fixture cannot reach the
+// operator's credentials. A suite that declared the key holds the servers it
+// named, no others.
 func TestSuite_Mail(t *testing.T) {
 	declared := writeSuite(t, "mail:\n")
 	suite, err := LoadSuite(declared, config.New(), true)
@@ -194,8 +193,8 @@ func TestSuite_Mail(t *testing.T) {
 }
 
 // TestSuite_Include covers the prelude the fixtures below a suite root load.
-// A nil suite answers "" and a fixture tree with no phpscript.yml takes the
-// same path as one whose file named no include.
+// A nil suite answers "". A fixture tree without a phpscript.yml takes the
+// same path as a tree whose file named no include.
 func TestSuite_Include(t *testing.T) {
 	dir := writeSuite(t, "test:\n  include: bootstrap.php\n")
 	suite, err := LoadSuite(dir, config.New(), true)
@@ -212,9 +211,9 @@ func TestSuite_Include(t *testing.T) {
 	}
 }
 
-// TestSuite_Setup covers the hook named for the state the fixtures read. A
-// nil suite and a file that named no hook both answer "", which RunSetup
-// reads as nothing to run.
+// TestSuite_Setup covers the hook named for the state the fixtures read. A nil
+// suite answers "", like a file naming no hook; RunSetup reads that as nothing
+// to run.
 func TestSuite_Setup(t *testing.T) {
 	dir := writeSuite(t, "test:\n  hooks:\n    setup: hooks/up.php\n")
 	suite, err := LoadSuite(dir, config.New(), true)
@@ -234,9 +233,9 @@ func TestSuite_Setup(t *testing.T) {
 	}
 }
 
-// TestSuite_Teardown covers the hook that releases what the setup laid down.
-// Teardown reads it the same way Setup does and a run that ended badly still
-// has a name to execute.
+// TestSuite_Teardown covers the hook that releases the state setup laid down.
+// Teardown reads it as Setup does; a run that ended badly still has a name to
+// execute.
 func TestSuite_Teardown(t *testing.T) {
 	dir := writeSuite(t, "test:\n  hooks:\n    teardown: hooks/down.php\n")
 	suite, err := LoadSuite(dir, config.New(), true)
@@ -254,10 +253,10 @@ func TestSuite_Teardown(t *testing.T) {
 }
 
 // TestSuite_RunHook covers the runtime one hook executes on. The suite root is
-// its filesystem and a hook names its files the way an application does, and
-// RunHook loads the suite's prelude ahead of it: a hook calling the
-// application's own helpers needs what the autoloader declared. A name that is
-// not in the tree fails before any of that.
+// the hook's filesystem; a hook names its files the way an application does.
+// RunHook loads the suite's prelude ahead of the hook: a hook calling the
+// application's own helpers needs the names the autoloader declared. A name
+// that is not in the tree fails before any of that.
 func TestSuite_RunHook(t *testing.T) {
 	dir := writeSuite(t,
 		"test:\n  include: prelude.php\n  hooks:\n    setup: hooks/up.php\n",
@@ -284,8 +283,8 @@ func TestSuite_RunHook(t *testing.T) {
 
 // TestRunSetup covers the order the setup hooks run in: outermost first and an
 // inner suite reads the state its parent laid down. The run stops at the first
-// failure, because fixtures with no state to assert against would report the
-// same missing table once each.
+// failure: fixtures lacking state to assert against would report the same
+// missing table once each.
 func TestRunSetup(t *testing.T) {
 	suites := []*Suite{
 		loadHookSuite(t, "outer", "hooks/up.php", ""),
@@ -315,8 +314,8 @@ func TestRunSetup(t *testing.T) {
 }
 
 // TestRunTeardown covers the reverse order and that every hook runs. The
-// suites are independent and a caller learns about every failure and not the
-// innermost one alone.
+// suites are independent; a caller learns about every failure, including the
+// innermost one.
 func TestRunTeardown(t *testing.T) {
 	suites := []*Suite{
 		loadHookSuite(t, "outer", "", "hooks/down.php"),

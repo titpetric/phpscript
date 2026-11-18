@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-// TestVarExport covers the source var_export writes, which has to read back as
-// the value behind it. The single-quoted string escapes the quote and the
-// backslash alone, and a whole float keeps its ".0", because
-// var_export(1.0) writing "1" would read back as an int.
+// TestVarExport covers the source var_export writes, which must read back as
+// the underlying value. The single-quoted string escapes the quote and the
+// backslash alone. A whole float keeps its ".0", because var_export(1.0)
+// writing "1" would read back as an int.
 //
-// A nested array breaks after the arrow and indents two and the inner "array ("
-// starts a new line under the key.
+// A nested array breaks after the arrow and indents two, then the inner
+// "array (" starts a new line beneath the key.
 func TestVarExport(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -36,7 +36,7 @@ echo "\n";`)
 }
 
 // TestVarExportReturn covers the second argument: with $return true
-// var_export answers the source and writes nothing and a caller nests one
+// var_export answers the source and writes nothing. A caller nests one
 // export inside another string.
 func TestVarExportReturn(t *testing.T) {
 	t.Parallel()
@@ -52,8 +52,8 @@ echo "[", $source, "]";`)
 
 // TestVarDump covers the annotation var_dump writes: the type, the element
 // count of a composite, and the length of a string in bytes. A two-byte é
-// makes string(6) out of five characters and a script sees the encoding it
-// actually holds.
+// makes string(6) from five characters. A script sees the encoding it actually
+// holds.
 func TestVarDump(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

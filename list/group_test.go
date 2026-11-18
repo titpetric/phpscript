@@ -8,8 +8,8 @@ import (
 )
 
 // TestGroupByDirKeepsDiscoveryOrder holds the bucketing contract: a folder
-// groups under the first path that named it, later paths of the same folder
-// join it even when another folder came between, and a bare filename lands
+// groups by the first path that named it. Later paths of the same folder
+// join that group even when another folder came between. A bare filename lands
 // under ".".
 func TestGroupByDirKeepsDiscoveryOrder(t *testing.T) {
 	t.Parallel()

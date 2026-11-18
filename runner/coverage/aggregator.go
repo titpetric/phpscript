@@ -7,15 +7,15 @@ import (
 	"sync"
 )
 
-// keySep separates the fields of a composed map key and appears in no path.
+// keySep separates a composed map key's fields and appears in no path.
 const keySep = "\x00"
 
 // Aggregator accumulates the counts of many collectors for the lifetime of a
 // process. Counts add: a statement two requests reached ran twice.
 //
-// A Collector keys statements by AST node and one kept across requests grows
-// with every re-parse. The aggregator keys them by the profile line it writes
-// them as, and the size of the application bounds that.
+// A Collector keys statements by AST node; one kept across requests grows with
+// every re-parse. The aggregator keys statements by the profile line it writes,
+// and the size of the application bounds that.
 type Aggregator struct {
 	mu     sync.Mutex
 	blocks map[string]int
@@ -32,8 +32,9 @@ func NewAggregator() *Aggregator {
 	}
 }
 
-// Add folds one collector's counts in and returns, reading the collector and
-// keeping no reference and the caller may drop it and the AST it keys on.
+// Add folds one collector's counts in and returns. It reads the collector and
+// keeps no reference. The caller may drop both the collector and the AST it
+// keys on.
 func (a *Aggregator) Add(c *Collector) {
 	if c == nil {
 		return

@@ -6,7 +6,7 @@
 
 Full-stack, interruptible function that a script can suspend from anywhere in the call stack.
 
-Execution inside a fiber pauses until something resumes it, and one call stack waits without blocking the one that started it.
+Something resumes a paused fiber. One call stack waits without blocking the stack that started it.
 
 ## Class synopsis
 
@@ -58,6 +58,6 @@ public static function getCurrent(): ?Fiber
 
 ## Status
 
-- phpscript has no `Fiber` and will never have one, for the reason [Generator](Generator.md) is not implemented: there is no coroutine model. See [Design decisions](../../../design.md).
+- phpscript has no `Fiber`. It never will, for the reason [Generator](Generator.md) is not implemented: there is no coroutine model. See [Design decisions](../../../design.md).
 - The name is not declared.
 - Concurrency belongs to the embedding Go application. A script runs to completion on one goroutine, and the host decides how many run at once.

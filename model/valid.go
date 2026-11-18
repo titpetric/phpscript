@@ -12,7 +12,7 @@ import (
 // grammar: Valid is the check those callers get in place of one.
 //
 // Each reports the first fault it finds and names the declaration. None of
-// them reads a body, resolves a name against a program or reaches another
+// them reads a body, resolves a name in a program or reaches another
 // declaration: modelutil holds the checks that need the whole tree.
 
 // errNoName is the fault every declaration here shares.
@@ -29,7 +29,7 @@ func (p Param) Valid() error {
 	return nil
 }
 
-// Valid reports a field naming something under a visibility php spells.
+// Valid reports a field naming something with a visibility php spells.
 func (f Field) Valid() error {
 	if f.Name == "" {
 		return fmt.Errorf("property: %w", errNoName)
@@ -41,11 +41,12 @@ func (f Field) Valid() error {
 	return fmt.Errorf("property $%s declares visibility %q, want public, protected or private", f.Name, f.Visibility)
 }
 
-// Valid reports a function declaring a name, a parameter list php can call and
-// a body matching what it promised.
+// Valid reports a function declaring a name, a parameter list php can call,
+// plus a body that matches its promise.
 //
-// An abstract declaration holds no body and a concrete one holds one. The
-// variadic parameter is last, because a parameter after it takes nothing.
+// An abstract declaration holds no body; a concrete declaration holds its
+// body. The variadic parameter comes last, since a parameter after it takes
+// nothing.
 func (d *FuncDecl) Valid() error {
 	if d == nil {
 		return errors.New("function: nil declaration")
@@ -76,8 +77,8 @@ func (d *FuncDecl) Valid() error {
 	return nil
 }
 
-// Valid reports a class declaring a name and a member list with no repeated
-// name, over its properties, its statics, its constants and its methods.
+// Valid reports a class declaring a name, plus a member list without a
+// repeated name across properties, statics, constants and methods.
 //
 // It reads Implements as names alone; modelutil.CheckInterfaces resolves them
 // against the interfaces a program declares.
@@ -145,8 +146,8 @@ func (c *Class) Valid() error {
 	return validFields(c.Name, "property", c.Fields)
 }
 
-// Valid reports a callable holding exactly one of its two forms.
-// A Func with neither set is a name a script can call and nothing runs.
+// Valid reports a callable in exactly one of its two forms.
+// A Func that sets neither field names something callable where nothing runs.
 func (f Func) Valid() error {
 	switch {
 	case f.Decl == nil && f.Go == nil:
@@ -159,8 +160,8 @@ func (f Func) Valid() error {
 	return nil
 }
 
-// Valid reports an instance pointing at a class, the one path to its methods
-// and its property order.
+// Valid reports an instance pointing at a class: that class is the path to the
+// instance's methods and property order.
 func (o *Object) Valid() error {
 	if o == nil {
 		return errors.New("object: nil")

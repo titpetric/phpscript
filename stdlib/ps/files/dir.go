@@ -47,7 +47,7 @@ func registerDirs(rt *runner.Runtime, r root) {
 	})
 }
 
-// openDir is the opendir handle, a pointer so its cursor survives a PHP copy.
+// openDir is the opendir handle, a pointer so its cursor survives a copy.
 type openDir struct {
 	names []string
 	pos   int

@@ -8,9 +8,9 @@ import (
 
 // registerStreamReads installs the read half of the handle API, buffering nothing.
 func registerStreamReads(rt *runner.Runtime) {
-	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, as Go's io
-	// package does, and fseek passes the argument through as it arrives and
-	// never translates it.
+	// The $whence values fseek takes. PHP numbers them 0, 1, 2, as Go's io
+	// package does. fseek passes the argument through as it arrives, never
+	// translating it.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))
@@ -33,9 +33,9 @@ func registerStreamReads(rt *runner.Runtime) {
 		return string(buf[:n])
 	})
 
-	// fgets reads one line from $stream, keeping the newline that ends it,
-	// and returns false at the end of the handle; $length bounds the line and
-	// a line longer than it comes back in pieces.
+	// fgets reads one line from $stream, keeping the newline that ends the
+	// line, and returns false at the end of the handle. $length bounds the line; a
+	// longer line comes back in pieces.
 	rt.RegisterFunc("fgets", func(stream io.Reader, length ...int64) any {
 		if stream == nil {
 			return false
@@ -43,7 +43,7 @@ func registerStreamReads(rt *runner.Runtime) {
 		limit := int64(-1)
 		if len(length) > 0 && length[0] > 0 {
 			// PHP's $length counts the terminating NUL it never writes to a
-			// script and the line it reads is one shorter.
+			// script and the line it reads is shorter by one.
 			limit = length[0] - 1
 		}
 
@@ -72,18 +72,18 @@ func registerStreamReads(rt *runner.Runtime) {
 	})
 
 	// feof reports whether $stream is at its end: the read that ran out of
-	// bytes, never the position, which is php's own rule and holds for a file,
-	// a buffer and the request body alike. A handle the host bound itself
-	// holds no flag and reads as open, php's answer for a write handle.
+	// bytes, where the position is no signal at all. That is php's own rule. It
+	// holds for a file, a buffer and the request body alike. A handle the host
+	// bound itself holds no flag and reads as open, php's answer for a write
+	// handle.
 	rt.RegisterFunc("feof", func(stream any) bool {
 		return atEOF(stream)
 	})
 
 	// fseek moves $stream to $offset, counted from the start of the handle,
 	// from where it sits when $whence is SEEK_CUR, or from the end when
-	// $whence is SEEK_END; it answers 0 on success and -1 on failure, which is
-	// the opposite way round from every other function here and is php's own
-	// choice.
+	// $whence is SEEK_END; it answers 0 on success and -1 on failure, the
+	// opposite way round from the other functions here, php's own choice.
 	rt.RegisterFunc("fseek", func(stream io.Seeker, offset int64, whence ...int64) int64 {
 		if stream == nil {
 			return -1

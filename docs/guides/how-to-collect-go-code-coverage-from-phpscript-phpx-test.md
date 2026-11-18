@@ -1,6 +1,6 @@
 # How to collect Go code coverage from phpscript and phpx test
 
-`phpscript test` runs PHP fixtures through a Go interpreter. The fixtures pass or fail. Running them exercises Go code. This guide builds a copy of the binary that records which Go statements the fixtures ran, runs the fixtures through it, and turns the result into a coverage profile.
+`phpscript test` runs PHP fixtures through a Go interpreter. The fixtures pass or fail. Running them exercises Go code. This guide builds a copy of the binary that records which Go statements the fixtures ran. It runs the fixtures with that copy and turns the result into a coverage profile.
 
 The steps work for any Go program. The examples name two binaries, `phpscript` and `phpx`. Replace the name to repeat it.
 
@@ -17,13 +17,13 @@ A coverage build is an ordinary build with `-cover`:
 go build -cover -o bin/phpscript-test .
 ```
 
-phpx builds under the `phpx` tag:
+phpx builds with the `phpx` tag:
 
 ```sh
 go build -cover -tags phpx -o bin/phpx-test .
 ```
 
-Three flags decide what the build records.
+Three flags decide the build's record.
 
 | Flag | What it does |
 |------|--------------|
@@ -39,20 +39,20 @@ go build -cover -covermode=atomic -coverpkg=./... -o bin/phpscript-test .
 
 ### Why `go build` and not `go install`
 
-`go install` accepts the same flags and writes to `$GOBIN`, but it has no `-o`. The binary takes its name from the package. A coverage build of `phpscript` would overwrite the real one:
+`go install` accepts the same flags and writes to `$GOBIN`. It has no `-o` option. The binary takes its name from the package. A coverage build of `phpscript` would overwrite the real one:
 
 ```sh
 GOBIN=$PWD/bin go install -cover -covermode=atomic ./...   # writes bin/phpscript
 ```
 
-When the copy must have its own name, build it and install the file:
+When the copy needs a different name, build it. Then install the file:
 
 ```sh
 go build -cover -covermode=atomic -coverpkg=./... -o bin/phpscript-test .
 install -m 0755 bin/phpscript-test /usr/local/bin/phpscript-test
 ```
 
-Do not set `-cover` in `GOFLAGS`. It would instrument every build the environment makes, including the one that produces the binary you ship.
+Do not set `-cover` in `GOFLAGS`. It would instrument every build the environment makes, including the build that produces the binary you ship.
 
 ## 2. Tell the binary where to write
 
@@ -64,7 +64,7 @@ GOCOVERDIR=cover/phpscript-test bin/phpscript-test test --matrix ./tests/...
 ls cover/phpscript-test
 ```
 
-The directory holds two kinds of file: `covmeta.<hash>`, which describes the program, and `covcounters.<hash>.<pid>.<time>`, one per process that ran. Run the binary again with the same variable and more counter files appear. The runtime overwrites no file. One directory holds a whole pipeline of runs.
+The directory holds two kinds of file: `covmeta.<hash>`, which describes the program; `covcounters.<hash>.<pid>.<time>`, a file per process that ran. Run the binary again with the same variable and more counter files appear. The runtime overwrites no file. One directory holds a whole pipeline of runs.
 
 If the variable is not set the binary still runs and prints:
 
@@ -121,15 +121,15 @@ go tool cover -func=cover/phpscript.cov | tail -1
 
 ## 5. Run it as a tool of the real binary
 
-phpscript finds executables named `<binary>-<tool>` on `PATH`, and a tool named `test` replaces the built-in command. With `phpscript-test` or `phpx-test` on `PATH`, the usual command line collects coverage:
+phpscript finds executables named `<binary>-<tool>` on `PATH`. A tool named `test` replaces the built-in command. With `phpscript-test` or `phpx-test` on `PATH`, the usual command line collects coverage:
 
 ```sh
 PATH=$PWD/bin:$PATH phpscript test --matrix ./tests/...
 ```
 
-phpscript does both details for you, in `cmd/phpscript/toolchain`:
+phpscript implements both details in `cmd/phpscript/toolchain`:
 
-- **The tool gets its arguments without its own name.** `phpx test --matrix x` reaches `phpx-test` as `--matrix x`. `toolchain.CommandArgs` reads the dash in `argv[0]` and puts the command first. The binary sees `phpx-test test --matrix x`. A name whose tool part holds another dash, such as `phpscript-linux-amd64`, is a release file that `CommandArgs` leaves alone.
+- **The tool gets its arguments, without the tool name.** `phpx test --matrix x` reaches `phpx-test` as `--matrix x`. `toolchain.CommandArgs` reads the dash in `argv[0]` and puts the command first. The binary sees `phpx-test test --matrix x`. A name whose tool part holds another dash, such as `phpscript-linux-amd64`, is a release file that `CommandArgs` leaves alone.
 - **The coverage runtime reads `GOCOVERDIR` before `init` runs.** It takes the variable as the process starts. Setting it from Go code is too late. `toolchain.CoverRelaunch` checks the build settings for `-cover=true`. When `GOCOVERDIR` is unset it sets the variable to `cover/<binary>` and starts the program again. An explicit `GOCOVERDIR` in the caller's environment wins.
 
 ```go
@@ -149,7 +149,7 @@ ls cover/run | wc -l                 # at least two files: one meta, one counter
 go tool covdata percent -i=cover/run # a coverage line per instrumented package
 ```
 
-If `percent` prints `no applicable files found in input directories`, the directory has no data: the variable is unset, the directory is wrong, or a signal killed the process before it exited. A process that ends through a signal does not flush its counters. `os.Exit` and a normal return both do.
+If `percent` prints `no applicable files found in input directories`, the directory has no data: the variable is unset, the directory is wrong, or a signal killed the process before it exited. A process killed by a signal does not flush its counters. `os.Exit` flushes the counters. A normal return does too.
 
 ## Reading the numbers
 

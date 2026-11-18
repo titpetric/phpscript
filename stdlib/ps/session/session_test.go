@@ -17,11 +17,11 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/session"
 )
 
-// TestDefaultStoragePathIsPerRoot pins what the no-path spelling of
-// Session\Storage\Disk resolves to: a directory of the application's own.
+// TestDefaultStoragePathIsPerRoot pins the directory the no-path spelling of
+// Session\Storage\Disk resolves to: one of the application's own.
 //
-// Two roots that differ only in their last segment have to answer two
-// directories, and one root has to answer the same directory twice, or a restart
+// Two roots differing only in their last segment must answer two
+// directories. One root must answer the same directory twice, or a restart
 // would lose every session it had.
 func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 	t.Parallel()
@@ -35,14 +35,14 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 		t.Fatalf("DefaultStoragePath is not stable: %s then %s", one, again)
 	}
 
-	// DefaultStoragePath resolves a relative root before digesting it and the
-	// same tree named two ways is one site and never two.
+	// DefaultStoragePath resolves a relative root before digesting it. Two
+	// spellings of one tree must resolve to one site, never two.
 	if session.DefaultStoragePath(".") != session.DefaultStoragePath(mustAbs(t, ".")) {
 		t.Fatal("a relative and an absolute spelling of one root resolve to two directories")
 	}
 
-	// A host that bound no root has nothing to key on and keeps the bare
-	// directory, which is the parent of every scoped one.
+	// A host that bound no root keeps the bare directory, the parent of every
+	// scoped directory; it has nothing to key on.
 	bare := session.DefaultStoragePath("")
 	if filepath.Dir(one) != bare {
 		t.Fatalf("scoped directory %s is not below the unrooted one %s", one, bare)
@@ -51,14 +51,14 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 
 // TestPruneDoesNotCrossApplicationRoots is the reason that scoping exists.
 //
-// prune() takes an age, not an ID and any script that can construct the storage
-// can empty it. While every application root shared one directory, one line of
-// PHP on any site of a virtual-host server deleted every other site's sessions;
-// session IDs being unguessable did not help, because that line guessed no ID
+// prune() takes an age to identify what to remove. Any script that can
+// construct the storage can empty it. Once all application roots shared one directory, one line of
+// PHP on any site of a virtual-host server deleted sessions belonging to other
+// sites. Unguessable session IDs did not help, because that line guessed no ID
 // and named no path.
 //
-// The unrooted host is in the table because it writes into the parent of the
-// scoped directories and Prune has to skip them and never walk in.
+// The unrooted host is in the table, because it writes into the parent of the
+// scoped directories. Prune must skip those directories, never walking in.
 func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	ctx := context.Background()
@@ -79,8 +79,8 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 		}
 	}
 
-	// Every site writes the same ID: a collision in one directory
-	// is what turns shared storage into one site reading another's session.
+	// Every site writes the same ID. A collision in one directory
+	// turns shared storage into a site reading another's session.
 	if err := two.Prune(ctx, 0); err != nil {
 		t.Fatalf("two Prune: %v", err)
 	}
@@ -104,12 +104,12 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 }
 
 // TestRegisteredDiskStorageIsPerRoot drives the path a virtual host takes: the
-// no-argument spelling, through the constructor RegisterRoot installs, on two
-// application roots.
+// no-argument spelling, using the constructor RegisterRoot installs, across
+// two application roots.
 //
-// It asserts on the directories that appear and not on what PHP prints,
-// because the path is what a script cannot observe about this class, and the
-// whole claim is about where the files land.
+// It asserts on the directories that appear. PHP's printed output is not
+// checked. A script cannot observe this class's path; the claim concerns
+// where the files land.
 func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 	temp := t.TempDir()
 	t.Setenv("TMPDIR", temp)
@@ -143,10 +143,10 @@ func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 	}
 }
 
-// TestRegister covers the three classes the stdlib wiring installs, rooted at
-// the process working directory the way the filesystem shims are. Memory
-// storage round-trips through the script. A manager is constructible over it
-// and a script reaches the whole surface without a host naming a root.
+// TestRegister covers three classes the stdlib wiring installs, rooted at
+// the process working directory as the filesystem shims are. Memory storage
+// round-trips through a script call. A manager is constructible over that
+// storage; a script reaches the whole surface without a host naming a root.
 func TestRegister(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -178,12 +178,12 @@ echo " " . $manager->session_cookie_name;
 }
 
 // TestRegisterRoot covers the confinement a virtual host depends on. A
-// $storage_path the script names resolves inside dir and cannot climb out of
-// it and the directory the constructor creates is one the script could also
-// have written a file into.
+// $storage_path the script names resolves inside dir and cannot climb out.
+// The constructor creates a directory the script could also have written a
+// file into.
 //
-// Without it the constructor made whatever the script named. A site could
-// read and write session files anywhere the process could write while
+// Before the clamp the constructor made whatever the script named. A site
+// could read and write session files anywhere the process could write, while
 // file_exists() on the same path answered false.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
@@ -219,7 +219,7 @@ echo $disk->load("abc");
 				t.Errorf("echoed %q, want stored", got)
 			}
 
-			// The file landed under the root, at the path the clamp resolves to.
+			// The file landed below the root, at the path the clamp resolves to.
 			if _, err := os.Stat(filepath.Join(root, test.under, "abc")); err != nil {
 				t.Errorf("Stat: %v, want the session under %s", err, test.under)
 			}
@@ -228,7 +228,7 @@ echo $disk->load("abc");
 }
 
 // TestRegisteredManagerTakesTheDefaults covers the spelling a site writes:
-// `new Session\Manager` with no arguments, meaning disk storage and the
+// `new Session\Manager` without arguments, meaning disk storage and the
 // application's own .htpasswd. A login is then the manager alone: the script
 // names no store and reads no hash.
 func TestRegisteredManagerTakesTheDefaults(t *testing.T) {
@@ -261,9 +261,9 @@ var_dump($session->login("admin", "wrong"));
 	}
 }
 
-// TestRegisteredManagerWithoutAPasswordFile covers a site that has no user
-// database. The default store still constructs, because a manager holds a
-// cookie and a storage before any login, and the login alone fails.
+// TestRegisteredManagerWithoutAPasswordFile covers a site without a user
+// database. The default store still constructs, since a manager holds a
+// cookie and storage before any login; the login alone fails.
 func TestRegisteredManagerWithoutAPasswordFile(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -285,11 +285,11 @@ try {
 	}
 }
 
-// TestRegisteredManagerDefersThePasswordFileParse covers what the default
-// store costs a request: `new Session\Manager` opens the password file and
-// parses nothing and a page that never calls login() does not pay for the
-// account list, and a file with a bad line refuses the login that reads it,
-// naming the line an operator fixes.
+// TestRegisteredManagerDefersThePasswordFileParse covers the cost the default
+// store adds to a request: `new Session\Manager` opens the password file and
+// parses nothing. A page avoiding login() does not pay for the account list.
+// A file with a bad line refuses the login that reads it, naming the line an
+// operator fixes.
 func TestRegisteredManagerDefersThePasswordFileParse(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -323,17 +323,17 @@ try {
 // TestDefaultStorageFallsBackToMemory covers the degradation and the line that
 // reports it.
 //
-// Memory storage is a different promise from disk: it lives as long as the
-// runtime, and a server forks one per worker and a session minted on one
-// worker is invisible to the next and a login looks like it failed at random.
-// A silent fallback would leave the symptom as the only clue and the warning
+// Memory storage makes a different promise from disk. It lives as long as the
+// runtime. A server forks a storage per worker. A session minted on one
+// worker is invisible to the next. A login looks like it failed at random.
+// A silent fallback would leave the symptom as the only clue; the warning
 // names the path and the reason.
 //
 // This test runs serial: it replaces the default slog logger.
 func TestDefaultStorageFallsBackToMemory(t *testing.T) {
 	// A regular file in place of the temporary directory: MkdirAll cannot
-	// make a directory under it, the same refusal a deployment reads off a
-	// read-only or unwritable mount.
+	// create a directory inside the file. That refusal matches a deployment's read
+	// from a read-only or unwritable mount.
 	blocked := filepath.Join(t.TempDir(), "not-a-directory")
 	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -345,8 +345,8 @@ func TestDefaultStorageFallsBackToMemory(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
 	defer slog.SetDefault(previous)
 
-	// The session still works: the server answers a request that signs in,
-	// and only the durability of what it wrote drops.
+	// The session still works: the server answers a request that signs in;
+	// only the durability of its writes drops.
 	out, err := runRooted(t, t.TempDir(), `<?php
 $session = new Session\Manager;
 $session->start("row-1");
@@ -367,9 +367,9 @@ echo $session->get(), "\n";
 	}
 }
 
-// runRooted executes source against a runtime rooted at root, with a request
-// context registered: a session needs one, because Start stages a header on
-// the request it answers.
+// runRooted executes source on a runtime rooted at root, with a request
+// context registered: a session needs one, since Start stages a header on the
+// request it answers.
 func runRooted(t *testing.T, root, source string) (string, error) {
 	t.Helper()
 

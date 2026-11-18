@@ -10,14 +10,14 @@ import (
 )
 
 // This file appends a PHP value's JSON encoding to a buffer. json_encode()
-// returns that buffer as a string and JSON\Encoder writes it. The bytes are the ones
-// encoding/json writes for the same document: the shapes handled here are the
-// ones it writes verbatim, and everything else defers to it.
+// returns that buffer as a string. JSON\Encoder writes that buffer. The bytes
+// match encoding/json for the same document. The shapes handled here match the
+// encoding/json output verbatim. Everything else defers to encoding/json.
 //
 // Each walk spells its loop out and calls Range directly, taking no function
-// value as a parameter. A closure appending to buf captures buf, and a closure
-// reaching a function value the compiler cannot see through escapes to the heap
-// along with everything it captured. Each collection costs one allocation, paid
+// value as a parameter. A closure appending to buf captures buf. A closure
+// reaching a function value the compiler cannot see through escapes to the heap,
+// with everything it captured. Each collection costs one allocation, paid
 // again per row of a list of rows.
 
 // appendJSONValue appends one value's encoding, deferring unhandled shapes to json.Marshal.
@@ -142,7 +142,7 @@ func appendJSONObject(o *model.Object, buf []byte) ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONCollection appends a request data view as a JSON object in the view's order.
+// appendJSONCollection appends a request data view as a JSON object in its order.
 func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 	buf = slices.Grow(buf, c.Len()*24+2)
 	buf = append(buf, '{')
@@ -166,7 +166,7 @@ func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONString appends a string's encoding, taking a string so a key is not boxed.
+// appendJSONString appends a string's encoding, taking a string to avoid boxing a key.
 func appendJSONString(buf []byte, s string) ([]byte, error) {
 	if jsonSafe(s) {
 		buf = append(buf, '"')
@@ -180,7 +180,7 @@ func appendJSONString(buf []byte, s string) ([]byte, error) {
 	return append(buf, encoded...), nil
 }
 
-// jsonSafe reports whether json.Marshal writes s byte for byte, with nothing to escape.
+// jsonSafe reports whether json.Marshal writes s unchanged.
 func jsonSafe(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]

@@ -9,10 +9,10 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The split between this file and strings.go is PHP's own: the str* functions
-// count bytes and the mb_* functions count characters. A byte offset is what
-// PREG_OFFSET_CAPTURE reports and what substr consumes and the two agree;
-// mb_substr takes a character offset, which a script derives with
+// The split between this file and strings.go is PHP's: the str* functions
+// count bytes, and the mb_* functions count characters. PREG_OFFSET_CAPTURE
+// reports a byte offset, and substr consumes a byte offset; the two agree.
+// mb_substr takes a character offset; a script derives it with
 // mb_strlen(substr($s, 0, $offset)).
 //
 // Every mb_* function here accepts and ignores a trailing $encoding, except
@@ -26,7 +26,7 @@ func init() {
 func registerMultibyte(rt *runner.Runtime) {
 	// mb_strlen returns the number of characters in $string; the $encoding
 	// argument "8bit" answers in bytes, the byte-count escape hatch for
-	// binary data. Every other encoding reads as UTF-8.
+	// binary data. Any other encoding reads as UTF-8.
 	rt.RegisterFunc("mb_strlen", func(s string, encoding ...any) int64 {
 		if eightBit([]any(encoding), 0) {
 			return int64(len(s))
@@ -117,7 +117,7 @@ func toOptionalInt(v any) (int64, bool) {
 	return 0, false
 }
 
-// optionalOffset adapts a mixed argument tail to the one-element offset slice a search takes.
+// optionalOffset adapts a mixed argument tail to the offset slice a search takes.
 func optionalOffset(rest []any) []int64 {
 	if len(rest) > 0 {
 		if o, ok := toOptionalInt(rest[0]); ok {
@@ -127,7 +127,7 @@ func optionalOffset(rest []any) []int64 {
 	return nil
 }
 
-// optionalLength is optionalOffset for a $length, dropping an explicit null so it never reads 0.
+// optionalLength is optionalOffset for a $length, dropping an explicit null so it does not read 0.
 func optionalLength(rest []any) []int64 {
 	if len(rest) > 0 && rest[0] != nil {
 		if l, ok := toOptionalInt(rest[0]); ok {
@@ -145,8 +145,8 @@ func mbSearchLastOffset(haystack string, rest []any) []int64 {
 	}
 	o := offset[0]
 	if o < 0 {
-		// A negative cap counts characters from the end, and the bytes of the
-		// characters it skips are what searchLast caps on.
+		// A negative cap counts characters from the end. searchLast caps on
+		// the bytes of the skipped characters.
 		tail, _ := runeByteOffset(haystack, runeLen(haystack)+o)
 		return []int64{int64(tail) - int64(len(haystack))}
 	}
@@ -313,12 +313,12 @@ func runeByteOffset(s string, runes int64) (int, bool) {
 	return len(s), false
 }
 
-// byteRuneOffset converts a byte position a search found to the character offset a script sees.
+// byteRuneOffset converts a byte position a search found to a character offset.
 func byteRuneOffset(s string, bytes int) int64 {
 	return int64(utf8.RuneCountInString(s[:bytes]))
 }
 
-// runeLower folds s rune by rune, keeping the rune count so offsets index the original.
+// runeLower folds s rune by rune, keeping the count so offsets stay valid.
 func runeLower(s string) string {
 	return strings.Map(unicode.ToLower, s)
 }
@@ -332,7 +332,7 @@ func eightBit(rest []any, at int) bool {
 	return ok && strings.EqualFold(enc, "8bit")
 }
 
-// byteSplit is str_split in byte units, shared with mb_str_split's "8bit" encoding.
+// byteSplit is str_split in bytes, mb_str_split's 8bit form.
 func byteSplit(s string, n int64) []string {
 	if s == "" {
 		return []string{}

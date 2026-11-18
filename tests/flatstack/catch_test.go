@@ -11,7 +11,7 @@ import (
 
 // TestFlatstackCatchClauseSelection pins which catch clause a throw enters.
 // A fixture cannot tell a bytecode run from an interpreter fallback that
-// happened to agree, and every case asserts Supports first.
+// happened to agree. Every case asserts Supports first.
 func TestFlatstackCatchClauseSelection(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -81,8 +81,9 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 			}
 			var output strings.Builder
 			runtime := flatstack.New(&output, flatstack.Options{})
-			// The SPL class names and explode() are stdlib registrations;
-			// without them a throw would fail before any clause runs.
+			// The SPL class names and explode() are stdlib registrations.
+			// Without those registrations, a throw would fail before any
+			// clause runs.
 			stdlib.Register(runtime)
 			err = runtime.Run(program)
 			switch {
@@ -101,9 +102,9 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 }
 
 // TestFlatstackCatchSurvivesCalleeJumps pins the handler discipline across
-// frames: opJump discards a handler when the jump leaves its try's pc range,
-// and a callee's pcs are always outside the caller's range, and the range rule
-// holds only inside the frame that armed the handler. Before that scoping, the
+// frames: opJump discards a handler when the jump leaves its try's pc range.
+// A callee's pcs are always outside the caller's range. The range rule holds
+// only inside the frame that armed the handler. Before that scoping, the
 // first branch in a called function silently disarmed the caller's catch.
 func TestFlatstackCatchSurvivesCalleeJumps(t *testing.T) {
 	t.Parallel()

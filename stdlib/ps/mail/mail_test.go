@@ -13,8 +13,7 @@ import (
 	mailstdlib "github.com/titpetric/phpscript/stdlib/ps/mail"
 )
 
-// run executes source on a runtime resolving through provider, returning what
-// the script printed.
+// run executes source on a runtime resolving through provider, returning the output.
 func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 	t.Helper()
 
@@ -37,9 +36,9 @@ func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 }
 
 // TestRegister covers the surface the installer puts within reach: the Mail
-// class and the mail function, each under the name a script types. The
-// installer adds both with or without a configured server and calling code
-// keeps one spelling and its own fallback.
+// class and the mail function, each with the name a script types. The installer
+// adds both with or without a configured server. Calling code keeps one
+// spelling, with a fallback.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -53,10 +52,10 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestMail_Send covers the deliveries a held client makes. The object holds
-// a server name alone and each send resolves the credential afresh
-// inside the provider; one handle sends any number of messages, and every one
-// of them records the server the handle named.
+// TestMail_Send covers the deliveries a held client makes. The object holds a
+// server name alone. Each send resolves the credential afresh inside the
+// provider. One handle sends any number of messages. Each message records the
+// server the handle named.
 func TestMail_Send(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("marketing")
@@ -104,9 +103,9 @@ func TestMail(t *testing.T) {
 	}
 }
 
-// TestMailClass covers the class: `new Mail` is the default server and
-// `new Mail($name)` is the one the host configured under that name. Neither
-// spelling holds a credential.
+// TestMailClass covers the class: `new Mail` is the default server.
+// `new Mail($name)` names the server the host configured under that name.
+// Neither spelling holds a credential.
 func TestMailClass(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
@@ -137,9 +136,9 @@ func TestMailClass(t *testing.T) {
 }
 
 // TestMail_SendHTML covers the two optional arguments of send(): $html travels
-// beside the text and $reply_to becomes the Reply-To, which reaches the
-// provider as one address. A bare address stays bare, and a display name comes
-// back quoted, the way buildMessage writes it into the header.
+// alongside the text. $reply_to becomes the Reply-To, which reaches the provider
+// as a single address. A bare address stays bare. A display name comes back
+// quoted, as buildMessage writes it into the header.
 func TestMail_SendHTML(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory()
@@ -170,10 +169,10 @@ func TestMail_SendHTML(t *testing.T) {
 	}
 }
 
-// TestMail_SendReplyToInjection pins the refusal of a Reply-To that is not one
-// address. A header smuggled in behind a line break leaves a malformed address
-// once header strips the break and the call throws and nothing reaches the
-// provider; send refuses a list too, because the argument names one address.
+// TestMail_SendReplyToInjection pins the refusal of a Reply-To that is not a
+// single address. A header smuggled in behind a line break leaves a malformed
+// address once header strips the break. The call throws, and nothing reaches
+// the provider. send also refuses a list: the argument names a single address.
 func TestMail_SendReplyToInjection(t *testing.T) {
 	t.Parallel()
 	for _, replyTo := range []string{
@@ -205,8 +204,8 @@ func TestMail_SendReplyToInjection(t *testing.T) {
 	}
 }
 
-// plainProvider is a model.MailProvider with Send and no SendMessage, the shape
-// a host's own provider written before HTML had.
+// plainProvider is a model.MailProvider with Send but no SendMessage, the shape
+// a host provider written before HTML had.
 type plainProvider struct{ model.MailProvider }
 
 // TestMail_SendThroughAPlainProvider covers a provider that declares the
@@ -250,7 +249,7 @@ func TestMail_SendThroughAPlainProvider(t *testing.T) {
 
 // TestMailUnknownServer pins the fail-fast: the constructor reports a name
 // nobody configured before a script has written a message. The error names
-// the server the script selects, and no other.
+// the server the script selects.
 func TestMailUnknownServer(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")
@@ -267,9 +266,9 @@ func TestMailUnknownServer(t *testing.T) {
 	}
 }
 
-// TestMailTakesAName pins the absence of an options-array constructor. One
-// would be the single way to put a password into the runtime scope and its
-// absence is a stated behaviour and no omission.
+// TestMailTakesAName pins the absence of an options-array constructor. Such a
+// constructor would be the single way to put a password into the runtime
+// scope. Its absence is a stated behaviour.
 func TestMailTakesAName(t *testing.T) {
 	t.Parallel()
 	got := run(t, mailstdlib.NewMemory(), `
@@ -286,8 +285,8 @@ func TestMailTakesAName(t *testing.T) {
 }
 
 // TestMailUnconfigured covers the default provider: mail() and `new Mail`
-// exist on every runtime and refuse catchably and calling code keeps one
-// spelling and its own fallback.
+// exist on every runtime and refuse catchably. Calling code keeps one spelling,
+// with a fallback.
 func TestMailUnconfigured(t *testing.T) {
 	t.Parallel()
 	got := run(t, nil, `

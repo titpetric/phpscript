@@ -63,7 +63,7 @@ func stringOffset(idx any) (int64, bool) {
 	return 0, false
 }
 
-// helperIndex reads base[idx] for arrays, maps and slices, answering nil for a missing key.
+// helperIndex reads base[idx] for arrays, maps and slices.
 func helperIndex(base, idx any) any {
 	switch b := base.(type) {
 	case *model.Array:
@@ -77,8 +77,8 @@ func helperIndex(base, idx any) any {
 		// PREG_OFFSET_CAPTURE report. A negative offset counts from the end.
 		// mb_substr($s, $i, 1) is the character read.
 		//
-		// A []byte takes the same branch, read as the string it holds and
-		// never as a list of integers. See phpval.Bytes.
+		// A []byte takes the same branch, read as the string it holds. It does
+		// not read as a list of integers. See phpval.Bytes.
 		text := phpString(base)
 		i, numeric := stringOffset(idx)
 		if !numeric {
@@ -90,8 +90,8 @@ func helperIndex(base, idx any) any {
 			i += int64(len(text))
 		}
 		if i < 0 || i >= int64(len(text)) {
-			// `isset`, `empty` and `??` read this value, and a byte the string
-			// does not hold answers for all three. php answers the empty
+			// `isset`, `empty` and `??` read this value. A byte the string does
+			// not hold answers for all three. php answers the empty
 			// string here and raises a warning. The read is a defect either
 			// way.
 			return nil
@@ -128,8 +128,8 @@ func helperIndex(base, idx any) any {
 // helperGet reads a property, a matching method becoming a callable bound to base.
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
-		// A bound callable produced here can outlive the expression that read it.
-		// The closure copies the scope by value and not through the reference.
+		// A bound callable produced here can outlive its reading expression.
+		// The closure copies the scope by value. The copy holds no reference.
 		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:
@@ -202,7 +202,7 @@ var exprHelpers = &expr.Helpers{
 	Slotted: isSlotIdent,
 }
 
-// isSlotIdent reports whether the evaluator binds name per evaluation: v_, c_ or __cl<N>.
+// isSlotIdent reports whether name is a per-evaluation slot like v_ or c_.
 func isSlotIdent(name string) bool {
 	if name == "this" {
 		return true
@@ -221,7 +221,7 @@ func isSlotIdent(name string) bool {
 	return false
 }
 
-// helperCall dispatches a PHP method to the interpreter, else a Go method by reflection.
+// helperCall dispatches a PHP method to the interpreter, else a Go method.
 func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, args ...any) (any, error) {
 	return func(base any, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
@@ -229,10 +229,10 @@ func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, arg
 		method := phpString(methodValue)
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
 			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
-				// The frame keeps its arguments for func_get_args, and the
-				// slice arriving here is the expression arena's, borrowed for
-				// the call: the frame gets its own. expr.scratchName names
-				// this clone as what makes __call safe on the arena.
+				// The frame keeps its arguments for func_get_args. The slice
+				// arriving here belongs to the expression arena; the call
+				// borrows the slice. The frame receives a clone. expr.scratchName
+				// names this clone as what makes __call safe on the arena.
 				return rt.invokeMethod(obj, decl, slices.Clone(args), scope)
 			}
 		}

@@ -7,8 +7,8 @@ import (
 
 // TestEncodeCrockford pins the ULID text encoding to known vectors: the
 // all-zero value is 26 zeros, the all-ones value is the spec's largest
-// "7ZZZ..." (the leading 7 is the two-bit pad), and a single trailing one
-// lands in the last character.
+// "7ZZZ..." (the leading 7 is the two-bit pad). A single trailing one lands in
+// the last character.
 func TestEncodeCrockford(t *testing.T) {
 	t.Parallel()
 	var zero [16]byte
@@ -33,7 +33,7 @@ func TestEncodeCrockford(t *testing.T) {
 
 // TestULIDFrom pins the derived ids to vectors, because they are primary keys:
 // changing the digest, or how many of its bytes the encoder takes, renames
-// every user in every table that stored one and the rows stop resolving. The
+// every user in each table that stored the id; the rows stop resolving. The
 // table holds the empty seed for the same reason, since a store with an
 // unnamed record would otherwise derive a value that moved without notice.
 func TestULIDFrom(t *testing.T) {
@@ -51,9 +51,9 @@ func TestULIDFrom(t *testing.T) {
 	}
 }
 
-// TestULIDFromShape covers what a caller relies on without reading the
-// vectors: the width and the alphabet are a ulid()'s and a derived key and a
-// generated one are the same kind of column, and one seed answers one id.
+// TestULIDFromShape covers the behaviour a caller relies on without reading
+// the vectors: the width and alphabet match a `ulid()`. Derived and generated
+// keys share one column type. One seed answers with a single id.
 func TestULIDFromShape(t *testing.T) {
 	t.Parallel()
 

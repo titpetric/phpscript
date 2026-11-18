@@ -23,8 +23,8 @@ var goAreaWords = map[string]string{
 	"xml":  "XML",
 }
 
-// GoImportArea maps a go import path onto the area that binds it and the name
-// a script addresses that area by. It refuses a path that is no chain of go
+// GoImportArea maps a go import path onto the binding area and the name a
+// script uses for that area. It refuses a path that is no chain of go
 // package names, a module path of a repository included: the import reaches
 // the standard library alone.
 func GoImportArea(path string) (area, alias string, ok bool) {

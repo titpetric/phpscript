@@ -10,9 +10,9 @@ import (
 )
 
 // TestInfoSection covers when a registered section runs and where its rows
-// print. It runs at the call and not at registration and a section reports a
-// count the process reached since; and sections print under their own heading
-// in registration order and a report reads the same way twice.
+// print. It runs at the call, not at registration. A section reports a count
+// the process reached since. Sections print beneath a separate heading in
+// registration order. A report reads the same way twice.
 func TestInfoSection(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -48,7 +48,7 @@ func TestInfoSection(t *testing.T) {
 	}
 }
 
-// infoOutput runs phpinfo() on rt and answers what it printed.
+// infoOutput runs phpinfo() on rt and returns the printed output.
 func infoOutput(t *testing.T, rt *runner.Runtime, out *strings.Builder) string {
 	t.Helper()
 	if err := rt.PHPInfo(); err != nil {

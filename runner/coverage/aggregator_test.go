@@ -13,7 +13,7 @@ function helper() { return 2; }
 `
 
 // TestAggregator_Add covers the fold every request passes through: a statement
-// two runs reached is one entry whose counts add.
+// two runs reached becomes a single entry whose counts add.
 func TestAggregator_Add(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()
@@ -30,8 +30,8 @@ func TestAggregator_Add(t *testing.T) {
 	}
 }
 
-// TestAggregator_Blocks covers the entries a writer builds a profile from: one
-// per executable statement, in the order the profile lists them.
+// TestAggregator_Blocks covers the entries a writer builds a profile from: an
+// entry per executable statement, in the order the profile lists.
 func TestAggregator_Blocks(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()
@@ -75,7 +75,7 @@ func TestAggregator_Functions(t *testing.T) {
 }
 
 // TestAggregator_Empty covers the question the shutdown flush asks: a server
-// that ran no request writes no profile, because an empty one reads as a
+// that ran no request writes no profile. An empty profile reads as a
 // measurement that found nothing.
 func TestAggregator_Empty(t *testing.T) {
 	t.Parallel()
@@ -89,10 +89,10 @@ func TestAggregator_Empty(t *testing.T) {
 	}
 }
 
-// TestAggregator is the reason the aggregator exists: a collector
-// keys statements by AST node and a second parse of the same source produces a
-// second set of keys. The aggregator keys them by what the profile will say and
-// re-parsing adds counts and never entries.
+// TestAggregator is the reason the aggregator exists: a collector keys
+// statements by AST node. A second parse of the same source produces a second
+// set of keys. The aggregator keys statements by the profile's spelling.
+// Re-parsing adds counts, never entries.
 func TestAggregator(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()

@@ -6,10 +6,10 @@ import (
 
 // Exception holds an error code and error message.
 //
-// Every PHP throwable class is this one Go type. Class records the name the
-// script constructed and get_class() can answer it and a catch clause can
-// filter on it; no subclass relation joins two of them, because phpscript has
-// no inheritance. See docs/design.md.
+// Every PHP throwable class is this Go type. Class records the constructed
+// name: get_class() answers the name; a catch clause filters on the name. No
+// subclass relation joins two exceptions; phpscript has no inheritance. See
+// docs/design.md.
 type Exception struct {
 	Message string `json:"message"`
 	Code    int    `json:"code"`
@@ -61,7 +61,7 @@ func (e *Exception) Error() string {
 	return e.Message
 }
 
-// splExceptions are the SPL exception class names a PHP library throws, built like Exception.
+// splExceptions are SPL exception class names a PHP library throws.
 var splExceptions = []string{
 	"ErrorException",
 	"RuntimeException",
@@ -80,7 +80,7 @@ var splExceptions = []string{
 	"JsonException",
 }
 
-// splErrors are the class names PHP files under Error, built the way newThrowable builds splExceptions.
+// splErrors are Error class names a PHP file may throw.
 var splErrors = []string{
 	"Error",
 	"TypeError",

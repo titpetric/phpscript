@@ -31,10 +31,10 @@ func TestMethodCallError(t *testing.T) {
 	}
 }
 
-// TestThrowableMethod covers PHP's Throwable method set over any Go error and a
-// catch clause binds whatever reached it: a thrown Exception, an error a
-// binding returned, a converted panic. A method the concrete Go type defines
-// wins and *stdlib.Exception reports its own code.
+// TestThrowableMethod covers PHP's Throwable method set over any Go error. A
+// catch clause binds a thrown Exception, an error a binding returned, or a
+// converted panic alike. A method the concrete Go type defines wins.
+// *stdlib.Exception reports its code.
 func TestThrowableMethod(t *testing.T) {
 	t.Parallel()
 	inner := errors.New("no such table")
@@ -91,8 +91,8 @@ func TestThrowableMethod(t *testing.T) {
 }
 
 // TestMethodByNameFold covers PHP's case-insensitive method resolution, then
-// the retry without underscores and a snake_case script name finds the
-// idiomatic Go one: `$t->iso_week()` resolves ISOWeek.
+// the retry without underscores. A snake_case script name finds the idiomatic
+// Go one: `$t->iso_week()` resolves ISOWeek.
 func TestMethodByNameFold(t *testing.T) {
 	t.Parallel()
 	value := reflect.ValueOf(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))

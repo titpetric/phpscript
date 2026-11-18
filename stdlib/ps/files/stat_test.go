@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// statRoot builds a project holding one file and one directory and a script
-// asking about a path has both kinds to ask about.
+// statRoot builds a project holding one file, one directory; a script asking
+// about a path has both kinds to ask about.
 func statRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -20,10 +20,10 @@ func statRoot(t *testing.T) string {
 	return root
 }
 
-// TestStatAnswersForBothKinds covers what the stat family reports, against
-// what php prints for the same paths: is_file is false for a directory,
-// is_dir is false for a file, filesize is the byte count, and filetype names
-// the kind. A path that is not there reports false from both of the last two.
+// TestStatAnswersForBothKinds covers the stat family's report against php's
+// output for the same paths: is_file is false for a directory, is_dir is false
+// for a file, filesize is the byte count, and filetype names the kind. A
+// missing path reports false from the last two.
 func TestStatAnswersForBothKinds(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
@@ -37,11 +37,11 @@ echo "[", filesize("missing.php") === false ? "false" : "other", ",", filetype("
 	}
 }
 
-// TestStatResolvesThroughTheBoundRoot covers the one rule this family shares
-// with file_get_contents: a path written from "/" names the bound root and
-// never the host's, and a relative path resolves against the working
-// directory. A second resolver written here would name a second file for one
-// spelling, which a sandbox cannot have.
+// TestStatResolvesThroughTheBoundRoot covers the rule this family shares with
+// file_get_contents: a path written from "/" names the bound root; the host
+// root is out of reach. A relative path resolves against the working directory. A second
+// resolver written here would name a second file for one spelling, a spelling
+// no sandbox can permit.
 func TestStatResolvesThroughTheBoundRoot(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
@@ -56,9 +56,9 @@ echo "[", is_file("../../../../etc/passwd") ? "y" : "n", "]";`)
 	}
 }
 
-// TestScandirListsTheDotEntries covers what php's scandir answers with: the
-// names sorted, with "." and ".." among them, because PHP reports the
-// directory the operating system reports and never a filtered view of it.
+// TestScandirListsTheDotEntries covers php's scandir output: the names sorted,
+// including "." and "..", because PHP reports the directory the operating
+// system reports. The call filters nothing.
 func TestScandirListsTheDotEntries(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php echo implode(",", scandir("pages"));`)
@@ -67,9 +67,9 @@ func TestScandirListsTheDotEntries(t *testing.T) {
 	}
 }
 
-// TestPathinfoSplitsAPath covers the four keys php returns. A path without an
-// extension returns no extension key at all and isset() on it answers false
-// the way it does in php.
+// TestPathinfoSplitsAPath covers each key php returns. A path that has no
+// extension returns no extension key at all and isset() on it answers false,
+// as in php.
 func TestPathinfoSplitsAPath(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php

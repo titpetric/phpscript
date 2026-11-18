@@ -7,11 +7,11 @@ import (
 	"testing/fstest"
 )
 
-// TestRuntime_CompiledTree covers what the parsed tree costs, which phpinfo()
-// reports and memory_limit does not charge for: every request shares the tree
-// and it outlives each one. The heap figure is zero until a precompile pass
-// measures one, because printing 0.00 MiB over a filled cache would read as a
-// measurement and not the absence of one.
+// TestRuntime_CompiledTree covers the cost of the parsed tree, which phpinfo()
+// reports and memory_limit does not charge for: every request shares the tree,
+// and the tree outlives each request. The heap figure is zero until a
+// precompile pass measures it. Printing 0.00 MiB across a filled cache would
+// read as a measurement, not as an absent one.
 func TestRuntime_CompiledTree(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{
@@ -38,10 +38,10 @@ func TestRuntime_CompiledTree(t *testing.T) {
 }
 
 // TestRuntimeMemoryReporting covers the figures memory_get_usage() and
-// memory_get_peak_usage() answer with. Both come off a walk of the live roots.
-// The usage is what is reachable now and the peak is the highest a walk has
-// seen: an allocation made and released between two walks does not raise it,
-// and php's allocator-level peak counts it.
+// memory_get_peak_usage() answer with. Both come from a walk of the live roots.
+// The usage is the reachable total now; the peak is the highest a walk has
+// seen. An allocation made and released between two walks does not raise the
+// peak, while php's allocator-level peak counts it.
 func TestRuntimeMemoryReporting(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

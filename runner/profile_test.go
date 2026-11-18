@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestProfile covers the bit layout behind every area name: one bit per area,
-// and a mask naming two areas is the two bits and overlaps each of them alone.
-// A second area sharing a bit with the first would mount with it.
+// TestProfile covers the bit layout behind every area name: one bit per area.
+// A mask naming two areas holds both bits, overlapping each alone. A second
+// area sharing a bit with the original would mount alongside it.
 func TestProfile(t *testing.T) {
 	t.Parallel()
 	if ProfileSecure == ProfileExec {
@@ -28,10 +28,10 @@ func TestProfile(t *testing.T) {
 	}
 }
 
-// TestRuntime_SetProfile covers what the runtime records the mask for: a reroot
-// of one area, stdlib.RegisterFS over pexec, tests the runtime for the area
-// before it reroots anything. A runtime nobody mounted answers every area and a
-// host that called Register and not Mount is not read as a narrowed one.
+// TestRuntime_SetProfile covers the mask the runtime records: a reroot of one
+// area, stdlib.RegisterFS over pexec, tests the runtime for the area before it
+// reroots anything. A runtime nobody mounted answers every area; a host that
+// called Register and not Mount is not read as a narrowed one.
 func TestRuntime_SetProfile(t *testing.T) {
 	rt := New(io.Discard, Options{})
 	if rt.Profile()&ProfileExec == 0 {

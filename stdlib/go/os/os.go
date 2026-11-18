@@ -1,5 +1,5 @@
 // Package os binds the process environment calls of Go's os package as the
-// Runtime\Go\Os namespace. A script imports it with `import "os";` and calls
+// Runtime\Go\Os namespace. A script imports it as `import "os";`, then calls
 // `os.Getenv($name)`; the default runtime installs none of these names.
 package os
 
@@ -13,7 +13,7 @@ import (
 // Namespace is the area the import installs.
 const Namespace = modelutil.GoNamespace + `\Os`
 
-// Set is what the package binds.
+// Set holds the package bindings.
 var Set = bindings.For("os").
 	// Runtime\Go\Os\Getenv returns the value of environment variable $key, or "" for a name the process does not hold.
 	Bind("Getenv", goos.Getenv).

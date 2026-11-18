@@ -19,7 +19,7 @@ sitemap:
       - path: types/README.md
         description: Dynamic scalar, array, object, callable, and cast behavior.
       - path: types/value-semantics.md
-        description: What copies and what two names share, why `&` does nothing, and how binding output parameters work.
+        description: Value copying, what two names share, why `&` does nothing, and how binding output parameters work.
       - path: variables/README.md
         description: Assignment, local scope, arrays, properties, and destructuring.
       - path: constants/README.md
@@ -51,13 +51,13 @@ sitemap:
       - path: predefined-interfaces-and-classes/README.md
         description: Exception and closure behavior, plus absent PHP runtime types.
       - path: predefined-interfaces-and-classes/reserved-interfaces.md
-        description: Every interface and class PHP predefines, the version that added it, and what phpscript does about each.
+        description: Every interface and class PHP predefines, its introducing version, and the phpscript handling.
       - path: predefined-interfaces-and-classes/classes/Traversable.md
-        description: The base interface foreach detects, and which no class declares directly.
+        description: The base interface foreach detects, declared directly by no class.
       - path: predefined-interfaces-and-classes/classes/Iterator.md
-        description: The five methods foreach calls, why nothing dispatches through them, and a flattened workaround.
+        description: foreach's five methods, the lack of dispatch, and the flattened workaround.
       - path: predefined-interfaces-and-classes/classes/IteratorAggregate.md
-        description: Handing back a separate iterator, and why getIterator() is never called.
+        description: Handing back another iterator, and the reason getIterator() is never called.
       - path: predefined-interfaces-and-classes/classes/InternalIterator.md
         description: The engine-supplied iterator for internal classes.
       - path: predefined-interfaces-and-classes/classes/Throwable.md
@@ -69,21 +69,21 @@ sitemap:
       - path: predefined-interfaces-and-classes/classes/Serializable.md
         description: Customized serializing, deprecated in PHP 8.1 and unimplemented here.
       - path: predefined-interfaces-and-classes/classes/Closure.md
-        description: The class wrapping an anonymous function, whose value exists without it.
+        description: The class wrapping an anonymous function, whose value outlives the object.
       - path: predefined-interfaces-and-classes/classes/stdClass.md
         description: The empty class new stdClass and the (object) cast both build.
       - path: predefined-interfaces-and-classes/classes/Generator.md
-        description: The class a generator function returns, and why phpscript has no coroutine model.
+        description: The class a generator function returns. phpscript has no coroutine model.
       - path: predefined-interfaces-and-classes/classes/Fiber.md
         description: Interruptible call stacks, left to the embedding Go application.
       - path: predefined-interfaces-and-classes/classes/WeakReference.md
-        description: A reference that does not keep its object alive, and why refcounts do not apply here.
+        description: A reference that does not keep its object alive. Refcounts do not apply here.
       - path: predefined-interfaces-and-classes/classes/WeakMap.md
         description: A map keyed by object, resting on three unavailable features.
       - path: predefined-interfaces-and-classes/classes/Stringable.md
         description: The __toString() contract, and the magic method behind it.
       - path: predefined-interfaces-and-classes/classes/UnitEnum.md
-        description: The interface the engine applies to every enumeration.
+        description: The interface the engine applies to each enumeration.
       - path: predefined-interfaces-and-classes/classes/BackedEnum.md
         description: The scalar-to-case mappings on a backed enumeration.
       - path: predefined-interfaces-and-classes/classes/SensitiveParameterValue.md
@@ -102,9 +102,9 @@ sitemap:
       - path: extensions/go-imports.md
         description: The import statement a file that bound the go runtime may write, and the packages of go's standard library it reaches.
       - path: extensions/regexp.md
-        description: How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
+        description: How phpscript compiles PCRE patterns. The differences between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md
-        description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter and not a wider digest.
+        description: Digest width, its value, where md5 and sha1 become unsafe, and the need for a cost parameter, since a wider digest does not help.
       - path: extensions/runtime-areas.md
         description: The Runtime\PS, Runtime\PX and Runtime\Go namespaces that group the bindings, and the configuration that selects them.
       - path: extensions/implemented-apis.md

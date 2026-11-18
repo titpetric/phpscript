@@ -7,8 +7,8 @@ import (
 )
 
 // TestRecord covers the struct a Get answers with. Record exports both fields,
-// and runner.helperGet reads `$rec->key` off them by reflection; an unexported
-// field would be invisible to a script.
+// and runner.helperGet reads `$rec->key` by reflection on those fields; an
+// unexported field would be invisible to a script.
 func TestRecord(t *testing.T) {
 	record := Record{Key: "color", Value: "blue"}
 	if record.Key != "color" || record.Value != "blue" {
@@ -27,9 +27,9 @@ func TestRecord(t *testing.T) {
 }
 
 // TestStorage covers the capability PHP reaches through `new Storage`: the
-// tenant the constructor reads off the context the runner fills in, and the
-// three readers a fixture calls on it. All() is key-sorted, and a foreach over
-// it reports the same order on every run.
+// tenant the constructor reads off the context the runner fills in. A fixture
+// calls three readers on it. All() is key-sorted; a foreach reports the same
+// order on every run.
 func TestStorage(t *testing.T) {
 	ctx := context.WithValue(context.Background(), tenantKey, "acme")
 	storage, err := NewStorage(ctx)
@@ -67,7 +67,7 @@ func TestStorage(t *testing.T) {
 
 // TestStorage_Keep covers the predicate shape a host declares in Go's own
 // terms. coerceArgOn wraps a PHP closure into func(key, value string) bool
-// through reflect.MakeFunc. The method reads two strings and a bool and knows
+// through reflect.MakeFunc. The method reads two strings, one bool, and knows
 // nothing about the VM.
 func TestStorage_Keep(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
@@ -83,9 +83,9 @@ func TestStorage_Keep(t *testing.T) {
 	}
 }
 
-// TestStorage_Walk covers the uniform func(...any) (any, error) shape, whose
-// error slot is where a callback reports a failure without a panic. A failing
-// visit stops the walk. A caller reads one error and not one per key.
+// TestStorage_Walk covers the uniform `func(...any) (any, error)` shape, whose
+// error slot lets a callback report a failure, avoiding a panic. A failing visit
+// stops the walk. A caller reads a single error for the whole walk.
 func TestStorage_Walk(t *testing.T) {
 	storage := &memStorage{data: map[string]string{"a": "1", "b": "2", "c": "3"}}
 

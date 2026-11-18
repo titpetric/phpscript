@@ -10,7 +10,7 @@ import (
 // Compiled is a model.Expr compiled straight to a closure chain, with the
 // bindings Eval fills before running: variables by slot, closure literals by
 // slot, and the registered-function names to install into the base env. It
-// holds no bytecode; the string round-trip through the transpiler and
+// holds no bytecode; the string round-trip via the transpiler and
 // expr-lang's parser never happens for an expression compiled here.
 type Compiled struct {
 	Program  *Program
@@ -18,7 +18,7 @@ type Compiled struct {
 	Calls    []string
 	Closures []BoundClosure
 	// Exprs holds the marked sub-expressions (`++`/`--`, include) the
-	// compiled closures run through the __eval base helper, keyed by
+	// compiled closures run via the __eval base helper, keyed by
 	// the mark id, the same contract the transpiler's marks use.
 	Exprs map[string]model.Expr
 }
@@ -34,11 +34,11 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 	}
 	if (len(dc.exprs) > 0 || dc.outParams) && len(dc.vars) > 0 {
 		// A marked sub-expression or a by-reference output argument writes
-		// the scope mid-evaluation, and a slot snapshot taken before the run
+		// the scope mid-evaluation. A slot snapshot taken before the run
 		// would miss it: $w++ . $w must read the incremented $w, and the
 		// right operand of `preg_match(..., $m) && isset($m[1])` must see
 		// the matches the call wrote. Recompile with variables read live
-		// through the __var helper.
+		// via the __var helper.
 		dc = &directCompiler{h: h, liveVars: true, slots: map[string]int{}}
 		if body, err = dc.compile(e); err != nil {
 			return nil, err
@@ -59,8 +59,8 @@ type directCompiler struct {
 	h        *Helpers
 	liveVars bool
 	// outParams records a compiled builtin with by-reference output arguments.
-	// The setter writes the scope and a slot snapshot would
-	// hide that write from a later operand of the same expression.
+	// The setter writes the scope. A slot snapshot would hide that write from a
+	// later operand of the same expression.
 	outParams bool
 	slots     map[string]int
 	vars      []BoundVar
@@ -80,7 +80,7 @@ func (dc *directCompiler) markCall(e model.Expr) closure {
 	return baseCall("__eval", []closure{constClosure(id)})
 }
 
-// bindVar returns the slot for a variable or bare name, registering the binding on first sight.
+// bindVar returns a name's slot, registering the binding on first sight.
 func (dc *directCompiler) bindVar(name string, isConst bool) int {
 	ident := "v_" + name
 	if isConst {
@@ -116,7 +116,7 @@ func slotRead(slot int) closure {
 	}
 }
 
-// baseCall evaluates args and calls a base-env entry, borrowing the arena only for a scratch name.
+// baseCall evaluates args and calls a base-env entry, borrowing the arena.
 func baseCall(name string, args []closure) closure {
 	if scratchName(name) {
 		return scratchCall(name, args)
@@ -148,7 +148,7 @@ func scratchName(name string) bool {
 	return false
 }
 
-// scratchCall is baseCall over the environment's arena, pushing the arguments and popping on return.
+// scratchCall is baseCall over the environment's arena, popping the arguments on return.
 func scratchCall(name string, args []closure) closure {
 	return func(env *Env) (any, error) {
 		fn, ok := env.Base[name].(func(...any) (any, error))

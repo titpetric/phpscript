@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/stdlib/go/bindings"
 )
 
-// TestSet_Types covers the walk over the bound signatures: the package's own
-// types come back under their own names, a type another package declares does
-// not, and a set that binds no function reaches none.
+// TestSet_Types covers the walk over the bound signatures: the package's types
+// return the names they declare. A type another package declares stays out. A
+// set that binds no function reaches nothing.
 func TestSet_Types(t *testing.T) {
 	t.Parallel()
 	types := bindings.For("net/http").
@@ -33,7 +33,8 @@ func TestSet_Types(t *testing.T) {
 }
 
 // TestSet_Type covers the seed a binding files for a type no signature
-// reaches: the walk starts from it, and what it reaches comes with it.
+// reaches. The walk starts from the seed, and the types it reaches come with
+// it.
 func TestSet_Type(t *testing.T) {
 	t.Parallel()
 	types := bindings.For("net/http").Type(http.Client{}).Types()

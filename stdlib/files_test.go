@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestRegisterFSAreasAreRegistered pins every area RegisterFS gates on to one
-// a package registers. A rename that skipped a reroot fails here.
+// TestRegisterFSAreasAreRegistered pins every area RegisterFS gates on to a
+// package registration. A rename that skipped a reroot fails here.
 func TestRegisterFSAreasAreRegistered(t *testing.T) {
 	registered := map[string]bool{}
 	for _, info := range Areas(All) {

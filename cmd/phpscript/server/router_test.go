@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// TestNewRouter covers the mux every handler tree of this command starts from:
-// a pattern registered on it answers, a path under a mounted subtree reaches
-// the handler that claimed it, and a path nobody claimed is a 404.
+// TestNewRouter covers the mux every handler tree of this command starts from.
+// A registered pattern answers. A path in a mounted subtree reaches the handler
+// that claimed the path. An unclaimed path is a 404.
 func TestNewRouter(t *testing.T) {
 	t.Parallel()
 	router := newRouter()
@@ -39,9 +39,9 @@ func TestNewRouter(t *testing.T) {
 	}
 }
 
-// TestNewRouterRunsMiddleware covers the other thing the server does with a
-// router: it registers the tracing middleware there. That has to wrap every
-// handler mounted after it.
+// TestNewRouterRunsMiddleware covers the server's other use of a router: it
+// registers the tracing middleware there. That must wrap every handler mounted
+// after it.
 func TestNewRouterRunsMiddleware(t *testing.T) {
 	t.Parallel()
 	router := newRouter()

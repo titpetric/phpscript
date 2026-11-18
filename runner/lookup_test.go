@@ -16,8 +16,8 @@ import (
 )
 
 // lookupTree is the source root the resolution tests look symbols up in. Two
-// namespaces declare a function of the same short name, which is the case the
-// trailing-segment match has to disambiguate and never guess at.
+// namespaces declare a function of the same short name. The trailing-segment
+// match must disambiguate this case, never guess at it.
 var lookupTree = fstest.MapFS{
 	"handlers/users.php": {Data: []byte(`<?php
 namespace App\Users;
@@ -44,8 +44,8 @@ function double($n) {
 `)},
 }
 
-// lookupRuntime builds a runtime over files with the standard library on it,
-// the shape a host embedding phpscript has.
+// lookupRuntime builds a runtime over files with the standard library
+// installed, the shape a host embedding phpscript has.
 func lookupRuntime(t testing.TB, out io.Writer, files fstest.MapFS) *runner.Runtime {
 	t.Helper()
 	if out == nil {
@@ -56,9 +56,9 @@ func lookupRuntime(t testing.TB, out io.Writer, files fstest.MapFS) *runner.Runt
 	return rt
 }
 
-// TestLookupResolvesQualifiedName pins the resolution order: a name spelled in
-// full wins, a bare one matches on its trailing segment, and a partial
-// namespace picks between two that share the segment.
+// TestLookupResolvesQualifiedName pins the resolution order. A name spelled in
+// full wins. A bare one matches on its trailing segment. A partial namespace
+// picks between two candidates that share the segment.
 func TestLookupResolvesQualifiedName(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -89,8 +89,8 @@ func TestLookupResolvesQualifiedName(t *testing.T) {
 }
 
 // TestLookupReportsAmbiguity holds the second half of the issue's contract: a
-// name that reaches more than one declaration is an error naming them, with no
-// pick.
+// name that reaches more than one declaration is an error naming the
+// declarations. The caller needs no pick.
 func TestLookupReportsAmbiguity(t *testing.T) {
 	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
@@ -107,7 +107,7 @@ func TestLookupReportsAmbiguity(t *testing.T) {
 }
 
 // TestLookupReportsMissingSymbol keeps "no such function" distinguishable from
-// "say which one": the candidate list is what separates them.
+// "say which one", since the candidate list separates the two.
 func TestLookupReportsMissingSymbol(t *testing.T) {
 	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
@@ -122,8 +122,8 @@ func TestLookupReportsMissingSymbol(t *testing.T) {
 	}
 }
 
-// TestLookupRejectsSignature checks the shape at the bind, not at the call and
-// a host wiring a handler wrong hears about it at startup.
+// TestLookupRejectsSignature checks the shape at the bind; the call sees only
+// a valid binding. A host wiring a handler wrong hears about it at startup.
 func TestLookupRejectsSignature(t *testing.T) {
 	t.Parallel()
 	t.Run("not a function", func(t *testing.T) {
@@ -148,8 +148,9 @@ func TestLookupRejectsSignature(t *testing.T) {
 	})
 }
 
-// TestLookupConvertsValues pins both edges of the bridge: what a Go argument
-// becomes in the scope, and what a PHP return becomes in the result slot.
+// TestLookupConvertsValues pins both edges of the bridge: the form a Go
+// argument takes in the scope, and the form a PHP return takes in the result
+// slot.
 func TestLookupConvertsValues(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"convert.php": {Data: []byte(`<?php
@@ -259,8 +260,8 @@ function spread() { return implode("+", func_get_args()); }
 
 // TestLookupPassesRequest is the issue's worked example: the *http.Request the
 // Go caller serves is the script's HTTP\Request and the method, the
-// headers, the query and the body all read off the value itself and not off
-// superglobals nothing seeded.
+// headers, the query and the body all read off the value alone; superglobals
+// nothing seeded never enter.
 func TestLookupPassesRequest(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"handler.php": {Data: []byte(`<?php
@@ -330,8 +331,7 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 	}
 }
 
-// TestLookupCarriesOnlyItsArguments holds the lightweight contract: the
-// context decodes no request and the superglobals stay undefined and never empty.
+// TestLookupCarriesOnlyItsArguments holds the contract: no request decoded, superglobals undefined.
 func TestLookupCarriesOnlyItsArguments(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"scope.php": {Data: []byte(`<?php
@@ -358,7 +358,8 @@ function inspect($given) {
 }
 
 // TestLookupEchoesToTheRuntimeWriter keeps output where the runtime's output
-// goes. A lookup changes how a caller reaches a function, not where it prints.
+// goes. A lookup changes the route to a function; the print destination stays
+// put.
 func TestLookupEchoesToTheRuntimeWriter(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"out.php": {Data: []byte(`<?php
@@ -459,8 +460,8 @@ func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
 }
 
 // TestLookupConcurrent is the concurrency contract in executable form: one
-// runtime per goroutine over one shared cache pair, as the server
-// does per request. This is the test -race has to have.
+// runtime per goroutine sharing one cache pair, as the server does per
+// request. This is the test -race needs.
 func TestLookupConcurrent(t *testing.T) {
 	t.Parallel()
 	const workers, calls = 16, 50
@@ -563,10 +564,10 @@ echo $g->say("bob");
 	}
 }
 
-// TestLookupError_Error covers the two renderings of the one error. A name
-// that matched too much lists what it matched, because the host's next move is
-// to spell one of them; every other reason has nothing to list and Error drops
-// the clause and never prints it empty.
+// TestLookupError_Error covers the two renderings of a single error. A name
+// that matched too much lists the matches, because the host's next move is to
+// spell one of them. Another reason has nothing to list; Error drops the
+// clause, never printing it empty.
 func TestLookupError_Error(t *testing.T) {
 	t.Parallel()
 	ambiguous := &runner.LookupError{

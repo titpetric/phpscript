@@ -9,8 +9,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/go/encoding/json"
 )
 
-// TestRegister covers the three functions through a script, including the
-// error a malformed document raises.
+// TestRegister covers all three functions, including a malformed document's error.
 func TestRegister(t *testing.T) {
 	gotest.Run(t, `Runtime\Go\Encoding\JSON`, []gotest.Case{
 		{Src: `use Runtime\Go\Encoding\JSON; echo JSON\Marshal(["a" => 1, "b" => [true, null]]);`, Want: `{"a":1,"b":[true,null]}`},

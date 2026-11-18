@@ -26,7 +26,7 @@ func patternOrder(subject string, all [][]int, groups int, flags int64) []any {
 	return out
 }
 
-// setOrder fills $matches by match, each holding the whole match followed by its groups.
+// setOrder fills $matches by match: the whole match, then its groups.
 func setOrder(subject string, all [][]int, groups int, flags int64) []any {
 	out := make([]any, len(all))
 	for i, idx := range all {
@@ -35,7 +35,7 @@ func setOrder(subject string, all [][]int, groups int, flags int64) []any {
 	return out
 }
 
-// matchOffset resolves preg_match's $offset into bytes, reporting false when it falls outside subject.
+// matchOffset resolves preg_match's $offset into bytes, false outside subject.
 func matchOffset(subject string, offset any) (int, bool) {
 	if offset == nil {
 		return 0, true
@@ -50,14 +50,14 @@ func matchOffset(subject string, offset any) (int, bool) {
 	return start, true
 }
 
-// splitPieces accumulates preg_split's result, as strings until PREG_SPLIT_OFFSET_CAPTURE takes pairs.
+// splitPieces accumulates preg_split's result as strings, pairs with OFFSET_CAPTURE.
 type splitPieces struct {
 	flags int64
 	text  []string
 	pairs []any
 }
 
-// add appends the piece between start and end, dropping an empty one under PREG_SPLIT_NO_EMPTY.
+// add appends the piece between start and end, unless PREG_SPLIT_NO_EMPTY skips it.
 func (s *splitPieces) add(subject string, start, end int) bool {
 	piece := ""
 	if start >= 0 {
@@ -105,7 +105,7 @@ func matchGroups(subject string, idx []int, groups int, flags int64) any {
 	return row
 }
 
-// participatingGroups counts the entries PHP keeps, dropping trailing groups that did not match.
+// participatingGroups counts the entries PHP keeps, dropping trailing unmatched groups.
 func participatingGroups(idx []int, groups int, flags int64) int {
 	if flags&pregUnmatchedAsNull != 0 {
 		return groups + 1
@@ -117,7 +117,7 @@ func participatingGroups(idx []int, groups int, flags int64) int {
 	return n
 }
 
-// groupStart returns the byte offset group g matched at, or -1 when it did not.
+// groupStart returns group g's byte offset, or -1 when unmatched.
 func groupStart(idx []int, g int) int {
 	if 2*g+1 >= len(idx) {
 		return -1
@@ -125,7 +125,7 @@ func groupStart(idx []int, g int) int {
 	return idx[2*g]
 }
 
-// groupText returns the text group g matched, empty for a group that did not.
+// groupText returns the text group g matched, empty for an unmatched group.
 func groupText(subject string, idx []int, g int) string {
 	start := groupStart(idx, g)
 	if start < 0 {
@@ -150,7 +150,7 @@ func matchValue(subject string, idx []int, g int, flags int64) any {
 	return text
 }
 
-// writeRef assigns v through set, and does nothing when the caller omits the argument.
+// writeRef assigns v through set, doing nothing when the argument is absent.
 func writeRef(set func(any), v any) {
 	if set != nil {
 		set(v)

@@ -30,7 +30,7 @@ func phpArrayMerge(arrs ...any) any {
 	return out
 }
 
-// phpArraySplice removes a run of elements and returns them, refusing anything but a *model.Array.
+// phpArraySplice removes a run of elements, refusing anything but a *model.Array.
 func phpArraySplice(array any, offset int64, optional ...any) ([]any, error) {
 	a, ok := array.(*model.Array)
 	if !ok || a == nil {
@@ -111,13 +111,13 @@ func phpArraySpliceReplacement(rep any) []any {
 	return []any{rep}
 }
 
-// arrayEntry is one key/value pair of a snapshot taken before the array is rewritten.
+// arrayEntry names one key/value pair of a snapshot taken before a rewrite.
 type arrayEntry struct {
 	key any
 	val any
 }
 
-// arrayTarget is the four mutators' shared guard, refusing a native slice for want of *model.Array.
+// arrayTarget is the mutators' shared guard, refusing a native Go slice.
 func arrayTarget(name string, array any) (*model.Array, error) {
 	a, ok := array.(*model.Array)
 	if !ok || a == nil {
@@ -136,7 +136,7 @@ func arrayEntries(a *model.Array) []arrayEntry {
 	return out
 }
 
-// arrayReplay repopulates a cleared array, renumbering integer keys from zero when renumber is true.
+// arrayReplay repopulates a cleared array, renumbering integer keys from zero on request.
 func arrayReplay(a *model.Array, entries []arrayEntry, renumber bool) {
 	for _, e := range entries {
 		if _, isInt := e.key.(int64); isInt && renumber {
@@ -171,7 +171,7 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 	entries := arrayEntries(a)
 	a.Clear()
 	// Appending the new values first leaves them holding keys 0..n-1 and the
-	// replay continues the numbering and never starts over.
+	// replay continues the numbering, never starting over.
 	for _, v := range values {
 		a.Append(v)
 	}
@@ -179,7 +179,7 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 	return int64(a.Len()), nil
 }
 
-// phpArrayPop removes the last element and keeps the surviving keys, unlike shift and unshift.
+// phpArrayPop removes the last element and keeps surviving keys, unlike shift.
 func phpArrayPop(array any) (any, error) {
 	a, err := arrayTarget("array_pop", array)
 	if err != nil {
@@ -192,7 +192,7 @@ func phpArrayPop(array any) (any, error) {
 	return value, nil
 }
 
-// phpArrayPush appends values at the next integer keys and returns the new count, re-keying nothing.
+// phpArrayPush appends values at the next integer keys and returns the new count.
 func phpArrayPush(array any, values ...any) (int64, error) {
 	a, err := arrayTarget("array_push", array)
 	if err != nil {

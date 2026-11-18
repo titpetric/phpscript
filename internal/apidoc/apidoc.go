@@ -1,8 +1,8 @@
 // Package apidoc generates docs/reference/extensions/implemented-apis.md.
 // It combines two sources of truth: the live runtime, which names every
-// registration and its Go signature, and a scan of the Go source, which reads
-// the doc comment written next to each registration and the parameter names
-// the reflect API cannot see. See scripts/list-apis for the entry point.
+// registration and its Go signature, plus a scan of the Go source. The scan
+// reads the doc comment next to each registration and the parameter names the
+// reflect API cannot see. See scripts/list-apis for the entry point.
 package apidoc
 
 import (
@@ -15,14 +15,14 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// modulePrefix maps a runtime symbol name back to its package directory.
+// modulePrefix maps a runtime symbol name to the package directory.
 const modulePrefix = "github.com/titpetric/phpscript/"
 
-// Param is one PHP-visible parameter of a binding.
+// Param is a PHP-visible parameter of a binding.
 //
-// The json spelling is what `phpscript list --classes --json` writes, and a
-// generator reading it holds both names of every symbol: the PHP one a script
-// types and the Go one the binding implements.
+// The json spelling matches `phpscript list --classes --json`. A generator
+// reading it holds both names of each symbol: the PHP name a script types, the
+// Go name the binding implements.
 type Param struct {
 	Name     string `json:"name"`           // without the dollar sign
 	Type     string `json:"type,omitempty"` // PHP type name, empty for a by-reference out parameter
@@ -30,7 +30,7 @@ type Param struct {
 	ByRef    bool   `json:"byref,omitempty"` // the runner's by-reference setter wrapper
 }
 
-// Func is one registered function with everything the renderer needs.
+// Func is a registered function with everything the renderer needs.
 type Func struct {
 	Name    string
 	Package string // Go package directory relative to the module root
@@ -43,7 +43,7 @@ type Func struct {
 	Returns   string // PHP type name, "void" when the Go func returns nothing
 }
 
-// Method is one PHP-callable method on a registered class.
+// Method is a PHP-callable method on a registered class.
 type Method struct {
 	Name    string   `json:"name"` // PHP spelling, snake_case
 	GoName  string   `json:"go_name,omitempty"`
@@ -52,14 +52,14 @@ type Method struct {
 	Returns string   `json:"returns,omitempty"`
 }
 
-// Class is one registered class. Classes sharing a constructor (the SPL
-// exception set) collapse into one entry with the extra names in Aliases, and
-// Rename answers the entry under whichever of them a caller asked about.
+// Class is a registered class. Classes sharing a constructor (the SPL
+// exception set) collapse into a single entry, with the extra names in Aliases.
+// Rename answers the entry under whichever name a caller asked about.
 //
-// PHP renders it the way `go doc` renders a Go type, in PHP spelling: the
+// PHP renders it as `go doc` renders a Go type, in PHP spelling: the
 // description, the properties the bound Go type holds, then the constructor
 // and the methods. A declaration ends at the semicolon and omits the body,
-// because the implementation is Go and no PHP a reader could open.
+// because the implementation is Go; no PHP a reader could open.
 type Class struct {
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases,omitempty"`
@@ -170,7 +170,7 @@ func buildClasses(rt *runner.Runtime, src *sources, classTypes map[reflect.Type]
 	return classes
 }
 
-// buildClass builds one class entry under the name its registration documents, or the shortest.
+// buildClass builds a class entry using the registration's documented name, or the shortest.
 func buildClass(names []string, ctor any, src *sources, classTypes map[reflect.Type]string) Class {
 	primary := primaryClassName(names, src)
 
@@ -239,7 +239,7 @@ func primaryClassName(names []string, src *sources) string {
 	return primary
 }
 
-// registeredClassTypes maps each constructor's concrete type to its PHP class name, first name winning.
+// registeredClassTypes maps a constructor's type to a PHP class name, first name winning.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
 	classTypes := map[reflect.Type]string{}
 	for _, group := range constructorGroups(rt) {
@@ -294,7 +294,7 @@ func constructorResultType(ctor any) (reflect.Type, bool) {
 	return nil, false
 }
 
-// ctorDecl resolves ctor to its scanned declaration, or nil for a function literal.
+// ctorDecl resolves ctor to the scanned declaration, or nil for a function literal.
 func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	fn := goruntime.FuncForPC(reflect.ValueOf(ctor).Pointer())
 	if fn == nil {
@@ -314,7 +314,7 @@ func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 	return "", nil
 }
 
-// reflectMethods lists the PHP-callable methods of t, named in snake_case and skipping infraMethods.
+// reflectMethods lists t's PHP-callable methods in snake_case, skipping infraMethods.
 func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]string) []Method {
 	typeName := t.Name()
 	if t.Kind() == reflect.Pointer {
@@ -347,13 +347,13 @@ func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]st
 	return methods
 }
 
-// infraMethods names methods a bound type holds for the host, not for a script.
+// infraMethods names methods a bound type holds for the host alone.
 var infraMethods = map[string]bool{
 	"Error": true, "String": true, "GoString": true, "SetID": true,
 	"MarshalJSON": true, "UnmarshalJSON": true,
 }
 
-// returnType folds results into one PHP type, dropping error and duplicates.
+// returnType folds results into a single PHP type, dropping error and duplicates.
 func returnType(results []string) string {
 	kept := make([]string, 0, len(results))
 	seen := map[string]bool{}
@@ -373,7 +373,7 @@ func returnType(results []string) string {
 	return strings.Join(kept, "|")
 }
 
-// camelToSnake converts a Go method name to its PHP spelling, SetID to set_id.
+// camelToSnake converts a Go method name to PHP spelling: SetID to set_id.
 func camelToSnake(name string) string {
 	var b strings.Builder
 	runes := []rune(name)

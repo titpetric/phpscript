@@ -10,8 +10,8 @@ import (
 
 // walkSrc is the recursive listing a php script writes with the handle
 // functions: open, read until false, close, skipping "." and ".." by hand. The
-// fixture at tests/fixtures/stdlib/opendir.phpt runs the same shape against a
-// committed tree; this runs it against both filesystems.
+// fixture at tests/fixtures/stdlib/opendir.phpt runs the same shape on a
+// committed tree; this runs it on both filesystems.
 const walkSrc = `<?php
 function walk(string $dir): void {
     $handle = opendir($dir);
@@ -31,9 +31,9 @@ function walk(string $dir): void {
 }
 walk(".");`
 
-// TestOpendirWalksTheSourceFilesystem is the branch an embedded application
-// takes. No file exists on disk to open a descriptor on and a walk that
-// answers at all proves the handle holds the listing and no file.
+// TestOpendirWalksTheSourceFilesystem covers the branch an embedded application
+// takes. No file exists on disk to open a descriptor. A walk that answers at all
+// proves the handle lists the tree without reading a file.
 func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -44,7 +44,7 @@ func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 }
 
 // TestOpendirWalksTheHost covers the branch a CLI run takes, where the runtime
-// has no fs.FS and the same names come off the host under the bound root.
+// has no fs.FS and the same names come from the host beneath the bound root.
 func TestOpendirWalksTheHost(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -64,8 +64,8 @@ func TestOpendirWalksTheHost(t *testing.T) {
 }
 
 // TestReaddirListsDotAndDotDot pins what readdir returns that scandir also
-// returns: php lists the two directory entries, and a script that does not
-// skip them recurses forever.
+// returns: php lists the two directory entries; a script that does not skip
+// them recurses forever.
 func TestReaddirListsDotAndDotDot(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -80,8 +80,8 @@ echo implode(",", $names);`)
 	}
 }
 
-// TestOpendirRefusesWhatIsNotADirectory pins the false return. A file and a
-// name that is not there answer the same way, as php's opendir does.
+// TestOpendirRefusesWhatIsNotADirectory pins the false return. A file, or a
+// missing name, answers the same way, as php's opendir does.
 func TestOpendirRefusesWhatIsNotADirectory(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -93,11 +93,10 @@ var_dump(opendir("missing"));`)
 	}
 }
 
-// TestClosedirExhaustsTheHandle states what a closed handle answers. There is
-// no descriptor to invalidate and closedir drops the listing and a further read
-// reports the end of it; php throws a TypeError there. A value readdir never
-// issued answers the same way, which keeps a foreign one from walking
-// anything.
+// TestClosedirExhaustsTheHandle states a closed handle's answers. There is no
+// descriptor to invalidate. closedir drops the listing; a further read reports
+// the end. php throws a TypeError there. A value readdir never issued
+// answers the same way, keeping a foreign handle from walking anything.
 func TestClosedirExhaustsTheHandle(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -112,8 +111,8 @@ var_dump(readdir("not a handle"));`)
 }
 
 // TestOpendirIsJailedToTheRoot holds the handle functions to the rule every
-// path in this package follows: "/" is the source filesystem's root, and the
-// runtime cleans a path that climbs against it and it escapes nothing.
+// path in this package follows: "/" is the source filesystem's root. The
+// runtime cleans any climbing path, and nothing escapes.
 func TestOpendirIsJailedToTheRoot(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}

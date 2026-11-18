@@ -27,7 +27,7 @@ func TestExitError(t *testing.T) {
 }
 
 // TestIsExit covers recognising an exit through a wrapper: a host tells a
-// script that ended from one that failed by that check.
+// script that ended from one the check did not recognise.
 func TestIsExit(t *testing.T) {
 	t.Parallel()
 	exit, ok := IsExit(fmt.Errorf("while running: %w", &ExitError{Code: 7}))
@@ -48,8 +48,8 @@ func TestIsExit(t *testing.T) {
 
 // TestTimeLimitError covers php's own wording for a script that ran out of
 // time, down to the singular, and the separate message for a client that left.
-// A host reads Aborted to tell them apart: a timeout is the site's problem and
-// a disconnect is not.
+// A host reads Aborted to tell them apart: a timeout is the site's problem; a
+// disconnect is not.
 func TestTimeLimitError(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -68,8 +68,8 @@ func TestTimeLimitError(t *testing.T) {
 }
 
 // TestArgumentCountError covers php's wording for a call with too many
-// arguments. It says "at most" because a binding spells PHP's optional
-// parameters as extra ones and too few arguments is legal and zero-padded.
+// arguments. It says "at most": a binding spells PHP's optional parameters as
+// extra ones. Too few arguments is legal and zero-padded.
 func TestArgumentCountError(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -91,8 +91,8 @@ func TestArgumentCountError(t *testing.T) {
 }
 
 // TestTypeError covers the message PHP's TypeError reports. The message names
-// the parameter by position and not by name, because a Go binding's parameter
-// names are not recoverable through reflect.
+// the parameter by position, not by name: a Go binding's parameter names are
+// not recoverable through reflect.
 func TestTypeError(t *testing.T) {
 	t.Parallel()
 	err := &TypeError{Name: "str_repeat", Position: 2, Want: "int", Got: "string"}
@@ -108,8 +108,8 @@ func TestTypeError(t *testing.T) {
 	}
 }
 
-// TestUndefinedConstantError covers the one error here that names a class PHP
-// does not: RuntimeException and `catch (Exception $e)` takes it. A name this
+// TestUndefinedConstantError covers the only error here that names a class PHP
+// lacks: RuntimeException, which `catch (Exception $e)` takes. A name this
 // runtime does not define is a condition a script can answer for, where PHP 8
 // raises Error and expects nobody to handle it.
 func TestUndefinedConstantError(t *testing.T) {
@@ -124,7 +124,7 @@ func TestUndefinedConstantError(t *testing.T) {
 }
 
 // TestHostPanicError covers the error a panic in a registered Go callable
-// reaches a script as and a PHP try/catch handles it the way it handles an
+// reaches a script, and how PHP try/catch handles the panic as it handles an
 // error the same callable returned.
 func TestHostPanicError(t *testing.T) {
 	t.Parallel()

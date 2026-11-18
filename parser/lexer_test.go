@@ -51,7 +51,7 @@ func TestLexMultiCharOperators(t *testing.T) {
 }
 
 // TestLexOperatorGreedy pins the boundaries between operators that share a
-// prefix and a table reordering cannot silently split "===" into "==" + "=".
+// prefix. A table reordering cannot silently split "===" into "==" + "=".
 func TestLexOperatorGreedy(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -226,8 +226,8 @@ func TestLexNumberLiterals(t *testing.T) {
 		{"1e3", tFloat, "1e3"},
 		{"1E-3", tFloat, "1E-3"},
 		{"1.5e+10", tFloat, "1.5e+10"},
-		// A hex literal owns its digits: the "e" in 0x1e is one of them and no
-		// the start of an exponent.
+		// A hex literal owns its digits. The "e" in 0x1e belongs to the
+		// digits, not to an exponent.
 		{"0x1e", tInt, "0x1e"},
 	}
 	for _, c := range cases {
@@ -250,7 +250,7 @@ func TestLexNumberBoundaries(t *testing.T) {
 		src  string
 		want []string
 	}{
-		// A prefix with no digits behind it reads as the integer 0 and an
+		// A prefix followed by no digits reads as the integer 0 and an
 		// identifier.
 		{"0xg", []string{"0", "xg"}},
 		{"1 . 2", []string{"1", ".", "2"}},
@@ -269,8 +269,8 @@ func TestLexNumberBoundaries(t *testing.T) {
 }
 
 // TestNumLitBases checks the values the parser passes the runtime, including the
-// literal too large for an int, which PHP widens to a float and never
-// rejecting.
+// literal too large for an int, which PHP widens to a float, never rejecting
+// it.
 func TestNumLitBases(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

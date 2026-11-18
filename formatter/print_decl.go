@@ -288,7 +288,7 @@ func shortName(name string) string {
 	return name
 }
 
-// typeName renders a name relative to the file namespace, absolute names keeping their leading backslash.
+// typeName renders a name relative to the file namespace unless absolute.
 func (p *printer) typeName(name string) string {
 	if name == "" || name == "self" || name == "static" {
 		return name

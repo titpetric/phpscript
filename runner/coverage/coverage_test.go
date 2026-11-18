@@ -8,7 +8,7 @@ import (
 )
 
 // collect returns a collector holding one registration of src under filename,
-// with count hits charged to every statement it registered.
+// with count hits charged to each registered statement.
 func collect(t *testing.T, filename, src string, count int) *coverage.Collector {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -33,7 +33,7 @@ class Thing { public function method() { return 3; } }
 interface Shape {}
 `
 
-// TestNew covers what a collector holds after one registration: every
+// TestNew covers the state of a collector after one registration: every
 // executable statement seeded, declarations skipped, and the file recorded
 // even when nothing in it ran.
 func TestNew(t *testing.T) {
@@ -55,9 +55,8 @@ func TestNew(t *testing.T) {
 	}
 }
 
-// TestCollector covers the counting: a statement reached twice counts twice,
-// and one nothing reached stays at zero, which is the row a report exists to
-// show.
+// TestCollector covers the counting: a statement reached twice counts twice;
+// one that nothing reached stays at zero, the row a report exists to show.
 func TestCollector(t *testing.T) {
 	t.Parallel()
 	c := collect(t, "app.php", collectorSource, 2)
@@ -74,7 +73,7 @@ func TestCollector(t *testing.T) {
 }
 
 // TestCollector_Functions covers the declaration spans a per-function report
-// charges against: free functions under their name, methods under Class::name.
+// charges against: free functions by their name, methods by Class::name.
 // An interface declares only signatures and spans nothing.
 func TestCollector_Functions(t *testing.T) {
 	t.Parallel()
@@ -100,8 +99,8 @@ func TestCollector_Functions(t *testing.T) {
 }
 
 // TestCollector_Register pins that re-registering a cached program keeps the
-// counts it already has: a server includes the same file every request, and a
-// reset baseline would report the last one in place of the run.
+// counts it already has: a server includes the same file every request. A
+// reset baseline would report the previous run in place of the current one.
 func TestCollector_Register(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(collectorSource)

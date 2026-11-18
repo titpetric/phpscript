@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// TestCoalesceAssignResolvesTheTargetOnce covers `??=` over the targets whose
-// base or key runs script code: a call in the index, an increment, the
-// receiver of a property and a property name an expression spells. php runs
-// each once, whether the store happens or not.
+// TestCoalesceAssignResolvesTheTargetOnce covers `??=` for targets whose base
+// or key runs script code: a call in the index, an increment, a property
+// receiver, a property name an expression spells. php runs each once, whether
+// the store happens.
 func TestCoalesceAssignResolvesTheTargetOnce(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

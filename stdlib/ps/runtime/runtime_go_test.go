@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// goRun executes src on a runtime with the default surface, the surface
-// the import adds to: Run installs what the source opted into.
+// goRun executes src on a runtime with the default surface, which the import
+// extends: Run installs the bindings the source opted into.
 func goRun(t *testing.T, src string) (string, error) {
 	t.Helper()
 	var out strings.Builder
@@ -24,8 +24,8 @@ func goRun(t *testing.T, src string) (string, error) {
 	return out.String(), err
 }
 
-// goOutput runs src and pins what it echoed, the one view of go's semantics a
-// script has: a length, a capacity, and what a conversion returns.
+// goOutput runs src and pins its echoed output, the view of go's semantics
+// available to a script: a length, a capacity, a conversion result.
 func goOutput(t *testing.T, src, want string) {
 	t.Helper()
 	out, err := goRun(t, src)
@@ -37,11 +37,11 @@ func goOutput(t *testing.T, src, want string) {
 	}
 }
 
-// TestRegisterGo pins the opt-in: a runtime answers for none of go's names
-// until a program imports the namespace. That keeps them out of
-// function_exists and the generated reference. After the import every name the
-// tables hold resolves qualified and no name resolves bare: binding the short
-// name is the parser's job, per file.
+// TestRegisterGo pins the opt-in: a runtime answers none of go's names until a
+// program imports the namespace. That keeps them out of function_exists and the
+// generated reference. After the import, every name the tables hold resolves
+// qualified; no name resolves bare. Binding the short name is the parser's job,
+// per file.
 func TestRegisterGo(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -85,9 +85,9 @@ func TestGoBuiltinEnvironment(t *testing.T) {
 	goOutput(t, "<?php\nuse Runtime\\Go;\necho numcpu() >= 1 ? \"cpus\" : \"none\";\n", "cpus")
 }
 
-// TestGoBareNames covers what the import is for: the builtins read as go writes
-// them, with no namespace in the source. A leading separator and the case of
-// the namespace are php's to ignore, and php's own name wins where php has one.
+// TestGoBareNames covers the import's purpose: the builtins read as go writes
+// them, without a namespace in the source. A leading separator and the case of
+// the namespace are php's to ignore; php's own name wins where php defines one.
 func TestGoBareNames(t *testing.T) {
 	t.Parallel()
 	for _, use := range []string{"use Runtime\\Go;", "use \\runtime\\go;"} {
@@ -135,10 +135,10 @@ echo min(3, 1, 2), Runtime\Go\min(3, 1, 2), \min([3, 1, 2]), "\n";
 `, "111\n")
 }
 
-// TestGoSlices covers make, append, len and cap over a go slice: the length and
-// the capacity are the ones make allocated and append fills within the
+// TestGoSlices covers make, append, len and cap across a go slice: the length
+// and the capacity are those make allocated, and append fills within the
 // capacity. A foreach reads the slice back by index. A slice of a sized width
-// holds typed values and an element reads back with the width.
+// holds typed values; an element reads back with the width.
 func TestGoSlices(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -194,8 +194,8 @@ var_dump(class_exists('Runtime\Go\int64'));
 }
 
 // TestGoCollections covers copy, delete and clear: copy stops at the shorter of
-// the two and converts into the element type, delete and clear read a go map,
-// and a cleared slice keeps its length.
+// the two and converts into the element type; delete and clear read a go map; a
+// cleared slice keeps its length.
 func TestGoCollections(t *testing.T) {
 	t.Parallel()
 	goOutput(t, `<?php
@@ -236,9 +236,9 @@ try {
 `, "13\na 1\nb2\ncaught: panic: boom\n")
 }
 
-// TestGoRefusals pins what each binding refuses, and the message it names the
-// supported shape in: a width php renders no value of, a value with no length,
-// and a shape nothing appends to.
+// TestGoRefusals pins the refusals of each binding and the message naming the
+// supported shape: a width php renders no value of, a value without length, a
+// shape nothing appends to.
 func TestGoRefusals(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct{ name, src, want string }{

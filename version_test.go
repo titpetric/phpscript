@@ -4,11 +4,11 @@ import (
 	"testing"
 )
 
-// TestVersion covers the defaults a build with no ldflags keeps. "unknown" is
+// TestVersion covers the defaults a build lacking ldflags keeps. "unknown" is
 // not a placeholder here: the version command prints the commit, the commit
-// time and the branch only when each says something else and a `go build` with
-// no VCS information prints the version line alone, with no three lines
-// reading unknown.
+// time, plus the branch only when each says something else; a `go build`
+// lacking VCS information prints the version line alone. Three lines reading
+// unknown never appear.
 func TestVersion(t *testing.T) {
 	t.Parallel()
 	if Version != "dev" {

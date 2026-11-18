@@ -9,11 +9,10 @@ import (
 
 // ParseRoutePath returns the parameters declared in an @route path, in order.
 //
-// An error names the offending segment and a caller can report it against the
-// annotation's line. Every rejected spelling is one a router
-// would otherwise accept and answer wrongly: chi registers {module=users} as a
-// parameter of that literal name, matches every request to the segment and
-// exports nothing.
+// An error names the offending segment; a caller can report it on the
+// annotation's line. A router would otherwise accept every rejected spelling and
+// answer wrongly: chi registers {module=users} as a parameter of that literal
+// name, matches every request to the segment, and exports nothing.
 func ParseRoutePath(path string) ([]model.RouteParam, error) {
 	var params []model.RouteParam
 	seen := map[string]bool{}
@@ -46,7 +45,7 @@ func ParseRoutePath(path string) ([]model.RouteParam, error) {
 	return params, nil
 }
 
-// The type holds the name rule; the path is the location only this knows.
+// The type holds the name rule; only this file sets the path.
 func parseRouteParam(body, path string) (model.RouteParam, error) {
 	if body == "" {
 		return model.RouteParam{}, fmt.Errorf("empty route parameter in route path %q", path)
@@ -70,7 +69,7 @@ func parseRouteParam(body, path string) (model.RouteParam, error) {
 	return param, nil
 }
 
-// Braces nest, because a chi constraint holds its own: {id:[0-9]{3}}.
+// Braces nest, since a chi constraint holds inner braces: {id:[0-9]{3}}.
 func closingBrace(path string, open int) int {
 	depth := 0
 	for i := open; i < len(path); i++ {

@@ -4,8 +4,7 @@ import (
 	"context"
 )
 
-// BeginRequest is EnterRequest with the saved state as its answer; EndRequest
-// puts it back.
+// BeginRequest is EnterRequest returning the saved state; EndRequest puts it back.
 func (rt *Runtime) BeginRequest(ctx context.Context) RequestState {
 	saved := RequestState{
 		client:      rt.client,
@@ -16,9 +15,9 @@ func (rt *Runtime) BeginRequest(ctx context.Context) RequestState {
 
 	rt.client = ctx
 	rt.clientDone = watchEnd(ctx)
-	// Off for every request and a handler that ignored a disconnect does not
-	// decide it for the next one. The limit is not saved: the limit is the
-	// runtime's and a handler moving it means to move it.
+	// Off for every request. A handler that ignored a disconnect does not
+	// decide it for the next request. The limit is not saved: it belongs to the
+	// runtime. A handler moving it means to move it.
 	rt.ignoreAbort = false
 	rt.inRequest = true
 	rt.refreshDeadlineArmed()

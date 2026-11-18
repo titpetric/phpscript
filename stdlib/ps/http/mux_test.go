@@ -29,8 +29,8 @@ func serveScript(t *testing.T, src string) (*runner.Runtime, nethttp.Handler) {
 	return rt, handler
 }
 
-// serveScriptOutput is serveScript for a test that reads what a handler echoed,
-// the place a handler answering nobody puts what it found out.
+// serveScriptOutput is serveScript for a test that reads the handler's echo,
+// the place a handler answering nobody writes its findings.
 func serveScriptOutput(t *testing.T, src string) (*strings.Builder, nethttp.Handler) {
 	t.Helper()
 	out, _, handler := serveScriptAll(t, src)
@@ -124,7 +124,7 @@ define("MUX", $mux);
 }
 
 // TestMuxUnroutedIsNotFound leaves the router's own answers to the router: a
-// pattern nothing matched is net/http's 404 and no PHP error.
+// pattern nothing matched is net/http's 404; PHP reports no error.
 func TestMuxUnroutedIsNotFound(t *testing.T) {
 	t.Parallel()
 	_, handler := serveScript(t, `<?php
@@ -167,8 +167,8 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxHandlerThrowIsOneRequestsProblem keeps a failing handler from taking
-// the server with it: the request gets a status and the mux answers the next.
+// TestMuxHandlerThrowIsOneRequestsProblem keeps one failing handler from taking
+// the server down: the request gets a status. The mux answers the next.
 func TestMuxHandlerThrowIsOneRequestsProblem(t *testing.T) {
 	t.Parallel()
 	_, handler := serveScript(t, `<?php
@@ -196,10 +196,10 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxEchoThenThrowKeepsTheBody holds the 500 guard to its own comment: a
-// handler that has begun its response gets no second status. An echo is the
-// response beginning the way $w->write() is and a throw after one leaves the
-// truncated body as the signal and appends no "Internal Server Error".
+// TestMuxEchoThenThrowKeepsTheBody checks the documented 500 guard: a handler
+// that has begun its response gets no further status. An echo begins the
+// response the way $w->write() does; a throw after one leaves the truncated
+// body as the signal, appending no "Internal Server Error".
 func TestMuxEchoThenThrowKeepsTheBody(t *testing.T) {
 	t.Parallel()
 	_, handler := serveScript(t, `<?php
@@ -221,13 +221,12 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxHandlerSeesItsOwnConnection is what EnterRequest is for: a client
-// that leaves mid-request is the one the handler asks about. The handler
-// decides what to do about it.
+// TestMuxHandlerSeesItsOwnConnection covers EnterRequest: a client that
+// leaves mid-request is the connection the handler asks about. The handler
+// decides what to do about the disconnect.
 //
-// What it found out comes back through a binding and not through echo: a
-// handler's output goes to the response, and the point of this one is that
-// there is no response left.
+// Its findings come back through a binding, not through echo: a handler's
+// output goes to the response. This case has no response left.
 func TestMuxHandlerSeesItsOwnConnection(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -422,9 +421,9 @@ define("MUX", $mux);
 	<-done
 }
 
-// TestMuxMiddlewareValueReachesBindings is why the request is the base: Go
-// middleware ahead of the mux attaches values to r.Context(), and a binding
-// called from the handler reads them off its injected context.
+// TestMuxMiddlewareValueReachesBindings explains why the request is the base:
+// Go middleware ahead of the mux attaches values to r.Context(); a binding
+// called from the handler reads them from its injected context.
 func TestMuxMiddlewareValueReachesBindings(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -464,8 +463,8 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxSkipsADeadConnection keeps the work off a request nobody is waiting
-// for: the client is already gone and the handler never runs.
+// TestMuxSkipsADeadConnection skips a request nobody waits for: the client is
+// already gone; the handler never runs.
 func TestMuxSkipsADeadConnection(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -504,8 +503,8 @@ define("MUX", $mux);
 	}
 }
 
-// TestServerListensAndStops drives the listening half: a port the system
-// picked, a request answered over it, and a shutdown that closes it.
+// TestServerListensAndStops drives the listening half: a system-picked port, a
+// request answered on that port, then a shutdown that closes it.
 func TestServerListensAndStops(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -574,9 +573,8 @@ func formRequest(target, body string) *nethttp.Request {
 }
 
 // TestTwoMuxesShareOneRuntimeSafely names the defect in a per-Mux mutex: a
-// lock held as a field of Mux lets handlers on two muxes interpret on one
-// Runtime at the same time and takes the process down with a concurrent map
-// write.
+// lock held as a Mux field lets handlers from two muxes interpret on one
+// Runtime at once, taking the process down with a concurrent map write.
 func TestTwoMuxesShareOneRuntimeSafely(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -732,9 +730,9 @@ define("SERVER", $server);
 	_ = rt.Run(stop)
 }
 
-// TestMuxTakesAHandlerFromAProperty is a server class holding its handlers in
-// properties and registering each as $this->fnName. The closure binds $this,
-// which comes along and every request shares it and a handler reads its
+// TestMuxTakesAHandlerFromAProperty covers a server class holding its handlers
+// in properties, registering them as $this->fnName. The closure binds $this to
+// the object; every request shares that closure. The handler reads its
 // configuration and writes to its arguments.
 func TestMuxTakesAHandlerFromAProperty(t *testing.T) {
 	t.Parallel()
@@ -770,10 +768,10 @@ define("MUX", $mux);
 }
 
 // TestMuxTakesABoundMethod is the shape testdata/phpscript-http-bridge/server.php uses: the
-// handlers are methods and mount() registers each as $this->fnName, with no
-// property and no constructor between them. The receiver comes along the way a
-// closure's captured $this does. The mux answers every request against that
-// one object.
+// handlers are methods, and mount() registers them as $this->fnName, without a
+// property or a constructor between. The receiver comes along the way a
+// closure's captured $this does. The mux answers every request against the
+// object.
 func TestMuxTakesABoundMethod(t *testing.T) {
 	t.Parallel()
 	_, handler := serveScript(t, `<?php
@@ -812,9 +810,9 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxTakesAStaticMethodAndAnInvokable is the rest of what AsCallable takes:
+// TestMuxTakesAStaticMethodAndAnInvokable is the rest that AsCallable takes:
 // "Class::method", which has no receiver to share, and an object declaring
-// __invoke, which is a bound method under the name php reserves for one. Each
+// __invoke, which is a bound method by the name php reserves. Each
 // also goes in through the first-class spelling `callable(...)`, which passes the
 // router a Closure and is the form php itself writes.
 func TestMuxTakesAStaticMethodAndAnInvokable(t *testing.T) {
@@ -867,11 +865,11 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxRefusesAnArrayCallable pins the one callable spelling the router does
-// not take, and the words of the refusal. php takes it as a callable
-// everywhere else; a handler is a closure or a method read off its receiver,
-// and array($object, "method") is neither. The refusal names the spelling and
-// the alternative, which is all a script needs.
+// TestMuxRefusesAnArrayCallable pins the callable spelling the router refuses,
+// and the words of the refusal. php takes it as a callable everywhere else; a
+// handler is a closure or a method read from its receiver, and array($object,
+// "method") is neither. That refusal names the spelling and the alternative,
+// which is everything a script needs.
 func TestMuxRefusesAnArrayCallable(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -938,9 +936,9 @@ $mux->handle("GET /hello", ` + test.handler + `);
 }
 
 // TestMuxRefusesAHandlerBehindMiddleware pins where a broken handler behind
-// Use fails: at registration, the same as without one. A middleware returns a
-// closure that is callable whatever it holds. Resolving the wrapper alone
-// would take the handler and refuse it on the first request that arrives.
+// Use fails: at registration, as with a handler registered directly. A
+// middleware returns a closure, callable whatever it holds. Resolving the
+// wrapper alone would take the handler and refuse it on the first request.
 func TestMuxRefusesAHandlerBehindMiddleware(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -966,9 +964,9 @@ $mux->handle("GET /hello", 42);
 	}
 }
 
-// TestMuxQueuesBeyondItsWorkers holds the shape the pool is: workers are the
-// parallelism and the queue is what waits behind them. Two workers against six
-// slow requests is three rounds, not six and not one.
+// TestMuxQueuesBeyondItsWorkers holds the shape of the pool: workers are the
+// parallelism, the queue waits behind them. Two workers against six slow
+// requests is three rounds, not six or fewer.
 func TestMuxQueuesBeyondItsWorkers(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
@@ -1025,17 +1023,17 @@ define("MUX", $mux);
 	}
 }
 
-// A handler answers on its own runtime and every call it makes has to run on
-// that runtime. A callable the script built before the server started is a
-// value like any other - it crosses into a worker as a capture, or a handler
-// reads it off a shared object - and calling one there must not reach back into
-// the runtime that built it: runner/fork.go leaves that runtime unguarded, and
-// the response it would write to belongs to a different request.
+// A handler answers on the runtime that owns it. Calls it makes must run
+// there. A callable the script built before the server started is a value like
+// any other - it crosses into a worker as a capture, or a handler reads it from
+// a shared object - and calling one there must not reach back into the runtime
+// that built it: runner/fork.go leaves that runtime unguarded, and the response
+// it would write belongs to a different request.
 //
-// Each case below is one spelling of that call, and every callable in them
-// echoes. An echo is what proves which runtime ran the body: the tracker pushes
-// the response writer onto the worker only and an echo that reaches the
-// response ran there, and one that reaches the process output ran on the parent.
+// Each case below spells that call once; every callable in it echoes. The echo
+// proves which runtime ran the body: the tracker pushes the response writer
+// onto the worker alone. An echo that reaches the response ran there. An echo
+// that reaches the process output ran on the parent.
 var reentrySpellings = []struct {
 	name  string
 	route string
@@ -1058,7 +1056,7 @@ var reentrySpellings = []struct {
 }
 
 // reentryScript builds one script per spelling: the same shared state, built on
-// the runtime that runs the script, and one route.
+// the runtime that runs the script, plus one route.
 func reentryScript(route string) string {
 	return `<?php
 class Site {
@@ -1093,8 +1091,8 @@ define("MUX", $mux);
 `
 }
 
-// TestReentryAnswersOnTheWorker holds that the call reached the worker: what it
-// echoed is in the response, and nothing reaches the process output the parent
+// TestReentryAnswersOnTheWorker holds that the call reached the worker: its
+// echo is in the response, and nothing reaches the process output the parent
 // runtime writes to.
 func TestReentryAnswersOnTheWorker(t *testing.T) {
 	t.Parallel()
@@ -1115,8 +1113,8 @@ func TestReentryAnswersOnTheWorker(t *testing.T) {
 }
 
 // TestReentryIsNotARace drives each spelling concurrently. A call that reached
-// the parent runtime is two goroutines inside one unguarded execution, which the
-// race detector reports, and no assertion in the test.
+// the parent runtime is two goroutines inside one unguarded execution, which
+// the race detector reports. No assertion in the test reports it.
 func TestReentryIsNotARace(t *testing.T) {
 	t.Parallel()
 	for _, spelling := range reentrySpellings {
@@ -1137,7 +1135,7 @@ func TestReentryIsNotARace(t *testing.T) {
 	}
 }
 
-// groupHandler serves testdata/group.php, a mux with middleware and a group.
+// groupHandler serves testdata/group.php: a mux with middleware, plus a group.
 func groupHandler(t *testing.T) nethttp.Handler {
 	t.Helper()
 	src, err := os.ReadFile("testdata/group.php")

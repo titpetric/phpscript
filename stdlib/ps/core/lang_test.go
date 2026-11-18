@@ -8,11 +8,11 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestGetType covers the names gettype() answers with, which are PHP's
-// original ones and not the modern spellings get_debug_type() uses: "integer"
-// and "double" where the value model says int and float, "boolean" where it
-// says bool, and NULL alone in capitals. The modern spellings would pass every
-// eyeball and fail every `gettype($x) === "integer"`.
+// TestGetType covers the names gettype() answers with: PHP's original
+// spellings; get_debug_type() uses the modern ones. "integer" and "double"
+// where the value model says int and float, "boolean" where it says bool, NULL
+// alone in capitals. The modern spellings pass every eyeball and fail every
+// `gettype($x) === "integer"`.
 func TestGetType(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -24,12 +24,12 @@ echo gettype(1), "|", gettype(1.5), "|", gettype("a"), "|", gettype(true), "|",
 	}
 }
 
-// TestIntval covers the two halves of intval. With no base, or base 10, it
-// matches the (int) cast; any other base applies to a string argument alone,
-// and intval(12.9, 16) is 12 and never a hex reading of the digits.
+// TestIntval covers the two halves of intval. Given no base, or base 10, it
+// matches the (int) cast. Any other base applies to a string argument alone;
+// intval(12.9, 16) is 12, whatever the hex reading of the digits would be.
 //
-// An array is the one case the cast does not own: PHP reads it as its
-// truthiness and an empty array is 0 and a filled one is 1 whatever it holds.
+// An array is the case the cast does not own. PHP reads it as truthiness: an
+// empty array is 0; a filled one is 1 whatever it holds.
 func TestIntval(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -42,14 +42,14 @@ echo intval("42abc"), "|", intval("abc"), "|", intval("  12  "), "|", intval("1e
 	}
 }
 
-// TestIntvalBase covers the C strtol reading a base other than 10 gets:
-// leading whitespace, one optional sign, then digits of the base until the
-// first character that is not one.
+// TestIntvalBase covers the C strtol reading for a base other than 10: leading
+// whitespace, one optional sign, then digits of the base until a character
+// outside the base.
 //
-// Base 0 detects the base off a 0x, 0b or 0 prefix and is 10 without one. The
-// 0o octal prefix is not among them, exactly because strtol does not know it,
-// and intval("0o12", 8) is 0. A base outside 0 and 2-36 is strtol's EINVAL,
-// which intval surfaces as 0 and raises nothing, php 8.5 included.
+// Base 0 detects the base from a 0x, 0b or 0 prefix, and 10 otherwise. The 0o
+// octal prefix is not among them: strtol does not know it. intval("0o12", 8) is
+// 0. A base outside 0 and 2-36 is strtol's EINVAL, which intval surfaces as zero
+// and raises nothing, php 8.5 included.
 func TestIntvalBase(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -64,8 +64,8 @@ echo intval("0x1A", 16), "|", intval("0x1A", 0), "|", intval("  -0x10", 0), "|",
 }
 
 // TestIntvalSaturates covers the int64 bounds. The absolute value accumulates
-// unsigned so that -9223372036854775808 still reads exactly, and one digit past
-// the bound saturates the way strtol does.
+// unsigned; -9223372036854775808 still reads exactly. One digit past the bound
+// saturates the way strtol does.
 func TestIntvalSaturates(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -78,8 +78,8 @@ echo intval("9223372036854775807", 10), "|", intval("9223372036854775808", 10), 
 }
 
 // TestCallUserFuncArray covers the array spelling of a dynamic call. The
-// arguments arrive as the list the array holds and a callable taking three
-// parameters receives three arguments and not one array.
+// arguments arrive as the list the array holds. A callable taking three
+// parameters receives three arguments from the array's entries.
 func TestCallUserFuncArray(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -96,10 +96,10 @@ echo call_user_func_array(function () { return "none"; }, []);`)
 }
 
 // TestGetTypeSeparatesAnArrayFromAStruct covers the check gettype and the
-// reflection functions share. A *model.Array is a pointer to a struct in Go
-// and an array in PHP and the collection test comes first; a value a Go
-// binding handed over is an object, because a script constructs it with new
-// and reads its properties the way it reads an interpreted one's.
+// reflection functions share. A *model.Array is a pointer to a struct in Go, an
+// array in PHP; the collection test comes first. A value a Go binding returned
+// is an object: a script constructs it with new and reads its properties the way
+// it reads an interpreted object's.
 func TestGetTypeSeparatesAnArrayFromAStruct(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -123,8 +123,8 @@ echo gettype($arr), "|", gettype($obj), "|", gettype($obj->name), "|", $obj->nam
 	}
 }
 
-// holder is a host-backed class: a Go value a constructor returns, which a
-// script reads properties off the way it reads an interpreted object's.
+// holder is a host-backed class: a Go value a constructor returns. A script
+// reads properties from it, as from an interpreted object.
 type holder struct {
 	Name string
 }

@@ -4,33 +4,34 @@ import (
 	"fmt"
 )
 
-// TraceLevel is how much interpreter work the observers see: the `log_level`
-// of the runtime's instrumentation. It decides what the runtime publishes and
-// never what the recorder keeps, which is the recorder's own duration floor
-// over the spans this level marks as detail.
+// TraceLevel is how much interpreter work the observers see: the runtime's
+// `log_level` setting. It decides the runtime's published output. The
+// recorder's retained spans stay the recorder's call, through the duration
+// floor over the detail spans.
 //
 // The level never touches a binding, a script calling `start_span` or the
-// host's own middleware. This is the interpreter reporting on itself: a frame,
+// host's own middleware. This is the interpreter reporting on itself: one frame,
 // a constructor, a static call, an include.
 type TraceLevel string
 
-// The levels, lowest first. The zero value is Info: a configuration that names
-// no level gets the default, as does a host that fills in no option.
+// The levels, lowest first. The zero value is Info: the default serves a
+// configuration that names no level. It serves a host that fills in no option
+// too.
 const (
-	// TraceLevelOff publishes no interpreter span at all. A request still
+	// TraceLevelOff publishes no interpreter span. A request still
 	// holds the spans its bindings and its script recorded, and the error
 	// span of a run that failed.
 	TraceLevelOff TraceLevel = "off"
 
 	// TraceLevelInfo publishes a span per frame, marked as debug detail so the
-	// recorder keeps the slow ones and drops the rest, and collapses the
-	// includes into one span at the end of the request naming the files.
+	// recorder keeps the slow ones, dropping the rest. It collapses the
+	// includes into a single span at the end of the request, naming the files.
 	TraceLevelInfo TraceLevel = "info"
 
 	// TraceLevelDebug publishes everything the interpreter can report, marking
-	// none of it as detail: a span per include beside the frames, in place of
-	// the inventory the `info` level ends with, and nothing a recorder's
-	// duration floor drops.
+	// none of it as detail: a span per include next to the frames, replacing
+	// the inventory the `info` level ends with. A recorder's duration floor
+	// drops nothing.
 	TraceLevelDebug TraceLevel = "debug"
 )
 

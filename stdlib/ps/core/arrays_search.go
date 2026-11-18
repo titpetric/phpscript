@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// phpArrayColumn projects one field from every row, returning []any or a keyed *model.Array.
+// phpArrayColumn projects one field per row into []any or a keyed array.
 func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	n, _ := modelutil.LenValues(array)
 
@@ -45,7 +45,7 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	return out
 }
 
-// arrayColumnValue reads one field of a row, a null key returning the whole row.
+// arrayColumnValue reads one field of a row, a null key returning the row.
 func arrayColumnValue(row any, key any) (any, bool) {
 	if key == nil {
 		return row, true
@@ -59,7 +59,7 @@ func phpInArray(needle, haystack any, strict ...any) bool {
 	return found
 }
 
-// phpArraySearch returns the first matching key or false, a string key staying a string.
+// phpArraySearch returns the first matching key or false, a string staying a string.
 func phpArraySearch(needle, haystack any, strict ...any) any {
 	key, found := arrayFind(needle, haystack, arrayStrict(strict))
 	if !found {

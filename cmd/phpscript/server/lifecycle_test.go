@@ -29,7 +29,7 @@ func (m *failingModule) Start(context.Context) error {
 func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when the options enable it; a test that reads its
+	// oida records only when the options enable tracing. A test that reads its
 	// traces back needs that.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
@@ -68,7 +68,7 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when the options enable it; a test that reads its
+	// oida records only when the options enable tracing. A test that reads its
 	// traces back needs that.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
@@ -103,8 +103,7 @@ func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
 	}
 }
 
-// The wrapper delegates everything else and the platform still sees the module
-// it registered.
+// The wrapper delegates everything else and the platform still sees the registered module.
 func TestNonFatalKeepsTheModuleName(t *testing.T) {
 	t.Parallel()
 	module := &failingModule{ZeroModule: *newZeroModule("phpstartup:shop.example.com")}
@@ -113,8 +112,7 @@ func TestNonFatalKeepsTheModuleName(t *testing.T) {
 	}
 }
 
-// TestReload covers what SIGHUP does, driving Reload directly so nothing
-// depends on signal delivery timing.
+// TestReload covers SIGHUP, driving Reload directly to skip signal timing.
 func TestReload(t *testing.T) {
 	t.Parallel()
 	a := site(t, "a", "a")
@@ -160,7 +158,7 @@ func TestReload(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// The site the edit added, and the one already there.
+		// The site the edit added, plus the site already there.
 		if status, got := body(t, fixture.manager.URL(), "b.localhost"); status != 200 || got != "b" {
 			t.Fatalf("b.localhost = %d %q, want the reloaded site", status, got)
 		}
@@ -184,7 +182,7 @@ func TestReload(t *testing.T) {
 	})
 
 	// The reason Check exists. A reload the manager cannot apply leaves the
-	// generation that is serving alone, and never stops it first to then
+	// serving generation alone. It does not stop the generation first to
 	// discover the new configuration is unusable.
 	t.Run("a broken configuration is refused and keeps serving", func(t *testing.T) {
 		filename := operatorConfig(t, oneSite)

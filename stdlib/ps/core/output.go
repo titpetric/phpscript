@@ -55,7 +55,7 @@ func registerOutput(rt *runner.Runtime) {
 	})
 }
 
-// valueWriter renders one var_export, var_dump or print_r call over a shared object walk.
+// valueWriter renders one var_export, var_dump or print_r call across a shared object walk.
 type valueWriter struct {
 	b *strings.Builder
 	// ids numbers objects for var_dump's "#n". PHP's number is the object
@@ -72,7 +72,7 @@ func newValueWriter() *valueWriter {
 	return &valueWriter{b: &strings.Builder{}}
 }
 
-// enter records an object on the current path, returning its id and whether to descend.
+// enter records an object on the path, returning its id and descent flag.
 func (w *valueWriter) enter(value any) (id int, ok bool) {
 	key, addressable := objectKey(value)
 	if !addressable {
@@ -139,7 +139,7 @@ func (w *valueWriter) export(value any, indent int) {
 	}
 }
 
-// exportEntry writes one "key => value," line, moving a composite value to its own line.
+// exportEntry writes one "key => value," line, moving a composite down a line.
 func (w *valueWriter) exportEntry(key string, value any, keyIndent, valIndent int) {
 	w.pad(keyIndent)
 	w.b.WriteString(key)
@@ -223,7 +223,7 @@ func (w *valueWriter) dump(value any, indent int) {
 	}
 }
 
-// printR writes value for reading, moving eight columns per depth level as PHP does.
+// printR writes value for reading, moving eight columns per depth level.
 func (w *valueWriter) printR(value any, depth int) {
 	header := ""
 	switch {

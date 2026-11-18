@@ -7,11 +7,11 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestRouteParam_Valid covers the name rule both routers hold to, read off a
+// TestRouteParam_Valid covers the name rule both routers hold to, read from a
 // parameter a caller filled.
 //
-// The error names the parameter and no path: modelutil.ParseRoutePath wraps it
-// with the path it read, and a caller filling the struct read no path.
+// The error names the parameter, not the path: modelutil.ParseRoutePath wraps
+// it with the path it read; a caller filling the struct read no path.
 func TestRouteParam_Valid(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

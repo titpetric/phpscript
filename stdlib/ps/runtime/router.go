@@ -26,7 +26,7 @@ type Registrar interface {
 }
 
 // Router is the service router a @startup job reaches through
-// Runtime\Router::Bind. A host attaches the router after mounting it and
+// Runtime\Router::Bind. A host attaches the router after mounting it. It
 // installs the binding on the runtimes of its startup jobs, the only place the
 // router is still mutable.
 type Router struct {
@@ -61,7 +61,7 @@ func (r *Router) Install(rt *runner.Runtime) {
 	})
 }
 
-// bind calls fn with a mux that registers on the attached registrar while fn runs.
+// bind calls fn with a mux registering on the registrar while fn runs.
 func (r *Router) bind(rt *runner.Runtime, fn any) error {
 	r.mu.Lock()
 	registrar := r.registrar
@@ -80,8 +80,8 @@ func (r *Router) bind(rt *runner.Runtime, fn any) error {
 			return runner.NewRuntimeException("Runtime\\Router::Bind: the router is not mutable once Bind has returned", 0)
 		}
 		// A method and then whitespace, the grammar ServeMux documents and the
-		// mux a script writes its routes on accepts: a tab separates one as
-		// well as a space does, and more than one space is a pattern too.
+		// mux a script writes its routes on accepts: a tab separates like a
+		// space. More than one space is a pattern too.
 		space := strings.IndexAny(pattern, " \t")
 		if space < 0 {
 			return runner.NewRuntimeException(fmt.Sprintf("Runtime\\Router::Bind: %q needs a method, as in GET %s", pattern, pattern), 0)

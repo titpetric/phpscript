@@ -10,8 +10,8 @@ import (
 )
 
 // TestRequestSuperglobalMerge pins what $_REQUEST holds and the order the
-// merge takes: query, form and cookie fields as PHP merges them, and the route's
-// path values written over all three, which is the documented deviation.
+// merge takes: query, form and cookie fields as PHP merges them. The route's
+// path values overwrite each of the three, the documented deviation.
 func TestRequestSuperglobalMerge(t *testing.T) {
 	t.Parallel()
 	// The handler builds the context, while the body is still readable; after
@@ -34,8 +34,8 @@ func TestRequestSuperglobalMerge(t *testing.T) {
 	}
 }
 
-// TestRequestSuperglobalIsACopy pins that $_REQUEST is its own array, as in
-// PHP: writing through it must not reach $_GET, and the other way around.
+// TestRequestSuperglobalIsACopy pins that $_REQUEST is a separate array, as in
+// PHP: writing through the copy must not reach $_GET. The reverse holds.
 func TestRequestSuperglobalIsACopy(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/?a=1", nil)
@@ -76,8 +76,7 @@ echo route_job_name();
 	}
 }
 
-// TestServerSuperglobalStrings pins that every other key reaches a script as a
-// string, as $_SERVER holds.
+// TestServerSuperglobalStrings pins that other keys reach a script as strings.
 func TestServerSuperglobalStrings(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit?a=1", strings.NewReader("name=bob"))

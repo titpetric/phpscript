@@ -25,7 +25,7 @@ const (
 	tOp                 // operator or punctuation (value holds the exact text)
 )
 
-// token holds one lexical unit, raw keeping a string literal's source spelling for the formatter.
+// token holds one lexical unit, raw keeping a literal's spelling for the formatter.
 type token struct {
 	kind tokKind
 	val  string
@@ -58,7 +58,7 @@ var multiCharOps = []string{
 // singleCharOps lists every one-byte operator, sliced into singleOpText without allocating.
 const singleCharOps = "+-*/%.,;()[]{}=<>!&|^~?:@\\"
 
-// singleOpText holds the token text for each one-byte operator, "" for a byte that starts none.
+// singleOpText holds each one-byte operator's token text, "" for a byte starting none.
 var singleOpText = func() [utf8.RuneSelf]string {
 	var out [utf8.RuneSelf]string
 	for i := 0; i < len(singleCharOps); i++ {
@@ -67,7 +67,7 @@ var singleOpText = func() [utf8.RuneSelf]string {
 	return out
 }()
 
-// multiOpsByFirst buckets operators by first byte, longest first; a longer operator wins over its prefix.
+// multiOpsByFirst buckets operators by first byte, longest first and preferred when both match.
 var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 	var out [utf8.RuneSelf][]string
 	for _, op := range multiCharOps {
@@ -84,10 +84,10 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 // bytesPerToken estimates the source bytes one token consumes, presizing the token slice.
 const bytesPerToken = 4
 
-// tokenPool recycles the token slice a parse walks, held as a pointer so Put allocates nothing.
+// tokenPool recycles the parse's token slice, a pointer so Put allocates nothing.
 var tokenPool sync.Pool
 
-// takeTokens returns an empty token slice from the pool, using hint only when the pool is empty.
+// takeTokens returns an empty token slice from the pool, using hint when empty.
 func takeTokens(hint int) []token {
 	if v := tokenPool.Get(); v != nil {
 		return (*v.(*[]token))[:0]
@@ -115,7 +115,7 @@ func (l *lexer) run() ([]token, error) {
 		}
 		if err := l.lexPHP(); err != nil {
 			// The caller receives no slice to return and the failed lex
-			// returns its own.
+			// returns one.
 			releaseTokens(l.tokens)
 			l.tokens = nil
 			return nil, err
@@ -249,7 +249,7 @@ func (l *lexer) lexNumber() {
 // scanNumber returns the end offset of the numeric literal at pos and whether the literal is a float.
 func scanNumber(src string, pos int) (end int, isFloat bool) {
 	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
-	// digit and no exponent and this matches a prefix ahead of anything else.
+	// digit, not an exponent; this matches a prefix ahead of anything else.
 	if src[pos] == '0' && pos+1 < len(src) {
 		var isBaseDigit func(byte) bool
 		switch src[pos+1] {
@@ -265,8 +265,8 @@ func scanNumber(src string, pos int) (end int, isFloat bool) {
 			for p < len(src) && (isBaseDigit(src[p]) || src[p] == '_') {
 				p++
 			}
-			// A prefix with no digit behind it names no literal; "0" does,
-			// and the next token takes what follows.
+			// A prefix without a digit behind it names no literal; "0" does.
+			// The next token takes what follows.
 			if p > pos+2 {
 				return p, false
 			}
@@ -317,8 +317,8 @@ func (l *lexer) lexString(quote byte) error {
 	open := l.pos
 	l.advanceRune() // opening quote
 
-	// Fast path: a literal with neither an escape sequence nor a dollar is a
-	// substring of the source and it needs neither a Builder nor a copy. A
+	// Fast path: a literal holding no escape sequence or dollar is a
+	// substring of the source. It needs no Builder or copy. A
 	// dollar only leaves the fast path for a double-quoted literal, since a
 	// single-quoted one never interpolates.
 	start := l.pos
@@ -337,7 +337,7 @@ func (l *lexer) lexString(quote byte) error {
 	}
 
 	// A double-quoted literal may embed expressions. Scanning decides that and
-	// costs one pass over a literal that already left the fast path; a literal
+	// costs one pass across a literal that already left the fast path; a literal
 	// that turns out to hold none falls through to the decode below and the
 	// common `"a\nb"` keeps producing one plain string token.
 	if quote == '"' {
@@ -355,7 +355,7 @@ func (l *lexer) lexString(quote byte) error {
 	// Slow path: the literal contains at least one escape. Presize the builder
 	// (rule 6): the decoded string is never longer than the raw source up to
 	// the next unescaped quote, and the first quote found is a lower bound for
-	// that and one Grow replaces the 8/16/32 doubling.
+	// that; one Grow replaces the 8/16/32 doubling.
 	var b strings.Builder
 	if end := strings.IndexByte(l.src[start:], quote); end > 0 {
 		b.Grow(end)
@@ -377,7 +377,7 @@ func (l *lexer) lexString(quote byte) error {
 	return fmt.Errorf("line %d: unterminated string", l.line)
 }
 
-// writeEscape decodes the escape at l.pos into b and returns the bytes following the backslash.
+// writeEscape decodes the escape at l.pos into b, returning the rest.
 func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 	return decodeEscape(l.src, l.pos, quote, b)
 }
@@ -410,7 +410,7 @@ func decodeEscape(src string, i int, quote byte, b *strings.Builder) int {
 	case '\\', '"', '\'', '$':
 		b.WriteByte(next)
 	case 'x', 'X':
-		// \xH or \xHH: one or two hex digits, and a lone `\x` is literal.
+		// \xH or \xHH: one or two hex digits; a lone `\x` is literal.
 		digits := hexRun(src[i+2:], 2)
 		if digits == 0 {
 			b.WriteByte('\\')

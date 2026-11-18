@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// TestCitation covers the four spellings one citation answers in: the
+// TestCitation covers every spelling one citation answers in: the
 // qualified Go symbol a description cites, the selector source writes, the
 // markdown link, and the name an implements clause prints.
 func TestCitation(t *testing.T) {
@@ -34,8 +34,7 @@ func TestCitation(t *testing.T) {
 	}
 }
 
-// TestCitation_Symbol covers the qualified spelling. A builtin has no import
-// path to qualify with.
+// TestCitation_Symbol covers qualified spelling; a builtin has no import path.
 func TestCitation_Symbol(t *testing.T) {
 	t.Parallel()
 	if got, want := (Citation{Name: "error"}).Symbol(), "error"; got != want {
@@ -44,8 +43,8 @@ func TestCitation_Symbol(t *testing.T) {
 }
 
 // TestCitation_Short covers the selector Go source writes, which is not the
-// last element of the import path: encoding/json/v2 declares json.Marshaler,
-// and a citation that guessed from the path would read v2.Marshaler.
+// last element of the import path: encoding/json/v2 declares json.Marshaler.
+// A citation that guessed from the path would read v2.Marshaler.
 func TestCitation_Short(t *testing.T) {
 	t.Parallel()
 	c := cite(reflect.TypeOf((*json.Marshaler)(nil)).Elem())
@@ -57,9 +56,9 @@ func TestCitation_Short(t *testing.T) {
 	}
 }
 
-// TestCitation_Link covers the one rule on links: a standard library symbol
-// links its reference page and the listing names every other symbol bare,
-// because no page exists to point a reader at.
+// TestCitation_Link covers the single rule on links: a standard library symbol
+// links its reference page. The listing names all other symbols bare, because
+// no page exists to point a reader at.
 func TestCitation_Link(t *testing.T) {
 	t.Parallel()
 	module := Citation{Package: "github.com/titpetric/phpscript/runner", Name: "Throwable", Go: "runner.Throwable"}
@@ -69,7 +68,7 @@ func TestCitation_Link(t *testing.T) {
 }
 
 // TestCitation_Clause covers the name an implements clause prints: the PHP
-// spelling when a script can type one, the Go selector otherwise.
+// spelling where a script can type it; the Go selector otherwise.
 func TestCitation_Clause(t *testing.T) {
 	t.Parallel()
 	c := Citation{Package: "x", Name: "Throwable", Go: "x.Throwable", PHP: "Throwable"}
@@ -79,8 +78,8 @@ func TestCitation_Clause(t *testing.T) {
 }
 
 // TestCite covers what reflection recovers about a Go type: the import path,
-// the name, the selector, and a reference page for a standard library type and
-// for none other.
+// the name, the selector, plus a reference page for a standard library type
+// alone.
 func TestCite(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -102,8 +101,8 @@ func TestCite(t *testing.T) {
 			want: Citation{Package: "encoding", Name: "TextMarshaler", Go: "encoding.TextMarshaler", URL: "https://pkg.go.dev/encoding#TextMarshaler"},
 		},
 		{
-			// error is the one interface the language itself declares,
-			// and builtin is where its page lives.
+			// error is the sole interface the language declares; builtin
+			// hosts its page.
 			typ:  reflect.TypeOf((*error)(nil)).Elem(),
 			want: Citation{Name: "error", Go: "error", URL: "https://pkg.go.dev/builtin#error"},
 		},
@@ -120,8 +119,8 @@ func TestCite(t *testing.T) {
 }
 
 // TestIsStdlib covers the test that separates a standard library import path
-// from a module one: the first element of a module path holds a dot, the test
-// the go command applies.
+// from a module path: the first element of a module path holds a dot, which is
+// the test the go command applies.
 func TestIsStdlib(t *testing.T) {
 	t.Parallel()
 	cases := map[string]bool{
@@ -139,6 +138,6 @@ func TestIsStdlib(t *testing.T) {
 	}
 }
 
-// citedLocal is a type this module declares. It cites itself and links
+// citedLocal is a type this module declares. It cites itself. It links
 // nowhere.
 type citedLocal struct{}

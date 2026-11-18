@@ -13,7 +13,7 @@ import (
 // Runner names an execution backend the matrix drives a fixture through.
 type Runner string
 
-// The three backends, one per matrix column.
+// The backends, one column each.
 const (
 	// RunnerFlatstack executes the fixture through the flat bytecode runtime,
 	// which falls back to the compatibility interpreter for unsupported syntax.
@@ -29,15 +29,15 @@ const (
 // Runners lists every backend the test matrix covers, in report order.
 var Runners = []Runner{RunnerFlatstack, RunnerRuntime, RunnerPHP}
 
-// ErrRunnerUnavailable reports that a runner cannot execute on this machine,
-// which is a skip and no failure. The php runner returns it when PATH holds
-// no php binary.
+// ErrRunnerUnavailable reports that a runner cannot execute on this machine: a
+// skip. The run did not fail. The php runner returns it when PATH holds no php
+// binary.
 var ErrRunnerUnavailable = errors.New("runner unavailable")
 
 // ErrFlatstackUnsupported reports that the flat bytecode compiler rejected the
 // fixture's program. The flatstack runner skips the fixture without falling
 // back: a fallback run would report the compatibility interpreter's
-// result and cost under the flatstack column.
+// result and cost in the flatstack column.
 var ErrFlatstackUnsupported = errors.New("program not supported by flatstack")
 
 // FixtureRunners opts a fixture out of individual runners. An absent field
@@ -71,7 +71,7 @@ type phpRun struct {
 	ExitCode int
 }
 
-// executePHP runs the fixture source through the php binary in its include root.
+// executePHP runs the fixture source on the php binary in its include root.
 func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	binary, err := exec.LookPath("php")
 	if err != nil {
@@ -146,7 +146,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	return out, nil
 }
 
-// phpPrepend writes the prelude as an auto_prepend_file including each file in the app root.
+// phpPrepend writes the prelude as an auto_prepend_file including each app-root file.
 func phpPrepend(f *Fixture) ([]string, func(), error) {
 	if f.appRoot == "" || len(f.includes) == 0 {
 		return nil, func() {}, nil

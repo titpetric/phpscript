@@ -9,10 +9,10 @@ import (
 )
 
 // TestExprCache_GetExpr covers the read side of the per-node cache. The key is
-// node identity and no structural equality: SetExpr keys off the AST a program
-// holds. That AST is the one Eval walks again and two equal nodes written
-// in two places are two entries. A nil cache answers a miss, which lets a
-// runtime with no cache run an expression without a check at every lookup.
+// node identity, not structural equality: SetExpr keys off the AST a program
+// holds. That AST is the tree Eval walks again; two equal nodes written in two
+// places are two entries. A nil cache answers a miss, letting a runtime
+// without a cache run an expression without a check at every lookup.
 func TestExprCache_GetExpr(t *testing.T) {
 	t.Parallel()
 	cache := NewExprCache()
@@ -48,9 +48,10 @@ func TestExprCache_GetExpr(t *testing.T) {
 }
 
 // TestExprCache_EnsureFlat covers the write-through compile a caller gates a
-// flatstack run on. The cache compiles a program the compiler accepts once and
-// reads it back; one it refuses reports the refusal every call, because the
-// cache stores no verdict: a stored one would let one run decide for the next.
+// flatstack run on. The cache compiles a program the compiler accepts once,
+// then reads it back. A refused program reports the refusal every call, since
+// the cache stores no verdict: a stored verdict would let one run decide for
+// the next.
 func TestExprCache_EnsureFlat(t *testing.T) {
 	t.Parallel()
 	cache := NewExprCache()
@@ -193,8 +194,8 @@ func BenchmarkEvalNested(b *testing.B) {
 }
 
 // BenchmarkEvalInterp prices a double-quoted literal that embeds expressions.
-// The parts are what "user=$s k=$arr[k]!" parses to and the number is the
-// per-evaluation cost of the literal and not of the parse, which happens once.
+// The parts are those "user=$s k=$arr[k]!" parses to; the number is the
+// per-evaluation cost of the literal, not of the parse, which happens once.
 func BenchmarkEvalInterp(b *testing.B) {
 	benchEval(b, &model.Interp{Parts: []model.Expr{
 		&model.Lit{Value: "user="},

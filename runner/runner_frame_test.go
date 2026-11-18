@@ -7,10 +7,10 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// TestBindParams covers the binding a callee's frame starts from: positional
-// arguments by name, a default evaluated for a parameter the caller skipped,
-// nil for one with no default, and a variadic tail collected into one array,
-// an empty one when the caller stopped at it.
+// TestBindParams covers the binding a callee's frame starts from. Positional
+// arguments arrive by name. A skipped parameter takes its default; nil when the
+// declaration names none. Its variadic tail collects into a single
+// array, empty when the caller stopped there.
 func TestBindParams(t *testing.T) {
 	t.Parallel()
 	rt := New(nil, Options{})
@@ -84,9 +84,9 @@ func TestBindParams(t *testing.T) {
 	}
 }
 
-// TestCombineErrors covers what a frame's unwind reports. One error travels
-// unchanged and errors.As still reaches its type; two or more travel
-// together and a failing defer does not hide the failure that ran it.
+// TestCombineErrors covers the report from a frame's unwind. One error travels
+// unchanged, and errors.As still reaches its type. A group of errors travels together;
+// a failing defer does not hide the failure that ran it.
 func TestCombineErrors(t *testing.T) {
 	t.Parallel()
 	if err := combineErrors(nil, nil); err != nil {
@@ -106,9 +106,9 @@ func TestCombineErrors(t *testing.T) {
 	}
 }
 
-// TestInvokeClosureCaptures covers the frame a closure runs in: the `use`
-// captures are a snapshot, the enclosing frame's other variables are out of
-// reach, and a parameter of the same name wins over a capture.
+// TestInvokeClosureCaptures covers the frame a closure runs in. The `use`
+// captures are a snapshot; the enclosing frame's other variables are out of
+// reach. A parameter of the same name beats any capture.
 func TestInvokeClosureCaptures(t *testing.T) {
 	t.Parallel()
 	rt := New(nil, Options{})

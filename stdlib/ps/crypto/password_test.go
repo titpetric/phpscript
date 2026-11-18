@@ -18,8 +18,8 @@ import (
 const benchPassword = "correct horse battery staple"
 
 // TestParamsFrom covers the ($algo, $options) tail both hashing functions
-// take: the algorithm decides which option keys apply and what an absent key
-// falls back to and paramsFrom cannot read the two independently.
+// take. The algorithm decides which option keys apply and the fallback for an
+// absent key. paramsFrom cannot read the two independently.
 func TestParamsFrom(t *testing.T) {
 	t.Parallel()
 	options := func(pairs ...any) *model.Array {
@@ -110,8 +110,9 @@ func TestParamsFrom(t *testing.T) {
 	}
 }
 
-// TestBcryptParamsOf pins what password_get_info reads back off a bcrypt hash,
-// in both the revision php writes and the one x/crypto writes.
+// TestBcryptParamsOf pins the fields password_get_info reads back from a
+// bcrypt hash, in both the revision php writes and the revision x/crypto
+// writes.
 func TestBcryptParamsOf(t *testing.T) {
 	t.Parallel()
 	hash, err := derive("pw", params{algo: algoBcrypt, cost: 4})
@@ -137,10 +138,10 @@ func TestBcryptParamsOf(t *testing.T) {
 	}
 }
 
-// TestIsPasswordHash covers the stricter question a user database asks: not
-// "which derivation would run" but "could this value ever match". The two
-// differ on a hash whose prefix and cost parse and whose body does not:
-// password_verify answers false for one. A parse refuses the line.
+// TestIsPasswordHash covers the stricter question a user database asks:
+// whether a value could ever match. The derivation that would run matters
+// less. The two answers differ on a hash whose prefix and cost parse and whose
+// body does not. password_verify answers false; a parse refuses the line.
 func TestIsPasswordHash(t *testing.T) {
 	t.Parallel()
 
@@ -180,9 +181,9 @@ func TestIsPasswordHash(t *testing.T) {
 // BenchmarkPasswordHash prices one derivation, which is the whole of
 // password_hash(): the encoding around it costs a few string writes.
 //
-// Every argon2 row runs one lane, because a row with more would spread over
-// goroutines and the pinned benchmark job narrows the affinity mask to one
-// CPU, which would report a parallel derivation as a serial one.
+// Every argon2 row runs one lane. A row with more would spread over
+// goroutines, and the pinned benchmark job narrows the affinity mask to one
+// CPU. That would report a parallel derivation as a serial one.
 func BenchmarkPasswordHash(b *testing.B) {
 	for _, cost := range []int{4, 8, 10, 11, 12, 13} {
 		b.Run("bcrypt/cost="+strconv.Itoa(cost), func(b *testing.B) {
@@ -195,8 +196,8 @@ func BenchmarkPasswordHash(b *testing.B) {
 		})
 	}
 
-	// php's own default, then two of RFC 9106's recommended sets: the same
-	// resistance bought with less memory and more passes.
+	// php's default, then two recommended RFC 9106 sets: the same resistance
+	// for less memory and more passes.
 	sets := []params{
 		{algo: algoArgon2id, memory: argon2DefaultMemory, time: argon2DefaultTime, lanes: 1},
 		{algo: algoArgon2id, memory: 19456, time: 2, lanes: 1},
@@ -215,10 +216,10 @@ func BenchmarkPasswordHash(b *testing.B) {
 	}
 }
 
-// BenchmarkPasswordVerify prices password_verify() against a stored hash. The
-// derivation is the one password_hash runs, at the work factors the hash
-// records and a login costs what the registration cost. Lowering the cost
-// leaves every stored hash at the cost it records.
+// BenchmarkPasswordVerify prices password_verify() on a stored hash. The
+// derivation mirrors password_hash, at the work factors the hash records. A
+// login costs the same as the registration. Lowering the cost leaves every
+// stored hash at the cost it records.
 func BenchmarkPasswordVerify(b *testing.B) {
 	stored := []params{
 		{algo: algoBcrypt, cost: 10},
@@ -255,11 +256,10 @@ func BenchmarkPasswordVerify(b *testing.B) {
 }
 
 // refusedHashes are the spellings password_verify answers by shape. No
-// derivation can turn any of them into a match: the first three hold no salt
-// and no tag, the fourth is bcrypt's 1997 spelling with no revision marker,
-// which php's crypt refuses. The last is argon2 1.0, which derives a
-// different tag from the same parameters and argon2Decode refuses it as
-// unreadable.
+// derivation can turn any of them into a match. The first three hold no salt
+// or tag. The fourth is bcrypt's 1997 spelling without a revision marker, and
+// php's crypt refuses that spelling. The last is argon2 1.0: it derives a different
+// tag from the same parameters, and argon2Decode refuses it as unreadable.
 var refusedHashes = []struct{ name, hash string }{
 	{"empty", ""},
 	{"not-a-hash", "not-a-hash"},
@@ -273,12 +273,12 @@ var refusedHashes = []struct{ name, hash string }{
 //
 // A decoy derivation ahead of the refusal costs 214 ms of one core for
 // password_verify("x", ""), where php returns in 31 ns. 4000 refusals measure
-// 804 us. One derivation at cost 4, the cheapest bcrypt accepts, is 898 us and
-// a 200 ms ceiling fails on a decoy at any cost and leaves two orders of
+// 804 us. One derivation at cost 4, the cheapest bcrypt accepts, is 898 us. A
+// 200 ms ceiling fails on a decoy at any cost and leaves two orders of
 // headroom over the measurement.
 //
-// It runs through the registered function and never PasswordVerify, because
-// the registration is where a decoy would sit.
+// It runs through the registered function. PasswordVerify is never called; a
+// decoy belongs in the registration.
 func TestPasswordVerifyRefusesWithoutDeriving(t *testing.T) {
 	rt := runner.New(io.Discard, runner.Options{})
 	Register(rt)
@@ -304,9 +304,9 @@ func TestPasswordVerifyRefusesWithoutDeriving(t *testing.T) {
 	}
 }
 
-// BenchmarkPasswordVerifyRefuse prices the path a stored value that is not a
-// hash takes, the one row in this file that is no derivation: the cost is the
-// length check and the prefix compare, and the allocation count is zero
+// BenchmarkPasswordVerifyRefuse prices the path taken by a stored value that
+// is not a hash. This benchmark covers the only row here that is no derivation: the cost is
+// the length check and the prefix compare, and the allocation count is zero
 // because nothing copies into a []byte.
 func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 	for _, tt := range refusedHashes {
@@ -321,19 +321,20 @@ func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 	}
 }
 
-// BenchmarkPasswordVerifyThroughput answers how many logins a host serves,
-// which is not one derivation divided into the core count.
+// BenchmarkPasswordVerifyThroughput answers how many logins a host serves. One
+// derivation divided into the core count answers nothing.
 //
-// A bcrypt derivation holds a core and 5 KiB and two of them run at twice the
-// rate of one. An argon2id derivation holds its whole memory_cost and streams
-// it and two of them contend for memory bandwidth and the rate falls short of
-// twice. Dividing BenchmarkPasswordVerify's sec/op into the core count reports
-// the bcrypt case correctly and overstates the argon2 one and this row
-// measures the rate: under RunParallel, sec/op is wall clock per completed
-// derivation across the cores in play, and logins per second is its reciprocal.
+// A bcrypt derivation holds a core and 5 KiB. Two derivations double the rate.
+// An argon2id derivation holds its whole memory_cost and streams
+// it. Two such derivations contend for memory bandwidth, and the rate falls
+// short of twice. Dividing BenchmarkPasswordVerify's sec/op into the core
+// count reports the bcrypt case correctly and overstates argon2. This row
+// measures the rate instead: under RunParallel, sec/op is wall clock per
+// completed derivation across the cores in play, and logins per second is the
+// reciprocal.
 //
-// `-cpu 1,2,4` reports the scaling, because RunParallel spawns GOMAXPROCS
-// goroutines and -cpu is what sets it. One row per core count, named by it.
+// `-cpu 1,2,4` reports the scaling. RunParallel spawns GOMAXPROCS goroutines,
+// and -cpu sets GOMAXPROCS. One row per core count, named by the core count.
 func BenchmarkPasswordVerifyThroughput(b *testing.B) {
 	stored := []params{
 		{algo: algoBcrypt, cost: defaultCost},

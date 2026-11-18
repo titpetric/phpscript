@@ -12,7 +12,7 @@ import (
 	stdruntime "github.com/titpetric/phpscript/stdlib/ps/runtime"
 )
 
-// mux is a Registrar over a standard library mux, the router a host mounts.
+// mux is a Registrar wrapping a standard library mux for a host.
 type mux struct{ *http.ServeMux }
 
 func (m mux) Handle(method, path string, handler http.Handler) {
@@ -20,7 +20,7 @@ func (m mux) Handle(method, path string, handler http.Handler) {
 }
 
 // run executes testdata/<name> on a runtime that Install gave the Bind binding,
-// and returns what it echoed and the error it ended with.
+// and returns the echoed output and the error it ended with.
 func run(t *testing.T, name string, router *stdruntime.Router) (string, error) {
 	t.Helper()
 	src, err := os.ReadFile("testdata/" + name)
@@ -71,7 +71,7 @@ func TestRouter_Bind(t *testing.T) {
 }
 
 // TestRouter_Refusals pins the two RuntimeExceptions a startup job can earn:
-// no router attached, and a pattern without a method.
+// no router attached, a pattern without a method.
 func TestRouter_Refusals(t *testing.T) {
 	t.Parallel()
 	_, err := run(t, "bind.php", stdruntime.NewRouter())
@@ -85,7 +85,7 @@ func TestRouter_Refusals(t *testing.T) {
 	}
 }
 
-// TestRouter_OutOfScope pins that the mux is the router's for as long as Bind
+// TestRouter_OutOfScope pins that the mux belongs to the router while Bind
 // runs: a handle on it afterwards throws and the mux has no way to list routes.
 func TestRouter_OutOfScope(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ func TestRouter_OutOfScope(t *testing.T) {
 	}
 }
 
-// TestRegister pins the binding a request runtime has: it throws.
+// TestRegister pins the binding a request runtime holds: it throws.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	out, err := run(t, "request.php", nil)
@@ -116,8 +116,8 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestRegistrar pins that a Bind route reaches the Registrar as a method and
-// a path, split from the pattern.
+// TestRegistrar pins that a Bind route reaches the Registrar as a method, a
+// path, split from the pattern.
 func TestRegistrar(t *testing.T) {
 	t.Parallel()
 	router := stdruntime.NewRouter()

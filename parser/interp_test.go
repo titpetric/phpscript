@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// parseInterpExpr parses src as one echo argument and returns the expression.
+// parseInterpExpr parses src as a single echo argument and returns the expression.
 func parseInterpExpr(t *testing.T, src string) model.Expr {
 	t.Helper()
 	prog, err := Parse("<?php echo " + src + ";")
@@ -44,7 +44,7 @@ func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
 
 // TestInterpolationPartShapes checks that each spelling lowers to the AST the
 // runtime expects, in particular that a bare word subscript becomes a string
-// key and no constant reference.
+// key, without a constant reference.
 func TestInterpolationPartShapes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -107,9 +107,9 @@ func describePart(e model.Expr) string {
 	return "?"
 }
 
-// TestInterpolationKeepsSourceSpelling is what the formatter relies on: it
-// prints the literal back from Raw and re-encodes nothing and a rewrite
-// cannot change which spelling of an embedded expression the author chose.
+// TestInterpolationKeepsSourceSpelling covers the guarantee the formatter
+// relies on: it prints the literal back from Raw and re-encodes nothing. A
+// rewrite cannot change the spelling of an embedded expression the author chose.
 func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{`"a $b c"`, `"{$a['k']}"`, `"$a[k]\n"`} {
@@ -124,8 +124,7 @@ func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 	}
 }
 
-// TestDollarBraceReadsTheVariableForm covers `${name}` and `${name[sub]}`, which
-// PHP's string grammar reads as the variable and its subscript.
+// TestDollarBraceReadsTheVariableForm covers ${name} and ${name[sub]}, the variable and subscript.
 func TestDollarBraceReadsTheVariableForm(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{
@@ -141,8 +140,8 @@ func TestDollarBraceReadsTheVariableForm(t *testing.T) {
 	}
 }
 
-// TestInterpolationErrors covers the spellings the scanner refuses outright
-// and guesses at never. Each one would otherwise produce a literal the author
+// TestInterpolationErrors covers the spellings the scanner refuses outright,
+// never guessing at any. A guess would otherwise produce a literal the author
 // did not write.
 func TestInterpolationErrors(t *testing.T) {
 	t.Parallel()
@@ -168,8 +167,7 @@ func TestInterpolationErrors(t *testing.T) {
 	}
 }
 
-// TestInterpolationLineNumbers checks that a literal spanning lines does not
-// desynchronise the line counter for what follows it.
+// TestInterpolationLineNumbers checks a literal spanning lines leaves later token lines correct.
 func TestInterpolationLineNumbers(t *testing.T) {
 	t.Parallel()
 	toks := lexAll(t, "<?php\n$a = \"x $b\ny $c\";\n$d = 1;\n")

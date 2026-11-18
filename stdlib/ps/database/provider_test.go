@@ -12,11 +12,10 @@ import (
 )
 
 // TestProvider covers the alias a host names in its runtime options. model
-// declares the interface itself and a runtime can name a provider without
-// depending on this package. The alias keeps one name for it on both
-// sides. A runtime whose options name none resolves through Default, the
-// process environment as a CLI run has it and a connection resolves before a
-// host has configured anything.
+// declares the interface. A runtime can name a provider without depending on
+// this package. The alias keeps one shared name. A runtime whose options name
+// none resolves through Default, which supplies the process environment in a
+// CLI run. A connection resolves before a host has configured anything.
 func TestProvider(t *testing.T) {
 	t.Parallel()
 	var provider Provider = New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})
@@ -90,7 +89,7 @@ func TestDatabaseProviderNewAt(t *testing.T) {
 		t.Fatalf("Exec: %v", err)
 	}
 
-	// The write landed under root, not under the working directory.
+	// The write landed under root. The working directory did not receive it.
 	if _, err := os.Stat(filepath.Join(root, "app.db")); err != nil {
 		t.Errorf("Stat: %v, want app.db under the provider root", err)
 	}
@@ -159,10 +158,10 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 
 // TestDatabaseProviderCachesUnderResolvedName covers the pool a caller naming
 // fallbacks gets. Database\Migrate names "shop:migrate" before "shop" and
-// the credential that answers is not the name it asked under; caching under
-// the name passed would open it a second pool, which on a private DSN such
-// as an in-memory sqlite is a second database, and the schema it applied would
-// not be in the one the script queries.
+// the credential that answers is not the name it asked under. Caching the
+// requested name would open another pool. On a private DSN such as an
+// in-memory sqlite, that pool is a separate database. The applied schema
+// would not be in the database the script queries.
 func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 	t.Parallel()
 	provider := NewDatabaseProvider(Open)
@@ -181,8 +180,8 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 		t.Errorf("Open(shop) returned %p, want the pool %p opened for the fallback", queries, migrations)
 	}
 
-	// A registered "shop:migrate" is the credential migrations run under,
-	// a separate connection and not the one queries use.
+	// A registered "shop:migrate" is the credential the migrations run with.
+	// It opens a separate connection from the queries.
 	provider.Register("shop:migrate", "sqlite://:memory:")
 	privileged, err := provider.Open(t.Context(), "shop:migrate", "shop")
 	if err != nil {
@@ -194,8 +193,8 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 }
 
 // TestNewIsolatesProviders is the property virtual hosting rests on: a
-// provider only resolves its own connections, and two
-// providers do not share the databases they open.
+// provider resolves its configured connections alone. Two providers do not
+// share the databases they open.
 func TestNewIsolatesProviders(t *testing.T) {
 	t.Parallel()
 	shop := New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})

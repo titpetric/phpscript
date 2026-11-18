@@ -63,9 +63,9 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	var images, dirs, files []fs.DirEntry
 	for _, entry := range entries {
 		switch {
-		// A listing is what a site chose to publish, and a dotfile below
-		// the document root is at best noise and at worst an .htaccess or an
-		// editor's backup of a script. The page leaves it out; a request
+		// A listing shows the content a site chose to publish. A dotfile below the
+		// document root is at best noise, at worst an .htaccess or an editor's
+		// backup of a script. The page leaves it out; a request
 		// that names one is still answered.
 		case strings.HasPrefix(entry.Name(), "."):
 		case entry.IsDir():
@@ -128,7 +128,7 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	out.WriteString("<td class=\"modified\">" + modified + "</td></tr>\n")
 }
 
-// escapeEntry returns the entry's name and href, both escaped, with a trailing slash on a directory.
+// escapeEntry returns the escaped name and href, trailing slash on a directory.
 func escapeEntry(entry fs.DirEntry) (name, href string) {
 	name = entry.Name()
 	href = (&url.URL{Path: name}).EscapedPath()
@@ -139,7 +139,7 @@ func escapeEntry(entry fs.DirEntry) (name, href string) {
 	return html.EscapeString(name), html.EscapeString(href)
 }
 
-// formatSize writes size as ls -h does, in the largest unit above one.
+// formatSize writes size as ls -h does: the largest unit above one byte.
 func formatSize(size int64) string {
 	const unit = 1024
 	if size < unit {

@@ -1,8 +1,8 @@
 // PHP's regular expressions are PCRE. Go's standard regexp is RE2, a different
 // engine with a different bargain: RE2 guarantees a match runs in time linear
-// in the length of the subject, and pays for that by leaving out every
-// construct that would require backtracking. Two of those omissions show up in
-// ordinary PHP code and preg_* compiles each pattern on whichever engine can
+// in the length of the subject. It pays for that by leaving out every
+// construct that would require backtracking. Two such omissions show up in
+// ordinary PHP code; preg_* compiles each pattern on whichever engine can
 // express it.
 //
 //   - flags follow a /.../flags delimiter syntax, translated here to RE2's
@@ -10,27 +10,26 @@
 //   - backreferences and lookaround are not expressible in RE2 at all.
 //
 // The second is not a corner case. minitpl's compiler pairs a template tag with
-// its closing tag using `\1` and a pattern RE2 cannot compile appears in the
+// its closing tag using `\1`. A pattern RE2 cannot compile appears in the
 // first library this runtime targets, and reporting "no match" for it
 // compiled every `{block}` and `{inline}` definition into garbage.
 //
-// RE2 stays the default: the faster of the two engines, with no catastrophic
-// backtracking. The fallback sets a match timeout for that reason.
+// RE2 stays the default: the faster of the two engines. It leaves no room for
+// catastrophic backtracking. The fallback sets a match timeout for that reason.
 //
 // A third gap is in RE2's API and not in its syntax and it decides the
 // engine per call and not per pattern. PHP's $offset moves where a match
-// starts without moving where the subject begins and `^` and `\b` still see
-// the real start of the string.
+// starts without moving where the subject begins. `^` and `\b` still see the
+// real start of the string.
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
-// FindStringMatchStartingAt does and a non-zero $offset runs on the
-// backtracking engine even for a pattern RE2 compiled and a pattern
-// holds both engines.
+// FindStringMatchStartingAt does. A non-zero $offset runs on the backtracking
+// engine, even for a pattern RE2 compiled. A pattern then holds both engines.
 //
-// The two engines disagree about what an index counts: RE2 reports byte
-// offsets, regexp2 matches over a []rune and reports rune indexes. PHP's
-// offsets are byte offsets even under the /u modifier and every index out of
-// regexp2 passes through runeOffsets before a script sees it.
+// The two engines disagree about the index: RE2 reports byte offsets, while
+// regexp2 matches over runes and reports rune indexes. PHP's offsets are byte
+// offsets even with the /u modifier. Every index out of regexp2 passes
+// through runeOffsets before a script sees it.
 //
 // See docs/reference/extensions/regexp.md for the user-facing account.
 
@@ -45,7 +44,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// registerRegex installs the preg_* shims, each runtime keeping its own compiled-pattern cache.
+// registerRegex installs the preg_* shims, with a compiled-pattern cache per runtime.
 func registerRegex(rt *runner.Runtime) {
 	cache := newRegexpCache()
 	registerRegexConstants(rt)
@@ -61,7 +60,7 @@ func registerRegex(rt *runner.Runtime) {
 	// $subject, returns false.
 	rt.RegisterFunc("preg_match", cache.phpPregMatch)
 	// preg_replace replaces every match of $pattern in $subject with
-	// $replacement, in which \1 and $1 both name a capture group.
+	// $replacement, where \1 and $1 name the same capture group.
 	rt.RegisterFunc("preg_replace", cache.phpPregReplace)
 	// preg_replace_callback replaces every match of $pattern in $subject with
 	// what $callback returns for it, calling $callback once per match in
@@ -79,12 +78,12 @@ func registerRegex(rt *runner.Runtime) {
 	// PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and
 	// PREG_SPLIT_OFFSET_CAPTURE.
 	rt.RegisterFunc("preg_split", cache.phpPregSplit)
-	// preg_quote escapes the characters that are special in a PCRE pattern,
-	// plus $delimiter and a caller can splice a literal into one.
+	// preg_quote escapes the characters that are special in a PCRE pattern.
+	// The escape set includes $delimiter, letting a caller splice a literal into a pattern.
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 
-// The PREG_* flag bits hold the values PHP defines, part of the script interface.
+// The PREG_* flag bits hold PHP's values, part of the script interface.
 const (
 	pregPatternOrder    = 1
 	pregSetOrder        = 2
@@ -108,10 +107,10 @@ func registerRegexConstants(rt *runner.Runtime) {
 	rt.SetConst("PREG_SPLIT_OFFSET_CAPTURE", int64(pregSplitOffsetCapture))
 }
 
-// backtrackTimeout bounds one backtracking match at a second, a hung request being worse.
+// backtrackTimeout bounds one backtracking match at one second; one hung request is worse.
 const backtrackTimeout = time.Second
 
-// phpPregMatchAll implements preg_match_all, returning the count or false for a pattern that does not compile.
+// phpPregMatchAll returns the count, or false for a pattern that does not compile.
 func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any), flags any, offset any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -132,7 +131,7 @@ func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any)
 	return int64(len(all))
 }
 
-// phpPregMatch implements preg_match, returning 1 or 0, or false for a bad pattern or offset.
+// phpPregMatch returns 1 or 0, or false for a bad pattern or offset.
 func (c *regexpCache) phpPregMatch(pattern, subject string, matches func(any), flags any, offset any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -161,7 +160,7 @@ func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) strin
 	return re.replaceAll(subject, pcreReplacement(replacement))
 }
 
-// phpPregReplaceCallback implements preg_replace_callback, returning null and a zero count for a bad pattern.
+// phpPregReplaceCallback implements preg_replace_callback, returning null plus a zero count for a bad pattern.
 func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...any) (any, error), subject string, limit any, count func(any), flags any) (any, error) {
 	replaced := int64(0)
 	re, err := c.compilePCRE(pattern)

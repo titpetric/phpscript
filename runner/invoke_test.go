@@ -49,8 +49,8 @@ func TestArgAt(t *testing.T) {
 }
 
 // TestArgsTail covers what follows the fixed parameters in a variadic call.
-// argsTail aliases the slice and never copies it: the runner builds args fresh
-// per call and the binding sees what reflect.Value.Call would have handed it.
+// argsTail aliases the slice without a copy. The runner builds args fresh per
+// call. The binding sees what reflect.Value.Call would have handed it.
 func TestArgsTail(t *testing.T) {
 	t.Parallel()
 	args := []any{"a", "b", "c"}
@@ -114,8 +114,8 @@ func TestPHPParamTypeName(t *testing.T) {
 }
 
 // TestPHPDebugType covers the name get_debug_type() reports for a value. A
-// callable value is Closure, the class php answers for a first-class callable,
-// and an interpreted object is its declared class.
+// callable value is Closure, the class php answers for a first-class callable.
+// An interpreted object reports its declared class.
 func TestPHPDebugType(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -180,9 +180,9 @@ func TestCoerceArg(t *testing.T) {
 }
 
 // TestCallResult covers reducing a reflect Call result to a value and an error.
-// A Go callable returning two or more values becomes a PHP list in declaration
-// order and a script destructures it: keeping only the first would answer a
-// different question, since time.Time.ISOWeek returns the year and the week.
+// A Go callable returning more than one value becomes a PHP list in declaration
+// order. A script destructures it. Keeping only the first answers a different
+// question, since time.Time.ISOWeek returns the year and the week.
 func TestCallResult(t *testing.T) {
 	t.Parallel()
 	call := func(fn any, args ...any) (any, error) {
@@ -263,10 +263,10 @@ func TestNameCallError(t *testing.T) {
 	}
 }
 
-// TestRecoveredError covers what a recovered panic reaches a script as. A
-// callback that threw sends its own error across the Go frames between it and
-// the host boundary and a script catches its own exception; anything else is a
-// host panic, named after what panicked.
+// TestRecoveredError covers the form a recovered panic takes in a script. A
+// callback that threw sends its error across the Go frames between the
+// callback and the host boundary. A script catches the exception. Anything
+// else is a host panic, named after what panicked.
 func TestRecoveredError(t *testing.T) {
 	t.Parallel()
 	thrown := NewRuntimeException("no such invoice", 0)
@@ -286,8 +286,8 @@ func TestRecoveredError(t *testing.T) {
 
 // TestWantsContext covers the check on whether the runner puts the runtime
 // context ahead of a binding's arguments. Only a first parameter of
-// context.Context counts and a binding taking a string first receives the
-// arguments a script passed and nothing in front of them.
+// context.Context counts. A binding taking a string first receives the
+// arguments a script passed, with nothing in front of them.
 func TestWantsContext(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -308,9 +308,8 @@ func TestWantsContext(t *testing.T) {
 }
 
 // TestAdapt covers wrapping a Go callable in the uniform shape the evaluation
-// environment uses, which is the one shape the engine's call closures
-// assert. The wrapper coerces arguments through reflection and a shim can keep
-// a natural Go signature.
+// environment uses, the shape the engine's call closures assert. The wrapper
+// coerces arguments through reflection. A shim can keep a natural Go signature.
 func TestAdapt(t *testing.T) {
 	t.Parallel()
 	fn := adapt(func(n int64, text string) string { return text + ":" + phpString(n) })
@@ -323,7 +322,7 @@ func TestAdapt(t *testing.T) {
 	}
 
 	// The wrapper renders an int64 reaching a string parameter the way PHP does.
-	// The binding reads "7" and never Go's own conversion of the code point.
+	// The binding reads "7", not Go's own conversion of the code point.
 	coerced, err := fn(int64(9), int64(7))
 	if err != nil {
 		t.Fatalf("the coerced call failed: %v", err)

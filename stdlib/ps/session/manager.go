@@ -29,8 +29,8 @@ type Manager struct {
 }
 
 // NewManager creates a manager backed by storage, authenticating against the
-// user database given. The user database is variadic: login() is the one
-// method that asks who a credential belongs to. The registered constructor in
+// user database given. The user database is variadic: login() alone asks who a
+// credential belongs to. The registered constructor in
 // session.go fills both with defaults when a script names neither.
 func NewManager(storage Storage, users ...auth.Storage) (*Manager, error) {
 	if storage == nil {
@@ -46,8 +46,7 @@ func NewManager(storage Storage, users ...auth.Storage) (*Manager, error) {
 	return manager, nil
 }
 
-// SetStorage replaces the storage that holds sessions, wrapping it for tracing
-// as the constructor does.
+// SetStorage replaces the session storage, wrapping it for tracing as the constructor does.
 func (s *Manager) SetStorage(storage Storage) error {
 	if storage == nil {
 		return errors.New("session storage is nil")
@@ -67,10 +66,10 @@ func (s *Manager) SetAuth(users auth.Storage) error {
 
 // Login authenticates $key and $secret against the user database and starts a
 // session for the user it names. It reports whether the credential held; a
-// wrong password is false and no error.
+// wrong password answers false, plus no error.
 //
 // The session holds the user's primary key. The username stays in the user
-// database and a caller that needs it reads it there.
+// database; a caller that needs it reads the value there.
 func (s *Manager) Login(ctx context.Context, key, secret string) (bool, error) {
 	if s.users == nil {
 		return false, errors.New("session manager has no user database to authenticate against")
@@ -92,9 +91,9 @@ func (s *Manager) Login(ctx context.Context, key, secret string) (bool, error) {
 // Destroy ends the current session: it drops the data behind the cookie and
 // expires the cookie on the way out.
 //
-// A session that is not there is no error. Logging out twice, and logging out
-// of a session a prune already took, are the same request to the client, and
-// both end with no session and no cookie.
+// A missing session is no error. Logging out twice, and logging out of a
+// session a prune already took, are the same request to the client. Both end
+// without a session or cookie.
 func (s *Manager) Destroy(ctx context.Context) error {
 	id, ok := s.currentID(ctx)
 	s.sessionID = ""

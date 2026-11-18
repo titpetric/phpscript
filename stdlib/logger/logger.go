@@ -10,11 +10,11 @@ import (
 )
 
 // Logger is a slog logger that fails the span it runs in when a caller reports
-// an error. Log output is the log's business and stays there; what reaches the
-// trace is what a trace has a place for, that the work went wrong.
+// an error. Log output belongs to the log and stays in it. The trace receives
+// a single fact: that the work went wrong.
 //
-// The context it holds is the one the work runs under: a caller passes a logger
-// to a library for the length of one call and it lives as long as that context.
+// It holds the context the work runs in. A caller passes a logger to a
+// library for one call's length. It lives as long as that context.
 type Logger struct {
 	ctx  context.Context
 	log  *slog.Logger
@@ -61,8 +61,8 @@ func (l *Logger) Warn(msg string, args ...any) {
 	l.slog().WarnContext(l.ctx, l.label(msg), args...)
 }
 
-// Error logs a message at error level and records it on the logger's own span,
-// failing that span and the trace with it. The span is not ended.
+// Error logs a message at error level and records it on the logger's span,
+// failing that span and the trace as well. The span is not ended.
 func (l *Logger) Error(msg string, args ...any) {
 	if l == nil {
 		return
@@ -91,7 +91,7 @@ func (l *Logger) label(msg string) string {
 	return l.name + " " + msg
 }
 
-// cause wraps the first error among args under msg, or msg alone without one.
+// cause wraps the first error among args under msg, or msg alone when args hold none.
 func cause(msg string, args []any) error {
 	for _, arg := range args {
 		if err, ok := arg.(error); ok {

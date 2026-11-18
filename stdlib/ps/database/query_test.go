@@ -92,7 +92,7 @@ func TestParseQuery(t *testing.T) {
 		notRead: true,
 	}, {
 		// parseQuery classifies only a statement beginning with its keyword.
-		// It refuses a parenthesized union and never guesses at one.
+		// It refuses a parenthesized union without guessing at one.
 		name:    "leading parenthesis",
 		query:   "(select 1) union (select 2)",
 		notRead: true,
@@ -113,8 +113,8 @@ func TestParseQuery(t *testing.T) {
 	}
 }
 
-// The refusal names the statement and a script catching the exception can say
-// which call it lost, and not the bare fact of a read-only database.
+// The refusal names the statement; a script catching the exception can say
+// which call it lost.
 func TestQueryInfoRefusal(t *testing.T) {
 	t.Parallel()
 	if got := (queryInfo{Type: "drop"}).refusal(); got != "drop is not allowed" {
@@ -126,8 +126,8 @@ func TestQueryInfoRefusal(t *testing.T) {
 }
 
 // TestDatabase_Get covers the two outcomes of a single-row read. A row arrives
-// as a native map and $row["name"] indexes it. A query matching no rows is
-// false and no error, because PHP reads a missing row as a falsy value and a
+// as a native map; $row["name"] indexes that map. A query matching no rows
+// answers false, not an error: PHP reads a missing row as a falsy value; a
 // script tests it with if.
 func TestDatabase_Get(t *testing.T) {
 	t.Parallel()

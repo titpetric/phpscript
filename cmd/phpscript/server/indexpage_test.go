@@ -79,9 +79,9 @@ func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
 }
 
 // TestDirectoryWithoutAnIndexIsNotFound pins that a directory's index page
-// answers it and no other page does. A site never asked to publish a listing
-// of the files below it, and a site with a 404 page answers a missing index
-// the same way it answers any other dead link.
+// answers the request; no other page does. A site never asked to publish a
+// listing of the files below. Such a site answers a missing index as
+// it answers any other dead link.
 func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -105,9 +105,9 @@ func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 }
 
 // TestDirectoryWithoutASlashRedirects pins that the redirect adds the trailing
-// slash before the index page answers. The page's relative links resolve
-// against its serving URL and /docs must become /docs/ or every link in it
-// points a directory too high.
+// slash before the index page answers. The page's relative links resolve from
+// the serving URL. /docs must become /docs/, otherwise each link points a directory
+// too high.
 func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -124,9 +124,8 @@ func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 }
 
 // TestIndexPageInAWritableDirectoryIsNotRun pins that an index page follows
-// the same rule as any other .php below the document root: what a visitor put
-// in a writable directory is content, and goes out as bytes and never
-// executes.
+// the rule for any other .php below the document root. A file a visitor put in
+// a writable directory is content: it goes out as bytes and does not execute.
 func TestIndexPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	t.Parallel()
 	h, err := newHandler(

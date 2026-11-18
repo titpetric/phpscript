@@ -8,8 +8,8 @@ import (
 )
 
 // TestStrings covers the string context implode and str_replace read a
-// collection in. Each element converts the way `(string)$v` does and php 8.5
-// prints "1,1,,2.5" for implode(",", ["1", true, null, 2.5]).
+// collection in. Each element converts the way `(string)$v` does. php 8.5 prints
+// "1,1,,2.5" for implode(",", ["1", true, null, 2.5]).
 func TestStrings(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -45,9 +45,9 @@ func TestStrings(t *testing.T) {
 	}
 }
 
-// TestStringsRefusesObject covers the one element with no string form. php 8.5
-// raises Error with the wording want pins below, and Strings reports the same
-// wording and nothing invents a spelling for an object inside implode.
+// TestStringsRefusesObject covers the element without a string form. php 8.5
+// raises Error with the wording want pins below. Strings reports the same
+// wording; nothing invents a spelling for an object inside implode.
 func TestStringsRefusesObject(t *testing.T) {
 	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "C"})
@@ -70,9 +70,9 @@ func TestStringsRefusesObject(t *testing.T) {
 	}
 }
 
-// TestValues covers the order a collection reads back in and the one case that
-// copies no value: a []any is the storage the caller already holds and Values
-// passes it through. Callers that write to the result copy first.
+// TestValues covers the order a collection reads back in and the case that
+// copies no value. A []any is the storage the caller already holds; Values
+// passes the storage through. Callers that write to the result copy first.
 func TestValues(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {

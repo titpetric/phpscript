@@ -11,12 +11,12 @@ func (e *RuntimeException) Error() string {
 	return e.Message
 }
 
-// GetMessage is the message under the name a script calls it by.
+// GetMessage answers the message to a script calling `getMessage`.
 func (e *RuntimeException) GetMessage() string {
 	return e.Message
 }
 
-// GetCode is the code under the name a script calls it by.
+// GetCode lets a script read the exception's numeric status, which PHP spells `getCode`.
 func (e *RuntimeException) GetCode() int {
 	return e.Code
 }

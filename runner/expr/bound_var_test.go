@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestBoundVar covers the three things Eval needs per variable a compiled
-// expression reads: the PHP name to resolve, the slot the value lands in, and
+// TestBoundVar covers the data Eval needs per variable a compiled expression
+// reads: the PHP name to resolve, the slot the value lands in, and
 // whether the name arrived bare.
 //
 // Const marks a bare name, which resolves differently: `FOO` is a constant

@@ -1,6 +1,6 @@
 # Templating
 
-The phpscript engine is capable enough to load a fully featured template engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified: composer pulls it in like in any PHP project, with no copy in this repository and no patch.
+The phpscript engine is capable enough to load a fully featured template engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified: composer pulls it in like in any PHP project. This repository holds no copy or patch.
 
 ```json
 {
@@ -26,7 +26,7 @@ $tpl->assign('name', 'phpscript');
 $tpl->render();
 ```
 
-`$tpl->assign` passes arbitrary data to the template, which renders it into HTML or other formats. The template engine supports the php syntax itself. The engine loads a template, compiles it into PHP code, and then runs it through `include`.
+`$tpl->assign` passes arbitrary data to the template, which renders it into HTML or other formats. The template engine supports the php syntax itself. The engine loads a template, compiles it into PHP code, and then runs it with `include`.
 
 ## The model
 
@@ -63,7 +63,7 @@ class UserStorage {
 }
 ```
 
-This makes any request use database APIs that stay small and explicit: each method on `UserStorage` is one query or one transaction and a test can cover it alone. A complex request may perform hundreds of database interactions based on what the page renders.
+This makes any request use database APIs that stay small and explicit: each method on `UserStorage` runs one query or one transaction. A test can cover each alone. A complex request may perform hundreds of database interactions based on the rendered page.
 
 For example, for a news CMS website, you may fetch more than one section of news articles, get their comment counts, their images, the journalist which posted the article, and the sections sorted by editorial system of weights. Using the PHPscript runtime makes such code much shorter than Go with its type safety and explicit error handling.
 
@@ -100,7 +100,7 @@ $tpl->assign(compact("user", "user_groups"));
 $tpl->render();
 ```
 
-And a POST endpoint:
+A POST endpoint:
 
 ```php
 <?php

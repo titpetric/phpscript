@@ -11,8 +11,8 @@ import (
 )
 
 // sourceTree is the read-only application an embedded or in-memory host ships.
-// No part of it exists on disk and a read that answers from it proves the read
-// used the fs.FS and never the host filesystem underneath.
+// No part of it exists on disk. A read that answers from it proves the read used
+// the fs.FS and left the host filesystem untouched.
 func sourceTree() fstest.MapFS {
 	return fstest.MapFS{
 		"one.txt":          {Data: []byte("one"), ModTime: sourceModTime},
@@ -52,11 +52,12 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 }
 
 // TestGlobIsJailedToTheSourceFilesystem pins where "/" points: the source
-// filesystem's root and never the host's and an absolute pattern names something
-// inside the tree serving the script and there is no spelling that
-// reaches past it; php would list whatever the host holds at that path. That
-// divergence is the point. The runtime cleans a pattern that climbs
-// against the root, the rule every path a script passes this package follows.
+// filesystem's root. The host's root plays no part. An absolute pattern names
+// something inside the tree serving the script. No spelling reaches past it. php
+// would
+// list whatever the host holds at that path. That divergence is the point. The
+// runtime cleans a climbing pattern against the root, the rule every path a
+// script passes this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -82,8 +83,8 @@ func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 
 // TestGlobOnTheHostAnswersRelativeToTheRoot covers the branch a CLI run takes,
 // where the runtime has no fs.FS. The matches come back from the host as paths
-// under the root directory, and PHP echoes the pattern's own shape back and
-// the root has to come off again before the script sees them.
+// beneath the root directory. PHP echoes the pattern's own shape back. The root
+// must come off again before the script sees them.
 func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -102,11 +103,11 @@ func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
 	}
 }
 
-// TestReadsUseTheSourceFilesystemUnderANamedRoot is the regression this jail
-// work exists for. The reads would otherwise pass resolve's host path to the fs.FS,
-// which rejects anything absolute and every lookup missed and fell through to
-// the host. A root that is a real directory and a source tree that is not on
-// disk is the arrangement that tells the two apart.
+// TestReadsUseTheSourceFilesystemUnderANamedRoot covers the regression this jail
+// work exists for. The reads would otherwise pass resolve's host path to the
+// fs.FS, which rejects anything absolute; every lookup missed and fell through
+// to the host. A real root directory, plus a source tree that is not on disk,
+// tells the two apart.
 func TestReadsUseTheSourceFilesystemUnderANamedRoot(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}

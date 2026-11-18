@@ -17,7 +17,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// hostMux routes a request to the site whose domain matches its Host exactly, answering 404 otherwise.
+// hostMux routes a request to the site matching its Host, answering 404 otherwise.
 type hostMux struct {
 	hosts map[string]http.Handler
 }
@@ -65,7 +65,7 @@ func registerVirtualHosts(ctx context.Context, svc *Service, appConfig config.Co
 	return nil
 }
 
-// buildVirtualHosts returns the host mux and site modules, refusing a broken configuration before startup.
+// buildVirtualHosts returns the host mux and site modules, refusing a broken configuration.
 func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	if err := appConfig.CheckVirtualHosts(); err != nil {
 		return nil, nil, err
@@ -98,7 +98,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 	return newHostMux(sites), modules, nil
 }
 
-// newVirtualHost builds one site's router and lifecycle modules, isolated from every other site.
+// newVirtualHost builds one site's router and lifecycle modules, isolated from the other sites.
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	router := newRouter()
 
@@ -126,29 +126,28 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		observers = append(observers, telemetry.NewModule(tracer))
 	}
 
-	// The site's connections come from its own env and nowhere else. A
-	// provider holds its own credentials and a site cannot name a connection
-	// another site configures. Relative sqlite paths anchor to the site's
-	// root: a site writes its DSN against its own tree, and the directory the
-	// server process runs in is not the site's to know.
+	// The site's connections come from the site env and nowhere else. A
+	// provider holds the credentials; a site cannot name a connection another
+	// site configures. Relative sqlite paths anchor to the site's root: a site
+	// writes its DSN against the site tree, and the directory the server
+	// process runs in is not the site's to know.
 	runnerOptions := siteConfig.Runner
 	runnerOptions.Database = database.NewAt(host.Root, siteConfig.Env)
 
-	// So do its mail servers. A provider holds its own credentials and a site
-	// can name the servers its own file configures and no others, and a script
-	// on it never sees the credentials behind them.
+	// So do the mail servers. A provider holds the credentials; a site can name
+	// the servers its configuration declares, no others; no script there sees
+	// the credentials behind them.
 	runnerOptions.Mail = mail.NewProvider(siteConfig.Mail)
 
-	// So does the environment its scripts read. A site holds its declared env
-	// and no part of the process environment and getenv() reports nothing
-	// about what the operator, or another site, declares.
+	// The environment its scripts read is separate as well. A site holds its declared env,
+	// no part of the process environment; getenv() reports nothing about the
+	// values an operator or another site declares.
 	runnerOptions.Env = siteConfig.Env
 
-	// A site names its own prelude in the runner block of its phpscript.yml,
-	// because each one has its own vendor directory. --include is what the
-	// operator sets for a tenant that named none, and the one way to set
-	// it in a shared environment: a site's own file is not the operator's to
-	// edit.
+	// A site names its prelude in the runner block of its phpscript.yml: each
+	// site has a separate vendor directory. --include is the operator's setting
+	// for a tenant that named none; use it to set the value in a shared
+	// environment: a site's own file is not the operator's to edit.
 	if runnerOptions.Include == "" {
 		runnerOptions.Include = globals.Include
 	}
@@ -170,9 +169,8 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		files.coverage = cover.aggregator
 	}
 
-	// A site's error pages are its own: its document root holds them, its own
-	// handler renders them and nothing a site puts up is reachable from
-	// another domain.
+	// A site's error pages belong to the site: its document root holds them;
+	// its handler renders them. No other domain reaches what a site puts up.
 	if siteConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
@@ -182,23 +180,23 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		}
 	}
 
-	// What this site's @startup jobs bind goes on this site's router. The
-	// mount is here because this function is the only place holding it: the
-	// platform passes the server's router to a module it mounts, and a site's
-	// routes on that one would answer on every other domain.
+	// This site's @startup jobs bind to this site's router. The mount is here
+	// because this function alone holds the router. The platform passes the
+	// server's router to a module it mounts, and routes a site adds there would
+	// answer on every domain.
 	if err := annotations.NewBindings(annotationOptions...).Mount(ctx, router); err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 
 	router.Handle("/*", files)
 
-	// Each site precompiles its own tree under its own runner block and one
-	// site paying the startup cost says nothing about what another does.
+	// Each site precompiles its tree inside the runner block; one site paying
+	// the startup cost says nothing about what another does.
 	precompile(files, name)
 
-	// A site's startup failure is its own. That site's recorder records it
-	// and the server keeps serving, because the alternative is one tenant's
-	// broken job stopping every other tenant.
+	// A site's startup failure is the site's alone. That site's recorder
+	// records the failure; the server keeps serving: the alternative is a
+	// single tenant's broken job stopping the other tenants.
 	return router, []LifecycleModule{
 		nonFatal(annotations.NewStartup(root, annotationOptions...), observers),
 		annotations.NewScheduler(root, annotationOptions...),

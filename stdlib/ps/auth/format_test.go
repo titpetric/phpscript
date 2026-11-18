@@ -6,16 +6,16 @@ import (
 )
 
 // The stored values every test in this package authenticates against, all for
-// the one password below. Each comes from the tool that owns its format and a
-// row that stops verifying is a compatibility break and no test to update:
+// the password below. Each comes from the tool that owns its format; a row that
+// stops verifying is a compatibility break, not a test to update:
 //
 //	php -r 'echo password_hash("hunter2hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
 //	php -r 'echo password_hash("hunter2hunter2", PASSWORD_ARGON2ID, ["memory_cost" => 8, "time_cost" => 1, "threads" => 1]);'
 //	php -r 'echo "{SHA}" . base64_encode(sha1("hunter2hunter2", true));'
 //	openssl passwd -apr1 -salt Zx1kLm9q hunter2hunter2
 //
-// The work factors are the lowest each format accepts, because what is under
-// test is the dispatch and not the derivation. A file in production holds
+// The work factors are the lowest each format accepts: the test covers
+// dispatch, not derivation. A file in production holds
 // bcrypt at a cost docs/reference/extensions/hashing.md prices.
 const testPassword = "hunter2hunter2"
 
@@ -28,9 +28,9 @@ var testHashes = map[string]string{
 }
 
 // unreadableHashes are the values a line may not hold. Four of them are real
-// formats this build will not read. The rest are what a damaged file looks
-// like; they are one list because the refusal is one refusal, and a plain-text
-// password is not distinguishable from a truncated hash.
+// formats this build will not read. The rest model a damaged file. They share
+// one list because one refusal covers both; a plain-text password is not
+// distinguishable from a truncated hash.
 var unreadableHashes = map[string]string{
 	"plain text":       "hunter2hunter2",
 	"empty":            "",
@@ -69,8 +69,8 @@ func TestVerify(t *testing.T) {
 }
 
 // TestVerifyRefusesUnreadable covers the fallthrough. A file this package
-// parsed cannot reach it, because the parse refuses the same list and what is
-// under test is that a store assembled some other way authenticates nobody.
+// parsed cannot reach this path. The parse refuses the same list. The test
+// proves that a store assembled another way authenticates nobody.
 func TestVerifyRefusesUnreadable(t *testing.T) {
 	t.Parallel()
 
@@ -92,8 +92,8 @@ func TestVerifyRefusesUnreadable(t *testing.T) {
 }
 
 // TestFormatErrorNamesTheRemedy covers the two messages an operator acts on.
-// php's `$1$` is one character away from apache's `$apr1$` and is the mistake
-// worth its own sentence.
+// php's `$1$` sits one character away from apache's `$apr1$`, a mistake worth a
+// dedicated message.
 func TestFormatErrorNamesTheRemedy(t *testing.T) {
 	t.Parallel()
 

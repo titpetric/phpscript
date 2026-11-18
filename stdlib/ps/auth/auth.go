@@ -1,13 +1,13 @@
 // Package auth implements Auth\Storage\*: the user database a login puts its
 // credential to, and the record one answers with.
 //
-// A site names its user database and never reads it, the rule
-// docs/security.md states for a connection and a mail server. The only store
-// here is an apache-format password file: a script names the file, this package
-// reads the hashes and verifies against them, and no value holding a hash
-// reaches PHP. A script gets a verdict, a primary key and a username.
+// A site names its user database, never reading it. This is the rule
+// docs/security.md states for a connection and for a mail server. The only
+// store here is an apache-format password file: a script names the file, this
+// package reads the hashes and verifies against them. No hash ever reaches
+// PHP. A script gets a verdict, a primary key, a username.
 //
-// A record derives its key from its username and a user database with no id
+// A record derives its key from its username. A user database lacking an id
 // column still has stable primary keys for other tables to reference.
 // crypto.ULIDFrom is the derivation and stdlib/ps/auth/user.go is the record.
 //

@@ -17,7 +17,7 @@ func init() {
 	runner.RegisterArea(`Runtime\PS\HTTP\SAPI`, RegisterRequest)
 }
 
-// RegisterRequest installs the request-aware functions, resolving the request at call time, inert without one.
+// RegisterRequest installs the request-aware functions, resolving the request at call time, inert when no request exists.
 func RegisterRequest(rt *runner.Runtime) {
 	// getallheaders returns the request headers as an associative array keyed
 	// by canonical header name, and an empty array when there is no request.
@@ -48,7 +48,7 @@ func RegisterRequest(rt *runner.Runtime) {
 	// header stages the "Name: value" response header in $header, written to
 	// the response after the script finishes; $replace (default true)
 	// overwrites an existing header of the same name, $code stages the
-	// response status, and a status line such as "HTTP/1.0 404 Not Found"
+	// response status, plus a status line such as "HTTP/1.0 404 Not Found"
 	// stages the status it names.
 	rt.RegisterFunc("header", func(header string, opts ...any) {
 		request, ok := runner.RequestContext(rt.Context())
@@ -59,8 +59,9 @@ func RegisterRequest(rt *runner.Runtime) {
 	})
 
 	// http_response_code stages the response status in $response_code and
-	// returns the one it replaced; called without one it returns the status
-	// the response will send, or false when there is no request to answer for.
+	// returns the status it replaced. Called with no argument, it returns
+	// the status the response will send, or false when no request exists to
+	// answer.
 	rt.RegisterFunc("http_response_code", func(opts ...any) any {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -78,7 +79,7 @@ func RegisterRequest(rt *runner.Runtime) {
 	})
 
 	// setrawcookie stages a Set-Cookie header the way setcookie does, writing
-	// $value as it stands and a value with a semicolon or a space is the
+	// $value as it stands. A value with a semicolon or a space is the
 	// caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
@@ -104,7 +105,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 	}
 
 	if len(opts) > 1 {
-		// The options form is a collection, whatever built it: the array a
+		// The options form is a collection, whatever built the value: the array a
 		// literal writes and the map another binding returned both. Anything
 		// else is the long argument list.
 		if modelutil.IsCollection(opts[1]) {
@@ -118,7 +119,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 	return true
 }
 
-// applyCookiePositional reads $expires, $path, $domain, $secure and $httponly, with no samesite.
+// applyCookiePositional reads $expires, $path, $domain, $secure and $httponly. samesite has no positional form.
 func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {
 		switch i {

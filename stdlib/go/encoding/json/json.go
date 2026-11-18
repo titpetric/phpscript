@@ -21,7 +21,7 @@ func init() {
 
 func name(fn string) string { return Namespace + `\` + fn }
 
-// Register installs the Runtime\Go\Encoding\JSON functions on a runtime that imported them.
+// Register installs the Runtime\Go\Encoding\JSON functions on a runtime.
 func Register(rt *runner.Runtime) {
 	// Runtime\Go\Encoding\JSON\Marshal returns the JSON encoding of $v.
 	rt.RegisterFunc(name("Marshal"), func(v any) (string, error) { return core.JSONEncode(v) })

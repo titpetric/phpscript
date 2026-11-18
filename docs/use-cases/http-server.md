@@ -1,10 +1,10 @@
 # HTTP server bindings
 
-The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They are `net/http`'s `ServeMux` and `Server` and a PHP program can itself be the server: it builds the router, listens, and owns the process until it stops.
+The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They wrap `net/http`'s `ServeMux` and `Server`. A PHP program can itself be the server: it builds the router, listens, and owns the process until it stops.
 
-That is one of two ways to serve. The other is `phpscript server`, which scans a source tree for `// @route` comments and runs a file per request; see [routing.md](routing.md). Use that one for an application laid out as pages and endpoints. Use this one when the program is the server: a service with a handful of routes, a test server, something that has to start and stop on its own terms.
+Two ways to serve exist. The other is `phpscript server`, which scans a source tree for `// @route` comments and runs a file per request; see [routing.md](routing.md). Choose that one for an application laid out as pages and endpoints. Choose this one when the program is the server: a service with a handful of routes, a test server, something that starts and stops at will.
 
-`testdata/phpscript-http-bridge/server.php` is a working example of everything below, and `testdata/goserver/main.go` is the same routes in Go beside it. `testdata/phpscript-service` is the same API again with no router in the script at all, as route annotations under [`phpscript server`](../cli/server.md).
+`testdata/phpscript-http-bridge/server.php` is a working example of everything below, and `testdata/goserver/main.go` is the same routes in Go beside it. `testdata/phpscript-service` repeats the same API, its script holding no router at all, as route annotations under [`phpscript server`](../cli/server.md).
 
 ## A script that serves
 
@@ -30,7 +30,7 @@ echo "serving on http://" . $http->addr() . "\n";
 $http->wait();
 ```
 
-`listen()` binds and returns the address, and does not block. `wait()` blocks until the script runs out of time. `shutdown()` stops accepting and lets what is in flight finish; `close()` drops it. An `$addr` of `127.0.0.1:0` binds a port the system picks, which `listen()` and `addr()` answer with, and is how a test takes a free one without guessing.
+`listen()` binds and returns the address; it does not block. `wait()` blocks until the script runs out of time. `shutdown()` stops accepting and lets in-flight work finish; `close()` drops it. An `$addr` of `127.0.0.1:0` binds a port the system picks. `listen()` and `addr()` report that port. A test thus takes a free port without guessing.
 
 ## What a handler is
 
@@ -44,7 +44,7 @@ A handler is a callable, in five spellings:
 | The name of a declared function | `$mux->handle("GET /x", "handle_index")` or `handle_index(...)` |
 | A static method                 | `$mux->handle("GET /x", "Site::index")` or `Site::index(...)`   |
 
-`$this->fnName` reads the method without calling it, which is the [first-class callable syntax](../reference/functions/README.md#first-class-callable-syntax) `$this->fnName(...)` in a shorter spelling. Both spellings parse and answer the same bound method; the shorter one is the divergence, because php reads it as an undefined property. A server written as a class registers it:
+`$this->fnName` reads the method without calling it. That is the [first-class callable syntax](../reference/functions/README.md#first-class-callable-syntax) `$this->fnName(...)` in a shorter spelling. Both spellings parse and answer the same bound method; the shorter one diverges, since php reads it as an undefined property. A server written as a class registers it:
 
 ```php
 class Server {
@@ -60,13 +60,13 @@ class Server {
 }
 ```
 
-An `__invoke` is that same binding under the name php reserves for one, and a static method names no receiver at all: the runtime builds an empty instance per call and `self::` resolves and two requests share nothing.
+An `__invoke` is that same binding under php's reserved name. A static method names no receiver at all: the runtime builds an empty instance per call, and `self::` resolves. Two requests share nothing.
 
-`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and this router will keep refusing them: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this router leaves out, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead and a route registered with one fails on its own line, ahead of the first request.
+`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them. This router keeps refusing them. A handler is a function of its arguments. Wrapping one in an array to name a method is a spelling this router leaves out, and `(...)` now writes the same thing. The refusal names the spelling and its replacement. A route registered with one fails on that line, ahead of the first request.
 
 ## Patterns
 
-The pattern is `net/http`'s: a method and a path, with `{name}` segments the handler reads back through `$r->path_value($name)`:
+The pattern is `net/http`'s: a method, a path, with `{name}` segments the handler reads back through `$r->path_value($name)`:
 
 ```php
 $mux->handle('GET /{$}', $index);          // the root, and nothing else
@@ -88,13 +88,13 @@ $w->write($body);
 echo "this reaches the response too\n";
 ```
 
-`echo` reaches the response: the runtime answering the request writes there for the length of the call. `$r->url->query()->get($name)` is the first value under a name, `$r->form_value($name)` reads the query and the body together, and `$r->method`, `$r->url->path`, `$r->url->rawquery` and `$r->user_agent()` are the request as Go names it.
+`echo` reaches the response: the runtime answering the request writes there for the length of the call. `$r->url->query()->get($name)` is the first value for a name, `$r->form_value($name)` reads the query and the body together, and `$r->method`, `$r->url->path`, `$r->url->rawquery` and `$r->user_agent()` are the request as Go names it.
 
-A handler that throws is one request's problem: the runtime reports it to its error sink and answers with a 500 if nothing has gone out yet, and the server goes on.
+A handler that throws is a single request's problem: the runtime reports it to its error sink and answers with a 500 if nothing has gone out yet. The server goes on.
 
 ## Groups and middleware
 
-`$mux->use($middleware)` wraps the handlers registered after it, and `$mux->group($fn)` calls `$fn` with a mux that shares the routes of the one it came from and starts with its middleware. A `use` inside the group applies to the group alone, which isolates a module's routes from the rest of the router. A middleware takes the next handler and returns the handler that wraps it, the shape `chi` has:
+`$mux->use($middleware)` wraps the handlers registered after it. `$mux->group($fn)` calls `$fn` with a mux that shares the parent's routes and starts with its middleware. A `use` inside the group applies to the group alone, isolating a module's routes from the rest of the router. A middleware takes the next handler, and returns a handler that wraps it. The shape matches `chi`:
 
 ```php
 $mux->group(function (HTTP\Mux $api) {
@@ -108,7 +108,7 @@ $mux->group(function (HTTP\Mux $api) {
 });
 ```
 
-The middleware runs once, as the mux registers the route, and the handler it returns is what the workers answer through.
+The middleware runs once, as the mux registers the route. Workers answer through the handler it returns.
 
 ## Binding the service router
 
@@ -125,7 +125,7 @@ Router::Bind(function (HTTP\Mux $router) {
 });
 ```
 
-The mux registers straight on the router of the service and keeps no routes, leaving it none to list. It belongs to the call: a `handle` on it after `Bind` has returned throws a `RuntimeException`, as does `Router::Bind` itself called from a request, because the router is not mutable once the service is up. Every pattern needs a method, `GET /ping` and not `/ping`, because the service router registers a method and a path.
+The mux registers straight on the router of the service and keeps no routes, leaving it none to list. It belongs to the call. A `handle` on it after `Bind` has returned throws a `RuntimeException`. `Router::Bind` called from a request throws it too, because the router is not mutable once the service is up. Every pattern needs a method: `GET /ping`, never bare `/ping`, because the service router registers a method and path.
 
 ## The worker pool
 
@@ -135,15 +135,15 @@ The mux registers straight on the router of the service and keeps no routes, lea
 $http = new HTTP\Server($addr, $mux, 4, 64);
 ```
 
-Each worker holds its own runtime, forked from the one running the script. Workers are the parallelism, the queue is the backpressure: a request that finds every worker busy waits its turn and starts no new runtime, and a queue that fills means the caller waits, which is the signal that it should. A handler doing no IO can use about as many workers as there are cores; one that waits on a database wants more.
+Each worker holds a private runtime, forked from the script's runtime. Workers are the parallelism; the queue is the backpressure. A request that finds every worker busy waits its turn and starts no new runtime. A filling queue means the caller waits, which is the signal that it should. A handler doing no IO can use about as many workers as there are cores; one that waits on a database wants more.
 
 ## What a handler can reach
 
-A handler starts on a clean stack holding only `$w` and `$r`. The runtime decodes no superglobal, nothing persists from the last request, and two requests answered at the same moment cannot see each other.
+A handler starts on a clean stack holding only `$w` and `$r`. The runtime decodes no superglobal. No state persists between requests. Two requests answered at the same moment cannot see each other.
 
-A handler holds what it captured: a closure's `use (...)` values and the `$this` it binds, or a bound method's receiver. Every request answering through that handler shares them, because each request runs on its own runtime and the capture is not copied. Read them. Writing to one from a handler is two requests writing to one value, and the engine cannot make that safe without copying the object, which is not what a shared receiver is for.
+A handler holds whatever it captured: a closure's `use (...)` values, the `$this` it binds, or a bound method's receiver. Every request answering through the handler shares them. Each request runs on a private runtime; the capture is not copied. Read them. Writing to one from a handler means two requests writing to one value. The engine cannot make that safe without copying the object. A shared receiver is not the place for that.
 
-Autoloaders come along too and the worker that first names a class loads it there, once per worker. What does not come along is anything the script wrote: globals, `static $x`, constants the script defined, the list of included files, the output it produced. A handler reaches its captures, what its receiver holds, and every declaration ahead of `listen()`.
+Autoloaders come along as well. The worker that first names a class loads it once per worker. Script state does not come along: globals, `static $x`, constants the script defined, the list of included files, the output it produced. A handler reaches its captures, the receiver's fields, and all declarations ahead of `listen()`.
 
 ## Re-entry: calling back into PHP
 
@@ -160,13 +160,13 @@ function with_log($next) {
 $mux->handle("GET /users/{id}", with_log($this->showUser));
 ```
 
-`$next` is a callable value built on the runtime that ran the script. A worker answers the request. The value crosses; the execution does not follow it. Calling it runs the declaration on the worker and what it echoes reaches this request's response, `connection_aborted()` inside the declaration reports this client, and two requests through one wrapper never meet. The same holds for a callable read out of a shared object or an array, and for one handed to a binding that calls back - `usort`, `array_map`, `preg_replace_callback`, `call_user_func`.
+`$next` is a callable value built on the runtime that ran the script. A worker answers the request. The value crosses; the execution does not follow it. Calling it runs the declaration on the worker. The echo reaches this request's response. `connection_aborted()` inside the declaration reports this client. Two requests through a wrapper never meet. The same holds for a callable read out of a shared object or an array, and for one handed to a binding that calls back - `usort`, `array_map`, `preg_replace_callback`, `call_user_func`.
 
-This is what makes a runtime per worker sound. A `runner.Runtime` is one goroutine's execution - its frames, its output stack, its statics, its request - and reaching into another one is a concurrent map write. A whole runtime per worker, indexed by the handle the worker holds, is the arrangement; [../design.md](../design.md) records it under program re-entry, and `runner/fork.go` is the code.
+This makes a runtime per worker sound. A `runner.Runtime` covers one goroutine's execution: its frames, its output stack, its statics, its request. Reaching into another one is a concurrent map write. A whole runtime per worker, indexed by the worker's handle, is the arrangement; [../design.md](../design.md) records it under program re-entry, and `runner/fork.go` is the code.
 
 ## The client leaving
 
-`connection_aborted()` reports whether the client this handler is answering has gone. `ignore_user_abort(true)` is what keeps the handler running long enough to ask, because without it the disconnect ends the handler where it next looks:
+`connection_aborted()` reports whether the client this handler is answering has gone. `ignore_user_abort(true)` keeps the handler running long enough to ask. Without that call, a disconnect ends the handler where it next looks:
 
 ```php
 $mux->handle("GET /slow", function ($w, $r) {
@@ -190,7 +190,7 @@ $mux->handle("GET /slow", function ($w, $r) {
 
 ## Stopping
 
-`set_time_limit($seconds)` is a deadline on the context the interpreter checks and every binding reads. `wait()` is a binding and the script runs out of time parked there, and running out of time is a fatal, as in php: no statement after it runs, and `register_shutdown_function` callbacks do run, with the clock off. That is why stopping the server belongs in one:
+`set_time_limit($seconds)` sets a deadline on the context the interpreter checks and all bindings read. `wait()` is a binding. The script runs out of time parked there. Running out of time is a fatal, as in php: no statement after it runs, and `register_shutdown_function` callbacks do run, with the clock off. That is why stopping the server belongs in one:
 
 ```php
 register_shutdown_function(function () use ($http) {

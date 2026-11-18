@@ -10,10 +10,10 @@ import (
 )
 
 // TestNewCommand covers the shape every phpscript command shares: the
-// constructor takes the configuration and the global options because one
+// constructor takes its configuration plus the global options, because one
 // signature covers all nine. This command reads neither; both arguments are
-// nil here and the command still builds. It declares no flags: Bind stays nil
-// and the shared flags are all it binds.
+// nil here, and the command still builds. It declares no flags: Bind stays nil.
+// The shared flags are all it binds.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)
@@ -33,10 +33,10 @@ func TestNewCommand(t *testing.T) {
 }
 
 // TestRun covers the token stream `phpscript ast` prints: one line per token
-// with the line number, the PHP token name and the source text, and a CHAR
-// line for a single-character token, which token_get_all reports as a bare
-// string with no id to name. A call with no file is a usage error, because the
-// command reads a path and never standard input.
+// with the line number, the PHP token name and source text. A CHAR line
+// covers a single-character token, which token_get_all reports as a bare
+// string that has no id. A call without a file is a usage error, since
+// the command reads a path, never standard input.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "echo.php")
@@ -74,9 +74,9 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run prints through the package-level fmt and the file descriptor is the only
-// place to read its output from.
+// captureStdout runs fn with os.Stdout on a pipe and returns the output. Run
+// prints through package-level fmt; the file descriptor is the only
+// place to read that output.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

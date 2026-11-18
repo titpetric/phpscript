@@ -186,7 +186,7 @@ func (l *lastLine) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// String returns the last line of the stream, whether it ended with a newline.
+// String returns the stream's last line, whether it ended with a newline.
 func (l *lastLine) String() string {
 	if l.current.Len() > 0 {
 		return strings.TrimRight(l.current.String(), " \t\r\v\f")

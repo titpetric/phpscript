@@ -26,7 +26,7 @@ type handler struct {
 	pool *runner.SessionPool
 }
 
-// newHandler creates the handler shared by every endpoint of one source tree.
+// newHandler creates the handler that every endpoint of a source tree shares.
 func newHandler(root fs.FS, config config) *handler {
 	exprCache := config.exprCache
 	if exprCache == nil {
@@ -49,7 +49,7 @@ func newHandler(root fs.FS, config config) *handler {
 	return h
 }
 
-// buildRuntime constructs the pooled runtime shared across requests, with the standard library installed once.
+// buildRuntime constructs the pooled runtime shared across requests, installing the standard library once.
 func (h *handler) buildRuntime() *runner.Runtime {
 	options := h.config.runnerOptions
 	options.RootFS = h.root
@@ -73,7 +73,7 @@ func (h *handler) buildRuntime() *runner.Runtime {
 	return rt
 }
 
-// route returns the handler for one endpoint, with pattern naming its path parameters in $_REQUEST.
+// route returns the endpoint handler, with pattern naming its path parameters in $_REQUEST.
 func (h *handler) route(name, pattern string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.serve(w, r.WithContext(runner.WithRoutePattern(r.Context(), pattern)), name)

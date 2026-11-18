@@ -50,7 +50,7 @@ func NewCommand(cfg *config.Config, _ *flags.Options) *cli.Command {
 	}
 }
 
-// Run prints a markdown table for the paths, or for the default runtime surface.
+// Run prints a markdown table for the paths or the default runtime surface.
 func Run(args []string, bindings, classes, api, asJSON bool) error {
 	return runRuntime(os.Stdout, runner.Options{}, args, bindings, classes, api, asJSON)
 }
@@ -60,8 +60,9 @@ func run(out io.Writer, args []string, bindings, classes, api, asJSON bool) erro
 }
 
 func runRuntime(out io.Writer, options runner.Options, args []string, bindings, classes, api, asJSON bool) error {
-	// --bindings reports on the binary. A tree or path argument selects no file
-	// and the command refuses it: a caller that passed both meant one of the two.
+	// --bindings reports on the binary. A tree or path argument selects no file.
+	// The command refuses that combination. A caller that passed both meant one
+	// of the two.
 	if bindings {
 		if len(args) > 0 {
 			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))
@@ -127,7 +128,7 @@ func writeJSON(out io.Writer, v any) error {
 	return enc.Encode(v)
 }
 
-// runAreas prints the binding areas as a markdown table or JSON, refusing another listing mode.
+// runAreas prints binding areas as a markdown table or JSON, refusing another mode.
 func runAreas(out io.Writer, options runner.Options, args []string, mixed, asJSON bool) error {
 	if mixed {
 		return fmt.Errorf("list --areas takes none of --bindings, --classes or --api")

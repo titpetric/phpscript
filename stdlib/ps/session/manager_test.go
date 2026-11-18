@@ -119,14 +119,14 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 	}
 }
 
-// TestSessionManagerReadsAServedRequestsCookie is the manager against the
-// context a server builds, and not one a host filled in.
+// TestSessionManagerReadsAServedRequestsCookie covers the manager against the
+// context a server builds.
 //
-// A request decodes its cookies on the first read through Context.CookieMap and
-// the Cookie field is empty until something asks. Reading the field instead made
+// A request decodes its cookies on the first read through Context.CookieMap;
+// the Cookie field stays empty until something asks. Reading the field made
 // every served request anonymous - valid() answered false for a cookie the same
-// manager had issued one request earlier - while $_COOKIE held it, because the
-// superglobal resolves through the accessor. Issue #118.
+// manager had issued a request earlier - while $_COOKIE held it. The superglobal
+// resolves through the accessor. Issue #118.
 func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -148,9 +148,8 @@ func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
 		t.Fatalf("Set-Cookie count = %d, want 1", len(issued))
 	}
 
-	// The second request sends it and its own manager answers it,
-	// because a served request runs on a runtime that holds nothing from the
-	// last one.
+	// The second request sends the cookie. A separate manager answers it. A
+	// served request runs on a runtime holding nothing from the last one.
 	next, err := session.NewManager(storage)
 	if err != nil {
 		t.Fatal(err)
@@ -186,8 +185,8 @@ func TestNewSessionManagerValidatesConfiguration(t *testing.T) {
 }
 
 // users is a user database of one account, a substitute for the password file.
-// The manager makes one call per login and no other and these two methods are
-// the whole interface.
+// The manager makes one call per login; these two methods are the whole
+// interface.
 type users struct {
 	username string
 	secret   string
@@ -206,8 +205,8 @@ func (u users) Authenticate(_ context.Context, key, secret string) (auth.User, e
 
 func (u users) Exists() (bool, error) { return u.err == nil, u.err }
 
-// account is the record the stub answers with: an id that is not derived from
-// anything and a test can assert on the exact value the session holds.
+// account is the record the stub answers with: an id derived from nothing. A
+// test can assert on the exact value the session holds.
 type account struct {
 	name string
 }
@@ -215,9 +214,9 @@ type account struct {
 func (a account) GetID() string  { return "01J9F3K2PQUSERKEY0000000AA" }
 func (a account) String() string { return a.name }
 
-// TestSessionManagerLogin covers what a login puts in the session: the user's
-// primary key, where the username is what the credential named. A row
-// written during the session references the user as any other table does.
+// TestSessionManagerLogin covers a login's effect on the session: the user's
+// primary key, keyed by the credential's username. A row written during the
+// session references the user as any other table does.
 func TestSessionManagerLogin(t *testing.T) {
 	t.Parallel()
 	manager, err := session.NewManager(session.NewStorageMemory(), users{username: "admin", secret: "hunter2hunter2"})
@@ -243,9 +242,9 @@ func TestSessionManagerLogin(t *testing.T) {
 	}
 }
 
-// TestSessionManagerLoginRefused covers the two refusals a login distinguishes
-// from each other: a credential that misses starts no session and raises no
-// error, and a store nothing could read raises the error in place of false.
+// TestSessionManagerLoginRefused covers the two refusals a login distinguishes:
+// a credential that misses starts no session and raises no error; a store
+// nothing could read raises the error, where false would hide it.
 func TestSessionManagerLoginRefused(t *testing.T) {
 	t.Parallel()
 	store := users{username: "admin", secret: "hunter2hunter2"}
@@ -302,8 +301,8 @@ func TestSessionManagerLoginWithoutAUserDatabase(t *testing.T) {
 }
 
 // TestSessionManagerDestroy covers the logout: the storage drops the session,
-// the response expires the cookie, and a manager reading that same cookie
-// afterwards answers anonymous.
+// the response expires the cookie. A manager reading that same cookie afterwards
+// answers anonymous.
 func TestSessionManagerDestroy(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -330,8 +329,8 @@ func TestSessionManagerDestroy(t *testing.T) {
 		t.Fatalf("Valid after Destroy = %v, %v; want false, nil", valid, err)
 	}
 
-	// The cookie the response sets now is the deletion: same name and
-	// path and a client applies it to the one it holds, with no expiry left.
+	// The cookie the response sets now performs the deletion: same name and
+	// path. A client applies it to the cookie it holds. No expiry remains.
 	staged := (&http.Response{Header: http.Header{
 		"Set-Cookie": request.ResponseHeaders().Values("Set-Cookie"),
 	}}).Cookies()
@@ -356,8 +355,8 @@ func TestSessionManagerDestroy(t *testing.T) {
 }
 
 // TestSessionManagerDeleteByUser covers a removed account losing every session
-// it holds, including the one making the request: the sweep clears this
-// manager's own session and valid() answers false before the request ends.
+// it holds, including the session making the request: the sweep clears this
+// manager's session and valid() answers false before the request ends.
 func TestSessionManagerDeleteByUser(t *testing.T) {
 	t.Parallel()
 	storage := session.NewStorageMemory()
@@ -366,7 +365,7 @@ func TestSessionManagerDeleteByUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A second client of the same user, and a third of another.
+	// A second client of the same user; a third of another.
 	elsewhere, err := session.NewManager(storage)
 	if err != nil {
 		t.Fatal(err)
@@ -407,8 +406,8 @@ func TestSessionManagerDeleteByUser(t *testing.T) {
 }
 
 // TestSessionManagerDestroyWithoutASession covers logging out twice, and
-// logging out of a session a prune has already taken. Both end with no
-// session, which is the request the client made, and both return nil.
+// logging out of a session a prune already took. Both end without a session,
+// the request the client made. Both return nil.
 func TestSessionManagerDestroyWithoutASession(t *testing.T) {
 	t.Parallel()
 	manager, err := session.NewManager(session.NewStorageMemory())
@@ -471,9 +470,9 @@ func TestSessionManagerSetters(t *testing.T) {
 	}
 }
 
-// sessionIDOf reads back the id the manager holds, the one it staged in the
-// cookie. No accessor exposes that id, the credential itself and a test needing to
-// look in storage reads it off the response the way a client would.
+// sessionIDOf reads back the id the manager holds, staged in the cookie.
+// No accessor exposes that id or the credential; a test needing to look in
+// storage reads it off the response, as a client would.
 func sessionIDOf(t *testing.T, ctx context.Context, manager *session.Manager) string {
 	t.Helper()
 	request, ok := runner.RequestContext(ctx)

@@ -16,7 +16,7 @@ import (
 type LifecycleModule = platform.Module
 
 // ZeroModule is platform.UnimplementedModule, which answers every hook a
-// module leaves alone and a module writes the one or two it has.
+// module leaves alone. A module writes its one or two hooks.
 type ZeroModule = platform.UnimplementedModule
 
 // Router is platform.Router, the mux a module mounts handlers on.
@@ -29,7 +29,7 @@ type Service = platform.Platform
 type Logger = platform.Logger
 
 // TelemetryModule is platform.TelemetryModule, the recorder the platform
-// builds from the options and the one the interpreter observes onto.
+// builds from the options, and the recorder the interpreter observes onto.
 type TelemetryModule = platform.TelemetryModule
 
 // newZeroModule returns a zero module under name, the value Options.Modules filters on.

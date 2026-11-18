@@ -7,11 +7,12 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Drawable is an image this package can write a pixel into. A handle wraps one,
-// and wrap copies a decoder that produced something else into one.
+// Drawable is an image this package can write a pixel into. A handle wraps such
+// an image. A wrap copies a decoder that produced something else into a
+// Drawable.
 type Drawable = draw.Image
 
-// fillRect paints r in one colour, replacing what lies under it.
+// fillRect paints r in one colour, replacing whatever lies beneath.
 func fillRect(dst Drawable, r image.Rectangle, c color.Color) {
 	draw.Draw(dst, r, &image.Uniform{c}, image.Point{}, draw.Src)
 }

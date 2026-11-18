@@ -93,7 +93,7 @@ func csvControls(fn string, opts []any) (rune, error) {
 	return sep, nil
 }
 
-// countingWriter counts the bytes written through to w.
+// countingWriter counts the bytes written to w.
 type countingWriter struct {
 	w io.Writer
 	n int64
@@ -105,7 +105,7 @@ func (c *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// byteReader passes encoding/csv one byte per Read so it cannot read past a record.
+// byteReader passes encoding/csv one byte per Read; a record cannot overrun.
 type byteReader struct {
 	r io.Reader
 }

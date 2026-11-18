@@ -31,8 +31,8 @@ func countOps(p *Program, op opcode) int {
 }
 
 // The shapes the pass exists for actually fuse: a loop condition is
-// slot-const, arithmetic over two variables is slot-slot, and a plain
-// assignment of a fused result folds the store.
+// slot-const. Arithmetic over two variables is slot-slot. A plain assignment
+// of a fused result folds the store.
 func TestFuseRewritesTheCommonShapes(t *testing.T) {
 	t.Parallel()
 	program := compileSource(t, `<?php
@@ -129,9 +129,7 @@ func itoa(v int64) string {
 	return string(b[i:])
 }
 
-// An uninitialised operand of a fused binary still resolves through the
-// host, the way opLoad resolves it: the global is visible without a frame
-// write.
+// A fused binary resolves an uninitialised operand through the host, like opLoad.
 func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
 	t.Parallel()
 	program := compileSource(t, `<?php $sum = $seed + $seed; echo $sum;`)
@@ -147,7 +145,7 @@ func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
 	}
 }
 
-// A folded store still passes the value to the host first and a superglobal
+// A folded store still passes the value to the host first. A superglobal
 // write stays request state exactly as opStore keeps it.
 func TestFusedStoreOffersSetGlobal(t *testing.T) {
 	t.Parallel()

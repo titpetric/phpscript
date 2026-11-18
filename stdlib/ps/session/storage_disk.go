@@ -45,7 +45,7 @@ func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string
 
 // DefaultStoragePath answers the directory a Session\Storage\Disk named no path
 // writes to, for an application rooted at dir. The leaf digests the absolute
-// root and two roots cannot collide. See docs/security.md on site isolation.
+// root; two roots cannot collide. See docs/security.md on site isolation.
 func DefaultStoragePath(dir string) string {
 	base := filepath.Join(os.TempDir(), "phpscript-sessions")
 	if dir == "" {
@@ -59,11 +59,11 @@ func DefaultStoragePath(dir string) string {
 }
 
 // NewStorageDisk creates the storage folder and verifies it accepts a write.
-// With no path, it uses DefaultStoragePath for no application root.
+// Given no path, DefaultStoragePath supplies the directory for an application
+// that names no root.
 //
-// NewStorageDisk takes the path as given. A Go host chooses it and no root
-// confines it; the path a PHP script names resolves through
-// newRootedStorageDisk.
+// NewStorageDisk takes the path as given. A Go host chooses the path; nothing
+// confines the path. A PHP script's path resolves through newRootedStorageDisk.
 func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
 	storagePath := DefaultStoragePath("")
 	if len(storagePaths) > 0 {
@@ -157,9 +157,9 @@ func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 	return os.Remove(path)
 }
 
-// DeleteByUser removes every session file holding userID, counting what it
-// took. The walk reads each session because the payload is the only place the
-// user appears: a file's name is its session id alone.
+// DeleteByUser removes every session file holding userID and counts the files.
+// The walk reads each session: the payload is the only place the user appears.
+// A file's name holds only the session id.
 func (s *StorageDisk) DeleteByUser(ctx context.Context, userID string) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err

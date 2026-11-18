@@ -13,16 +13,16 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// benchHash is one bcrypt line at cost 4, the cheapest the format allows.
-// The parse checks the format of a stored hash and derives nothing from it,
-// and one hash repeated per row prices the read the way distinct rows would.
+// benchHash names a bcrypt line at cost 4, the cheapest the format allows.
+// The parse checks the format of a stored hash and derives nothing from that
+// hash. One hash repeated per row prices the read the way distinct rows would.
 const benchHash = "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"
 
-// BenchmarkSessionManagerDefault measures `new Session\Manager` with no
+// BenchmarkSessionManagerDefault measures `new Session\Manager` without
 // arguments: disk storage and the application's own .htpasswd. The subtests
-// scale that file, pricing what the default user store costs a request that
-// constructs a manager and never calls login(). users=0 is the floor: the
-// same spelling against a root with no password file.
+// scale that file, pricing the default user store's cost for a request that
+// constructs a manager without calling login(). users=0 is the floor: the
+// same spelling on a root without a password file.
 func BenchmarkSessionManagerDefault(b *testing.B) {
 	for _, users := range []int{0, 10, 1000} {
 		b.Run(fmt.Sprintf("users=%d", users), func(b *testing.B) {

@@ -9,10 +9,10 @@ import (
 )
 
 // TestLoggerLeavesTheSpanOpen covers the half of the contract the recording
-// stops at: Error fails the span in the logger's context and never ends it.
-// A library takes a logger for the length of one call while the caller
-// above it still has work to report on that span, and a span ended from under
-// that caller would close the region before the work it measures finished.
+// stops at: Error fails the span in the logger's context, never ending that
+// span. A library takes a logger for the length of one call while the caller above
+// still has work to report on that span. A span ended from under that caller
+// would close the region before the work it measures finished.
 func TestLoggerLeavesTheSpanOpen(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")

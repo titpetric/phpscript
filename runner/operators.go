@@ -20,7 +20,7 @@ func phpLooseEqual(a, b any) bool {
 	return phpCompare("==", a, b)
 }
 
-// phpCompare applies one PHP 8 comparison, with === and !== testing identity alone.
+// phpCompare applies one PHP 8 comparison, where === and !== test identity alone.
 func phpCompare(op string, a, b any) bool {
 	switch op {
 	case "===":
@@ -52,7 +52,7 @@ func phpCompare(op string, a, b any) bool {
 	}
 }
 
-// phpSpaceship answers -1, 0 or 1 by phpval.Compare, with a NaN operand answering 1.
+// phpSpaceship answers -1, 0 or 1 by phpval.Compare, a NaN answering 1.
 func phpSpaceship(a, b any) int64 {
 	if (isNaNValue(a) || isNaNValue(b)) && !inBoolDomain(a) && !inBoolDomain(b) {
 		return 1
@@ -81,7 +81,7 @@ func inBoolDomain(v any) bool {
 	return ok
 }
 
-// phpIdentical answers PHP's === and folds int and int64 into one type.
+// phpIdentical answers PHP's === and folds int and int64 to a single type.
 func phpIdentical(a, b any) bool {
 	switch x := a.(type) {
 	case nil:
@@ -328,7 +328,7 @@ func phpBitNot(v any) any {
 	return ^toInt(v)
 }
 
-// phpPow keeps ** an int unless an operand is float or the exponent is negative.
+// phpPow keeps ** an int unless an operand is float or exponent negative.
 func phpPow(a, b any) any {
 	if isFloat(a) || isFloat(b) {
 		return math.Pow(toFloat(a), toFloat(b))

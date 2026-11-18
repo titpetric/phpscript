@@ -7,7 +7,7 @@ import (
 )
 
 // TestRuntime_PushOutput covers nesting a redirection. The innermost writer
-// takes the text and a captured region can itself capture. stdlib/ps/compat
+// takes the text; a captured region can itself capture. stdlib/ps/compat
 // builds PHP's ob_* family on that nesting.
 func TestRuntime_PushOutput(t *testing.T) {
 	t.Parallel()
@@ -36,9 +36,9 @@ func TestRuntime_PushOutput(t *testing.T) {
 	}
 }
 
-// TestRuntime_PopOutput covers ending the innermost redirection. A pop with
-// no buffer pushed reports false and a script calling ob_end_clean() without a
-// buffer open reads the refusal; a nil push still leaves something to pop,
+// TestRuntime_PopOutput covers ending the innermost redirection. A pop on an
+// empty stack reports false; a script calling ob_end_clean() without a
+// buffer open reads the refusal. A nil push still leaves something to pop,
 // because dropping the level would unstack the caller's writer on the next pop.
 func TestRuntime_PopOutput(t *testing.T) {
 	t.Parallel()
@@ -97,10 +97,10 @@ func TestRuntime_OutputDepth(t *testing.T) {
 	}
 }
 
-// TestRuntime_Output covers the writer every echo, every piece of inline HTML
-// and every builtin emitting text writes to. A runtime with no redirection
-// answers the writer behind it and the text joins the response body in
-// the order the script writes it.
+// TestRuntime_Output covers the writer each echo, each piece of inline HTML,
+// each builtin emitting text writes to. A runtime without redirection answers
+// the writer it already holds. The text joins the response body in the order
+// the script writes it.
 func TestRuntime_Output(t *testing.T) {
 	t.Parallel()
 	base := &bytes.Buffer{}

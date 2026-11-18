@@ -13,8 +13,8 @@ import (
 )
 
 // TestSet covers the area through a script: the names the import binds, the
-// constants beside them, and the types the signatures reach, which answer as
-// classes and hold their fields.
+// constants next to those names, and the types the signatures reach, which
+// answer as classes and hold their fields.
 func TestSet(t *testing.T) {
 	const header = `use Runtime\Go; import "net/http"; `
 	gotest.Run(t, gohttp.Namespace, []gotest.Case{
@@ -37,8 +37,8 @@ func TestSet(t *testing.T) {
 	})
 }
 
-// TestClientDo covers the round trip a script makes through the class the walk
-// found and no bound function names: `new http.Client`, a header written into
+// TestClientDo covers the round trip a script makes through the found class,
+// using no bound function names: `new http.Client`, a header written into
 // the map a request holds, then the body of the response.
 func TestClientDo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,8 +69,7 @@ echo $resp->StatusCode, "|", io.ReadAll($resp->Body);`, server.URL+"/a"),
 	})
 }
 
-// TestNamespace pins the registration an import resolves to, and the classes
-// the type walk enumerated.
+// TestNamespace pins the registration an import resolves to and the classes found.
 func TestNamespace(t *testing.T) {
 	if gohttp.Namespace != `Runtime\Go\Net\HTTP` {
 		t.Errorf("the area is %s", gohttp.Namespace)

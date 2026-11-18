@@ -17,7 +17,7 @@ type fixtureGroup struct {
 	Labels   []string // basename, the name the table shows
 }
 
-// groupTotals is one folder's contribution to the run.
+// groupTotals holds one folder's contribution to the run.
 type groupTotals struct {
 	Dir      string
 	Passed   int
@@ -25,12 +25,12 @@ type groupTotals struct {
 	Total    int
 	Duration time.Duration
 	// Engines is the per-runner share of the time, in report order. Only a
-	// matrix run fills it: a plain run has one engine and Duration already
-	// is its figure.
+	// matrix run fills the list. A plain run has a single engine, and Duration
+	// already reports it.
 	Engines []engineDuration
 }
 
-// engineDuration holds the time one runner spent over its fixture runs.
+// engineDuration holds the time one runner spent on its fixture runs.
 type engineDuration struct {
 	Runner   tests.Runner
 	Duration time.Duration
@@ -63,17 +63,17 @@ func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(worker,
 }
 
 func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, parallel int, fn func(worker, i int, fx *tests.Fixture) T) {
-	// Buffered to the whole batch and the sender queues the fixtures in one
-	// go and the workers draw from it. An unbuffered channel makes the sender
-	// wait for a worker to take each one, which serialises the hand-off
-	// against the slowest fixture in flight.
+	// Buffered to the whole batch. The sender queues the fixtures in one go,
+	// and the workers draw from the channel. An unbuffered channel makes the
+	// sender wait for a worker to take each fixture, which serialises the
+	// hand-off against the slowest fixture in flight.
 	jobs := make(chan int, end-start)
 	var workers sync.WaitGroup
 	workers.Add(min(parallel, end-start))
 	for id := range min(parallel, end-start) {
-		// Each goroutine is one worker with a number, the number
-		// --cache=worker scopes a cache to. Its loop is serial and two
-		// fixtures never touch a worker's cache at once.
+		// Each goroutine is a worker with a number. The --cache=worker setting
+		// scopes a cache to the number. The loop is serial. Two fixtures never
+		// touch a worker's cache at once.
 		go func(id int) {
 			defer workers.Done()
 			for i := range jobs {

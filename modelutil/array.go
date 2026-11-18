@@ -5,7 +5,7 @@ import (
 )
 
 // ToArray returns v as an *model.Array, converting a native collection if
-// needed and passing an existing one through untouched. Use it at the point
+// needed and passing an existing array through untouched. Use it at the point
 // where PHP semantics genuinely require an array (mutation, `$a[] = v`), not
 // to normalise arguments, since RangeValues reads every shape without
 // allocating.

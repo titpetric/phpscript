@@ -5,7 +5,7 @@ import (
 )
 
 // TestFunc covers the two shapes a callable value takes. A PHP declaration
-// sets Decl and a host function sets Go. The runtime reads whichever field
+// sets Decl; a host function sets Go. The runtime reads whichever field
 // the value holds to decide how to invoke it.
 func TestFunc(t *testing.T) {
 	t.Parallel()

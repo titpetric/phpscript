@@ -8,8 +8,8 @@ import (
 )
 
 // TestScope covers the flat variable table of one frame. PHP has no block
-// scoping and the enclosing function scope holds a variable introduced inside
-// an if or a foreach body, and one frame is one map.
+// scoping. The enclosing function scope holds a variable introduced inside an
+// if or a foreach body. A frame holds one map.
 func TestScope(t *testing.T) {
 	t.Parallel()
 	scope := NewScope()
@@ -61,9 +61,10 @@ func TestScope_Unset(t *testing.T) {
 }
 
 // TestScope_DefinedVars covers what get_defined_vars() reports. An interpreter
-// bookkeeping slot takes a double-underscore prefix and drops out, and `this`
-// with it: the call binds it and no body declares it and php leaves it out. A
-// static-bound name reports the value in its persistent bag.
+// bookkeeping slot takes a double-underscore prefix and drops out. `this`
+// also drops out: the call binds the value. The body declares nothing, and php
+// leaves the name out.
+// A static-bound name reports the value in its persistent bag.
 func TestScope_DefinedVars(t *testing.T) {
 	t.Parallel()
 	scope := NewScope()
@@ -100,9 +101,9 @@ func TestScope_Defer(t *testing.T) {
 	}
 }
 
-// TestScopeFromContext covers the frame a registered Go free function reads off
-// its injected context. compact() and get_defined_vars() reach caller-local
-// variables from a binding through it.
+// TestScopeFromContext covers the frame a registered Go free function reads
+// from the injected context. compact() and get_defined_vars() reach
+// caller-local variables from a binding through the context.
 func TestScopeFromContext(t *testing.T) {
 	t.Parallel()
 	if _, ok := ScopeFromContext(context.Background()); ok {
@@ -124,9 +125,9 @@ func TestScopeFromContext(t *testing.T) {
 }
 
 // TestEnvFromContext covers the request-scoped environment a registered Go
-// callable reads off its injected context. A virtual host declares its own
-// variables and getenv() inside a site reads that map and never the operator's
-// process environment.
+// callable reads from the injected context. A virtual host declares its
+// variables. getenv() inside a site reads that map. The operator's process
+// environment stays hidden.
 func TestEnvFromContext(t *testing.T) {
 	t.Parallel()
 	if _, ok := EnvFromContext(context.Background()); ok {

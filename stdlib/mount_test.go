@@ -47,11 +47,11 @@ foreach (array("` + strings.Join(pexecNames, `", "`) + `") as $name) {
 echo "none";`
 }
 
-// TestMountSecureExcludesExec pins the security property of the secure
-// profile: it defines no pexec name, and no call route reaches one - a direct
-// call, call_user_func and a variable function all resolve through the one
-// function table, on either engine. strlen answers beside each refusal and the
-// failure is the absence of the name and no broken runtime.
+// TestMountSecureExcludesExec pins the secure profile's security property: it
+// defines no pexec name. No call route reaches one. A direct call,
+// call_user_func, or a variable function all resolve via one function table, on
+// both engines. strlen answers beside each refusal. The failure is the name's
+// absence; the runtime still works.
 // TestMountGoBindsHeader covers the request function the go runtime installs.
 func TestMountGoBindsHeader(t *testing.T) {
 	t.Parallel()
@@ -106,7 +106,7 @@ func TestMountSecureExcludesExec(t *testing.T) {
 }
 
 // TestMountExecEnablesExec pins the other half of the bitmask: a profile
-// naming Exec defines every pexec name and a command actually runs.
+// naming Exec defines every pexec name. A command then runs.
 func TestMountExecEnablesExec(t *testing.T) {
 	t.Parallel()
 	out, err := mountScript(t, stdlib.Secure|stdlib.Exec, false, listPexec())
@@ -125,8 +125,8 @@ func TestMountExecEnablesExec(t *testing.T) {
 	}
 }
 
-// TestRegisterKeepsFullSurface pins what the CLI, the fixture runner and the
-// demos rely on: Register is every profile area, Exec included.
+// TestRegisterKeepsFullSurface pins the CLI, the fixture runner, and the demos'
+// expectation: Register covers every profile area, Exec included.
 func TestRegisterKeepsFullSurface(t *testing.T) {
 	t.Parallel()
 	if got, want := runScript(t, listPexec()), strings.Join(pexecNames, " ")+" none"; got != want {
@@ -135,9 +135,9 @@ func TestRegisterKeepsFullSurface(t *testing.T) {
 }
 
 // TestRegisterFSKeepsTheProfile covers the reroot. RegisterFS reinstalls the
-// areas it reroots and rerooting pexec unconditionally handed back every name
-// the secure mount had just left out - and every mount site calls Mount and
-// RegisterFS in that order and the mask reached nothing.
+// areas it reroots, and rerooting pexec unconditionally handed back every name
+// the secure mount had just left out. Every mount site calls Mount and
+// RegisterFS in that order. The mask reached nothing.
 func TestRegisterFSKeepsTheProfile(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

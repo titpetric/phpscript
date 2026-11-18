@@ -16,24 +16,24 @@ import (
 // mail() both resolve it.
 const DefaultName = "default"
 
-// Default is the provider used when a runtime's options name none. It holds no
-// servers and mail() and `new Mail` refuse catchably naming what is missing,
-// as a CLI run with no mail block has.
+// Default is the provider used when a runtime's options name none. Such a
+// provider holds no servers. mail() and `new Mail` refuse catchably, naming what is missing, as a
+// CLI run that configures no mail block does.
 var Default model.MailProvider = NewProvider(nil)
 
 var _ model.MailProvider = (*Provider)(nil)
 
 // Deliver passes one message to a transport, with the credential of the server
-// it resolved to. A host swaps this one function to send by something other
-// than SMTP. It stays a function and no second MailProvider because the name
-// resolution and the tenant isolation run ahead of it, where no host rewrites
-// them. A Deliver is host code and reads the host's settings.
+// it resolved to. A host swaps this function to send by something other than
+// SMTP. It stays a function, not a second MailProvider: name resolution and
+// tenant isolation run ahead; no host rewrites them there. A Deliver is host
+// code and reads the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
 // errPlainTransport refuses a message a plain-text transport cannot send whole.
 var errPlainTransport = errors.New("mail: this transport sends plain text only, so a message with an HTML part or a Reply-To cannot be delivered")
 
-// plain passes a message with no HTML part and no Reply-To to the transport.
+// plain passes a message that holds text alone to the transport.
 func (deliver Deliver) plain(config Config, message Message) error {
 	if message.HTML != "" || message.ReplyTo != "" {
 		return errPlainTransport
@@ -43,10 +43,10 @@ func (deliver Deliver) plain(config Config, message Message) error {
 
 // Provider holds the credentials of a set of named mail servers.
 //
-// No call changes the map after the constructor fills it. There is no
-// registration call and no listing call: a script names a server and learns
-// only whether the delivery worked. That is also what lets the constructor
-// check a name and get the same verdict Send makes for itself.
+// The constructor fills the map; no call changes it afterwards. No call
+// registers or lists a server: a script names one and learns whether the
+// delivery worked. That also lets the constructor check a name and reach the
+// same verdict Send reaches.
 type Provider struct {
 	servers map[string]Config
 	deliver func(Config, Message) error
@@ -58,7 +58,7 @@ func NewProvider(servers map[string]Config) *Provider {
 }
 
 // NewProviderFunc is NewProvider with the transport replaced. A nil deliver is
-// SMTP. A Deliver refuses a message with an HTML part or a Reply-To.
+// SMTP. A Deliver refuses any message with an HTML part and any with a Reply-To.
 //
 // The constructor copies the map and keeps no reference: one map reaches every
 // site that declared no mail block. It lowercases a name and fills in a missing
@@ -86,12 +86,12 @@ func (p *Provider) Configured(name string) error {
 	return err
 }
 
-// Send sends one plain-text message through the named server.
+// Send sends one plain-text message via the named server.
 func (p *Provider) Send(ctx context.Context, name, recipient, subject, body string) error {
 	return p.SendMessage(ctx, Message{Server: name, Recipient: recipient, Subject: subject, Body: body})
 }
 
-// SendMessage sends message through the server it names, reading the credential
+// SendMessage sends message via the server it names, reading the credential
 // into a local that nothing outliving the delivery holds.
 func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	config, err := p.resolve(message.Server)
@@ -101,7 +101,7 @@ func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	return p.deliver(config, message)
 }
 
-// resolve returns the credential for name, defaulting an empty name and naming no configuration.
+// resolve returns the credential for name, defaulting an empty name.
 func (p *Provider) resolve(name string) (Config, error) {
 	if name == "" {
 		name = DefaultName
@@ -125,7 +125,7 @@ func deliverSMTP(config Config, message Message) error {
 	}
 
 	// A host that wants no authentication, mailhog being the usual one,
-	// configures neither a username nor a password.
+	// sets no username or password.
 	var auth smtp.Auth
 	if config.Username != "" && config.Password != "" {
 		auth = smtp.PlainAuth("", config.Username, config.Password, config.Host)
@@ -181,7 +181,7 @@ func converse(config Config, auth smtp.Auth, sender, recipient, message string) 
 	return client.Quit()
 }
 
-// provider returns the runtime's mail servers, or Default when the runtime configures no servers.
+// provider returns the runtime's mail servers, or Default when unconfigured.
 func provider(rt *runner.Runtime) model.MailProvider {
 	if configured := rt.Mail(); configured != nil {
 		return configured

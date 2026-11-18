@@ -11,7 +11,7 @@ import (
 	goio "github.com/titpetric/phpscript/stdlib/go/io"
 )
 
-// TestSet covers the area over the one reader a script reaches: the body of a
+// TestSet covers the area over the single reader a script reaches: the body of a
 // response, which `Runtime\Go\Net\HTTP` answers with. The bytes come back as
 // php's string, as every `[]byte` does.
 func TestSet(t *testing.T) {

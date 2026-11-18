@@ -9,8 +9,8 @@ import (
 )
 
 // TestRenameAndCopy covers the two ways a script relocates a file it owns. Both
-// resolve their arguments against the root and a script names them the way it
-// names everything else, and both answer with a bool and no error.
+// resolve their arguments against the root. A script names the paths as it
+// names everything else. Both answer with a bool and raise no error.
 func TestRenameAndCopy(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -38,8 +38,7 @@ if (rename("missing.txt", "d.txt")) { echo "|moved-nothing"; } else { echo "|no-
 	}
 }
 
-// TestCopyKeepsSource pins the difference between copy() and rename(): a copy
-// leaves the original in place.
+// TestCopyKeepsSource pins copy() against rename(): a copy leaves the original.
 func TestCopyKeepsSource(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -57,8 +56,8 @@ echo "|" . file_get_contents("a.txt") . "|" . file_get_contents("b.txt");`)
 }
 
 // TestFilePutContents covers the convenience writer: a fresh write reports its
-// length, FILE_APPEND adds and truncates nothing, the writer takes LOCK_EX,
-// and a target the operating system refuses answers false and never fails the
+// length, FILE_APPEND adds and truncates nothing, the writer takes LOCK_EX.
+// A target the operating system refuses answers false. It does not fail the
 // script.
 func TestFilePutContents(t *testing.T) {
 	t.Parallel()
@@ -112,7 +111,7 @@ if (chmod("missing.txt", 0640)) { echo "|missing-ok"; } else { echo "|missing-fa
 }
 
 // TestChownSelf checks ownership by name and by id. Changing a file to the
-// owner it already has is the one chown any user may make and this runs the
+// owner it already has is the sole chown any user may make. This runs the
 // same as root and as anyone else.
 func TestChownSelf(t *testing.T) {
 	t.Parallel()
@@ -169,8 +168,8 @@ if (chgrp("a.txt", "no-such-group-here")) { echo "|unknown-ok"; } else { echo "|
 	}
 }
 
-// TestWritesStayInRoot pins the confinement: the runtime cleans a relative
-// path that climbs out of the root back into it and a script cannot write
+// TestWritesStayInRoot pins the confinement. The runtime cleans a relative
+// path that climbs out of the root back into the root. A script cannot write
 // above the directory the host bound.
 func TestWritesStayInRoot(t *testing.T) {
 	t.Parallel()

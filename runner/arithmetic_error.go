@@ -1,10 +1,10 @@
 package runner
 
 // ArithmeticError reports an operation PHP 8 rejects with the class of the same
-// name: a shift by a negative number is the one this runtime raises. It names
-// its PHP class, and a clause matches on that name and `catch (ArithmeticError
-// $e)` matches it exactly and `catch (Error $e)` matches it on the name's
-// suffix, while `catch (Exception $e)` does not, as in PHP.
+// name, raised for a shift by a negative number. It names its PHP class. A
+// clause matches on that name: `catch (ArithmeticError $e)` matches it exactly,
+// `catch (Error $e)` matches it on the name's suffix, while `catch (Exception
+// $e)` does not, as in PHP.
 type ArithmeticError struct {
 	Message string
 }

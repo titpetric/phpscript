@@ -131,9 +131,9 @@ final class Suite extends TestCase implements \Countable, Local {
 	}
 	// A parent imported from another namespace prints as the file imported
 	// it. Expanding it would leave the use statement above with nothing
-	// referring to it, and rewrite code the author wrote one way into
-	// another. A name with no import still prints fully qualified, as
-	// \Countable shows here.
+	// referring to it, rewriting code the author wrote one way into another. A
+	// name lacking an import still prints fully qualified, as \Countable shows
+	// here.
 	want := `final class Suite extends TestCase implements \Countable, Local {`
 	if !strings.Contains(out, want) {
 		t.Fatalf("missing %q in:\n%s", want, out)
@@ -154,10 +154,10 @@ final class Suite extends TestCase implements \Countable, Local {
 	}
 }
 
-// php has no slice type and a file that imported the go runtime may declare
-// one. The formatter rewrites files in place, and a type it cannot print is a
-// type it deletes: the declaration keeps the spelling it read, on a parameter,
-// on a return type and on a property.
+// php has no slice type. A file that imported the go runtime may declare a
+// slice type. The formatter rewrites files in place. A type it cannot print is
+// a type it deletes: the declaration keeps the spelling it read, on a
+// parameter, a return type, a property.
 func TestGoSliceTypeHintIsKept(t *testing.T) {
 	t.Parallel()
 	in := `<?php

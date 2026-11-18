@@ -4,11 +4,10 @@ import (
 	"testing"
 )
 
-// TestFixtureRunners covers the three states a runner opt-out holds. The
-// fields are pointers so an absent one is distinguishable from a false one: a
-// fixture declaring nothing about a runner runs on it. The default runtime has
-// no field at all, because it defines the expected output the other two
-// columns compare against.
+// TestFixtureRunners covers the states a runner opt-out holds. The default
+// runtime has no field at all, because the other two columns use it as the
+// baseline. The fields are pointers, which tells an absent pointer from a false
+// pointer. A fixture declaring nothing about a runner runs on it.
 func TestFixtureRunners(t *testing.T) {
 	var absent FixtureRunners
 	if absent.Flatstack != nil || absent.PHP != nil {

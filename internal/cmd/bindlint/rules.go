@@ -52,7 +52,7 @@ func paramLabel(field *ast.Field) string {
 }
 
 // checkNarrowing reports a binding that narrows a script value to a runtime
-// value type for no reason, in its own body or in a helper of its package it
+// value type for no reason, in the binding's body or in a package helper it
 // passes the value to.
 func (p *pkg) checkNarrowing(b binding) []finding {
 	out := p.narrowings(b.label(), b.ftype, b.body)
@@ -63,26 +63,27 @@ func (p *pkg) checkNarrowing(b binding) []finding {
 }
 
 // narrowings reports the sites in one function that narrow a value to a
-// runtime value type, less the four that have a reason to.
+// runtime value type, less those with a reason to.
 //
 // The value is the same value either way: `array("a" => 1)` reaches a binding
-// as a *model.Array and the map another binding built reaches it as a
-// map[string]any. A narrowing that only reads the value answers one of them
-// and silently takes the other path for the other.
+// as a *model.Array, and the map another binding built reaches it as a
+// map[string]any. A narrowing that only reads the value answers one of those
+// forms and silently takes the other path for the other form.
 //
-// It has a reason when the type switch routes the native shape to its own
+// It has a reason when the type switch routes the native shape to a separate
 // case, when the function reads the narrowed value's source through model
-// or reflect whatever shape it has, when the branch taking what the narrowing
-// did not match refuses it with an error - the loud refusal array_splice and
-// the array mutators document - or when it calls for a capability a Go-native
-// value has not got: in-place growth, which a slice behind an interface cannot
-// do, and the typed storage.
+// or reflect whatever shape it has, when the branch taking the shapes the
+// narrowing did not match refuses them with an error - the loud refusal
+// array_splice and the array mutators document - or when it calls for a
+// capability a Go-native value has not got: in-place growth, a feat a slice
+// behind an interface cannot manage, plus the typed storage.
 //
-// Each reason reads the narrowing it excuses and never the function holding
-// it. A reader somewhere in the body says nothing about the value narrowed
-// here, and `password_hash` proves the cost: its options bag reached an error
-// built for another argument, and a function-wide reading of the refusal left
-// the skipped bag unreported.
+// Each reason reads the narrowing it excuses. The function holding the
+// narrowing never enters. Some reader in the body says nothing about the value
+// narrowed here.
+// `password_hash` proves the cost: its options bag reached an error built for
+// another argument; a function-wide reading of the refusal left the skipped bag
+// unreported.
 func (p *pkg) narrowings(label string, ftype *ast.FuncType, body *ast.BlockStmt) []finding {
 	if body == nil {
 		return nil
@@ -124,7 +125,7 @@ func valueLabel(bound string) string {
 	return bound
 }
 
-// site is one narrowing: the position, the type it narrows to, the variable
+// site holds a narrowing: the position, the type it narrows to, the variable
 // holding the value it narrows, the variable the narrowed value lands in,
 // whether a sibling case of the same type switch answers for the Go-native
 // shape, and whether the branch taking the other shapes refuses them.
@@ -321,8 +322,8 @@ func calledNames(body *ast.BlockStmt) []string {
 
 // readsEveryShape reports whether a function reads the narrowed value's
 // source whatever shape it has: through model's collection helpers, phpval, or
-// reflection. The argument decides it, and not the call: a function reading
-// one value through modelutil.RangeValues and narrowing another answers for the
+// reflection. The argument decides; the call does not. A function reading one
+// value through modelutil.RangeValues and narrowing another answers for the
 // first alone.
 func readsEveryShape(body *ast.BlockStmt, subject string) bool {
 	found := false
@@ -343,13 +344,13 @@ func readsEveryShape(body *ast.BlockStmt, subject string) bool {
 }
 
 // errorBranches maps the position of a narrowing to whether the branch taking
-// what it did not match refuses the value with an error, which reaches the
+// the unmatched shapes refuses the value with an error, which reaches the
 // script as a throw. That is the shape arrayTarget and array_splice document:
-// a mutator needs the one shape that can grow and says so.
+// a mutator needs a shape that can grow and says so.
 //
-// The branch is the one beside the narrowing: `if !ok` after the assignment,
-// or the if statement whose init holds the assertion. An error anywhere else
-// in the function belongs to another argument.
+// The branch sits next to the narrowing: `if !ok` after the assignment, or the
+// if statement whose init holds the assertion. An error elsewhere in the
+// function belongs to another argument.
 func errorBranches(body *ast.BlockStmt) map[token.Pos]bool {
 	out := map[token.Pos]bool{}
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -406,7 +407,7 @@ func mentions(e ast.Expr, name string) bool {
 	return found
 }
 
-// createsError reports whether a branch builds its own error, which is the
+// createsError reports whether a branch constructs an error itself, the
 // refusal a script catches. An error it received from elsewhere belongs to
 // the call that made it.
 func createsError(branch ast.Node) bool {

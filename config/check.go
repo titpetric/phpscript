@@ -8,8 +8,8 @@ import (
 // configuration, checking nothing that would start one.
 //
 // filename names the file in errors from unnamed blocks. root is the
-// application root a single-root server would serve. The check refuses it
-// beside a virtual host list, which names its own.
+// application root a single-root server would serve. The check refuses a root
+// beside a virtual host list, which names roots itself.
 func (c Config) Check(filename, root string) error {
 	if err := c.Test.Check(filename); err != nil {
 		return err

@@ -1,6 +1,6 @@
 # Glossary
 
-The words this project uses, and what they mean here. Most are ordinary web development terms; the entries that matter are the ones php, this runtime and the Go code below it spell the same and mean differently.
+This project's words and their meanings here. Most are ordinary web development terms. The entries that matter are the ones php, this runtime and the Go code spell alike but mean differently.
 
 ## The request
 
@@ -51,7 +51,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 ## Mail
 
-**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/ps/mail`. SMTP appears only where the wire protocol is genuinely meant: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time an API reaches a server instead.
+**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/ps/mail`. SMTP appears only for the wire protocol itself: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time an API reaches a server instead.
 
 | Term          | What it means                                                                                                                                                                                                 |
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

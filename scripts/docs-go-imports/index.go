@@ -17,8 +17,7 @@ type goPackage struct {
 	methods map[string]map[string]bool
 }
 
-// has reports a top-level name of the package: a function, constant, variable
-// or type.
+// has reports a package's top-level function, constant, variable or type.
 func (p *goPackage) has(name string) bool { return p.names[name] }
 
 // hasMethod reports a method of the named type.
@@ -27,8 +26,8 @@ func (p *goPackage) hasMethod(kind, method string) bool {
 }
 
 // loadPackage reads the package's top-level names and methods out of GOROOT.
-// It refuses a path the toolchain does not hold, which is a binding naming a
-// package the build links and no source tree this run can see.
+// It refuses a path the toolchain does not hold, a binding naming a linked
+// package. This run sees no source tree for it.
 func loadPackage(path string) (*goPackage, error) {
 	dir := filepath.Join(build.Default.GOROOT, "src", filepath.FromSlash(path))
 	entries, err := os.ReadDir(dir)
@@ -84,8 +83,8 @@ func (p *goPackage) collect(file *ast.File) {
 	}
 }
 
-// receiverName answers the type a method declares its receiver as, and empty
-// for a receiver a package cannot name: an anonymous or a generic instance.
+// receiverName answers the receiver's declared type. It answers empty for a
+// receiver a package cannot name: an anonymous or a generic instance.
 func receiverName(recv *ast.FieldList) string {
 	if recv == nil || len(recv.List) == 0 {
 		return ""

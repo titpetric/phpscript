@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// Align is how a column pads its cells.
+// Align selects a column's cell padding.
 type Align int
 
-// The two alignments a column takes.
+// Both column alignments.
 const (
 	// Left pads a cell on the right, as a label reads.
 	Left Align = iota
@@ -17,14 +17,14 @@ const (
 	Right
 )
 
-// Column is one column of a Table.
+// Column describes a Table column.
 type Column struct {
 	Title string
 	Align Align
 }
 
-// Cell is one value and the color the terminal prints it in. Markdown drops
-// the color and a caller sets it once and branches on no output format.
+// Cell holds a value and the color the terminal prints it in. Markdown drops
+// the color. A caller sets it once and branches on no output format.
 type Cell struct {
 	Text  string
 	Color string
@@ -35,15 +35,15 @@ func Text(value string) Cell {
 	return Cell{Text: value}
 }
 
-// Colored returns a cell printed in color on a terminal.
+// Colored returns a cell printed in color for a terminal.
 func Colored(color, value string) Cell {
 	return Cell{Text: value, Color: color}
 }
 
 // Table buffers rows and renders them once it has the widest cell of every
 // column. A check that collects its findings before reporting them gains
-// no advantage from streaming, and a buffered table sizes its columns from the data
-// and never guesses at them up front.
+// nothing from streaming. A buffered table sizes its columns from the data,
+// never guessing them up front.
 type Table struct {
 	w        io.Writer
 	markdown bool
@@ -52,8 +52,8 @@ type Table struct {
 	rows     [][]Cell
 }
 
-// New returns a table writing to w. Markdown is what a redirected stdout and a
-// report file get; a terminal gets the box-drawing table.
+// New returns a table writing to w. A redirected stdout or a report file gets
+// markdown; a terminal gets the box-drawing table.
 func New(w io.Writer, markdown bool, columns ...Column) *Table {
 	t := &Table{
 		w:        w,
@@ -67,8 +67,8 @@ func New(w io.Writer, markdown bool, columns ...Column) *Table {
 	return t
 }
 
-// Row appends a row. It drops a cell past the last column and leaves a missing
-// one empty and a caller never pads a short row itself.
+// Row appends a row. It drops a cell past the last column, leaves a missing
+// cell empty, and the caller never pads a short row.
 func (t *Table) Row(cells ...Cell) {
 	row := make([]Cell, len(t.columns))
 	for i := range row {
@@ -82,8 +82,8 @@ func (t *Table) Row(cells ...Cell) {
 	t.rows = append(t.rows, row)
 }
 
-// Flush writes the table, once per table: the rows stay to size the columns
-// and never to print the table twice.
+// Flush writes the table, once per table: the rows stay to size the columns,
+// never to print twice.
 func (t *Table) Flush() {
 	if t.markdown {
 		t.flushMarkdown()
@@ -92,7 +92,7 @@ func (t *Table) Flush() {
 	t.flushTerminal()
 }
 
-// Summary writes a line below the table, in the header color on a terminal.
+// Summary writes a line below the table, in the header color for a terminal.
 // A blank line precedes it: markdown reads the next line as another row.
 func (t *Table) Summary(format string, args ...any) {
 	line := fmt.Sprintf(format, args...)

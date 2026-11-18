@@ -44,8 +44,7 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 	// A method on a PHP-declared object dispatches through the interpreter
 	// and sees the frame. A Go receiver's method sees the frame only through
 	// a context parameter and callGoMethod's scopeFor materialises the scope
-	// for the methods that ask and no others, which is no common data-access
-	// shape.
+	// for the asking methods alone, which is no common data-access shape.
 	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
 		scope := h.boundScope()
 		result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
@@ -81,7 +80,7 @@ func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 	return result, err
 }
 
-// callResolved invokes a table hit through a scope only when its invoker takes context.
+// callResolved invokes a table hit through a scope when its invoker takes context.
 func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any, error) {
 	if !entry.invoker().wantsCtx {
 		result, err := h.runtime.invokeEntry(entry, args, nil)
@@ -101,7 +100,7 @@ func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 	return result, err
 }
 
-// CallableValue takes a first-class callable over a name or a value.
+// CallableValue takes a first-class callable of a name or a value.
 func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallable(&scopeRef{scope: scope})(target, fallback)
@@ -109,7 +108,7 @@ func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 	return result, err
 }
 
-// CallableMember takes a first-class callable over a method, forwarding the frame's this.
+// CallableMember takes a first-class callable of a method, forwarding the frame's this.
 func (h *flatHost) CallableMember(target any, method any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallableMember(&scopeRef{scope: scope})(target, method)
@@ -153,9 +152,8 @@ func (h *flatHost) InvokeCallable(callable any) error {
 	if callable == nil {
 		return nil
 	}
-	// A compiled closure arrives as func(...any) (any, error) and reads its
-	// frame through its own nested run and only a context-taking callable
-	// needs the scope materialised.
+	// A compiled closure arrives as a func value and reads its frame in a
+	// nested run. Only a context-taking callable needs the scope materialised.
 	if !wantsContext(reflect.TypeOf(callable)) {
 		_, err := h.runtime.invokeWithScopeContext(callable, nil, nil)
 		return err

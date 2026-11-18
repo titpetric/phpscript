@@ -26,7 +26,7 @@ func (e *ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
 }
 
-// ScriptExit reports the status a script ended with, an ending and no failure.
+// ScriptExit reports a script's status; the ending is not a failure.
 func (e *ExitError) ScriptExit() int {
 	return e.Code
 }
@@ -35,7 +35,7 @@ func (e *ExitError) ScriptExit() int {
 // client goes away while the script heeds that.
 //
 // A host distinguishes the two causes through Aborted, because they call for
-// different answers: a timeout is the site's problem and a disconnect is not.
+// different answers. A timeout is the site's problem; a disconnect is not.
 type TimeLimitError struct {
 	// Limit is the limit in force, zero when the client goes away first.
 	Limit time.Duration
@@ -71,15 +71,16 @@ type HostPanicError struct {
 	Value    any
 }
 
-// Error names the callable that panicked and what it panicked with.
+// Error names the callable that panicked, plus the panic value.
 func (e *HostPanicError) Error() string {
 	return fmt.Sprintf("host panic in %s: %v", e.Callable, e.Value)
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
-// callable declares. PHP raises the same condition under the same name and it
-// names that class: `catch (ArgumentCountError $e)` and `catch (Error $e)`
-// match it and `catch (Exception $e)` does not, as in PHP.
+// callable declares. PHP raises the same condition with the same name. The
+// error names that class. `catch (ArgumentCountError $e)` and
+// `catch (Error $e)` match it, while `catch (Exception $e)` does not, as in
+// PHP.
 type ArgumentCountError struct {
 	Name string
 	Want int
@@ -89,7 +90,7 @@ type ArgumentCountError struct {
 // ThrowableClass names the PHP class, implementing Throwable.
 func (e *ArgumentCountError) ThrowableClass() string { return "ArgumentCountError" }
 
-// Error is php's wording, and says "at most" because a binding spells PHP's
+// Error is php's wording, and says "at most" since a binding spells PHP's
 // optional parameters as extra ones: too few arguments is legal and zero-padded.
 func (e *ArgumentCountError) Error() string {
 	name := e.Name
@@ -100,9 +101,9 @@ func (e *ArgumentCountError) Error() string {
 }
 
 // TypeError reports an argument that will not convert to the type the
-// callable's parameter declares. PHP raises TypeError for the same call and it
-// names that class: `catch (TypeError $e)` and `catch (Error $e)` match it and
-// `catch (Exception $e)` does not, as in PHP.
+// callable's parameter declares. PHP raises TypeError for the same call. The
+// error names that class. `catch (TypeError $e)` and `catch (Error $e)`
+// match it, while `catch (Exception $e)` does not, as in PHP.
 type TypeError struct {
 	Name     string
 	Position int
@@ -125,14 +126,13 @@ func (e *TypeError) Error() string {
 	return fmt.Sprintf("%s(): Argument #%d must be of type %s, %s given", name, e.Position, e.Want, e.Got)
 }
 
-// UndefinedConstantError reports a bare name no constant, no scope value and
-// no superglobal defines.
+// UndefinedConstantError reports a bare name that no constant defines, in no
+// scope value or superglobal.
 //
 // PHP 8 raises Error for the same expression. This raises RuntimeException, a
-// break from it: an Error in PHP is a fault in the program that a caller is
-// not expected to handle, and a name this runtime does not define is an
-// ordinary condition a script can catch and answer for, the same way exceeding
-// memory_limit is. It also puts the condition where `catch (Exception $e)`
+// departure: an Error in PHP is a fault in the program that a caller is not
+// expected to handle. A name this runtime does not define is an ordinary
+// condition a script can catch and answer for, such as exceeding memory_limit. It also puts the condition where `catch (Exception $e)`
 // already looks, which is the clause a script has written.
 type UndefinedConstantError struct {
 	Name string

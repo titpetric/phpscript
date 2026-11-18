@@ -6,10 +6,10 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// Increment applies PHP's ++ operator: numbers and numeric strings step by
-// one (an int64 that would overflow becomes a float, as PHP's do), null
-// becomes int 1, and a non-numeric string takes the Perl-style alphanumeric
-// increment. A boolean stays put, as does any type PHP only warns about.
+// Increment applies PHP's ++ operator: numbers and numeric strings step by 1
+// (an int64 that would overflow becomes a float, as PHP's do), null becomes
+// int 1. A non-numeric string takes the Perl-style alphanumeric increment. A
+// boolean stays put. Any type PHP only warns about stays put too.
 func Increment(v any) any {
 	if next, typed := modelutil.GoStep(v, 1); typed {
 		return next
@@ -33,9 +33,9 @@ func Increment(v any) any {
 }
 
 // Decrement applies PHP's -- operator: numbers and numeric strings step
-// down by one (an int64 that would overflow becomes a float). There is no
+// down by 1 (an int64 that would overflow becomes a float). There is no
 // string decrement; Decrement leaves a non-numeric string alone, except the
-// empty string, which PHP reads as 0 and returns int -1 for. It leaves null
+// empty string, which PHP reads as zero, and returns int -1 for. It leaves null
 // and booleans alone too.
 func Decrement(v any) any {
 	if next, typed := modelutil.GoStep(v, -1); typed {
@@ -70,7 +70,7 @@ func StringNumber(s string) (any, bool) {
 	return num.f, true
 }
 
-// incrementString applies PHP's increment_string, wrapping z, Z and 9 and prepending on overflow.
+// incrementString applies PHP's increment_string, wrapping z, Z and 9, then prepending on overflow.
 func incrementString(s string) string {
 	if s == "" {
 		return "1"

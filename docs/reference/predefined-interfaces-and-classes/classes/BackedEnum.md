@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Interface the engine applies to every backed enumeration, that is, one whose cases hold a scalar value.
+Interface the engine applies to backed enumerations: one whose cases hold a scalar value.
 
 It adds the two mappings from a scalar to a case, and inherits `cases()` from [UnitEnum](UnitEnum.md).
 
@@ -36,6 +36,6 @@ public static function UnitEnum::cases(): array
 
 ## Status
 
-- phpscript has no `BackedEnum`. The name is not declared.
+- phpscript declares no `BackedEnum` anywhere.
 - The interface uses `extends`. The parser accepts `extends UnitEnum` and records it for `instanceof`; the clause confers nothing, because the implementing class would have to declare `cases()` itself.
-- Enumerations are unavailable, and no class would declare the interface. See [UnitEnum](UnitEnum.md) for what to write instead.
+- Enumerations are unavailable and nothing declares the interface. [UnitEnum](UnitEnum.md) names the replacement.

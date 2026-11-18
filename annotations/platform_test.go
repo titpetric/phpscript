@@ -25,9 +25,9 @@ func TestModule(t *testing.T) {
 	}
 }
 
-// TestRouter covers what this package needs of a Router: a handler reaches it
-// under a method and a rewritten path. The registrar is the adapter. It writes
-// to a recording router here.
+// TestRouter covers this package's needs of a Router: a handler reaches it by
+// method with a rewritten path. The registrar is the adapter. It writes to a
+// recording router here.
 func TestRouter(t *testing.T) {
 	t.Parallel()
 	recorder := &recordingRouter{}
@@ -43,9 +43,9 @@ func TestRouter(t *testing.T) {
 	}
 }
 
-// recordingRouter is a Router that records the one registration a test makes.
-// Every other method of the interface panics: a call to one would be a claim
-// on the library that nothing here states.
+// recordingRouter is a Router that records the registration a test makes. All
+// other interface methods panic: any call would claim something about the
+// library nothing here states.
 type recordingRouter struct {
 	Router
 	method string

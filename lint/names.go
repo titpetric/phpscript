@@ -13,12 +13,12 @@ import (
 )
 
 // The undefined-name check compares every call and class reference in a file
-// against two universes: the names the file declares itself, and the names a
-// runtime would answer for after stdlib registration. A miss is a warning, not
-// a failure, because a name can arrive through an include or an autoloader the
-// lint pass does not chase. Each finding is a line that would raise "call to
-// undefined function" or "undefined class" the moment it runs, worth reading
-// before the runtime says it.
+// against two sets: the names the file declares, and the names a runtime
+// answers for after stdlib registration. A miss stays a warning, since a name
+// can arrive through an include or an autoloader the lint pass does not chase.
+// Each finding is a line that would raise "call to undefined function" or
+// "undefined class" the moment it runs, worth reading before the runtime
+// says it.
 
 var (
 	registryOnce sync.Once
@@ -35,29 +35,29 @@ func SetInclude(path string) {
 // knownRuntime builds the host name registry once per process.
 func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
-		// The working directory is the source root, because an --include
-		// path resolves against the invocation directory, and the file it
-		// names includes its own siblings relative to itself.
+		// The working directory is the source root: an --include path
+		// resolves against the invocation directory. The named file includes
+		// its siblings relative to itself.
 		rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
 		stdlib.Register(rt)
 		stdlib.RegisterFS(rt, ".")
 		// A request context installs the request-aware functions (header,
 		// http_response_code, getallheaders, ...); stdlib.Register does
-		// not. A server-targeted file still names them and an empty
-		// request context registers them for the name check.
+		// not. A server-targeted file still names them. An empty request
+		// context registers them for the name check.
 		runner.NewContext().Register(rt)
-		// The host bindings, before the include runs. What the include then
-		// declares is PHP, and a file declaring a function of the same name
-		// is either the file under lint - bootstrap.php lints against
-		// itself otherwise, and every function it defines reads as a
-		// redeclaration - or a duplicate the same-file check already covers.
+		// The host bindings, before the include runs. The include then
+		// declares PHP. A file declaring a function of the same name
+		// is either the file under lint (bootstrap.php would otherwise lint
+		// against itself, making each function it defines a redeclaration)
+		// or a duplicate the same-file check already covers.
 		// Only a name the runtime itself registers counts as a redeclaration.
 		internal, _ := rt.DefinedFunctions()
 		hostFuncs = make(map[string]bool, len(internal))
 		for _, name := range internal {
 			hostFuncs[strings.ToLower(name)] = true
 		}
-		// The per-scope builtins are not in the function table and a script
+		// The per-scope builtins are not in the function table. A script
 		// calling func_get_args() would read as a call to something
 		// undefined. The host registers them all the same.
 		for _, name := range runner.ScopeBuiltins() {
@@ -70,7 +70,7 @@ func knownRuntime() *runner.Runtime {
 	return registry
 }
 
-// loadInclude runs the --include file and stays silent when the file is missing or fails.
+// loadInclude runs the --include file, silent when missing or unreadable.
 func loadInclude(rt *runner.Runtime) {
 	if includeFile == "" {
 		return
@@ -166,10 +166,10 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 			return true
 		}
 		// Autoload only when an --include registered one. Composer's
-		// autoloader declares no class until a name reaches it and
-		// including it and then refusing to autoload would leave every PSR-4
-		// class unknown, which is the finding the flag exists to
-		// remove. With no include there is no autoloader to run; the
+		// autoloader declares no class until a name reaches it. Including
+		// the file, then refusing to autoload, would leave every PSR-4 class
+		// unknown; that is the finding the flag exists to remove. No
+		// `--include` means no autoloader to run; the
 		// lookup would only cost a miss.
 		known, _ := rt.ClassExists(class, includeFile != "")
 		return known
@@ -200,10 +200,10 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 				report(line, fmt.Sprintf("new: undefined class %q", n.Class))
 			}
 		case *model.StaticCall:
-			// A host may register a binding under the whole spelling - the
-			// clock is a set of functions named DateTime::now, DateTime::parse
-			// and so on, and no class with methods and a static call resolves
-			// when the registry answers for the class or the full name.
+			// A host may register a binding with the whole spelling - the
+			// clock is a set of functions named DateTime::now, DateTime::parse,
+			// among others. No class with methods resolves a static call when the
+			// registry answers for the class or the full name.
 			if !classKnown(n.Class) && !rt.FunctionExists(n.Class+"::"+n.Method) {
 				report(line, fmt.Sprintf("static call %s::%s(): unknown class", n.Class, n.Method))
 			}
@@ -226,7 +226,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 	check.walk(prog.Stmts)
 }
 
-// astWalker visits every statement and expression, reporting each with its statement's line.
+// astWalker visits every statement and expression, reporting the statement's line for each.
 type astWalker struct {
 	prog *model.Program
 	stmt func(model.Stmt)
@@ -381,7 +381,7 @@ func (w *astWalker) one(e model.Expr) {
 		w.exprs(n.Args)
 		if n.Decl != nil {
 			// An anonymous class declares its body inside the expression;
-			// no other walk reaches it. The walk passes the declaration to
+			// no other walk reaches that body. The walk passes the declaration to
 			// the statement hook so class-shaped checks see it too.
 			if w.stmt != nil {
 				w.stmt(n.Decl)

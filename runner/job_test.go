@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestJobFunc_Run covers the adapter: a function submitted through it reaches
-// the worker's runtime as the Job the pool runs and a caller with nothing to
-// hang the work on keeps the plain shape. Pool.Submit holds the paths that
+// TestJobFunc_Run covers the adapter: a function submitted through the adapter
+// reaches the worker's runtime as the Job the pool runs; a caller with nothing
+// to hang the work on keeps the plain shape. Pool.Submit holds the paths that
 // matter for the interface itself.
 func TestJobFunc_Run(t *testing.T) {
 	t.Parallel()

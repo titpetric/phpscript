@@ -7,12 +7,12 @@ import (
 )
 
 // TestNode covers the two marker interfaces the runner switches on. A statement
-// runs for its side effects and an expression evaluates to a value and a node
-// reaches the interpreter through one marker or the other, and a type
-// implementing neither marker is unreachable.
+// runs for its side effects. An expression evaluates to a value. A node
+// reaches the interpreter by one marker or another. A type implementing
+// neither marker is unreachable.
 //
-// Include implements both. PHP writes an include as a standalone statement and
-// as a value-producing expression and one node fills both positions.
+// Include implements both. PHP writes an include as a standalone statement or
+// a value-producing expression; one node fills both positions.
 func TestNode(t *testing.T) {
 	t.Parallel()
 	statements := map[string]Node{
@@ -68,12 +68,12 @@ func TestNode(t *testing.T) {
 }
 
 // TestSourceSpan covers the line range of a statement and the map the formatter
-// reads it from. The range is inclusive and a one-line statement records the
+// reads it from. The range is inclusive. A one-line statement records the
 // same number twice.
 //
-// The key is the statement node and two statements of one kind need two
-// addresses: Go assigns every zero-sized allocation the same one, and Break and
-// Continue hold their source line so neither node is zero-sized.
+// The key is the statement node. Two statements of one kind need two addresses.
+// Go assigns every zero-sized allocation the same address. Break and Continue
+// then hold their source line; neither node is zero-sized.
 func TestSourceSpan(t *testing.T) {
 	t.Parallel()
 	first := &Break{Line: 4}
@@ -114,7 +114,7 @@ func TestSourceSpan(t *testing.T) {
 	}
 }
 
-// TestArrayItem covers how an array literal tells a list-style entry from a
+// TestArrayItem covers the way an array literal tells a list-style entry from a
 // keyed one. Key is nil for `[v]`, where the runner assigns the position as it
 // builds the literal.
 //
@@ -150,9 +150,9 @@ func TestArrayItem(t *testing.T) {
 }
 
 // TestUse covers what survives parsing. The parser resolves an import to a
-// fully-qualified name while it reads the file and the statement has no runtime
-// effect; the node stays because the formatter rewrites files in place, and a
-// node the printer cannot see is a node it deletes.
+// fully-qualified name while it reads the file. The statement has no runtime
+// effect. The node stays because the formatter rewrites files in place.
+// A node the printer cannot see is a node it deletes.
 //
 // The parser fills Alias for the `as` spelling alone, and the short name of
 // Path is the local name; an empty Alias marks an import printed as written.
@@ -186,9 +186,9 @@ func TestUse(t *testing.T) {
 	}
 }
 
-// TestDeclare covers the spelling a consumer has to tell apart. The runtime has
-// one set of semantics and no directive varies them and the node holds the
-// directives for printing.
+// TestDeclare covers the spelling a consumer must tell apart. The runtime keeps
+// one set of semantics. The node holds the directives for printing; no
+// directive varies the semantics.
 //
 // A `declare(...) { ... }` still runs its body, and Block marks the spelling
 // even where that body is empty: the statement form has no body at all and the
@@ -232,9 +232,9 @@ func TestDeclare(t *testing.T) {
 }
 
 // TestStaticVar covers the per-entry initializer of `static $x = 1, $y;`. Each
-// initializer runs once per function lifetime and an entry with no initializer
-// has to read apart from one initialized to null: Default is nil for `static
-// $y;` and a literal for `static $y = null;`.
+// initializer runs once per function lifetime. An entry that sets no
+// initializer must read apart from one initialized to null. Default is nil for `static
+// $y;`, a literal for `static $y = null;`.
 func TestStaticVar(t *testing.T) {
 	t.Parallel()
 	decl := &StaticVar{Vars: []StaticVarDecl{
@@ -266,13 +266,13 @@ func TestStaticVar(t *testing.T) {
 }
 
 // TestCatch covers the clause a Try selects on. Type is the declared filter,
-// `Exception` or the union form `A|B`, and PHP requires it: a catch clause
-// printed without one is a syntax error. Var is the bound name without its
-// sigil and `echo $e` reads the caught error.
+// `Exception` or the union form `A|B`, and PHP requires the filter: a catch
+// clause that omits the filter is a syntax error. Var is the bound name without a
+// sigil, and `echo $e` reads the caught error.
 //
 // Matching walks the clauses in source order, because it compares Go error
-// types and no PHP class hierarchy: the first clause whose type matches handles
-// the error and the order the parser recorded is the order a consumer reads.
+// types and ignores PHP classes. The first clause whose type matches handles
+// the error, and the parser records the order a consumer reads.
 func TestCatch(t *testing.T) {
 	t.Parallel()
 	try := &Try{
@@ -317,8 +317,8 @@ func TestCatch(t *testing.T) {
 // keyword, which the formatter places comments by.
 //
 // An arm with an empty body falls through to the next one under PHP's
-// semantics and an empty Body is a written arm and no missing one. Default
-// sits apart from Cases because it matches no value.
+// semantics. An empty Body is still a written arm. Default sits
+// apart from Cases because it matches no value.
 func TestSwitchCase(t *testing.T) {
 	t.Parallel()
 	sw := &Switch{
@@ -359,9 +359,9 @@ func TestSwitchCase(t *testing.T) {
 }
 
 // TestClosureUse covers a closure's capture list. ByRef records the `&$name`
-// spelling; the runtime has no reference values and both spellings bind the
-// same value. The marker stays so the formatter prints the source back
-// and the linter can report it.
+// spelling; the runtime has no reference values. Both spellings bind the same
+// value. The marker stays so the formatter prints the source back and the
+// linter can report the marker.
 //
 // A capture binds into the closure's own frame. modelutil.AssignsTo reports
 // nothing for a body assigning to a captured name; its test covers that.

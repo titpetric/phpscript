@@ -91,8 +91,8 @@ func TestClientSendsRequest(t *testing.T) {
 }
 
 // TestRequestIsANetHTTPRequest pins the shape a script gets back. The binding
-// exposes the net/http value and no facade and a script reads and
-// writes it the way Go does.
+// exposes the net/http value, not a facade; a script reads and writes it
+// exactly as Go does.
 func TestRequestIsANetHTTPRequest(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -123,7 +123,7 @@ func TestRequestIsANetHTTPRequest(t *testing.T) {
 }
 
 // TestRequestMethodIsUpperCased pins that NewRequest upper-cases a lowercase
-// verb and never sends it as written: a server treats the method as
+// verb, never sending it as written: a server treats the method as
 // case-sensitive and would reject it.
 func TestRequestMethodIsUpperCased(t *testing.T) {
 	t.Parallel()
@@ -182,8 +182,8 @@ func TestClientOptions(t *testing.T) {
 	}
 }
 
-// TestClientRelativeURLWithoutBaseIsReported pins that a relative URL with no
-// base_url is a named error and no transport failure.
+// TestClientRelativeURLWithoutBaseIsReported pins that a relative URL lacking
+// base_url is a named error; the transport plays no part.
 func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -200,8 +200,8 @@ func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 	}
 }
 
-// TestClientRejectsUnknownOption pins that NewClient reports a typo and never
-// ignores it silently, under the Mail binding's rule too.
+// TestClientRejectsUnknownOption pins that NewClient reports a typo, never
+// ignoring it silently, as the Mail binding does.
 func TestClientRejectsUnknownOption(t *testing.T) {
 	t.Parallel()
 	_, err := http.NewClient(context.Background(), map[string]any{"timeuot": int64(5)})
@@ -213,8 +213,8 @@ func TestClientRejectsUnknownOption(t *testing.T) {
 	}
 }
 
-// TestClientDoesNotFollowRedirects pins follow_redirects, which a script sets
-// when the Location is what it reads, and not the destination.
+// TestClientDoesNotFollowRedirects pins follow_redirects, set by a script that
+// reads the Location header alone.
 func TestClientDoesNotFollowRedirects(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -244,7 +244,7 @@ func TestClientDoesNotFollowRedirects(t *testing.T) {
 }
 
 // TestClientParallel is the batch case: every request runs at once, and the
-// results come back under the keys the caller chose.
+// results return keyed by the caller's choice.
 func TestClientParallel(t *testing.T) {
 	var inFlight, peak atomic.Int64
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -351,8 +351,8 @@ func TestClientParallelReportsFailurePerRequest(t *testing.T) {
 	}
 }
 
-// TestClientParallelRejectsBadInput pins that the argument has to be an array
-// of requests, the input Parallel throws for.
+// TestClientParallelRejectsBadInput pins that the argument must be an array of
+// requests, the input Parallel throws for.
 func TestClientParallelRejectsBadInput(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -380,7 +380,7 @@ func TestRequestRequiresMethodAndURL(t *testing.T) {
 	}
 }
 
-// TestResponseJSONReportsBadBody pins that a non-JSON body throws and never
+// TestResponseJSONReportsBadBody pins that a non-JSON body throws, never
 // returning a zero value a script would then use.
 func TestResponseJSONReportsBadBody(t *testing.T) {
 	t.Parallel()
@@ -403,8 +403,8 @@ func TestResponseJSONReportsBadBody(t *testing.T) {
 	}
 }
 
-// TestClientTimesOut pins that a client always has a deadline: the one
-// failure a script cannot recover from.
+// TestClientTimesOut pins that a client always has a deadline: the failure a
+// script cannot recover from.
 func TestClientTimesOut(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
@@ -423,8 +423,8 @@ func TestClientTimesOut(t *testing.T) {
 	}
 }
 
-// TestResponseJSONMatchesEncodingJSON checks the decoded shape against what
-// encoding/json produces for the same body.
+// TestResponseJSONMatchesEncodingJSON checks the decoded shape against
+// encoding/json's output for the same body.
 func TestResponseJSONMatchesEncodingJSON(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {

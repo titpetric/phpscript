@@ -47,7 +47,7 @@ func phpYAMLEncode(value any) (any, error) {
 	return string(b), nil
 }
 
-// yamlDecodeValue turns decoded YAML into PHP values, sorting mapping keys and keeping whole numbers int.
+// yamlDecodeValue turns decoded YAML into PHP values, sorting keys and keeping whole numbers.
 func yamlDecodeValue(v any) any {
 	switch x := v.(type) {
 	case map[string]any:

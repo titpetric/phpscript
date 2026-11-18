@@ -17,8 +17,8 @@ import (
 // Eval compiles e to a closure chain, binds the referenced variables from
 // scope by slot, and runs it.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
-	// A literal is its own value; nothing needs compiling to answer what the
-	// parser already knew.
+	// A literal holds its value; nothing needs compiling to repeat a parse
+	// the parser already finished.
 	if l, ok := e.(*model.Lit); ok {
 		if n, ok := l.Value.(int); ok {
 			// PHP integers are int64 everywhere else in the runtime.
@@ -37,7 +37,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	}
 	if a, ok := e.(*model.AssignExpr); ok {
 		// An assignment used as a value writes storage no closure chain
-		// reaches. It answers what it wrote. See assignValue.
+		// reaches. It answers with the written value. See assignValue.
 		return rt.assignValue(a.Target, a.Op, a.Value, scope)
 	}
 	if a, ok := e.(*model.AddrOf); ok {
@@ -51,8 +51,8 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		return derefValue(v)
 	}
 	if v, ok := e.(*model.Var); ok {
-		// A lone variable is one scope read. Compiling it would build a
-		// closure chain to read the same map.
+		// A lone variable takes a single scope read. Compiling it would build
+		// a closure chain to read the same map.
 		ident := varIdent(v.Name)
 		if v.Const {
 			ident = constIdent(v.Name)
@@ -71,9 +71,10 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 
 	// installFunc adds a registered function on demand: an environment holds
 	// the PHP-semantic helpers plus whatever the expressions evaluated with it
-	// have called so far, and no closure per entry of the function table. The
+	// have called so far. It holds no closure per entry of the function
+	// table. The
 	// installed closures persist across evaluations (see installFunc). An
-	// immediately invoked anonymous function appears in ce.calls under its
+	// immediately invoked anonymous function appears in ce.calls with a
 	// synthetic identifier, which is in no function table; the loop below
 	// binds it per evaluation and installFunc must not stub it as undefined.
 	for _, name := range ce.calls {
@@ -107,7 +108,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	return expr.Run(ce.prog, &st.cenv)
 }
 
-// helperVar reads a variable or bare name from the live scope at evaluation time.
+// helperVar reads a variable or bare name from the live scope.
 func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 	return func(name string, isConst bool) (any, error) {
 		ident := varIdent(name)
@@ -118,7 +119,7 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 	}
 }
 
-// resolveVar reads a name from the scope, then the constant table, then the superglobals.
+// resolveVar reads a name from the scope, constants, then superglobals.
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
@@ -198,8 +199,8 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 		st = &evalEnv{ref: &scopeRef{}, env: make(map[string]any, envSizeHint)}
 	}
 	// Built once per environment, for the runtime's lifetime: the helpers
-	// close over the stable scope reference and installed functions resolve
-	// per call and a function-table change invalidates nothing here.
+	// close over the stable scope reference. Installed functions resolve per
+	// call; a function-table change invalidates nothing here.
 	if !st.built {
 		rt.buildEnv(st)
 	}
@@ -249,7 +250,7 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 	st.built = true
 }
 
-// installFunc adds a function-table lookup for name to st, resolving the entry per call.
+// installFunc adds a function-table lookup for name, resolving the entry per call.
 func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	if _, ok := st.env[name]; ok {
 		return
@@ -258,7 +259,7 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	// Resolution happens per call, not at install. The closure then survives
 	// every function-table change - a script re-declaring its functions on
 	// each run, a conditionally declared function appearing after the first
-	// call reported it undefined and a built environment
+	// call reported it undefined. A built environment
 	// lives for the runtime's lifetime and is never rebuilt on every
 	// registration.
 	st.env[name] = func(args ...any) (any, error) {
@@ -280,8 +281,8 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 	}
 	st.vars = st.vars[:0]
 	// The arena's backing array survives the release; its values do not. The
-	// length is zero whenever the calls balanced and the clear covers what a
-	// panic left behind and the references parked beyond the length.
+	// length is zero whenever the calls balanced. The clear covers the residue
+	// of a panic, plus the references parked beyond the length.
 	scratch := st.cenv.Scratch
 	clear(scratch[:cap(scratch)])
 	st.cenv = expr.Env{Scratch: scratch[:0]}
@@ -398,7 +399,7 @@ func funcGetArgs(scope *Scope) []any {
 	return scope.args
 }
 
-// helperRef returns a setter a shim uses to write a by-reference parameter back to scope.
+// helperRef returns a setter writing a by-reference parameter back to scope.
 func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 	return func(name string) func(any) {
 		// A shim takes the setter and may call it after this expression
@@ -435,9 +436,9 @@ func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any
 		if c, ok := rt.lookupClass(class); ok {
 			className, consts = c.Name, c.Consts
 		} else if id, ok := rt.lookupInterface(class); ok {
-			// An interface holds its constants under its own name. Only this
-			// direct spelling resolves; an implementing class acquires none
-			// of them (docs/design.md).
+			// An interface holds its constants on its name. Only this direct
+			// spelling resolves; an implementing class acquires none of them
+			// (docs/design.md).
 			className, consts = id.Name, id.Consts
 		} else {
 			return nil, fmt.Errorf("class constant %s::%s: unknown class", class, name)

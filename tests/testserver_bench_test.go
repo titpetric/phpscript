@@ -23,27 +23,27 @@ import (
 // table with a number from the other. docs/agents/performance.md owns the
 // comparison and scripts/bench-http.sh is the latency half of the same harness.
 //
-// The benchmark runs the real testdata/phpscript-http-bridge/server.php, and
-// no copy of it. It takes the file's class declaration and leaves its two
-// trailing statements, because run() calls listen() and then parks in wait()
-// until the script's time limit ends it, which a benchmark cannot do. The
-// driver below is what run() does up to the point of binding a socket.
+// The benchmark runs the real testdata/phpscript-http-bridge/server.php. It
+// takes the file's class declaration and leaves its two trailing statements.
+// A benchmark cannot wait that long. run() calls listen(), then parks in wait()
+// until the script's time limit ends the run. The driver below repeats what
+// run() does up to binding a socket.
 //
-// The socket is outside the measurement: the writer discards, with no pass
+// The socket is outside the measurement: the writer discards, never passing
 // through net/http's connection buffers. That cost is the same on the Go twin
 // and belongs to the sweep.
 
 // benchServerDriver holds the two statements run() reaches before the socket:
 // the limit the real script sets before it listens, then the router passed to
-// Go in place of HTTP\Server. The limit is the script's and the forks do not
-// inherit it, there as here. The request's own context arms a worker's
-// per-statement deadline check and benchServerRequest below builds one.
+// Go in place of HTTP\Server. The limit is the script's. The forks do not
+// inherit that limit, there as here. The request's own context arms a worker's
+// per-statement deadline check, and benchServerRequest below builds one.
 const benchServerDriver = `<?php
 set_time_limit(3600);
 bench_mux((new Server)->mount());
 `
 
-// benchServerRoutes are the four routes that price the request path. /slow is
+// benchServerRoutes are the routes that price the request path. /slow is
 // twenty usleep calls and prices the deadline machinery instead; /info is
 // phpinfo(). docs/agents/performance.md says why each is in or out.
 var benchServerRoutes = []struct {
@@ -52,7 +52,7 @@ var benchServerRoutes = []struct {
 	target string
 	body   string
 	// want is a distinctive substring of the response, checked once before the
-	// timed loop. The check notices the bridge's server.php changing under it.
+	// timed loop. The check notices when the bridge's server.php changes.
 	// The benchmark never quietly measures a 404.
 	want string
 }{
@@ -94,7 +94,7 @@ func BenchmarkTestServerRoute(b *testing.B) {
 }
 
 // newTestServerHandler declares testdata/phpscript-http-bridge/server.php's class, mounts its
-// router the way run() does, and installs the worker pool listen() would.
+// router the way run() does. It installs the worker pool listen() would.
 func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 	b.Helper()
 
@@ -112,8 +112,8 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 	}
 
 	// The declarations, and nothing the file runs at top level. A statement that
-	// is not a class declaration is `$server = new Server;` and `$server->run();`,
-	// and the second of those never returns.
+	// is not a class declaration is `$server = new Server;` or `$server->run();`.
+	// The second of those never returns.
 	mounted := &model.Program{Namespace: program.Namespace}
 	for _, stmt := range program.Stmts {
 		if _, ok := stmt.(*model.ClassDecl); ok {
@@ -146,9 +146,9 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 	}
 
 	// The pool listen() installs, sized here and not from GOMAXPROCS: the
-	// pinned benchmark job runs under taskset and a default pool would be one
-	// worker there and four elsewhere. A worker count does not change what one
-	// request allocates, and holding it still is what makes two runs comparable.
+	// pinned benchmark job runs under taskset. A default pool would be one
+	// worker there, four elsewhere. A worker count does not change the
+	// allocations of one request. Holding it still makes two runs comparable.
 	mux, ok := routed.(*phphttp.Mux)
 	if !ok {
 		b.Fatalf("mount() answered %T, not an HTTP\\Mux", routed)
@@ -157,17 +157,18 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 	return mux
 }
 
-// benchServerRequest builds one request and the function that puts it back the
-// way it arrived and the loop reuses it and allocates none per iteration.
+// benchServerRequest builds one request plus the function that puts it back the
+// way it arrived. The loop reuses the request and allocates none per iteration.
 //
-// The context is cancellable, where httptest's is a background one. A served
-// request's context can end, which arms the runtime's per-statement deadline
-// check and is what the mux reads before passing the request to a worker;
-// a context with no Done channel would price an interpreter that checks nothing.
+// The context is cancellable, where httptest's is a background context. A
+// served request's context can end, which arms the runtime's per-statement
+// deadline check. The mux reads that deadline before passing the request to a
+// worker. A context without a Done channel would price an interpreter that
+// checks nothing.
 //
-// A body has to be rewound and the parsed form dropped: form_value() parses on
-// first call and net/http caches the result on the request and a reused request
-// would answer the second iteration out of the first one's cache. The figure
+// A body must be rewound, and the parsed form dropped: form_value() parses on
+// first call. net/http caches the result on the request. A reused request would
+// answer the second iteration out of the first one's cache. The figure
 // would price the cache.
 func benchServerRequest(b *testing.B, method, target, body string) (*http.Request, func()) {
 	b.Helper()
@@ -197,7 +198,7 @@ type benchServerBody struct {
 func (b *benchServerBody) Close() error { return nil }
 
 // benchServerWriter discards the response and records the write. A
-// httptest.ResponseRecorder would grow a buffer per iteration and put its own
+// httptest.ResponseRecorder would grow a buffer per iteration, putting its
 // allocations in the number.
 type benchServerWriter struct {
 	header  http.Header
@@ -213,10 +214,10 @@ func (w *benchServerWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// WriteString records the write the way Write does, with no clone. The writer
-// replaces net/http's response writer, which implements io.StringWriter,
-// and a stand-in without the method sends every echo down io.WriteString's
-// []byte fallback and prices a clone the served path does not pay.
+// WriteString records the write the way Write records it, without a clone. The
+// writer replaces net/http's response writer, which implements io.StringWriter.
+// A stand-in without the method sends every echo down io.WriteString's []byte
+// fallback and prices a clone the served path does not pay.
 func (w *benchServerWriter) WriteString(s string) (int, error) {
 	w.written += len(s)
 	return len(s), nil

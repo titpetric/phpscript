@@ -123,8 +123,8 @@ func TestHoist(t *testing.T) {
 	}
 }
 
-// TestSplit covers the cut between phpscript's arguments and the script's and
-// a shebang script reads its own flags as $argv.
+// TestSplit covers the cut between phpscript's arguments and the script's;
+// a shebang script reads its flags as $argv.
 func TestSplit(t *testing.T) {
 	isCommand := func(name string) bool { return name == "run" || name == "test" }
 	for _, tc := range []struct {
@@ -179,8 +179,7 @@ func TestSplit(t *testing.T) {
 	}
 }
 
-// TestOptions_Covering pins which modes turn measurement on. Every command
-// asks this before it installs a collector.
+// TestOptions_Covering pins which modes turn measurement on, asked before installing a collector.
 func TestOptions_Covering(t *testing.T) {
 	for mode, want := range map[string]bool{
 		"":                false,
@@ -195,7 +194,7 @@ func TestOptions_Covering(t *testing.T) {
 }
 
 // TestOptions_Report pins which modes own stdout with a per-symbol report on
-// top of writing the profile and one of those modes rules out --json.
+// top of writing the profile; one of those modes rules out --json.
 func TestOptions_Report(t *testing.T) {
 	for mode, want := range map[string]bool{
 		"":                false,
@@ -226,8 +225,7 @@ func TestOptions_BindWith(t *testing.T) {
 	}
 }
 
-// TestOptions_Bind pins that Bind declares every shared flag once, with the
-// shorthands the documentation names.
+// TestOptions_Bind pins that Bind declares every shared flag once, with documented shorthands.
 func TestOptions_Bind(t *testing.T) {
 	var opts flags.Options
 	fs := pflag.NewFlagSet("phpscript", pflag.ContinueOnError)
@@ -248,7 +246,7 @@ func TestOptions_Bind(t *testing.T) {
 			t.Errorf("--%s has no usage text", name)
 		}
 	}
-	// A bare --cover is --cover=line and an operator may write it with no
+	// A bare --cover is --cover=line and an operator may write it without a
 	// value in front of a command name.
 	if got := fs.Lookup("cover").NoOptDefVal; got != coverage.ModeLine {
 		t.Errorf("--cover NoOptDefVal = %q, want %q", got, coverage.ModeLine)
@@ -295,8 +293,8 @@ func TestOptions_Check(t *testing.T) {
 	})
 }
 
-// TestOptions_FromConfig pins the precedence: a configuration describes a tree and a
-// flag is what an operator typed about this run of it and the flag wins.
+// TestOptions_FromConfig pins the precedence: a configuration describes a tree;
+// a flag records the operator's choice for this run, and the flag wins.
 func TestOptions_FromConfig(t *testing.T) {
 	appConfig := config.New()
 	appConfig.Runner.Include = "vendor/autoload.php"
@@ -315,7 +313,7 @@ func TestOptions_FromConfig(t *testing.T) {
 }
 
 // TestOptions_ResolveCoverFile covers the {time} placeholder and the directory it
-// writes into and cover/phpscript.{time}.cov works against a
+// writes into and cover/phpscript.{time}.cov works in a
 // tree that has no cover directory.
 func TestOptions_ResolveCoverFile(t *testing.T) {
 	dir := t.TempDir()
@@ -413,8 +411,8 @@ func TestOptions_RunWith(t *testing.T) {
 }
 
 // TestOptions_Chdir covers -w, which moves the process before the
-// configuration read and one name serves a tree and no path inside a
-// configuration repeats it.
+// configuration read; one name serves a tree; no path inside a configuration
+// repeats it.
 func TestOptions_Chdir(t *testing.T) {
 	dir := t.TempDir()
 	before, err := os.Getwd()
@@ -431,8 +429,8 @@ func TestOptions_Chdir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// macOS returns a symlinked temporary directory and the comparison is on
-	// the resolved path and not the one passed in.
+	// macOS returns a symlinked temporary directory; the comparison uses the
+	// resolved path, and the path passed in never enters it.
 	want, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +448,7 @@ func TestOptions_Chdir(t *testing.T) {
 }
 
 // TestPreControlFlags covers -t and -s, which replace a command and change
-// none, and the rule that keeps them from eating a command's own flags.
+// nothing, and the rule that keeps them from eating a command's own flags.
 func TestPreControlFlags(t *testing.T) {
 	tests := map[string]struct {
 		args      []string

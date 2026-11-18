@@ -28,9 +28,9 @@ throw new Exception("connection refused", 0);
 }
 
 // TestWithExprCache covers the compiled expressions a host shares across
-// requests. The endpoints fill the cache a host passed, and AST node identity
-// keys each entry and a second request reuses them only where the
-// program it ran is the one the include cache already held. A tree reparsed
+// requests. The endpoints fill the cache a host passed; AST node identity keys
+// each entry. A second request reuses an entry when the program it ran matches
+// the program the include cache already held. A tree reparsed
 // per request keys every entry on fresh nodes and the cache grows.
 func TestWithExprCache(t *testing.T) {
 	t.Parallel()
@@ -70,12 +70,12 @@ func TestWithExprCache(t *testing.T) {
 	}
 }
 
-// TestErrorPageFunc covers the two arguments a host page takes. The
-// status is what the endpoint ended on. The notes are what went wrong,
-// empty unless the endpoint failed: a 410 the script set is an answer the
-// script chose, and a thrown exception is a failure whose message the host may
-// render. The page reports whether it rendered and a false answer leaves the
-// response to the endpoint.
+// TestErrorPageFunc covers the two arguments a host page takes. The status
+// records where the endpoint ended. The notes record the failure, empty unless
+// the endpoint failed: a 410 the script set is an answer the script chose; a
+// thrown exception is a failure whose message the host may render. The page
+// reports whether it rendered; a false answer leaves the response to the
+// endpoint.
 func TestErrorPageFunc(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

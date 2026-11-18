@@ -1,10 +1,11 @@
-// Package phpval holds PHP's value semantics: how a value converts to a
-// string, an integer or a truth value, how a collection reads back as a list
-// of values or strings, and how two values order under PHP 8's <=> operator.
+// Package phpval holds PHP's value semantics: the conversion of a value to a
+// string, integer or truth value, the reading of a collection back as a list
+// of values or strings, and the order of two values under PHP 8's <=>
+// operator.
 //
-// It exists so the files under stdlib/ps/core can each register their own area
-// without importing one another. The runner agrees with them because it
-// calls the same package. The coercion needs exactly one definition: sort()
+// It exists so the files under stdlib/ps/core can each register their area
+// without importing one another. The runner shares the definition: it calls
+// the same package. The coercion needs exactly one definition: sort()
 // and in_array() disagreeing about what "10" is would be a bug no test names.
 package phpval
 
@@ -19,7 +20,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// GoString renders a value outside php's scalars, reporting whether it has one.
+// GoString renders a value outside php's scalars, reporting whether such a form exists.
 func GoString(v any) (string, bool) {
 	switch x := v.(type) {
 	case time.Time:
@@ -61,7 +62,7 @@ func String(v any) string {
 	case float64:
 		return FloatString(x)
 	case uint64:
-		// An unsigned width renders its own value: widening reaches a float.
+		// An unsigned width renders the value it holds: widening reaches a float.
 		return strconv.FormatUint(x, 10)
 	case uint:
 		return strconv.FormatUint(uint64(x), 10)
@@ -175,7 +176,7 @@ func Int(v any) int64 {
 		if clipped, ok := modelutil.GoClipInt(v); ok {
 			return clipped
 		}
-		// Every other typed value reads as the number it holds.
+		// Any other typed value reads as the number it holds.
 		if widened, ok := modelutil.GoWiden(v); ok {
 			return Int(widened)
 		}
@@ -186,7 +187,7 @@ func Int(v any) int64 {
 
 // Digits renders the decimal %d prints, reporting a negative value.
 func Digits(v any) (string, bool) {
-	// An unsigned width prints its own value, as fmt's %d does.
+	// An unsigned width prints the value it holds, as fmt's %d does.
 	if w, typed := model.GoWidthOf(v); typed && !w.Float && !w.Signed {
 		bits, _ := modelutil.GoUint(v)
 		return strconv.FormatUint(bits, 10), false
@@ -197,7 +198,7 @@ func Digits(v any) (string, bool) {
 
 // Uint reads the bits %u, %b, %o and %x print.
 func Uint(v any) uint64 {
-	// A typed integer answers its own bits, whatever its sign.
+	// A typed integer answers with its bits, whatever its sign.
 	if bits, typed := modelutil.GoUint(v); typed {
 		return bits
 	}
@@ -297,7 +298,7 @@ func parseFloat(prefix string) float64 {
 	return f
 }
 
-// Number returns v in php's numeric domain, an int64 or a float64.
+// Number returns v in php's numeric domain, either an int64 or float64.
 func Number(v any) any {
 	switch x := v.(type) {
 	case float64:
@@ -325,7 +326,7 @@ func Number(v any) any {
 	}
 }
 
-// Key normalises an array key the way php does, to an int or a string.
+// Key normalises an array key as php does, into an int or string.
 func Key(v any) any {
 	switch x := v.(type) {
 	case nil:
@@ -377,7 +378,7 @@ func NumericKey(s string) (int64, bool) {
 	digits := s
 	if strings.HasPrefix(digits, "-") {
 		digits = digits[1:]
-		// "-0" prints as "0" and it never spells a canonical integer.
+		// "-0" prints as "0". It never spells a canonical integer.
 		if digits == "0" {
 			return 0, false
 		}

@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// shape renders an expression fully parenthesized and a test states the tree
-// the precedence table built and never the value an engine would compute from
-// it. The parser cannot reach the runner and it runs nothing.
+// shape renders an expression fully parenthesized. A test states the tree the
+// precedence table built, and leaves the computed value to the runner. The
+// parser cannot reach the runner. It runs nothing.
 func shape(e model.Expr) string {
 	switch n := e.(type) {
 	case *model.Binary:
@@ -42,7 +42,7 @@ func shape(e model.Expr) string {
 	return fmt.Sprintf("%T", e)
 }
 
-// expression parses src as one echo argument and returns its tree.
+// expression parses src as a single echo argument and returns its tree.
 func expression(t *testing.T, src string) model.Expr {
 	t.Helper()
 	program := mustParse(t, "<?php echo "+src+";")
@@ -53,10 +53,10 @@ func expression(t *testing.T, src string) model.Expr {
 	return echo.Args[0]
 }
 
-// TestBinaryPrecedence covers where each level of the table sits, against what
-// php computes for the same source. The bitwise operators are looser than any
+// TestBinaryPrecedence covers where each level of the table sits, measured
+// against php for the same source. The bitwise operators are looser than any
 // comparison, the shifts are tighter than concatenation and looser than
-// addition, and every level binds to the left.
+// addition. Every level binds to the left.
 func TestBinaryPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -86,10 +86,10 @@ func TestBinaryPrecedence(t *testing.T) {
 }
 
 // TestCoalesceAndWordOperatorPrecedence covers where `??`, `<=>` and the word
-// operators sit, against what php computes for the same source: `??` is right
-// associative, looser than `||` and tighter than the ternary, `<=>` shares the
-// equality level, and `and`, `xor` and `or` fold in that order below
-// assignment.
+// operators sit, measured against php for the same source: `??` is right
+// associative, looser than the `||` operator and tighter than the ternary,
+// `<=>` shares the equality level. `and`, `xor` and `or` fold in that order
+// below assignment.
 func TestCoalesceAndWordOperatorPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -167,10 +167,10 @@ func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
 	}
 }
 
-// TestAssignmentIsRightAssociative covers the one expression-level assignment
-// this parser accepts, the `($x = f()) !== false` idiom. It binds to the right
-// and only where an assignment may target the left side and `1 = $a` parses as
-// the literal and never as an assignment.
+// TestAssignmentIsRightAssociative covers the only expression-level assignment
+// this parser accepts, the `($x = f()) !== false` idiom. It binds to the right.
+// It applies only when an assignment may target the left side. `1 = $a` parses
+// as the literal alone.
 func TestAssignmentIsRightAssociative(t *testing.T) {
 	t.Parallel()
 	if got, want := shape(expression(t, `$a = $b = 1`)), `($a = ($b = 1))`; got != want {
@@ -186,9 +186,9 @@ func TestAssignmentIsRightAssociative(t *testing.T) {
 }
 
 // TestIsLValue covers what may appear on the left of an expression-level
-// assignment: a variable, an index, a property, a static property and list(),
-// and nothing computed. A call result has nowhere to store a value and
-// accepting one would build a tree the runner cannot execute.
+// assignment: a variable, an index, a property, a static property and list().
+// A computed value does not qualify. A call result has nowhere to store a value;
+// accepting a call result would build a tree the runner cannot execute.
 func TestIsLValue(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

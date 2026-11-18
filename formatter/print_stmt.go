@@ -259,7 +259,7 @@ func catchClause(c model.Catch) string {
 	return strings.Join(parts, " ")
 }
 
-// tryEnd returns the first catch line, or the finally line when there is none.
+// tryEnd returns the first catch line, or the finally line.
 func tryEnd(n *model.Try) int {
 	if len(n.Catches) > 0 {
 		return n.Catches[0].Line

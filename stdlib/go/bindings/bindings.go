@@ -1,9 +1,9 @@
 // Package bindings installs a go package as the area a script imports it by.
-// A binding package names what it binds, one entry per name. This package
-// resolves the area, registers the names on the runtime that imported them and
-// enumerates the types the signatures reach.
+// A binding package names the functions and types it binds, one entry per
+// name. This package resolves the area and registers the names on the runtime
+// that imported them, and enumerates the types the signatures reach.
 //
-// A name is a triple: the import path, the name go spells it, and the value.
+// A name is a triple: the import path, the name go spells, the value.
 //
 //	bindings.For("net/http").
 //		Bind("NewRequest", http.NewRequest).
@@ -21,9 +21,9 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// Entry is one name a package binds: the import path, the name go spells, the
-// value behind it. A func binds as a function of the area; every other value
-// binds as one of its constants.
+// Entry holds a name a package binds: the import path, the name go spells, the
+// value behind that name. A func binds as a function of the area; any other
+// value binds as a constant of that area.
 type Entry struct {
 	Package string
 	Name    string
@@ -31,8 +31,8 @@ type Entry struct {
 }
 
 // For opens the set of a go import path. It panics on a path outside the
-// standard library subset this build already links, which is a defect in the
-// binding package and no condition a program meets.
+// standard library subset this build already links. That is a defect in the
+// binding package. A program never meets such a path.
 func For(path string) *Set {
 	area, _, ok := modelutil.GoImportArea(path)
 	if !ok {

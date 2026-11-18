@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/list"
 )
 
-// Paths formats each path argument in place, skipping what it cannot.
+// Paths formats each path argument in place, skipping the rest.
 func Paths(paths []string) ([]Result, error) {
 	return walk(paths, true)
 }
@@ -29,7 +29,7 @@ func Changed(results []Result) []string {
 	return out
 }
 
-// walk formats each file paths names, ending on a read error and skipping an unsupported file.
+// walk formats each named file, ending on a read error.
 func walk(paths []string, write bool) ([]Result, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {
@@ -51,12 +51,12 @@ func walk(paths []string, write bool) ([]Result, error) {
 	return results, nil
 }
 
-// File formats path in place, a *SkipError for one it left untouched.
+// File formats path in place, a *SkipError for an untouched path.
 func File(path string) (bool, error) {
 	return format(path, true)
 }
 
-// format formats one file in place when write is true and reports whether it changed.
+// format formats one file in place when write is true, reporting a change.
 func format(path string, write bool) (bool, error) {
 	in, err := os.ReadFile(path)
 	if err != nil {
@@ -81,7 +81,7 @@ func format(path string, write bool) (bool, error) {
 	return true, nil
 }
 
-// verify refuses output that does not parse or does not survive a second format.
+// verify refuses output that fails to parse or fails a second format.
 func verify(out string) error {
 	if _, _, err := parseSource(out); err != nil {
 		return fmt.Errorf("formatted output does not parse: %w", err)

@@ -16,7 +16,7 @@ func ToInt64(f float64) int64 {
 	if f >= -twoPow63 && f < twoPow63 {
 		return int64(f)
 	}
-	// NaN and both infinities are zero, as php 8 answers them.
+	// NaN and the infinities are zero, as php 8 answers them.
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return 0
 	}

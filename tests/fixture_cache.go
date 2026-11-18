@@ -13,9 +13,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// ShareSources lays over the fixtures of one directory a filesystem holding
-// every body in it and precompiling that tree compiles them all at once and
-// not one per fixture.
+// ShareSources lays a filesystem over the fixtures of one directory, holding
+// every body. Precompiling that tree compiles every body in a single pass.
 func ShareSources(fixtures []*Fixture) {
 	byRoot := map[string]fstest.MapFS{}
 	for _, f := range fixtures {
@@ -30,8 +29,8 @@ func ShareSources(fixtures []*Fixture) {
 	}
 }
 
-// Cache scopes, naming how far a parsed include and a compiled expression
-// travel. The CLI spells them as --cache=off|worker.
+// Cache scopes, naming the reach of a parsed include, plus a compiled
+// expression. The CLI spells them as --cache=off|worker.
 const (
 	CacheOff    = "off"
 	CacheWorker = "worker"
@@ -51,8 +50,8 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 	w := currentWorker(ctx)
 	// includeFor takes the fixture and not its trees, because this runs per
 	// execution: building them means building the fixture's whole options
-	// struct, and a method value handed over as a thunk allocates a closure
-	// every time for a cache the first run fills.
+	// struct. A method value handed over as a thunk then allocates a closure
+	// every time, for a cache the first run fills.
 	return w.includeFor(f.cacheRoot(), f, w.expr), w.expr
 }
 
@@ -83,7 +82,7 @@ func (f *Fixture) cacheMode() string {
 	return runner.RuntimePHPScript
 }
 
-// acquireRuntime returns the run's runtime and whether the runtime is fresh and still needs bindings.
+// acquireRuntime returns the run's runtime and whether it needs bindings.
 func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Runtime, bool) {
 	include, expr := f.caches(ctx)
 
@@ -125,7 +124,7 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 	return rt, true
 }
 
-// runtimeKey names what a runtime serves, and a worker rebuilds when the key changes.
+// runtimeKey names the configuration a runtime serves, rebuilt when the key changes.
 func (f *Fixture) runtimeKey() string {
 	if f.runtimeKeyS == "" {
 		f.runtimeKeyS = fmt.Sprintf("%s\x00%s\x00%v", f.cacheRoot(), f.Runtime, f.Options)
@@ -133,16 +132,16 @@ func (f *Fixture) runtimeKey() string {
 	return f.runtimeKeyS
 }
 
-// worker holds what one serial worker loop reuses across the fixtures it runs.
+// worker holds the state a serial worker loop reuses across fixtures.
 type worker struct {
 	include     map[string]*runner.IncludeCache
 	flatInclude map[string]*flatstack.IncludeCache
 	expr        *runner.ExprCache
 	flatExpr    *flatstack.ExprCache
 
-	// The runtime this worker reuses, and the key it serves. One
-	// runtime per worker, and not one per fixture, is what bounds what a
-	// run holds by --parallel and not by the number of fixtures.
+	// The runtime this worker reuses, and the key it serves. A single
+	// runtime per worker bounds the run's memory by --parallel. Fixture count
+	// does not bound it.
 	interp    *runner.Runtime
 	interpKey string
 	flatRT    *flatstack.Runtime
@@ -224,7 +223,7 @@ func (f *Fixture) buildCacheRoot() string {
 	return root
 }
 
-// absPath returns the absolute spelling, or p itself when the working directory is unreadable.
+// absPath returns the absolute spelling, or p when the working directory is unreadable.
 func absPath(p string) string {
 	if abs, err := filepath.Abs(p); err == nil {
 		return abs
@@ -232,7 +231,7 @@ func absPath(p string) string {
 	return p
 }
 
-// cleanState reports whether the run drops what it built when it ends.
+// cleanState reports whether the run drops its built state when it ends.
 func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 
 // acquireFlatRuntime is acquireRuntime for the bytecode runtime, returning the worker's flat runtime.

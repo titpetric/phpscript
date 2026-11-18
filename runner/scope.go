@@ -20,16 +20,16 @@ type Scope struct {
 	deferred []any
 
 	// args holds the current call's positional arguments for
-	// func_get_args(). A typed field and no vars entry: storing the
-	// slice under a hidden name boxed it into an interface on every call,
-	// and the map write adds a second cost on the same hot path.
+	// func_get_args(). A typed field, not a vars entry: storing the
+	// slice beneath a hidden name boxed it into an interface on every call.
+	// The map write adds a second cost on the same hot path.
 	args []any
 
 	// statics maps a name declared by a `static $x` statement in this frame to
 	// the persistent bag holding it (see Runtime.funcStatics). Reads and
-	// writes of a bound name resolve through the bag and a later
-	// `$x = ...` in the function persists across calls. Nil in every frame
-	// that declares no statics and the common path pays one nil check.
+	// writes of a bound name resolve through the bag. A later `$x = ...` in
+	// the function persists across calls. The map is nil in a frame that
+	// declares no statics, and the common path pays one nil check.
 	statics map[string]map[string]any
 }
 
@@ -82,9 +82,9 @@ func (s *Scope) Defer(callback any) {
 
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
-// variables and the snapshot drops them. `this` goes with them: the call binds
-// it and no body declares it, and php leaves it out of get_defined_vars() for
-// that reason.
+// variables. The snapshot drops them. `this` goes as well: the call binds it,
+// but no body declares it. php leaves it out of get_defined_vars() for that
+// reason.
 func (s *Scope) DefinedVars() map[string]any {
 	vars := make(map[string]any, len(s.vars)+len(s.statics))
 	for name, value := range s.vars {
@@ -101,7 +101,7 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-// contextWithScope returns a context holding the frame, file and line of one binding context.
+// contextWithScope returns a context holding one binding's frame, file and line.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	c := &bindingCtx{Context: ctx, scope: scope, env: rt.Env}
 	rt.fillSource(scope, c)

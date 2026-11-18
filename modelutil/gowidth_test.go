@@ -38,7 +38,7 @@ func TestGoWiden(t *testing.T) {
 	}
 }
 
-// TestGoInt covers the bits an operation computes over. An unsigned value past
+// TestGoInt covers the bits an operation works on. An unsigned value past
 // PHP_INT_MAX keeps its bits here, where GoWiden reaches the float php holds
 // it in, and narrowing it back reads the low byte it still has.
 func TestGoInt(t *testing.T) {
@@ -93,7 +93,7 @@ func TestGoClipInt(t *testing.T) {
 
 // TestGoStep covers ++ and -- at a width. The step wraps where go's does: the
 // largest int8 steps up to the smallest, and the smallest unsigned value steps
-// down to the largest, with no widening to a php float at either end.
+// down to the largest, without widening to a php float at either end.
 func TestGoStep(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

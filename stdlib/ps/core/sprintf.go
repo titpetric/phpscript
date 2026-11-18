@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 )
 
-// formatError reports a rejected format under the PHP class it raises.
+// formatError reports a rejected format under its PHP class.
 type formatError struct {
 	class   string
 	message string
@@ -21,7 +21,7 @@ func (e *formatError) Error() string { return e.message }
 // ThrowableClass names the PHP class, implementing runner.Throwable.
 func (e *formatError) ThrowableClass() string { return e.class }
 
-// formatSpec is one conversion read off a format string in PHP's grammar.
+// formatSpec holds one conversion read from a format string in PHP's grammar.
 type formatSpec struct {
 	argnum    int // 1-based; argNext for "the argument after the last one taken"
 	width     int
@@ -34,7 +34,7 @@ type formatSpec struct {
 	hasPrec   bool
 }
 
-// argNext is argnum's value for a conversion that did not name an argument.
+// argNext is argnum's value for a conversion naming no argument.
 const argNext = -1
 
 // phpSprintf formats args with PHP's conversions, counting width and precision in bytes.
@@ -59,7 +59,7 @@ func phpSprintf(format string, args ...any) (string, error) {
 			return "", err
 		}
 		i = next
-		// php reads the argument before it looks at the specifier and a format
+		// php reads the argument before it looks at the specifier. A format
 		// that names an argument the call omits reports the count first.
 		arg, err := formatArg(spec, args, &taken)
 		if err != nil {
@@ -146,7 +146,7 @@ func parseFormatSpec(format string, i int) (formatSpec, int, error) {
 	return spec, i, nil
 }
 
-// formatArg returns the named argument, advancing the implicit counter only for an unnamed one.
+// formatArg returns the named argument, advancing the implicit counter only when unnamed.
 func formatArg(spec formatSpec, args []any, taken *int) (any, error) {
 	n := spec.argnum
 	if n == argNext {
@@ -204,7 +204,7 @@ func (spec formatSpec) render(arg any) (string, error) {
 	}
 }
 
-// float renders a floating conversion, spelling INF, -INF and NaN and trimming the exponent.
+// float renders a conversion, spelling INF, -INF and NaN and trimming the exponent.
 func (spec formatSpec) float(f float64) string {
 	switch {
 	case math.IsNaN(f):
@@ -225,7 +225,7 @@ func (spec formatSpec) float(f float64) string {
 	case 'F':
 		verb = 'f'
 	case 'g', 'G':
-		// C and php read a precision of zero as one significant digit; Go
+		// C and php read a precision of zero as a single significant digit; Go
 		// reads it as "the smallest number of digits necessary".
 		if prec == 0 {
 			prec = 1

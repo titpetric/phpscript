@@ -5,17 +5,17 @@ import (
 )
 
 // PathGroup is the paths of one folder: Dir holds the folder, "." for paths in
-// the run directory, and Indexes the positions of its paths in the input slice
-// and a caller can keep per-path data alongside without the group copying it.
+// the run directory. Indexes holds the positions of its paths in the input
+// slice; a caller can keep per-path data alongside without the group copying it.
 type PathGroup struct {
 	Dir     string
 	Indexes []int
 }
 
 // GroupByDir buckets paths by the folder holding them, preserving the order
-// the input established both between folders and inside one. Bucketing is
-// explicit, and never read off the sort, because sorted paths do not keep
-// a folder contiguous: a/b.php, a/m/x.php and a/z.php interleave.
+// the input established, between folders and inside one. Bucketing is explicit,
+// never read off the sort: sorted paths do not keep a folder contiguous.
+// Paths a/b.php, a/m/x.php, a/z.php interleave.
 func GroupByDir(paths []string) []PathGroup {
 	index := map[string]int{}
 	var groups []PathGroup

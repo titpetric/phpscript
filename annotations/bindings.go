@@ -10,12 +10,12 @@ import (
 // Bindings is the service router a @startup job registers on through
 // Runtime\Router::Bind, as a separate platform module.
 //
-// The platform starts every module ahead of any mounting. A job runs a step
-// before the router it binds on exists: this takes the registrations in the
-// router's place and Mount passes them on, in the order the jobs made them.
-// A service binds or annotates and the module registers either way. A host
-// that names no router through WithRouter leaves Runtime\Router::Bind the
-// binding that throws.
+// A host that names no router through WithRouter leaves Runtime\Router::Bind
+// the binding that throws. The platform starts every module ahead of any
+// mounting. A job runs a step while the router it binds on does not exist yet:
+// this takes the registrations in the router's place. A service binds or
+// annotates and the module registers either way. Mount passes the registrations
+// on, in the order the jobs made them.
 type Bindings struct {
 	Module
 
@@ -24,7 +24,7 @@ type Bindings struct {
 	pending   []binding
 }
 
-// binding is one registration a job made before the router arrived.
+// binding names one registration a job made ahead of the router's arrival.
 type binding struct {
 	method  string
 	path    string
@@ -53,8 +53,7 @@ func (b *Bindings) Handle(method string, path string, handler http.Handler) {
 	b.pending = append(b.pending, binding{method: method, path: path, handler: handler})
 }
 
-// Mount registers the routes the startup jobs bound, and sends a later
-// registration straight to router.
+// Mount registers the startup jobs' routes and sends later registrations to router.
 func (b *Bindings) Mount(_ context.Context, router Router) error {
 	if router == nil {
 		return fmt.Errorf("annotations: nil router")

@@ -23,10 +23,10 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return classNameOf(object[0])
 	})
-	// get_parent_class always returns false; phpscript has no inheritance and
-	// no class has a parent to report.
+	// get_parent_class always returns false; phpscript has no inheritance. No
+	// class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
-	// is_subclass_of always returns false; phpscript has no inheritance and no
+	// is_subclass_of always returns false; phpscript has no inheritance. No
 	// object is an instance of a subclass. A guard written as
 	// `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
 	// through to the name comparison, which is the check that answers here.
@@ -35,10 +35,10 @@ func registerReflection(rt *runner.Runtime) {
 	// order the object reads them back. A non-object returns an empty array.
 	//
 	// A value a binding returned answers with its exported Go fields, the
-	// field set print_r and var_dump report for it. A throwable answers with
-	// none: every php throwable declares its properties protected, a script
-	// outside the class reads nothing off one, and the fields this runtime
-	// keeps on its own Go type are no property a script may name.
+	// field set print_r and var_dump report. A throwable exposes no property:
+	// every php throwable declares its properties protected, a script outside
+	// the class reads nothing off one. Fields this runtime keeps on the Go type
+	// are no property a script may name.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
 		if _, throwable := object.(runner.Throwable); throwable {
 			return model.NewArray()
@@ -72,12 +72,12 @@ func registerReflection(rt *runner.Runtime) {
 		return false
 	})
 	// property_exists reports whether object $object_or_class has property
-	// $property, set or declared; a class name is not accepted and returns
+	// $property, set or declared; a class name is not accepted; it returns
 	// false.
 	//
-	// A declaration outlives an unset, and a value a binding returned answers
-	// for its exported Go fields, resolved the way a property read resolves
-	// them. A throwable answers for none, as get_object_vars does.
+	// A declaration outlives an unset. A value a binding returned answers for
+	// its exported Go fields, resolved as a property read resolves that value.
+	// A throwable answers for no property, as get_object_vars does.
 	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
 		if _, throwable := objectOrClass.(runner.Throwable); throwable {
 			return false
@@ -85,12 +85,12 @@ func registerReflection(rt *runner.Runtime) {
 		return rt.PropertyExists(objectOrClass, property)
 	})
 	// PHP exposes an opaque, per-object identity. A pointer is exactly that,
-	// and stays stable for as long as the object is alive, which is the only
-	// guarantee PHP makes either.
+	// and stays stable while the object is alive, which is the only guarantee
+	// PHP makes either.
 	rt.RegisterFunc("spl_object_hash", func(value any) string {
 		return fmt.Sprintf("%032x", objectIdentity(value))
 	})
-	// spl_object_id returns a numeric identity for $object, stable for as long as the object is alive.
+	// spl_object_id returns a numeric identity for $object, stable while the object is alive.
 	rt.RegisterFunc("spl_object_id", func(object any) int64 {
 		return int64(objectIdentity(object))
 	})
@@ -101,8 +101,8 @@ func classNameOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name
 	}
-	// A throwable records its own class, and the throwable classes share one Go
-	// type and the Go type name would answer "Exception" for an
+	// A throwable records its PHP class; the throwable classes share one Go
+	// type, and the Go type name would answer "Exception" for an
 	// InvalidArgumentException.
 	if throwable, ok := value.(runner.Throwable); ok {
 		if class := throwable.ThrowableClass(); class != "" {

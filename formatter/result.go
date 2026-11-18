@@ -1,9 +1,9 @@
 package formatter
 
-// Result is what the formatter did with one file. Formatting rewrites files
-// in place and the formatter rewrites one only where it could read the whole
-// file and the output held up to the checks in File; every other file comes
-// back skipped and untouched.
+// Result reports the formatter's work on one file. Formatting rewrites files
+// in place. The formatter rewrites a file only when it could read the whole
+// file and the output passed the checks in File. Any other file comes back
+// skipped and untouched.
 type Result struct {
 	Path    string
 	Changed bool

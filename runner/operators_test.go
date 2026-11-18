@@ -38,9 +38,9 @@ func TestPHPSpaceship(t *testing.T) {
 
 // TestPHPCompare covers the loose operators. null equals 0, "" and false; two
 // numeric strings compare numerically and "1" == "01". A NaN operand answers
-// false to every operator except `!=`, which PHP does not derive from its
-// ordering, and a bool or null on the other side pulls both operands through
-// the bool domain where (bool)NAN is true.
+// false to all operators except `!=`, which PHP does not derive from its
+// ordering. A bool or null on the other side pulls both operands through the
+// bool domain, where (bool)NAN is true.
 func TestPHPCompare(t *testing.T) {
 	t.Parallel()
 	nan := math.NaN()
@@ -74,7 +74,7 @@ func TestPHPCompare(t *testing.T) {
 }
 
 // TestPHPLooseEqual covers the entry switch/case matching and the flatstack
-// host read. It resolves to the same table the comparison operators read and a
+// host read. It resolves to the same table the comparison operators read. A
 // `switch` arm cannot match on a rule `==` disagrees with.
 func TestPHPLooseEqual(t *testing.T) {
 	t.Parallel()
@@ -90,7 +90,7 @@ func TestPHPLooseEqual(t *testing.T) {
 }
 
 // TestPHPIdentical covers `===`: same type, same value, no coercion. int and
-// int64 are one PHP type arriving in two Go spellings, a []byte is the string
+// int64 form one PHP type arriving in two Go spellings, a []byte is the string
 // it holds, arrays compare pairwise in order, and objects compare by
 // instance. A binding's []string falls back to reflect equality, because `==`
 // on a slice would panic.
@@ -136,10 +136,10 @@ func TestPHPIdentical(t *testing.T) {
 	}
 }
 
-// TestPHPArith covers + - * / % **. `+` on two arrays is PHP's union, where the
-// left operand wins every key it has; a numeric string operand keeps PHP's
-// int/float distinction by its own spelling; integer arithmetic that overflows
-// becomes float and PHP_INT_MAX + 1 has no wrap to a negative.
+// TestPHPArith covers + - * / % **. Adding two arrays is PHP's union: the left
+// operand wins each key it holds. A numeric string operand keeps PHP's int/float
+// distinction by the operand's spelling. Integer arithmetic that overflows becomes
+// float, and PHP_INT_MAX + 1 does not wrap to a negative.
 func TestPHPArith(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -201,9 +201,9 @@ func TestPHPArithByZero(t *testing.T) {
 	}
 }
 
-// TestUnionArrays covers `+` on two arrays. Insertion order follows the left
-// array and then the surviving entries of the right, which is the order PHP's
-// own union preserves; composer's ClassLoader prepends a loader with it.
+// TestUnionArrays covers `+` between two arrays. Insertion order follows the
+// left array, then the surviving entries of the right, the order PHP's union
+// preserves; composer's ClassLoader prepends a loader with it.
 func TestUnionArrays(t *testing.T) {
 	t.Parallel()
 	left := model.NewArray()
@@ -288,9 +288,9 @@ func TestPHPBitNot(t *testing.T) {
 }
 
 // TestPHPNegate covers unary minus. phpNegate negates a float directly and
-// never computes it as `0 - x`, which loses the sign of zero: PHP echoes -0.0
-// as -0. The smallest int64 overflows to a float the way every other
-// arithmetic operator overflows, with no wrap back to itself.
+// never computes it as `0 - x`; that form loses the sign of zero, and PHP
+// echoes -0.0 as -0. The smallest int64 overflows to a float, as any other
+// arithmetic operator overflows, without wrapping back to itself.
 func TestPHPNegate(t *testing.T) {
 	t.Parallel()
 	if got, want := phpNegate(int64(5)), int64(-5); got != want {

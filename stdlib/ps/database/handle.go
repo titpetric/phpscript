@@ -8,7 +8,7 @@ import (
 //
 // DB is database/sql's pool and not a type this package declares. Named
 // parameters, placeholder rebinding and struct scanning are the pdo client's
-// job, and it reads them off the pool at the point of use.
+// job. It reads them off the pool at the point of use.
 type DB = sql.DB
 
 // Conn is one session held out of a pool. A PRAGMA or a transaction runs on
@@ -19,8 +19,7 @@ type Conn = sql.Conn
 // a host that wants instrumented queries supplies its own.
 type Connector = func(driver, dsn string) (*DB, error)
 
-// newDB returns the pool the connector opened. database/sql keeps the driver
-// name itself, so there is no second handle to build around it.
+// newDB returns the pool the connector opened, with no second handle around it.
 func newDB(pool *sql.DB, _ string) *DB {
 	return pool
 }

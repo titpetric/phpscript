@@ -101,8 +101,7 @@ func TestRunCommandEmptySelectionFails(t *testing.T) {
 	})
 }
 
-// TestRunCommandOutputFile covers -o end to end over more than one area, as
-// the atkins report job does.
+// TestRunCommandOutputFile covers -o end to end over every area, as atkins does.
 func TestRunCommandOutputFile(t *testing.T) {
 	reportPath := filepath.Join(t.TempDir(), "report.md")
 
@@ -145,9 +144,9 @@ func TestRunCommandOutputFile(t *testing.T) {
 }
 
 // TestRunCommandAppRoot covers --autoload and --include: a fixture reaches a
-// function the include file defines and a class the autoload folder holds,
-// with neither named in the fixture body. The bare invocation (no paths) is
-// what discovers the tree, which also covers the recursive default.
+// function the include file defines, plus a class the autoload folder holds,
+// naming neither in the fixture body. The bare invocation (no paths)
+// discovers the tree, which also covers the recursive default.
 func TestRunCommandAppRoot(t *testing.T) {
 	tmp := t.TempDir()
 	write := func(name, content string) {
@@ -214,9 +213,9 @@ hello
 	}
 }
 
-// TestNewCommand covers the command main registers, and the flags that
-// configure a run. Run reads each off the set and a flag missing from Bind is
-// a documented option the command silently ignores, and the generated cli
+// TestNewCommand covers the command main registers plus the flags that
+// configure a run. Run reads each from the set. A flag missing from Bind is
+// a documented option the command silently ignores; the generated cli
 // reference comes off the same set.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()

@@ -22,16 +22,16 @@ func registerEncoding(rt *runner.Runtime) {
 	rt.RegisterFunc("base64_encode", phpBase64Encode)
 	// base64_decode decodes the base64 in $string, skipping unknown
 	// characters unless $strict is true, in which case it returns false for
-	// them and for misplaced padding.
+	// those characters and for misplaced padding.
 	rt.RegisterFunc("base64_decode", phpBase64Decode)
-	// urlencode encodes $string for application/x-www-form-urlencoded and a
+	// urlencode encodes $string for application/x-www-form-urlencoded. A
 	// space becomes '+' and '~' becomes '%7E'.
 	rt.RegisterFunc("urlencode", phpURLEncode)
 	// urldecode decodes the application/x-www-form-urlencoded $string,
 	// turning '+' into a space and leaving an incomplete '%' sequence
 	// literal.
 	rt.RegisterFunc("urldecode", phpURLDecode)
-	// rawurlencode encodes $string per RFC 3986 and a space becomes '%20' and '~' stays literal.
+	// rawurlencode encodes $string per RFC 3986. A space becomes '%20' and '~' stays literal.
 	rt.RegisterFunc("rawurlencode", phpRawURLEncode)
 	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and
 	// leaving an incomplete '%' sequence literal.
@@ -133,7 +133,7 @@ func phpBase64Decode(str string, strict ...any) any {
 	}
 	if isStrict {
 		// A trailing group of one character holds no whole byte. The
-		// padding has to complete the last group without overshooting it.
+		// padding must complete the last group without overshooting it.
 		if count%4 == 1 {
 			return false
 		}

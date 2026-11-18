@@ -22,7 +22,7 @@ func workdirTree() fstest.MapFS {
 	}
 }
 
-// runWorkdir runs src against workdirTree and returns what it echoed.
+// runWorkdir runs src against workdirTree and returns the echo.
 func runWorkdir(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -39,8 +39,8 @@ func runWorkdir(t *testing.T, src string) string {
 }
 
 // TestGetcwdIsWrittenFromTheSourceRoot pins the spelling php cannot match: the
-// source filesystem's root is "/" and a script starts there and names every
-// path it reads from there.
+// source filesystem's root is "/". A script starts at "/" and names every path
+// it reads from that root.
 func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -64,8 +64,8 @@ func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 }
 
 // TestChdirCannotLeaveTheRoot pins the jail. A path that would climb above the
-// source filesystem stops at it and is never refused, which is the rule
-// every path a script passes this package follows.
+// source filesystem stops at the root; nothing refuses the request. Each path a
+// script passes this package follows that rule.
 func TestChdirCannotLeaveTheRoot(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{
@@ -81,8 +81,8 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 }
 
 // TestChdirRefusesWhatIsNotADirectory pins the false return. PHP warns and
-// answers false; there is no warning channel here and false is the whole
-// report and the working directory has to stay put.
+// answers false. There is no warning channel here; false is the whole report,
+// and the working directory stays put.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -122,8 +122,8 @@ echo file_get_contents("/note.txt");`)
 
 // TestIncludeCacheIsKeyedByTheResolvedFile is the bug a mutable working
 // directory would otherwise introduce. The server and the fixture harness
-// share the cache across runtimes and a key holding the spelling in place of
-// the file would hand one request the file another request loaded.
+// share the cache across runtimes. A key built from the spelling would hand one
+// request the file another request loaded.
 func TestIncludeCacheIsKeyedByTheResolvedFile(t *testing.T) {
 	t.Parallel()
 	got := runWorkdir(t, `<?php

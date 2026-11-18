@@ -16,9 +16,9 @@ func discard(l *Logger) *Logger {
 	return l.WithLogger(slog.New(slog.NewTextHandler(&strings.Builder{}, nil)))
 }
 
-// TestLoggerFailsSpanOnError covers what the logger has to do with the trace and
-// the extent of it: an error fails the span the work runs in, and the trace
-// records no other line the logger writes.
+// TestLoggerFailsSpanOnError covers the logger's effect on the trace: an error
+// fails the span the work runs in, and the trace records no other line the
+// logger writes.
 func TestLoggerFailsSpanOnError(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
@@ -58,7 +58,7 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 }
 
 // TestLoggerErrorWithoutErrorValue covers a caller that reported what happened
-// without an error to go with it: the message is what the span fails with.
+// and supplied no error: the message becomes the span's failure.
 func TestLoggerErrorWithoutErrorValue(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
@@ -111,7 +111,7 @@ func TestLoggerWritesToSlog(t *testing.T) {
 }
 
 // TestLoggerWarnLeavesTheSpanAlone is the whole difference between Warn and
-// Error. A degradation the work survives is one log line, and the span the
+// Error. A degradation the work survives takes one log line, and the span the
 // warning runs under ends clean, error value and all.
 func TestLoggerWarnLeavesTheSpanAlone(t *testing.T) {
 	t.Parallel()
@@ -154,8 +154,8 @@ func TestLoggerDefaultsToSlogDefault(t *testing.T) {
 	}
 }
 
-// TestLoggerWithoutTrace covers a CLI run: no trace in the context, and no
-// logger at all, the state a library passed nothing calls in.
+// TestLoggerWithoutTrace covers a CLI run: no trace in the context, no logger
+// at all, the state a library passed nothing calls in.
 func TestLoggerWithoutTrace(t *testing.T) {
 	t.Parallel()
 	log := discard(New(context.Background(), "migrate"))

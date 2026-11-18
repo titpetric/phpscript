@@ -1,7 +1,7 @@
 // Package database holds the named sql connections a phpscript runtime
-// resolves through. It copies the provider github.com/titpetric/platform keeps
-// in an internal package no outside module reaches, and lets a virtual host
-// hold its own provider in place of a process global.
+// resolves. It copies the provider github.com/titpetric/platform keeps
+// in an internal package no outside module reaches. A virtual host can hold a
+// separate provider in place of a process global.
 package database
 
 import (
@@ -14,13 +14,13 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Provider is what a runtime resolves named connections through. model declares
-// the interface and a runtime can name it in its options without depending on
-// this package.
+// Provider resolves the named connections a runtime uses. model declares the
+// interface; a runtime can name it in its options without depending on this
+// package.
 type Provider = model.DatabaseProvider
 
-// Default is the provider a runtime whose options name none resolves through.
-// It comes from the process environment, as a CLI run has it.
+// Default resolves the provider for a runtime whose options name none, from
+// the process environment as in a CLI run.
 var Default Provider = New(os.Environ())
 
 var (
@@ -98,9 +98,9 @@ func (r *DatabaseProvider) List() []string {
 	return result
 }
 
-// Register adds a named credential to the provider, under the mutex guarding
-// the credentials and the pool cache beside them. Re-registering the same
-// configuration is free; a different one drops the pool cached under the name.
+// Register adds a named credential to the provider, with a mutex guarding the
+// credentials and the pool cache next to them. Re-registering the same
+// configuration is free; a different one drops the pool cached for the name.
 func (r *DatabaseProvider) Register(name string, config string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -116,7 +116,7 @@ func (r *DatabaseProvider) Register(name string, config string) {
 	}
 }
 
-// credential reads a named credential under the lock.
+// credential reads a named credential while holding the lock.
 func (r *DatabaseProvider) credential(name string) (string, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -138,7 +138,7 @@ func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*DB, e
 	return db, err
 }
 
-// Open is the same as sql.Open. It creates a client from a named connection.
+// Open is sql.Open. It creates a client from a named connection.
 func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*DB, error) {
 	db, err := r.cached(r.open, names...)
 	return db, err

@@ -10,7 +10,8 @@ import (
 )
 
 // runScript runs src on an interpreter runtime with the standard library
-// registered and returns what the script printed with the run error. entry names
+// registered and returns the script's printed output and the run error. entry
+// names
 // a declared function to call after the file has run, for a source that declares
 // and executes nothing.
 func runScript(t *testing.T, src, entry string) (string, error) {
@@ -32,9 +33,9 @@ func runScript(t *testing.T, src, entry string) (string, error) {
 	return out.String(), runErr
 }
 
-// A first-class callable resolves the same names a call resolves, and a host
-// static registered under its whole spelling answers, `self::` resolves against
-// its enclosing method, and a bound method keeps its receiver.
+// A first-class callable resolves the same names a call resolves. A host static
+// registered under the whole spelling answers, `self::` resolves against the
+// enclosing method. A bound method keeps its receiver.
 func TestFirstClassCallableResolution(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -81,8 +82,8 @@ func TestFirstClassCallableResolution(t *testing.T) {
 	}
 }
 
-// A first-class callable that names nothing reports it where a script takes
-// the value and not where a call would run, with the message a direct call
+// A first-class callable that names nothing reports the error where a script
+// takes the value, not where a call would run, with the message a direct call
 // reports.
 func TestFirstClassCallableErrors(t *testing.T) {
 	t.Parallel()

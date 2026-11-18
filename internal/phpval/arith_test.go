@@ -6,8 +6,8 @@ import (
 )
 
 // TestOverflowAddInt covers the overflow detection the float fallback reads. A
-// sum that leaves the int64 range reports false and a zero and a caller never
-// has a wrapped negative to tell apart from a real one.
+// sum that leaves the int64 range reports false plus a zero; a caller never
+// sees a wrapped negative it must tell apart from a real one.
 func TestOverflowAddInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -62,8 +62,8 @@ func TestOverflowSubInt(t *testing.T) {
 	}
 }
 
-// TestOverflowMulInt covers the division check and the one case the check
-// misses: MinInt64 * -1 divides back cleanly and still has no int64 form,
+// TestOverflowMulInt covers the division check and the single case it misses:
+// MinInt64 * -1 divides back cleanly and still has no int64 form,
 // because the range holds no positive counterpart to MinInt64.
 func TestOverflowMulInt(t *testing.T) {
 	t.Parallel()
@@ -93,9 +93,9 @@ func TestOverflowMulInt(t *testing.T) {
 	}
 }
 
-// TestAddInt covers PHP's + on two ints. php 8.5 prints
-// float(9.223372036854776E+18) for PHP_INT_MAX + 1 and a sum that leaves the
-// range changes type and the Go wrap is never visible to a script.
+// TestAddInt covers PHP's + for int operands. php 8.5 prints
+// float(9.223372036854776E+18) for PHP_INT_MAX + 1; a sum that leaves the range
+// changes type, and the Go wrap never reaches a script.
 func TestAddInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -117,8 +117,7 @@ func TestAddInt(t *testing.T) {
 	}
 }
 
-// TestSubInt covers PHP's - on two ints. php 8.5 prints
-// float(-9.223372036854776E+18) for PHP_INT_MIN - 1.
+// TestSubInt covers PHP's - on ints: PHP_INT_MIN - 1 prints a float.
 func TestSubInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -139,7 +138,7 @@ func TestSubInt(t *testing.T) {
 	}
 }
 
-// TestMulInt covers PHP's * on two ints. php 8.5 prints
+// TestMulInt covers PHP's * for int operands. php 8.5 prints
 // float(1.8446744073709552E+19) for PHP_INT_MAX * 2 and
 // float(9.223372036854776E+18) for PHP_INT_MIN * -1.
 func TestMulInt(t *testing.T) {
@@ -162,11 +161,12 @@ func TestMulInt(t *testing.T) {
 	}
 }
 
-// TestDivInt covers PHP's / on two ints, where the operator is true division
-// and no integer one: php 8.5 prints float(3.5) for 7/2 and int(3) for 6/2,
-// and an even division keeps the int type and an uneven one changes it.
+// TestDivInt covers PHP's / for int operands, where the operator is true
+// division, not integer division: php 8.5 prints float(3.5) for the division
+// 7/2, and int(3) for the division 6/2; an even division keeps the int type, an uneven one
+// changes it.
 //
-// Division by zero returns int 0 here and no caller reads it: both engines
+// Division by zero returns int 0 here; no caller reads it: both engines
 // raise DivisionByZeroError, the class php 8.5 throws, before they reach the
 // arithmetic.
 func TestDivInt(t *testing.T) {
@@ -192,11 +192,11 @@ func TestDivInt(t *testing.T) {
 }
 
 // TestModInt covers PHP's %, which takes the sign of the left operand: php 8.5
-// prints int(-1) for -7%3 and int(1) for 7%-3. Go's % has the same rule and
+// prints int(-1) for the sum -7%3 and int(1) for the sum 7%-3. Go's % follows the same rule;
 // the operator passes through.
 //
 // Modulo by zero returns int 0 on the terms DivInt states: the operator
-// raises DivisionByZeroError, as php 8.5 does, and never reaches this.
+// raises DivisionByZeroError, as php 8.5 does, before reaching this code.
 func TestModInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {

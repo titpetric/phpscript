@@ -5,13 +5,14 @@
 // extensions that are each too small to be worth a package: SharedMemory,
 // defer and register_shutdown_function.
 //
-// The line against stdlib/ps/compat is behavioural, not historical: compat holds
-// the surface whose behaviour is the interpreter's (output buffering, preg_*,
-// the date functions), core holds the surface whose behaviour is its own.
+// The line against stdlib/ps/compat runs on behaviour, not history: compat
+// holds the surface whose behaviour comes from the interpreter (output
+// buffering, preg_*, the date functions); core holds the surface whose
+// behaviour it defines.
 //
-// Every file registers its own area from its own init() and adding, moving or
-// dropping an area touches no other file. Importing the package is what wires
-// them in, the way a program imports a database/sql driver:
+// Every file registers an area from its init(); adding, moving or dropping an
+// area touches no other file. Importing the package wires them in, as a
+// program imports a database/sql driver:
 //
 //	import _ "github.com/titpetric/phpscript/stdlib/ps/core"
 //

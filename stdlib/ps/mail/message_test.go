@@ -12,8 +12,8 @@ import (
 )
 
 // TestBuildMessage_Plain pins the message mail() has always sent, byte for
-// byte: a message with no HTML part takes none of the multipart rendering and a
-// script that never passes $html sees no change on the wire.
+// byte: a message holding no HTML part takes none of the multipart rendering.
+// A script that passes no $html sees no change on the wire.
 func TestBuildMessage_Plain(t *testing.T) {
 	t.Parallel()
 	got, err := buildMessage("Example <noreply@example.com>", Message{
@@ -39,7 +39,7 @@ func TestBuildMessage_Plain(t *testing.T) {
 // TestBuildMessage_Alternative covers the structure a mail client reads: one
 // multipart/alternative body holding the text first and the HTML last, because
 // RFC 2046 puts the part a client prefers last, each declared UTF-8 and
-// quoted-printable, and nothing after them.
+// quoted-printable, with nothing after.
 func TestBuildMessage_Alternative(t *testing.T) {
 	t.Parallel()
 	raw, err := buildMessage("noreply@example.com", Message{
@@ -81,8 +81,8 @@ func TestBuildMessage_Alternative(t *testing.T) {
 	}
 }
 
-// TestBuildMessage_HTMLOnly covers HTML with no text: one text/html part, with
-// no alternative wrapped around a single choice.
+// TestBuildMessage_HTMLOnly covers HTML without text: a single text/html part,
+// with no alternative wrapping a single choice.
 func TestBuildMessage_HTMLOnly(t *testing.T) {
 	t.Parallel()
 	raw, err := buildMessage("noreply@example.com", Message{
@@ -113,7 +113,7 @@ func TestBuildMessage_HTMLOnly(t *testing.T) {
 // lines of at most 76 characters ending in CRLF, whatever the script wrote. A relay
 // rejects or breaks a single line past the 998 octets RFC 5321 allows; a raw
 // UTF-8 byte in a part is only safe when the relay speaks 8BITMIME. Both parts
-// still decode back to what the script sent.
+// still decode back to the script's original bytes.
 func TestBuildMessage_Encoding(t *testing.T) {
 	t.Parallel()
 	long := strings.Repeat("Žižek naïve café € 😀 ", 120)
@@ -158,8 +158,8 @@ func TestBuildMessage_Encoding(t *testing.T) {
 
 // TestBuildMessage_HeaderInjection covers every header a script or a host
 // supplies. A CR or LF in any of them would start a header of the script's
-// choosing, a Bcc being the one that turns a contact form into a relay and
-// header strips both and the value stays on its own line.
+// choosing; a Bcc is the header that turns a contact form into a relay. The
+// header strips both. The value stays on a separate line.
 func TestBuildMessage_HeaderInjection(t *testing.T) {
 	t.Parallel()
 	const smuggled = "\r\nBcc: everyone@example.net\nX-Injected: 1"
@@ -189,7 +189,7 @@ func TestBuildMessage_HeaderInjection(t *testing.T) {
 	}
 }
 
-// part is one decoded body part of a multipart message.
+// part is a decoded body part of a multipart message.
 type part struct {
 	contentType string
 	encoding    string

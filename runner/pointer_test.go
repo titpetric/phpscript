@@ -33,9 +33,9 @@ func TestPointer_Set(t *testing.T) {
 	}
 }
 
-// TestGoPointerOperators covers `&` and `*` through the parser and both
-// engines. The pointer shares the variable, and an assignment through it
-// writes the variable. A copy does not.
+// TestGoPointerOperators covers `&` and `*` in the parser, in each engine. The
+// pointer shares the variable; an assignment through the pointer writes the
+// variable. A copy does not.
 func TestGoPointerOperators(t *testing.T) {
 	t.Parallel()
 	src := `<?php

@@ -7,10 +7,10 @@ import (
 )
 
 // TestPair covers one already-decoded form field. Multipart values and the
-// cookie header arrive decoded and a Pair holds the name and the value as
-// they are and parseKey reads the bracket path off the name afterwards: a name
-// that held `%5B` before decoding nests, and a name that holds a literal
-// bracket after decoding nests too.
+// cookie header arrive decoded. A Pair holds the name and the value as they
+// are. parseKey reads the bracket path off the name afterwards: a name that
+// held `%5B` before decoding nests. A name that holds a literal bracket after
+// decoding nests too.
 func TestPair(t *testing.T) {
 	t.Parallel()
 	pairs := []shared.Pair{
@@ -27,10 +27,10 @@ func TestPair(t *testing.T) {
 	}
 }
 
-// TestParsePairs covers the entry point for input that did not arrive as a
-// query string. Order is the order ParsePairs applies pairs in and two pairs
-// naming one variable leave the last value, and the last assignment decides
-// the shape: a scalar written over an array replaces it. The limits are
+// TestParsePairs covers the entry point for input that arrives as something
+// other than a query string. Order is the order ParsePairs applies pairs in.
+// Two pairs naming one variable leave the last value. The last assignment
+// decides the shape: a scalar written over an array replaces the array. The limits are
 // php.ini's. The parse drops a name past the nesting limit whole.
 func TestParsePairs(t *testing.T) {
 	t.Parallel()
@@ -93,11 +93,11 @@ func TestParsePairs(t *testing.T) {
 }
 
 // TestFormDecodingIsOneImplementation covers the reason this package exists.
-// runner builds $_GET and $_POST and stdlib's parse_str() reads a string, and
-// both go through this decoder and the nested array a request produces is the
-// one parse_str() produces for the same bytes. Decoding runs before parseKey
-// reads the brackets and `k%5Ba%20b%5D=1` nests under the key `a b`, and a
-// plus in a top-level name is a space by then and mangles to an underscore.
+// runner builds $_GET and $_POST; stdlib's parse_str() reads a string. Both go
+// through this decoder. The nested array a request produces matches what
+// parse_str() produces for the same bytes. Decoding runs before parseKey reads
+// the brackets. `k%5Ba%20b%5D=1` nests beneath the key `a b`. A plus in a
+// top-level name is a space by then, and mangles to an underscore.
 func TestFormDecodingIsOneImplementation(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -116,7 +116,7 @@ func TestFormDecodingIsOneImplementation(t *testing.T) {
 	}
 
 	// The string form is the pair form with the splitting done: an `&` field
-	// with no `=` is a name with an empty value, and both paths agree on it.
+	// lacking `=` is a name with an empty value. Both paths agree.
 	raw := shared.ParseStr("a&b=1", shared.Limits{})
 	pairs := shared.ParsePairs(shared.Limits{}, []shared.Pair{{Name: "a"}, {Name: "b", Value: "1"}})
 	if flatten(raw) != flatten(pairs) {

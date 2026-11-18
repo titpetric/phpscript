@@ -43,8 +43,8 @@ func TestPHPKrsort(t *testing.T) {
 	}
 }
 
-// TestPHPAsort covers asort ordering by value with the keys kept attached and
-// a score table sorts without losing the name against each score.
+// TestPHPAsort covers asort ordering by value with the keys attached; a score
+// table sorts without losing the name against each score.
 func TestPHPAsort(t *testing.T) {
 	t.Parallel()
 	array := setArray("x", int64(3), "y", int64(1), "z", int64(2))
@@ -79,8 +79,8 @@ func TestPHPArsort(t *testing.T) {
 //
 // The rebuild puts an integer-keyed array back with Set, never Append:
 // appending would hand out fresh keys and turn a key-preserving sort into
-// sort(). These six refuse a native Go slice, because a slice has no keys to
-// preserve and sorting one would be sort() under another name.
+// sort(). These six refuse a native Go slice: a slice has no keys to preserve,
+// and sorting the slice would be sort() under another name.
 func TestSortEntries(t *testing.T) {
 	t.Parallel()
 	sparse := setArray(int64(5), "five", int64(2), "two", int64(9), "nine")
@@ -101,7 +101,7 @@ func TestSortEntries(t *testing.T) {
 }
 
 // TestCallbackLess covers adapting a script comparator to the boolean
-// sort.SliceStable takes. A comparator that raises reads as "not less" and a
+// sort.SliceStable takes. A comparator that raises reads as "not less"; a
 // failing callback leaves the order it saw and aborts no sort mid-way.
 func TestCallbackLess(t *testing.T) {
 	t.Parallel()

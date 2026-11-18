@@ -14,7 +14,7 @@
 | The `U` (ungreedy) modifier           | Partial compatibility | Honoured by RE2; dropped when a pattern also needs the backtracking engine.  |
 | Named groups `(?<name>...)`           | Partial compatibility | The group matches and takes a number; `$matches["name"]` is not populated.   |
 
-PHP's regular expressions are PCRE. Go's standard `regexp` is RE2, a different engine with a different bargain: RE2 guarantees a match runs in time linear in the length of the subject, and pays for that by leaving out every construct that would require backtracking. Two of those omissions show up in ordinary PHP code.
+PHP's regular expressions are PCRE. Go's standard `regexp` is RE2, a different engine with a different bargain: RE2 guarantees a match runs in time linear in the length of the subject, and pays for that by leaving out every construct that would require backtracking. Two such omissions show up in ordinary PHP code.
 
 ## Two engines
 
@@ -26,15 +26,15 @@ phpscript compiles each pattern with whichever engine can express it:
 | `\1` to `\9`, `(?=`, `(?!`, `(?<=`, `(?<!` | `regexp2` (backtracking) |
 | anything else RE2 rejects at compile time  | `regexp2` (backtracking) |
 
-One case depends on the call and not on the pattern. A non-zero `$offset` moves where the match starts without moving where the subject begins and `^` and `\b` still see the real start of the string. RE2 has no entry point that takes a start position, and slicing `$subject` would move the start and a call with an offset runs on the backtracking engine whichever one compiled the pattern. phpscript compiles a pattern RE2 accepted a second time, once, on the first call that passes an offset.
+One case depends on the call and not on the pattern. A non-zero `$offset` moves where the match starts without moving where the subject begins. `^` and `\b` still see the real start of the string. RE2 has no entry point that takes a start position, and slicing `$subject` would move the start. A call with an offset runs on the backtracking engine whichever one compiled the pattern. phpscript compiles a pattern RE2 accepted a second time, once, on the first call that passes an offset.
 
-phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee and a one-second timeout bounds a match it runs; a pattern that exceeds it reports no match without holding the request.
+phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee. A one-second timeout bounds a match it runs; a pattern that exceeds it reports no match without holding the request.
 
-phpscript compiles each pattern once per runtime and caches it and the choice of engine is not paid for on each call.
+phpscript compiles each pattern once per runtime. It caches the compiled pattern; the choice of engine is not paid for on each call.
 
-Which engine ran is not observable from PHP. The same `$matches` shape comes back either way, and a group that matched nothing is the empty string in both.
+Which engine ran is not observable from PHP. The same `$matches` shape comes back either way. A group that matched nothing is the empty string in both.
 
-Without this, the gap is worse than a missing feature: a pattern RE2 cannot compile silently reported "no match" and a template compiler that pairs `{block foo}` with `{/block}` through `\1` produces *wrong output* where an error belongs.
+Without this, the gap is worse than a missing feature: a pattern RE2 cannot compile silently reported "no match". A template compiler that pairs `{block foo}` with `{/block}` through `\1` produces *wrong output* where an error belongs.
 
 ## What still differs from PCRE
 
@@ -42,17 +42,17 @@ Without this, the gap is worse than a missing feature: a pattern RE2 cannot comp
 
 **Escape sequences.** `\_` and an escaped space are rewritten to the bare character, because both engines reject them as unknown classes where PCRE accepts them.
 
-**Replacements.** `preg_replace` accepts both PHP spellings of a group reference in the replacement, `\1` and `$1`, and normalises them to `${1}` so that a reference followed by a digit, `\1` before a literal `0`, still names group 1.
+**Replacements.** `preg_replace` accepts both PHP spellings of a group reference in the replacement (`\1`, `$1`), then normalises them to `${1}`, so that a reference followed by a digit, `\1` before a literal `0`, still names group 1.
 
-**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default: `$matches[0]` is every whole match and `$matches[n]` every capture of group n. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
+**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default. `$matches[0]` holds every whole match; `$matches[n]` holds every capture of group n. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
 
-**Offsets.** `PREG_OFFSET_CAPTURE` turns every entry into a pair of the matched text and its offset, and `-1` is the offset of a group that matched nothing. The offsets are byte offsets, as PHP reports them even under the `u` modifier: a match after a two-byte character starts at 2, not at 1. phpscript reads `$offset` the same way, and counts from the end of the subject when the offset is negative. An `$offset` outside the subject is a failed call, not a failed match: `preg_match` returns `false`.
+**Offsets.** `PREG_OFFSET_CAPTURE` turns every entry into a pair of the matched text and its offset, and `-1` is the offset of a group that matched nothing. The offsets are byte offsets, as PHP reports them even with the `u` modifier: a match after a two-byte character starts at 2, not at 1. phpscript reads `$offset` the same way, and counts from the end of the subject when the offset is negative. An `$offset` outside the subject is a failed call, not a failed match: `preg_match` returns `false`.
 
 **Failure.** A pattern that does not compile makes `preg_match` and `preg_match_all` return `false` and `preg_replace_callback` return null, in each case leaving the by-reference argument as the caller left it. PHP also emits a warning; phpscript emits nothing.
 
 ## Go's regexp, under its own name
 
-`preg_*` is PHP's surface, and a pattern written for it stays a PCRE pattern whichever engine runs it. `Regexp\` is the other direction: Go's `regexp` package reached as PHP classes, with RE2 syntax, RE2 semantics and no PCRE translation layer.
+`preg_*` is PHP's surface. A pattern written for it stays a PCRE pattern whichever engine runs it. `Regexp\` is the other direction: Go's `regexp` package reached as PHP classes, with RE2 syntax and semantics, without a PCRE translation layer.
 
 | Class                 | Is                    | Returns          |
 |-----------------------|-----------------------|------------------|
@@ -67,15 +67,15 @@ foreach ($rx->find_all_string_submatch($subject, -1) as $match) {
 }
 ```
 
-Both are constructors over the package function of the same name and an expression that does not parse throws the error `regexp.Compile` returned, catchable by any clause. The value is a `*regexp.Regexp` and every exported method of that type is callable as PHP spells it: `find_string`, `find_all_string_submatch`, `replace_all_string`, `split`, `num_subexp`, `subexp_names`. `get_class()` answers `Regexp`, which is the Go type behind the value.
+Both are constructors over the package function of the same name and an expression that does not parse throws the error `regexp.Compile` returned, catchable by any clause. The value is a `*regexp.Regexp`. Every exported method of that type is callable as PHP spells it: `find_string`, `find_all_string_submatch`, `replace_all_string`, `split`, `num_subexp`, `subexp_names`. `get_class()` answers `Regexp`, which is the Go type behind the value.
 
-Three differences from `preg_*` are the reason to use it. The binding reports named groups: `$rx->subexp_names()` and `$rx->subexp_index("host")` answer what `$matches["name"]` does not hold. The constructor compiles a pattern once, where the `preg_*` cache keys on pattern text per runtime. And `Regexp\CompilePOSIX` has no `preg_*` counterpart at all: it takes the leftmost-longest match and `a|ab` finds `ab` where the Perl-syntax engines find `a`.
+Three differences from `preg_*` make it worth using. It reports named groups: `$rx->subexp_names()` and `$rx->subexp_index("host")` answer what `$matches["name"]` does not hold. The constructor compiles a pattern once, where the `preg_*` cache keys on pattern text per runtime. And `Regexp\CompilePOSIX` has no `preg_*` counterpart at all: it takes the leftmost-longest match and `a|ab` finds `ab` where the Perl-syntax engines find `a`.
 
 `MustCompile` and `MustCompilePOSIX` are not registered, because they panic where a script needs an error to catch. [Regexp bindings](../../bindings-regexp.md) is the walkthrough, including every fixture.
 
 ## Writing portable patterns
 
-A pattern that avoids backreferences and lookaround runs on the faster engine with a linear-time guarantee. That is worth doing for untrusted input, such as a search box or a route parameter, and not worth contorting a pattern for where the input is your own template source.
+A pattern that avoids backreferences and lookaround runs on the faster engine with a linear-time guarantee. That is worth doing for untrusted input, such as a search box or a route parameter, and not worth contorting a pattern for where the input is host-controlled template source.
 
 ```php
 // RE2: linear time, no timeout needed.
@@ -87,8 +87,8 @@ preg_match_all("/\{(block|inline) (\w+)\}(.*?)\{\/\\1\}/s", $template, $matches)
 
 ## Implementation
 
-`preg_*` is in [stdlib/ps/compat/regex.go](../../../stdlib/ps/compat/regex.go), with the rest of the PHP surface whose behaviour follows from what the interpreter does and not from what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterArea` and a host needing a different surface builds its runtime without it.
+`preg_*` is in [stdlib/ps/compat/regex.go](../../../stdlib/ps/compat/regex.go), with the rest of the PHP surface whose behaviour follows from interpreter execution, not computation. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it using `runner.RegisterArea`. A host needing a different surface builds its runtime without that import.
 
 `compilePCRE` makes the engine choice. The `pattern` type in the same file is the only thing the shims talk to and the two engines are indistinguishable from PHP.
 
-`Regexp\` is a separate package, [stdlib/ps/regexp](../../../stdlib/ps/regexp), because it computes and depends on nothing the interpreter does and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.
+`Regexp\` is a separate package, [stdlib/ps/regexp](../../../stdlib/ps/regexp), because it depends on nothing the interpreter does. It shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.

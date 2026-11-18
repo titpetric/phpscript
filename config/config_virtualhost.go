@@ -7,11 +7,10 @@ import (
 	"strings"
 )
 
-// VirtualHostConfigFile is the file in an application root that configures
-// the virtual host rooted there.
+// VirtualHostConfigFile is the application-root file configuring the virtual host rooted there.
 const VirtualHostConfigFile = "phpscript.yml"
 
-// tenantKeys lists the keys a site may not set in its own configuration file.
+// tenantKeys lists the keys a site may not set in its configuration file.
 var tenantKeys = []string{"server", "virtualhost"}
 
 // tenantKeysOwner is the clause docs/configuration.md records verbatim after a rejected key.
@@ -22,12 +21,12 @@ const tenantKeysOwner = "is set by the operator, not by the site"
 // Root, which the site's own author writes.
 type VirtualHost struct {
 	// Domain is the Host headers this entry answers for, separated by
-	// spaces. Every name reaches the same site, with no copy of it: one
-	// application root, one configuration, one set of connections and one
-	// recorder, no matter which name a request arrived under. The usual case
-	// is a bare domain and its www form, "example.com www.example.com".
+	// spaces. Every name reaches the same site: one application root, one
+	// configuration, one set of connections, one recorder, no matter which
+	// name a request uses. The usual case is a bare domain and its www form,
+	// "example.com www.example.com".
 	//
-	// The first name is the site's own, the one every error names it by.
+	// The first name is the site's own, the name every error uses for it.
 	Domain string `yaml:"domain"`
 
 	// Root is the application root, the directory holding the site's
@@ -35,9 +34,9 @@ type VirtualHost struct {
 	Root string `yaml:"root"`
 
 	// DocumentRoot is the directory under Root served over HTTP. The default
-	// is public and rarely needs setting: the key covers a site whose tree
-	// already names that directory something else, and no operator has to
-	// fill it in.
+	// is public and rarely needs setting. The key covers a site whose tree
+	// already names that directory something else; no operator must fill it
+	// in.
 	DocumentRoot string `yaml:"document_root"`
 }
 
@@ -48,8 +47,8 @@ func (v VirtualHost) Normalize() VirtualHost {
 }
 
 // Domains returns every name this entry answers for, in the order Domain lists
-// them, lowercased and without a trailing dot so a Host header compares equal
-// to a configured name.
+// them, lowercased and without a trailing dot. A Host header then compares
+// equal to a configured name.
 func (v VirtualHost) Domains() []string {
 	fields := strings.Fields(v.Domain)
 	domains := make([]string, 0, len(fields))
@@ -61,7 +60,7 @@ func (v VirtualHost) Domains() []string {
 	return domains
 }
 
-// Name returns the first name the entry lists, and "" for an entry listing none.
+// Name returns the entry's first name, and "" for an entry listing none.
 func (v VirtualHost) Name() string {
 	domains := v.Domains()
 	if len(domains) == 0 {
@@ -85,22 +84,22 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	filename := filepath.Join(v.Root, VirtualHostConfigFile)
 	name := v.Name()
 
-	// A missing file is an error, with no fall back to the operator's
-	// defaults. The file is the site's contract, and a site served under
-	// settings it never wrote is the failure mode worth avoiding.
+	// A missing file is an error; the operator's defaults never fill in.
+	// The file is the site's contract. A site served under settings it did not
+	// write is the failure mode worth avoiding.
 	result, declared, err := Overlay(base, filename, tenantKeys, tenantKeysOwner)
 	if err != nil {
 		return base, declared, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 
 	// Belt and braces over the rejection Overlay made: whatever the file
-	// contained, the server block is the operator's and a site holds no sites.
+	// contained, the server block is the operator's. A site holds no sites.
 	result.Server = base.Server
 	result.VirtualHost = nil
 
-	// The operator's entry wins, because the location of a site on disk is the
-	// operator's call. public is the default and `config.yml` sets it; the
-	// literal here only covers a Config assembled in Go without it.
+	// The operator's entry wins: the location of a site on disk is the
+	// operator's call. public is the default and `config.yml` sets the key.
+	// The literal here only covers a Config assembled in Go without the file.
 	documentRoot := v.DocumentRoot
 	if documentRoot == "" {
 		documentRoot = result.DocumentRoot
@@ -113,10 +112,10 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	return result, declared, nil
 }
 
-// CheckVirtualHosts checks the whole list before the server builds a site,
-// and a bad entry fails the server and not one request. The check loads every
-// entry, because the document root and the telemetry block two of the checks
-// need come from the site's phpscript.yml and not from the entry.
+// CheckVirtualHosts checks the whole list before the server builds any site.
+// A bad entry fails startup. It does not wait for a request. The check loads every
+// entry, because the document root and the telemetry block needed by two
+// checks come from the site's phpscript.yml, not from the entry.
 func (c Config) CheckVirtualHosts() error {
 	if len(c.VirtualHost) == 0 {
 		return nil
@@ -131,9 +130,9 @@ func (c Config) CheckVirtualHosts() error {
 		if name == "" {
 			return fmt.Errorf("virtualhost: domain is required")
 		}
-		// Every name in the list is a name like any other: two entries cannot
-		// both claim one, and an entry cannot list a name twice, because the
-		// mux has one handler per name and the second would win silently.
+		// Every name in the list is a name like any other. Two entries cannot
+		// claim the same name, and an entry cannot list a name twice. The mux
+		// holds one handler per name; the second would win silently.
 		for _, domain := range host.Domains() {
 			if domains[domain] {
 				return fmt.Errorf("virtualhost %q: domain %q is configured twice", name, domain)
@@ -159,7 +158,7 @@ func (c Config) CheckVirtualHosts() error {
 
 		// A server the site got wrong fails startup and not the first
 		// delivery, which on a site whose only sender is a @schedule job is
-		// the middle of the night on the one path nobody is watching.
+		// the middle of the night on a path nobody watches.
 		if err := loaded.Mail.Check(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
 			return fmt.Errorf("virtualhost %q: %w", name, err)
 		}
@@ -180,9 +179,9 @@ func (c Config) CheckVirtualHosts() error {
 		}
 
 		// The platform mounts its dashboard on the root router, which shadows
-		// that path prefix on every host and a site that names the same
-		// path gets a dashboard nothing can reach. A site that names no path
-		// gets none. This check passes it over.
+		// that path prefix on every host. A site naming the same path gets a
+		// dashboard nothing can reach. A site naming no path gets none. This
+		// check passes it over.
 		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
 			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}
@@ -192,8 +191,8 @@ func (c Config) CheckVirtualHosts() error {
 }
 
 // CheckRoot checks a single application root the way CheckVirtualHosts
-// checks an entry: fs.Sub does not stat and a missing document root is
-// otherwise a 404 on the first request.
+// checks an entry. fs.Sub does not stat. A missing document root is
+// otherwise a 404 response on the first request.
 func (c Config) CheckRoot(root string) error {
 	if err := statDir(root); err != nil {
 		return fmt.Errorf("root: %w", err)

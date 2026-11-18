@@ -8,10 +8,10 @@ import (
 )
 
 // TestResolveClassName covers the contextual class names a static reference
-// accepts. `self` and `static` both name the class of the running method,
-// because there is no inheritance and late static binding resolves to the same
-// class. `parent` has no class behind it: extends builds nothing and the
-// reference fails. A leading separator comes off a written name.
+// accepts. Both `self` and `static` name the class of the running method, since
+// there is no inheritance and late static binding resolves to the same class.
+// `parent` has no class behind it: extends builds nothing and the reference
+// fails. A leading separator drops from a written name.
 func TestResolveClassName(t *testing.T) {
 	t.Parallel()
 	inMethod := NewScope()
@@ -53,8 +53,8 @@ func TestResolveClassName(t *testing.T) {
 // TestClassDefaultScope covers the scope a class's declared defaults run in. A
 // default sits inside the class body and `self::X` in one resolves to that
 // class; the scope holding the `new` knows nothing about it. __FILE__ and
-// __DIR__ cross from the caller and a default naming either reads its
-// declaring file.
+// __DIR__ cross from the caller. A default naming either reads its declaring
+// file.
 func TestClassDefaultScope(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -84,9 +84,9 @@ func TestClassDefaultScope(t *testing.T) {
 }
 
 // TestStaticBag covers the live storage of a class's static properties, seeded
-// from the declared defaults on first access. One bag per class on the Runtime,
-// and composer's `self::$registeredLoaders` is the same storage every instance
-// and every later static call reads.
+// from the declared defaults on first access. One bag per class on the Runtime.
+// Composer's `self::$registeredLoaders` is the same storage every instance and
+// static call reads.
 func TestStaticBag(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -121,8 +121,8 @@ func TestStaticBag(t *testing.T) {
 
 // TestStaticProp covers reading and writing `Class::$name`. An undeclared
 // property reads as null, the leniency the rest of the runtime applies to
-// property and index access, and a write through the class name is visible to
-// the next read.
+// property and index access. A write through the class name is visible to the
+// next read.
 func TestStaticProp(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -164,7 +164,7 @@ func TestStaticProp(t *testing.T) {
 
 // TestStaticVarBag covers the persistent storage of one `static $x` statement.
 // Named functions and methods share one bag per statement on the Runtime; a
-// closure frame keeps its own table and each closure value counts separately.
+// closure frame keeps a separate table; each closure value counts separately.
 // The second return reports whether the bag already held values, and keeps an
 // initializer from running twice.
 func TestStaticVarBag(t *testing.T) {
@@ -199,7 +199,7 @@ func TestStaticVarBag(t *testing.T) {
 
 // TestExecStaticVar covers `static $x = expr;`. The initializer runs only the
 // first time the declaring function executes the statement; every call after
-// that rebinds the name to the value the last call left behind and a counter
+// that rebinds the name to the value the last call left behind; a counter
 // keeps counting.
 func TestExecStaticVar(t *testing.T) {
 	t.Parallel()

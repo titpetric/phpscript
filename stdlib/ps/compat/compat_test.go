@@ -10,10 +10,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/ps/compat"
 )
 
-// TestRegister covers the three families one call installs: the ob_* buffers,
-// the clock and date shims, and the preg_* functions. A host that builds its
-// own Runtime without stdlib calls this one function for all three and a
-// family this call omits is a family no script can reach.
+// TestRegister covers all three families one call installs: the ob_* buffers,
+// the clock and date shims, the preg_* functions. A host building a Runtime
+// without stdlib calls this one function for all three. A family this call
+// omits is a family no script can reach.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -35,10 +35,10 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// runScript runs src against a runtime with the stdlib installed and returns
-// what reached the real output. It drives the bindings through the VM because
-// that is where buffering has to hold up: buffering works by intercepting what
-// echo and inline HTML write, not by anything a script can observe directly.
+// runScript runs src on a runtime with the stdlib installed and returns
+// what reached the real output. It drives the bindings through the VM, because
+// buffering must hold up there. Buffering works by intercepting what echo and
+// inline HTML write, not by anything a script can observe directly.
 func runScript(t *testing.T, src string) string {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -55,7 +55,7 @@ func runScript(t *testing.T, src string) string {
 }
 
 // TestOutputBufferingIsWiredByImport covers the blank import: stdlib installs
-// the ob_* family without naming this package and a script can call it.
+// the ob_* family without naming this package; a script can call it.
 func TestOutputBufferingIsWiredByImport(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -104,8 +104,8 @@ func TestOutputBufferingIsWiredByImport(t *testing.T) {
 			want: "[markup]",
 		},
 		{
-			// PHP distinguishes "no buffer" from "an empty buffer", and a
-			// script tells them apart with ===.
+			// PHP distinguishes "no buffer" from "an empty buffer". A script
+			// tells them apart with ===.
 			name: "no active buffer reports false",
 			php:  `<?php echo ob_get_contents() === false ? "false" : "string"; ob_start(); echo ob_get_clean() === "" ? ";empty" : ";other";`,
 			want: "false;empty",
@@ -140,8 +140,8 @@ func TestBuffersAreScopedToOneRuntime(t *testing.T) {
 	stdlib.Register(firstRT)
 	stdlib.Register(secondRT)
 
-	// The test leaves the first runtime mid-capture and a shared stack would
-	// leak into the second one's level count and swallow its output.
+	// The test leaves the first runtime mid-capture. A shared stack would leak
+	// into the second one's level count and swallow its output.
 	firstRT.PushOutput(&strings.Builder{})
 
 	if err := secondRT.Run(program); err != nil {

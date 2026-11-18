@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestRangeShapes covers range(): the ends are inclusive, a descending pair
-// counts down with a positive step the way php reads it, a character pair
-// answers single-byte strings, and a float anywhere makes every element float.
+// TestRangeShapes covers range(): the ends are inclusive; a descending pair
+// counts down with a positive step, as php reads the call; a character pair
+// answers single-byte strings; a float anywhere makes every element float.
 func TestRangeShapes(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -28,8 +28,8 @@ func TestRangeShapes(t *testing.T) {
 }
 
 // TestRangeCharacterPairs covers which pairs read as characters: both ends one
-// byte, whatever that byte is. php answers strings for range("1", "5") too,
-// and reads an end of more than one byte as a number.
+// byte, whatever that byte is. php answers strings for range("1", "5") too;
+// an end of more than one byte reads as a number.
 func TestRangeCharacterPairs(t *testing.T) {
 	t.Parallel()
 	if _, _, ok := rangeChars("a", "e"); !ok {

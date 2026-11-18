@@ -18,8 +18,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// parse compiles one source string, failing the test when the source itself
-// is wrong.
+// parse compiles one source string, failing when the source itself is wrong.
 func parse(t *testing.T, source string) *model.Program {
 	t.Helper()
 
@@ -30,10 +29,10 @@ func parse(t *testing.T, source string) *model.Program {
 	return program
 }
 
-// TestExitError covers the alias the exit error travels under. The embedding
-// API is runner's, aliased and never wrapped and a value a host builds under
-// the flatstack name fits everywhere runner's own type does, and the
-// wording and status are runner's.
+// TestExitError covers the alias for the exit error. The embedding API
+// belongs to runner. Aliasing, never wrapping, lets a value a host builds
+// with the flatstack name fit everywhere runner's own type does. The wording
+// and status are runner's.
 func TestExitError(t *testing.T) {
 	t.Parallel()
 	err := &flatstack.ExitError{Code: 3}
@@ -53,7 +52,7 @@ func TestExitError(t *testing.T) {
 	}
 }
 
-// TestIsExit covers how a host separates a script that ended from one that
+// TestIsExit covers the difference a host observes: one script ended, another
 // failed. A program calling exit() returns the error through Run, and the
 // output written before the call stays written.
 func TestIsExit(t *testing.T) {
@@ -85,10 +84,10 @@ func TestIsExit(t *testing.T) {
 }
 
 // TestExprCache covers the two tables the cache holds and the sharing it
-// exists for. The cache keys flat bytecode by parsed program identity and
-// EnsureFlat compiles once and a second call reads it back, and keys
-// compiled expressions by AST node identity. Len counts the expression
-// half. It stays zero while the cache holds bytecode alone.
+// exists for. The cache keys flat bytecode by parsed program identity.
+// EnsureFlat compiles once; a second call reads it back. The cache keys
+// compiled expressions by AST node identity. Len counts the expression half. It stays
+// zero while the cache holds bytecode alone.
 func TestExprCache(t *testing.T) {
 	t.Parallel()
 	cache := flatstack.NewExprCache()
@@ -142,9 +141,9 @@ func TestExprCache(t *testing.T) {
 }
 
 // TestIncludeCache covers the parsed-program cache includes resolve through.
-// The cache stores a program under its cleaned path and reads it back as the
-// same value, because the runner treats a parsed program as immutable and
-// shares it between the callers that only read the AST.
+// The cache stores a program by cleaned path and reads it back as the same
+// value. The runner treats a parsed program as immutable. Callers that only
+// read the AST share it.
 func TestIncludeCache(t *testing.T) {
 	t.Parallel()
 	cache := flatstack.NewIncludeCache()
@@ -179,9 +178,9 @@ func TestIncludeCache(t *testing.T) {
 	}
 }
 
-// TestIncludeFunc covers the resolver a host wires in. The runner holds no
-// filesystem and no parser and the function the host set resolves an
-// include. The runtime runs whatever it returns in place of reading a file.
+// TestIncludeFunc covers the resolver a host wires in. The runner holds
+// no filesystem or parser; the function the host set resolves an include.
+// The runtime runs whatever it returns in place of reading a file.
 func TestIncludeFunc(t *testing.T) {
 	t.Parallel()
 	asked := ""
@@ -206,9 +205,9 @@ func TestIncludeFunc(t *testing.T) {
 }
 
 // TestScope covers the variable table one execution frame holds. PHP has no
-// block scoping and one flat table per frame is the whole model: a name set
-// is readable, an unset name answers nothing, and DefinedVars reports the
-// table as get_defined_vars() does.
+// block scoping; one flat table per frame is the whole model. A name set is
+// readable, an unset name answers nothing, and DefinedVars reports the table
+// as get_defined_vars() does.
 func TestScope(t *testing.T) {
 	t.Parallel()
 	scope := flatstack.NewScope()
@@ -235,9 +234,9 @@ func TestScope(t *testing.T) {
 }
 
 // TestContext covers the request context a host fills itself. NewContext
-// allocates the maps a host writes into directly and a host that sets a query
-// field reads it back through the accessor that feeds the superglobal, with
-// no request behind it.
+// allocates the maps a host writes into directly. A host that sets a query
+// field reads it back through the accessor that feeds the superglobal, even
+// when no request exists.
 func TestContext(t *testing.T) {
 	t.Parallel()
 	ctx := flatstack.NewContext()
@@ -256,17 +255,14 @@ func TestContext(t *testing.T) {
 		t.Errorf("HeaderMap()[X-Request-Id] = %q, want %q", got, "r1")
 	}
 
-	// The alias is runner's type and the same value is what either package
-	// returns.
+	// The alias is runner's type and either package returns the same value.
 	var same runner.Context = ctx
 	if same.GetMap()["q"] != "phpscript" {
 		t.Error("the runner spelling reads a different value")
 	}
 }
 
-// TestFromRequest covers the context a served request decodes to, as a script
-// reads it: the query by name, the cookies by name and the CGI names derived
-// off the request, with no map behind them.
+// TestFromRequest decodes a served request into the context a script reads.
 func TestFromRequest(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/page?q=phpscript&n=2", nil)
@@ -292,10 +288,10 @@ func TestFromRequest(t *testing.T) {
 	}
 }
 
-// TestScopeFromContext covers what a registered Go callable reads off the
-// context it receives: the calling PHP frame. The runtime attaches it per
-// call and a binding reaches the caller's variables without the script
-// passing them.
+// TestScopeFromContext covers the values a registered Go callable reads off
+// the context it receives: the calling PHP frame. The runtime attaches it on
+// each call; a binding reaches the caller's variables without the script passing
+// them.
 func TestScopeFromContext(t *testing.T) {
 	t.Parallel()
 	var (

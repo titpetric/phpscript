@@ -18,10 +18,10 @@ import (
 // Collector accumulates statement execution counts, keyed by the statement
 // nodes the parser produced.
 //
-// Register runs before the program does, seeding every executable statement at
-// count zero under the filename it loads from. The entrypoint and every
-// include register and the files in a profile are the files get_included_files
-// reports, and an included-but-unexecuted statement still appears, at zero.
+// Register runs before the program, seeding each executable statement at count
+// zero by its filename. The entrypoint, every include and the files in a
+// profile match get_included_files. An included-but-unexecuted statement still
+// appears, at zero.
 type Collector struct {
 	mu    sync.Mutex
 	stmts map[model.Stmt]*coverStmt
@@ -36,9 +36,9 @@ type coverStmt struct {
 	count int
 }
 
-// Block is one line-range entry of a coverage profile. Lines only: the parser
-// records no columns and a profile writer chooses them (the test command
-// derives them from the source text).
+// Block holds a line-range entry of a coverage profile. Lines only: the parser
+// records no columns; the profile writer chooses them. The test command derives
+// them from the source text.
 type Block struct {
 	File      string
 	StartLine int
@@ -47,8 +47,8 @@ type Block struct {
 	Count     int
 }
 
-// FuncSpan is the source range of one declared function: a free function under
-// its name, a method under Class::name. A per-function report charges the
+// FuncSpan is the source range of one declared function: a free function by
+// the bare name, a method under Class::name. A per-function report charges the
 // blocks inside the range to it.
 type FuncSpan struct {
 	File      string
@@ -74,7 +74,7 @@ func New() *Collector {
 }
 
 // Register seeds every executable statement of program at count zero under
-// filename. A declaration does not execute and Register skips it; its body's
+// filename. A declaration does not execute, and Register skips it. The body's
 // statements register under separate spans. A statement already registered keeps
 // its count and re-including a cached program does not reset it.
 func (c *Collector) Register(filename string, program *model.Program) {
@@ -176,8 +176,8 @@ func (c *Collector) Functions() []FuncSpan {
 	return funcs
 }
 
-// Hit charges one execution to a registered statement. An unregistered one
-// (a declaration, a program built without the parser) is not counted.
+// Hit charges one execution to a registered statement. An unregistered
+// statement (a declaration, a program built without the parser) is not counted.
 func (c *Collector) Hit(s model.Stmt) {
 	c.mu.Lock()
 	if entry, ok := c.stmts[s]; ok {
@@ -187,8 +187,8 @@ func (c *Collector) Hit(s model.Stmt) {
 }
 
 // Blocks renders the collected counts as profile entries, sorted by file and
-// position. Statements sharing a line range merge into one block: NumStmt adds
-// up, and Count is the largest of theirs, the number of times the line runs;
+// position. Statements sharing a line range merge into a single block: NumStmt
+// adds up, and Count is the largest of theirs, the number of times the line runs;
 // summing would charge `$a = 1; $b = 2;` twice per pass.
 func (c *Collector) Blocks() []Block {
 	c.mu.Lock()
@@ -228,7 +228,7 @@ func (c *Collector) Blocks() []Block {
 	return blocks
 }
 
-// coverable reports whether a statement executes, which a declaration does not.
+// coverable reports whether a statement executes; a declaration does not.
 func coverable(s model.Stmt) bool {
 	switch s.(type) {
 	case *model.FuncDecl, *model.ClassDecl, *model.InterfaceDecl, *model.Use:
@@ -237,7 +237,7 @@ func coverable(s model.Stmt) bool {
 	return true
 }
 
-// coverSpan returns the header line alone for a compound statement, whose body has spans.
+// coverSpan returns the header line alone for a compound statement.
 func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	switch n := s.(type) {
 	case *model.If, *model.For, *model.Foreach, *model.DoWhile, *model.Switch, *model.Try:
@@ -250,7 +250,7 @@ func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	return span
 }
 
-// Name spells a file for a profile, with no leading separator.
+// Name spells a file for a profile, without a leading separator.
 func Name(filename string) string {
 	return strings.TrimPrefix(filename, "/")
 }

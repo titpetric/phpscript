@@ -7,8 +7,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// stringList is the smallest model.Collection that is not an *Array: a view over a
-// slice a binding already holds.
+// stringList is the smallest model.Collection that is not an *Array: a view of
+// a slice a binding already holds.
 type stringList []string
 
 func (l stringList) Len() int { return len(l) }
@@ -21,8 +21,8 @@ func (l stringList) Range(fn func(key, val any) bool) {
 	}
 }
 
-// propBag is a model.Keyed view over a map, with insertion order kept so its Range is
-// comparable against a wanted sequence.
+// propBag is a model.Keyed view of a map, with insertion order kept so its
+// Range is comparable to a wanted sequence.
 type propBag struct {
 	order []string
 	vals  map[string]any
@@ -66,14 +66,14 @@ func (b *propBag) Delete(key string) {
 	}
 }
 
-// TestCollection covers the contract a value satisfies to read as an array
-// without being one: its own length and its own iteration. count(), foreach and
-// the array bindings read a collection through LenValues, RangeValues and
-// IsCollection and a view over data a binding already holds reaches all three
-// and pays nothing to build an *model.Array.
+// TestCollection covers the contract that lets a value read as an array:
+// length and iteration. count(), foreach and the array bindings read a
+// collection through LenValues, RangeValues and IsCollection. A view of data a
+// binding already holds answers all three, paying nothing to build an
+// *model.Array.
 //
-// A nil *model.Array reports no collection and count() applies PHP's scalar rule to
-// it the way it does to a string.
+// A nil *model.Array reports no collection, and count() applies PHP's scalar
+// rule, as it applies to a string.
 func TestCollection(t *testing.T) {
 	t.Parallel()
 	var _ model.Collection = model.NewArray()
@@ -105,12 +105,13 @@ func TestCollection(t *testing.T) {
 	}
 }
 
-// TestKeyed covers the four operations indexing, isset() and unset() need from a
-// collection read by name: Read answers nil for a name nothing holds, and Has
-// tells that apart from a name holding nil.
+// TestKeyed covers the operations indexing, isset() and unset() need from
+// a collection read by name. Read answers nil for a name nothing holds. Has
+// distinguishes that from a name holding nil.
 //
-// model.Keyed embeds model.Collection and one value answers count() and foreach as well,
-// and a runtime reaching a bag declared in another package needs no *model.Array.
+// model.Keyed embeds model.Collection. One value answers count() and foreach
+// as well. A runtime reaching a bag declared in another package needs no
+// *model.Array.
 func TestKeyed(t *testing.T) {
 	t.Parallel()
 	var bag model.Keyed = newPropBag()

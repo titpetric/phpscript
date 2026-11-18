@@ -55,7 +55,7 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 	w.walk(prog.Stmts)
 }
 
-// lintChainedAssign reports `$a = $b = value` where the names may share an array handle.
+// lintChainedAssign reports `$a = $b = value`, which may share an array handle.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	chained, ok := modelutil.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
@@ -89,7 +89,7 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 	}
 }
 
-// isScalarLiteral reports a literal value no second name can share.
+// isScalarLiteral reports a literal value no other name can share.
 func isScalarLiteral(e model.Expr) bool {
 	switch v := e.(type) {
 	case *model.Interp:

@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// TestRequestScopesOnlyItsConnection holds what a request owns and what it does
-// not. The connection and the abort policy go back when the handler leaves;
-// the time limit is the runtime's and a handler moving it means to move it,
-// which is php's rule where the request is the script.
+// TestRequestScopesOnlyItsConnection separates the state a request owns from
+// the state it shares. The connection and the abort policy go back when the
+// handler leaves. The time limit belongs to the runtime; a handler can move
+// it. php's rule holds, where the request is the script.
 func TestRequestScopesOnlyItsConnection(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -47,11 +47,12 @@ func TestRequestScopesOnlyItsConnection(t *testing.T) {
 	}
 }
 
-// TestRuntime_ClientContext covers which of the two contexts a binding waits
-// on. Inside a handler the request's and a call that should end when the caller
-// hangs up does; outside one there is no request and the script's own serves,
-// and the same binding still has something to wait on. Leaving the handler puts
-// the previous one back and one request's disconnect stays off the next.
+// TestRuntime_ClientContext covers the two contexts a binding can wait on.
+// Inside a handler it waits on the request's; a call that should end when
+// the caller hangs up does. Outside, there is no request; the script's own
+// context serves, and the same binding still has something to wait on.
+// Leaving the handler restores the previous context. One request's disconnect
+// stays off the next.
 func TestRuntime_ClientContext(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -102,7 +103,7 @@ func TestRuntime_ClientContext(t *testing.T) {
 }
 
 // TestScriptLimitCancelsTheBindingContext is the other side: the script's own
-// limit does end a parked context, because that is how a serving script stops.
+// limit does end a parked context, as a serving script requires.
 func TestScriptLimitCancelsTheBindingContext(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -122,8 +123,8 @@ func TestScriptLimitCancelsTheBindingContext(t *testing.T) {
 }
 
 // TestReleaseDeadlineStopsTheTimers keeps a limit from outliving the program
-// that set it: an armed timer on a reused runtime is a program's deadline
-// applied to the next one.
+// that set it; otherwise an armed timer on a reused runtime applies a
+// program's deadline to the next program.
 func TestReleaseDeadlineStopsTheTimers(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

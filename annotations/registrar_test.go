@@ -28,7 +28,7 @@ func (r *recordingRegistrar) Handle(method string, path string, handler http.Han
 	r.handlers[pattern] = handler
 }
 
-// body serves one recorded pattern and returns what the endpoint wrote.
+// body serves one recorded pattern and returns the endpoint's output.
 func (r *recordingRegistrar) body(t *testing.T, pattern string) string {
 	t.Helper()
 
@@ -61,11 +61,11 @@ echo "last";
 `)},
 }
 
-// TestRegistrar covers the one type discovery and an application's router
-// share: a method, a path and a handler. The path arrives as the annotation
-// declared it, before either router's rewriting and a host that implements
-// this interface renders the parameters its own way. A repeated tag registers
-// once per line and one file answers two methods.
+// TestRegistrar covers the type shared by discovery and an application's
+// router: a method, a path, a handler. The path arrives as the annotation
+// declared it, before either router's rewriting. A host implementing this
+// interface renders the parameters in its format. A repeated tag registers
+// once per line; one file answers two methods.
 func TestRegistrar(t *testing.T) {
 	t.Parallel()
 	registrar := &recordingRegistrar{}
@@ -90,10 +90,10 @@ func TestRegistrar(t *testing.T) {
 	}
 }
 
-// TestRoute_Register covers the walk that publishes a tree. The walk passes
-// over a path the route grammar refuses and registers none: chi registers
+// TestRoute_Register covers the walk that publishes a tree. The walk skips a
+// path the route grammar refuses and registers none: chi registers
 // {module=users} as a parameter of that literal name, matches every request to
-// the segment and exports nothing and a refused path would be a live route
+// the segment, and exports nothing. A refused path would be a live route
 // answering wrongly. Two files declaring one pattern both reach the registrar
 // in path order and the later file is the handler a router keeps.
 func TestRoute_Register(t *testing.T) {

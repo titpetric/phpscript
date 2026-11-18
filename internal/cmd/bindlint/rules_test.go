@@ -28,8 +28,8 @@ func parseSource(t *testing.T, src string) *pkg {
 	return p
 }
 
-// TestRules covers one snippet per rule and per reason a narrowing has to
-// exist. Each case is the whole of a package: the registration, the binding
+// TestRules covers one snippet for each rule, chosen to exercise each reason a
+// narrowing must exist. Each case is a whole package: the registration, the binding,
 // and whatever helper it calls.
 func TestRules(t *testing.T) {
 	t.Parallel()
@@ -331,7 +331,7 @@ func (b *Box) fill(items *model.Array) {}`,
 }
 
 // TestReachable covers the call graph the narrowing rule reads: a binding's
-// helper, the helper's helper, and a recursive call that must not loop.
+// helper, the helper's helper, plus a recursive call that must not loop.
 func TestReachable(t *testing.T) {
 	t.Parallel()
 	p := parseSource(t, `package b

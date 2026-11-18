@@ -5,16 +5,15 @@ import (
 	"strings"
 )
 
-// InfoField is one row of a phpinfo() section, printed as `Name => Value`.
+// InfoField is a row of a phpinfo() section, printed as `Name => Value`.
 type InfoField struct {
 	Name  string
 	Value string
 }
 
 // InfoSection reports the rows a subsystem contributes to phpinfo(), or none
-// when it contributes no rows. It runs when a script calls phpinfo() and a
-// section reports the state at that moment and never the state at
-// registration.
+// when it contributes no rows. It runs when a script calls phpinfo(). A section
+// reports the current state. The state at registration never appears.
 type InfoSection func(rt *Runtime) []InfoField
 
 // RegisterInfo adds a named section to phpinfo(), in registration order.
@@ -28,7 +27,7 @@ type namedInfoSection struct {
 	section InfoSection
 }
 
-// infoReport renders the registered sections, each as a heading and its rows.
+// infoReport renders the registered sections, with a heading and rows for each.
 func (rt *Runtime) infoReport() string {
 	var out strings.Builder
 	for _, registered := range rt.infoSections {
@@ -44,7 +43,7 @@ func (rt *Runtime) infoReport() string {
 	return out.String()
 }
 
-// mib renders a byte count in MiB, the unit php states a memory figure in.
+// mib renders a byte count in MiB, php's memory unit.
 func mib(bytes int64) string {
 	return fmt.Sprintf("%.2f MiB", float64(bytes)/(1024*1024))
 }
@@ -61,9 +60,9 @@ func (rt *Runtime) registerCompiledTreeInfo() {
 			{Name: "Cached Files", Value: fmt.Sprintf("%d", programs)},
 			{Name: "Compiled Expressions", Value: fmt.Sprintf("%d", expressions)},
 		}
-		// The size is what a precompile pass measured itself adding. Without
-		// one there is no figure, and printing 0.00 MiB over a cache holding
-		// files would read as a measurement and not the absence of one.
+		// The size is the number a precompile pass measured itself adding.
+		// When no pass ran, there is no figure. Printing 0.00 MiB for a cache holding
+		// files would read as a measurement, not as the absence of one.
 		if heap > 0 {
 			fields = append(fields, InfoField{Name: "Cached Size", Value: mib(heap)})
 		}

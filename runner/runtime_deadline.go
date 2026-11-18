@@ -9,20 +9,20 @@ import (
 // script ends for, kept apart because they end it differently.
 //
 // bindContext builds the context a binding takes once per session, and nothing
-// rebuilds it. A time limit is a timer that cancels that context, and changing
-// the limit resets the timer and derives no new context, because a binding that
+// rebuilds it. Time limits are timers that cancel that context. Changing the
+// limit resets the timer and derives no new context, since a binding that
 // blocks - HTTP\Server::wait, which is a serving script's whole run - parks on
-// the context it holds and a rebuild would end it. A handler calling
-// set_time_limit is the ordinary way to reach that.
+// the context it holds. A handler calling set_time_limit is the ordinary way to
+// reach that, since a rebuild would end that context.
 //
-// The per-statement check reads the connection beside the context and merges
-// neither into the other, for the same reason: a request is one of many and the
-// context belongs to the script.
+// The per-statement check reads the connection next to the context and merges
+// neither into the other, for the same reason: a request is merely one of many
+// and the context belongs to the script.
 //
 // The limit belongs to the runtime and to no single request. A script that
 // serves is still one script, and set_time_limit inside a handler moves that
-// script's deadline, as php does where the request is the script. What a
-// request does own is its connection, which EnterRequest scopes.
+// script's deadline, as php does where the request is the script. A request
+// owns its connection alone, which EnterRequest scopes.
 
 // maxTimeLimit caps a script's limit, stopping the seconds-to-Duration multiply from wrapping.
 const maxTimeLimit = 100 * 365 * 24 * time.Hour
@@ -37,7 +37,7 @@ func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 	rt.armTimer()
 }
 
-// TimeLimit answers the limit in force, zero for none.
+// TimeLimit answers the limit in force, or zero when unset.
 func (rt *Runtime) TimeLimit() time.Duration { return rt.timeLimit }
 
 // SetIgnoreUserAbort decides whether the client going away ends the script.
@@ -62,8 +62,8 @@ func (rt *Runtime) ClientContext() context.Context {
 	return rt.Context()
 }
 
-// EnterRequest records the connection of one request for the length of it,
-// and returns the function that puts the previous one back.
+// EnterRequest records the connection of one request for its duration, and
+// returns the function that restores the previous one.
 func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	saved := rt.BeginRequest(ctx)
 	return func() { rt.EndRequest(saved) }
@@ -90,7 +90,7 @@ func ended(done <-chan struct{}) bool {
 	}
 }
 
-// bindContext builds the session's binding context and leaves the one it replaces uncancelled.
+// bindContext builds the session's binding context and leaves the replaced context uncancelled.
 func (rt *Runtime) bindContext() {
 	base := rt.host
 	if base == nil {
@@ -100,7 +100,7 @@ func (rt *Runtime) bindContext() {
 	rt.ctxDone = rt.ctx.Done()
 	// Whether the host can end the run. Not whether the wrapper above has a
 	// Done channel, which it always does: the timer ends the run through
-	// timedOut, and a command line script with no limit and no request must
+	// timedOut. A command line script holding neither limit nor request must
 	// check nothing per statement.
 	rt.watching = base.Done() != nil
 	rt.refreshDeadlineArmed()
@@ -150,7 +150,7 @@ func (rt *Runtime) refreshDeadlineArmed() {
 	rt.deadlineArmed = rt.watching || rt.clientDone != nil || rt.scriptTimer != nil
 }
 
-// suspendDeadline turns the clock off for the shutdown pass and returns a function that restores it.
+// suspendDeadline turns the clock off for shutdown and returns a function restoring it.
 func (rt *Runtime) suspendDeadline() func() {
 	timedOut := rt.timedOut.Load()
 	watching, clientDone := rt.watching, rt.clientDone
@@ -171,7 +171,7 @@ func (rt *Runtime) resetLimits() {
 	// Only a program that armed something needs its context replaced. One that
 	// set no limit left the context untouched, and rebuilding it would cost an
 	// allocation per run for nothing; the budget in
-	// flatstack.TestFlatstackPrecompiledAllocationBudget is what holds that.
+	// flatstack.TestFlatstackPrecompiledAllocationBudget holds that.
 	used := rt.scriptTimer != nil || rt.timedOut.Load()
 	rt.releaseDeadline()
 	if used && rt.stopCtx != nil {

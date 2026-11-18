@@ -27,7 +27,7 @@ const (
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) (err error) {
-	// Last of the defers: a shutdown function includes files too. The
+	// Last of the defers: a shutdown function also includes files. The
 	// inventory names what the whole run loaded.
 	defer rt.traceIncludes()
 	// The limit belonged to the program that set it. Left armed, it ends the
@@ -77,7 +77,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
 
 // RecordError reports err on the trace of the request this runtime serves,
-// unwinding nothing and no try/catch in the script sees it.
+// unwinding nothing. No try/catch in the script sees it.
 func (rt *Runtime) RecordError(err error) {
 	if err == nil {
 		return
@@ -208,7 +208,7 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 	return nil
 }
 
-// exec runs a statement list and restores the entry statement as current when it ends.
+// exec runs a statement list, restoring the entry statement at its end.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	outer := rt.currentStmt
 	// On entry as well as per statement. A loop body can be empty - `while
@@ -236,7 +236,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 			if rt.memTick++; rt.memTick >= memCheckStatements {
 				rt.memTick = 0
 				if err := rt.checkMemory(); err != nil {
-					// Returned directly, not through the errorHandler
+					// Returned directly, outside the errorHandler
 					// path below: exhaustion must unwind the frame, while an
 					// enclosing try still catches it in execTry.
 					return nil, flowNormal, err
@@ -429,7 +429,7 @@ func (rt *Runtime) addSourceSpans(program *model.Program) {
 	}
 }
 
-// currentSourceLine returns the line currentStmt starts on, or zero with no span.
+// currentSourceLine returns the line currentStmt starts on, zero without a span.
 func (rt *Runtime) currentSourceLine() int {
 	if rt.currentStmt == nil {
 		return 0
@@ -475,7 +475,7 @@ type scopeFileState struct {
 	hadFile, hadDir bool
 }
 
-// pushScopeFile binds __FILE__ and __DIR__ over a live scope and returns what it shadowed.
+// pushScopeFile binds __FILE__ and __DIR__ in a live scope, returning what it shadowed.
 func (rt *Runtime) pushScopeFile(scope *Scope, filename string) scopeFileState {
 	s := scopeFileState{}
 	s.file, s.hadFile = scope.Get("__FILE__")

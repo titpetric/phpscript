@@ -71,8 +71,8 @@ if ($f["error"] === UPLOAD_ERR_OK) { echo "|ok"; } else { echo "|error"; }
 }
 
 // TestMoveUploadedFileMode pins the mode of a stored upload: the request
-// runtime writes the temporary copy private to this process, and a file a web
-// server has to serve cannot stay that way. A host that serves uploads to
+// runtime writes the temporary copy private to this process. A file a web
+// server must serve cannot stay that way. A host that serves uploads to
 // nobody but itself configures something tighter.
 func TestMoveUploadedFileMode(t *testing.T) {
 	t.Parallel()
@@ -105,8 +105,8 @@ func TestMoveUploadedFileMode(t *testing.T) {
 }
 
 // TestMoveUploadedFileUnwritable covers a move that cannot finish. PHP reports
-// it as a false return alone. The upload has to survive it: the
-// request still lists it, and the handler still has to be able to remove it.
+// it as a false return alone. The upload must survive: the request still lists
+// the upload. The handler must still be able to remove it.
 func TestMoveUploadedFileUnwritable(t *testing.T) {
 	t.Parallel()
 	ctx := runner.FromRequest(uploadRequest(t, "avatar", "photo.png", "image-bytes"))
@@ -125,8 +125,8 @@ if (move_uploaded_file($_FILES["avatar"]["tmp_name"], "photo.png")) { echo "move
 	if out != "failed" {
 		t.Fatalf("got %q, want %q", out, "failed")
 	}
-	// A move that cannot finish leaves the upload in place and the
-	// request can still report it and Cleanup can still remove it.
+	// A move that cannot finish leaves the upload in place. The request can
+	// still report the upload, and Cleanup can still remove it.
 	if _, err := os.Stat(tmpName); err != nil {
 		t.Fatalf("tmp_name after a failed move: %v", err)
 	}

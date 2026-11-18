@@ -37,7 +37,7 @@ echo "public";
 `)},
 	"ignored.txt": {Data: []byte(`// @route GET /ignored`)},
 
-	// The four ways an endpoint can end an error, for the error page tests.
+	// Four ways an endpoint can end an error, for the error page tests.
 	"api/quiet.php": {Data: []byte(`<?php
 // @route GET /api/quiet
 http_response_code(404);
@@ -140,8 +140,7 @@ func TestRouteSkipsExcludedDirectory(t *testing.T) {
 // chiRouter returns the router the route and startup tests mount on.
 func chiRouter() *chi.Mux { return chi.NewRouter() }
 
-// TestRouteMountsOnPlatformRouter pins the second registrar: the same
-// annotations reach a platform router as a lifecycle module.
+// TestRouteMountsOnPlatformRouter pins the second registrar, where the same annotations reach a platform router.
 func TestRouteMountsOnPlatformRouter(t *testing.T) {
 	t.Parallel()
 	router := chiRouter()
@@ -207,7 +206,7 @@ func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {
 }
 
 // TestRouteWithoutErrorPagesReportsOnlyTheStatus pins what a failed endpoint
-// answers where a host registered no page: the status and its standard text.
+// answers when a host registered no page: the status and its standard text.
 // What went wrong is in the log and on the trace, not in a body the client
 // reads back.
 func TestRouteWithoutErrorPagesReportsOnlyTheStatus(t *testing.T) {

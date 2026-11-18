@@ -287,8 +287,8 @@ $storage->get("missing");
 }
 
 // TestFlatstackRejectsWholeProgramBeforeSideEffects checks that a rejected
-// program runs once, on the interpreter, and never partly on each backend.
-// The constructor counts its calls, and a compile that gave up after the `new`
+// program runs once, on the interpreter, never partly on each backend.
+// The constructor counts its calls; a compile that gave up after the `new`
 // had already run would report two.
 //
 // An anonymous class is the unsupported construct: the bytecode names a
@@ -525,8 +525,8 @@ try { $host = new PanicHost; } catch (Exception $e) { echo "caught: " . $e; }
 // TestFlatstackPrecompiledAllocationBudget fails when a precompiled program's
 // per-run allocations regress past the measured budget plus one of headroom.
 // The budgets measure the tree with the frame-handle host bridge and the
-// pooled exec state in place; a regression here is a pooling or bridge leak
-// and never noise, because AllocsPerRun is exact.
+// pooled exec state in place; a regression here is a pooling or bridge leak,
+// not noise, because AllocsPerRun is exact.
 func TestFlatstackPrecompiledAllocationBudget(t *testing.T) {
 	tests := []struct {
 		name   string

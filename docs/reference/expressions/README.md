@@ -13,9 +13,9 @@
 
 ## Assignment expressions
 
-An assignment can appear inside a larger expression, including a condition, and answers what it stored: `$x = $a['k'] = 1` leaves 1 in both, `$x = $counts['k'] += 2` answers the updated count. A chain stores outside in. The linter reports assignment inside `if` conditions, where `=` is easy to mistake for a comparison.
+An assignment can appear inside a larger expression, including a condition, and answers with the stored value: `$x = $a['k'] = 1` leaves 1 in both, `$x = $counts['k'] += 2` answers the updated count. A chain stores outside in. The linter reports assignment inside `if` conditions, where `=` is easy to mistake for a comparison.
 
-The target resolves before the value, php's order: `$m[$i++] = $i` reads the key first and stores the stepped `$i` under it. See [tests/fixtures/syntax/assignment_as_value.phpt](../../../tests/fixtures/syntax/assignment_as_value.phpt).
+The target resolves before the value, php's order: `$m[$i++] = $i` reads the key first and stores the stepped `$i` at that key. See [tests/fixtures/syntax/assignment_as_value.phpt](../../../tests/fixtures/syntax/assignment_as_value.phpt).
 
 ```php
 if (($row = load_row()) !== false) {

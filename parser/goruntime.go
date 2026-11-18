@@ -8,19 +8,19 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// The go runtime is the one binding area a file opts into. `use Runtime\Go`
-// binds go's builtin names for the rest of that file: a bare `make(...)` is the
-// binding and no name php resolves, and the call prints as the source wrote
-// it, which keeps the formatter round-tripping.
+// The go runtime is the only binding area a file opts into. `use Runtime\Go`
+// binds go's builtin names for the rest of that file. A bare `make(...)` is the
+// binding, not a name php resolves, and the call prints as the source wrote it.
+// That keeps the formatter round-tripping.
 //
-// The binding is per file, as every `use` is. It wins over the enclosing
-// namespace: a file that imported go's `make` meant go's, the way php reads an
-// imported name against one it would otherwise resolve. It binds the spelling
-// go uses and no other, where php folds a function's case: a file that writes
-// `Make()` reaches php for it.
+// The binding is per file, as each `use` is. It wins over the enclosing
+// namespace: a file that imported go's `make` meant go's. php resolves an
+// imported name first, before any other. It binds the exact spelling go uses.
+// The case folds php allows do not apply. A file that writes `Make()` reaches
+// php.
 //
-// A qualified call decides for itself and needs no import, here and in the
-// runtime both: `\strlen($s)` is php's whatever the file imported, and
+// A qualified call needs no import. It resolves in both the parser and the
+// runtime: `\strlen($s)` is php's whatever the file imported, and
 // `Runtime\Go\make(...)` is go's.
 
 // useGo records a `use Runtime\Go` import, ignoring a leading separator and case.
@@ -35,7 +35,7 @@ func isGoErrorType(name string) bool {
 	return strings.EqualFold(strings.TrimPrefix(strings.TrimSpace(name), "\\"), "error")
 }
 
-// goBound reports whether a bare name is a go builtin this file's imports bind.
+// goBound reports whether this file's imports bind a bare name.
 func (p *parser) goBound(name string) bool {
 	return p.goRuntime && modelutil.GoBuiltin(name)
 }
@@ -53,7 +53,7 @@ func (p *parser) atGoPointer() bool {
 	return p.goRuntime && p.isOp("*")
 }
 
-// atGoMake reports whether the call ahead reads `make([]`, where a type names an expression.
+// atGoMake reports whether the call ahead reads `make([]` as a type expression.
 func (p *parser) atGoMake(name string) bool {
 	return name == "make" && p.isOpAt(1, "[") && p.isOpAt(2, "]")
 }
@@ -85,7 +85,7 @@ func (p *parser) parseGoMakeArgs() ([]model.Expr, error) {
 	return p.exprs.take(mark), p.eatOp(")")
 }
 
-// parseGoTypeArg reads a type spelling as the value the binding reads and the formatter prints.
+// parseGoTypeArg reads a type spelling into its value and formatter source.
 func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	dims := ""
 	for p.isOp("[") && p.isOpAt(1, "]") {
@@ -109,7 +109,7 @@ func (p *parser) parseGoTypeArg() (model.Expr, error) {
 	return p.newStringLit(dims+qualified, dims+name), nil
 }
 
-// goFold folds a builtin type conversion over a literal, leaving a value php must read to the binding.
+// goFold folds a builtin type conversion applied to a literal, leaving a value php must read to the binding.
 func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
 	if len(args) != 1 || !modelutil.GoType(name) {
 		return nil, false
@@ -122,7 +122,7 @@ func (p *parser) goFold(name string, args []model.Expr) (model.Expr, bool) {
 	if !ok {
 		return nil, false
 	}
-	// A conversion that changed nothing keeps the node, and with it the source
+	// A conversion that changed nothing keeps the node, with the source
 	// spelling a string literal holds.
 	if lit, isLit := args[0].(*model.Lit); isLit && folded == lit.Value {
 		return lit, true
@@ -384,7 +384,7 @@ func (p *parser) parseGoLitValue(elemType string, isKey bool) (model.Expr, error
 	return p.parseGoElided(elemType)
 }
 
-// parseGoElided reads `{...}` under an element type it does not repeat.
+// parseGoElided reads `{...}` with an element type it does not repeat.
 func (p *parser) parseGoElided(elemType string) (model.Expr, error) {
 	line := p.cur().line
 	if err := p.eatOp("{"); err != nil {

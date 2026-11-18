@@ -30,7 +30,7 @@ func TestRequestDecodesOnlyWhatIsRead(t *testing.T) {
 		t.Fatal("php://input is empty")
 	}
 
-	// Each accessor decodes its own input and no other.
+	// Each accessor decodes its input alone.
 	fresh := runner.FromRequest(httptest.NewRequest("GET", "http://example.com/?q=search", nil))
 	if got := fresh.GetMap()["q"]; got != "search" {
 		t.Fatalf("$_GET[q] = %q, want search", got)

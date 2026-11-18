@@ -23,7 +23,7 @@ func fileHandle(t *testing.T, mode string) *fileStream {
 }
 
 // TestFileStreamEndsOnAShortRead covers php's end of file on a file: a read
-// that came back short of the buffer sets it, where a read that filled the
+// that came back short of the buffer sets the flag. A read that filled the
 // buffer exactly leaves the handle open.
 func TestFileStreamEndsOnAShortRead(t *testing.T) {
 	t.Parallel()
@@ -51,8 +51,8 @@ func TestFileStreamEndsOnAShortRead(t *testing.T) {
 }
 
 // TestFileStreamSeekClearsTheEnd covers the seek php's own clears: a position
-// at the end reports nothing by itself, and a seek after a read past the end
-// opens the handle again.
+// at the end reports nothing. A seek after a read past the end opens the
+// handle again.
 func TestFileStreamSeekClearsTheEnd(t *testing.T) {
 	t.Parallel()
 	f := fileHandle(t, "r")
@@ -77,7 +77,7 @@ func TestFileStreamSeekClearsTheEnd(t *testing.T) {
 }
 
 // TestFileStreamWriteKeepsTheHandleOpen covers a handle a script only writes:
-// php answers false for every feof on one, the write included.
+// php answers false for every feof on such a handle, the write included.
 func TestFileStreamWriteKeepsTheHandleOpen(t *testing.T) {
 	t.Parallel()
 	f := fileHandle(t, "a")

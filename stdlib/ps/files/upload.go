@@ -23,8 +23,8 @@ func registerUploads(rt *runner.Runtime, r root) {
 			return false, nil
 		}
 		// The temporary copy is outside the root by design and writable_paths
-		// constrains the destination alone: storing an upload is the write,
-		// and the one a configuration pins down.
+		// constrains the destination alone: storing an upload is the write that
+		// a configuration pins down.
 		dst, err := r.resolveWrite("move_uploaded_file", to)
 		if err != nil {
 			return false, err
@@ -32,9 +32,9 @@ func registerUploads(rt *runner.Runtime, r root) {
 		if err := moveFile(from, dst); err != nil {
 			return false, nil
 		}
-		// The temporary copy is private to the process that wrote it and the
-		// stored file gets its own mode: the configured upload_file_mode,
-		// or 0644, the mode PHP's own umask lands on by default.
+		// The stored file takes the configured mode: upload_file_mode, or 0644,
+		// the mode PHP's own umask lands on by default. The temporary copy is
+		// private to the process that wrote it.
 		_ = os.Chmod(dst, rt.UploadFileMode().Mode())
 		return true, nil
 	})

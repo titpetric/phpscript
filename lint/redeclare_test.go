@@ -8,7 +8,7 @@ import (
 )
 
 // TestRedeclareIsFatal covers the severity: PHP refuses a file declaring one
-// name twice and so does this runtime and the finding fails the lint run. The
+// name twice; this runtime does the same, and the finding fails the lint run. The
 // message names the first declaration's line, which is the half a
 // reader needs to find the pair.
 func TestRedeclareIsFatal(t *testing.T) {
@@ -34,9 +34,9 @@ function helper() { return 2; }`)
 	}
 }
 
-// TestRedeclareOverAHostName covers declaring over a name the runtime itself
-// registers: the standard library installs strlen and a file declaring it
-// draws the same fatal finding, with no earlier line to name.
+// TestRedeclareOverAHostName covers a declaration that reuses a name the
+// runtime itself registers. The standard library installs strlen. A file
+// declaring it draws the same fatal finding, naming no earlier line.
 func TestRedeclareOverAHostName(t *testing.T) {
 	t.Parallel()
 	found, err := lint.File("index.php", `<?php
@@ -55,8 +55,8 @@ function strlen($s) { return 0; }`)
 }
 
 // TestRedeclareSkipsAGuardedName covers the polyfill idiom: declaring over an
-// absent built-in is what function_exists guards. The author has written both
-// branches and the check reports neither the duplicate nor the host name.
+// function_exists guards a declaration over an absent built-in. The author has
+// written both branches. The check reports no duplicate or host name.
 func TestRedeclareSkipsAGuardedName(t *testing.T) {
 	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php
@@ -68,9 +68,9 @@ if (!function_exists("str_contains")) {
 	}
 }
 
-// TestRedeclareCountsAMethodApart covers the one name that is not a function
-// name: a method belongs to its class and two classes declaring render() are
-// two methods and no collision.
+// TestRedeclareCountsAMethodApart covers a name that is not a function name: a
+// method belongs to its class. Two classes declaring render() are two methods
+// and produce no collision.
 func TestRedeclareCountsAMethodApart(t *testing.T) {
 	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php
@@ -81,7 +81,7 @@ class Post { function render() { return 2; } }`))
 	}
 }
 
-// mustLint runs the linter over src and fails the test when it could not.
+// mustLint runs the linter over src, failing when it cannot.
 func mustLint(t *testing.T, src string) []lint.Diagnostic {
 	t.Helper()
 	found, err := lint.File("index.php", src)

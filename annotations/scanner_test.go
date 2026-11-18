@@ -26,11 +26,11 @@ echo "public";
 }
 
 // TestScannerReadsOnlyWhatAnApplicationPublishes covers which files discovery
-// reads. The scan reads a .php file at any depth and routes go in one folder or
-// in a tree of them. It passes over a composer install tree: a dependency does
-// not publish routes into the application, and walking it costs a parse of
-// every vendored file. A file with no annotation and a file with another
-// extension register nothing.
+// reads. The scan reads a .php file at any depth, and routes go in one folder
+// or in a tree of folders. It skips a composer install tree: a dependency
+// publishes no routes into the application, and walking it costs a parse of
+// every vendored file. A file lacking an annotation, or a file of another
+// extension, registers nothing.
 func TestScannerReadsOnlyWhatAnApplicationPublishes(t *testing.T) {
 	t.Parallel()
 	registrar := &recordingRegistrar{}
@@ -48,8 +48,8 @@ func TestScannerReadsOnlyWhatAnApplicationPublishes(t *testing.T) {
 
 // TestScannerSkipsAnExcludedDirectory covers the directory a host keeps out of
 // discovery by name. A document root served as static files holds .php files a
-// server already answers for, and registering them a second time as endpoints
-// would publish two ways to reach one file.
+// server already answers for. A second registration as endpoints would publish
+// two ways to reach one file.
 func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
 	t.Parallel()
 	registrar := &recordingRegistrar{}
@@ -64,8 +64,8 @@ func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
 }
 
 // TestScannerRefusesANilRoot covers a host that configured no source tree.
-// Discovery walks one filesystem with no files to scan and no routes to serve.
-// The failure arrives at registration where a deployment sees it.
+// Discovery walks one filesystem: no files to scan, no routes to serve. The
+// failure arrives at registration, which a deployment sees.
 func TestScannerRefusesANilRoot(t *testing.T) {
 	t.Parallel()
 	err := annotations.NewRoute(nil).Register(&recordingRegistrar{})

@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// stringWriterRecorder counts which write method a caller reaches and a test
-// can tell a forwarded WriteString from the []byte fallback.
+// stringWriterRecorder counts which write method a caller reaches. A test can
+// then distinguish a forwarded WriteString from the []byte fallback.
 type stringWriterRecorder struct {
 	*httptest.ResponseRecorder
 	stringWrites int
@@ -20,8 +20,8 @@ func (r *stringWriterRecorder) WriteString(s string) (int, error) {
 }
 
 // TestTrackerForwardsWriteString holds the tracker to the writer it wraps: a
-// writer with WriteString gets the string, one without gets the bytes, and
-// either way the tracker records that the response has begun.
+// writer with WriteString gets the string; a writer lacking it gets the bytes.
+// Either way the tracker records that the response has begun.
 func TestTrackerForwardsWriteString(t *testing.T) {
 	t.Parallel()
 
@@ -64,8 +64,8 @@ func TestTrackerForwardsWriteString(t *testing.T) {
 	})
 }
 
-// headerOnlyWriter narrows a recorder to the three ResponseWriter methods and
-// the tracker sees a writer with no WriteString.
+// headerOnlyWriter narrows a recorder to ResponseWriter's three methods,
+// presenting a writer without WriteString.
 type headerOnlyWriter struct {
 	inner *httptest.ResponseRecorder
 }

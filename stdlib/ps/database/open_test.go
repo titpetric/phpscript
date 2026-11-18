@@ -5,10 +5,10 @@ import (
 )
 
 // TestOpen covers the pool DatabaseProvider builds by default. sql.Open
-// records the driver and the DSN and connects to nothing and a pool exists
-// before any server has answered, and a provider holding ten connection
-// strings opens no sockets at startup. The pdo client detects the driver
-// from the pool and rebinds placeholders for the dialect.
+// records the driver and the DSN and connects to nothing. A pool exists before
+// any server has answered, and a provider holding ten connection strings opens
+// no sockets at startup. The pdo client detects the driver from the pool and
+// rebinds placeholders for the dialect.
 func TestOpen(t *testing.T) {
 	t.Parallel()
 	db, err := Open("sqlite", ":memory:")
@@ -31,7 +31,7 @@ func TestOpen(t *testing.T) {
 }
 
 // newLiveDatabase returns a client over an in-memory sqlite holding a users
-// table with two rows. It holds the pool to one connection, because a second
+// table with two rows. It holds the pool to one connection, since a second
 // connection to ":memory:" opens a second database and would find no table.
 // The blank import in provider_test.go registers the driver. It compiles
 // into this same test binary.

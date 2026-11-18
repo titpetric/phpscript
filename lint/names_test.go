@@ -10,10 +10,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestSetInclude covers what the flag buys and the ordering it requires. The
+// TestSetInclude covers the flag's value and the ordering it requires. The
 // linter runs the recorded path against the name registry before it checks any
-// file and the names an application declares resolve as well as the standard
-// library's. knownRuntime builds the registry once per process and a caller
+// file. The names an application declares resolve as well as the standard
+// library's. knownRuntime builds the registry once per process; a caller
 // records the path before the first File.
 func TestSetInclude(t *testing.T) {
 	previous := includeFile
@@ -42,11 +42,10 @@ func TestSetInclude(t *testing.T) {
 	}
 }
 
-// TestSetIncludeIsQuietWhenItFails covers the refusal to fail a lint run over
-// a bootstrap: a file that is not there, and one the parser rejects, each
-// leave the registry alone and report nothing. An application whose
-// bootstrap cannot run outside a request still gets the findings the standard
-// library alone produces.
+// TestSetIncludeIsQuietWhenItFails covers the refusal to fail a lint run
+// because of a bootstrap. A missing file, or a file the parser rejects, each
+// leaves the registry alone and reports nothing. An application whose bootstrap cannot run
+// outside a request still gets the findings from the standard library alone.
 func TestSetIncludeIsQuietWhenItFails(t *testing.T) {
 	previous := includeFile
 	t.Cleanup(func() { includeFile = previous })

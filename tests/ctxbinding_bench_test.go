@@ -12,8 +12,8 @@ import (
 
 // BenchmarkScriptContextBinding prices the context a binding receives: one
 // hundred calls of a registered function whose first parameter declares a
-// context.Context and the per-call cost of building that context is the
-// benchmark's slope and the session setup is its floor. runner.bindingContext
+// context.Context. The per-call cost of building that context is the
+// benchmark's slope; the session setup is the floor. runner.bindingContext
 // is the site it prices.
 func BenchmarkScriptContextBinding(b *testing.B) {
 	prog, err := parser.Parse(`<?php

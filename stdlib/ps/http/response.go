@@ -8,10 +8,10 @@ import (
 
 // Response is the PHP-visible result of sending a request.
 //
-// This one is a facade and no net/http response, for two reasons. The client
-// reads the body in full as it builds the response, because a script has no
-// stream to close and an unread net/http body leaks its connection. And ok()
-// and json() are the two things a script does with a response that net/http
+// This one is a facade for net/http, for two reasons. The client
+// reads the body in full as it builds the response: a script has no
+// stream to close, and an unread net/http body leaks its connection. And ok()
+// and json() are both operations a script asks of a response that net/http
 // has no counterpart for.
 type Response struct {
 	status int64
@@ -20,7 +20,7 @@ type Response struct {
 	err    string
 }
 
-// Status returns the HTTP status code, and 0 for a request that got none.
+// Status returns the HTTP status code, or 0 when the request got none.
 func (r *Response) Status() int64 { return r.status }
 
 // OK reports whether the request got a response with a 2xx status.
@@ -29,7 +29,7 @@ func (r *Response) OK() bool { return r.err == "" && r.status >= 200 && r.status
 // Err returns why the request failed, which only parallel() reports.
 func (r *Response) Err() string { return r.err }
 
-// Body returns the body the client read in full, and "" for a failed request.
+// Body returns the body read in full, and "" for a failed request.
 func (r *Response) Body() string { return r.body }
 
 // Header returns the named response header, matched without case.

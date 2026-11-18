@@ -176,7 +176,7 @@ func phpLog(num, base float64) float64 {
 	}
 }
 
-// phpMinMax backs min and max, returning the winning candidate unchanged with PHP's tie rule.
+// phpMinMax backs min and max, returning the winning candidate with PHP's tie rule.
 func phpMinMax(name string, args []any, want int) (any, error) {
 	values := args
 	if len(args) == 1 {
@@ -300,7 +300,7 @@ func phpNumberFormat(num any, opts ...any) string {
 	return out.String()
 }
 
-// phpRound rounds v to precision decimal places, rounding the decimal text half away from zero.
+// phpRound rounds v to precision decimals, half away from zero.
 func phpRound(v float64, precision int) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return v
@@ -372,7 +372,7 @@ func roundDecimal(v float64, precision int) (integer, fraction string, neg bool)
 	return string(kept) + strings.Repeat("0", -precision), "", neg
 }
 
-// incrementDigits adds one to a decimal digit string, growing a leading "1" on overflow.
+// incrementDigits adds one to a decimal digit string, growing a leading "1".
 func incrementDigits(digits []byte) []byte {
 	for i := len(digits) - 1; i >= 0; i-- {
 		if digits[i] < '9' {

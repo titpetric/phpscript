@@ -11,8 +11,8 @@ import (
 
 // TestFlatHostBinary covers the operator table the bytecode engine calls back
 // into. Both engines read one definition of PHP's semantics and `==` cannot
-// match on a rule the interpreter disagrees with; an operator the table has no
-// entry for is an error and never a silent zero.
+// match on a rule the interpreter disagrees with; an operator absent from the
+// table is an error; a silent zero never appears.
 func TestFlatHostBinary(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -52,8 +52,8 @@ func TestFlatHostBinary(t *testing.T) {
 }
 
 // TestFlatHostUnary covers the prefix operators the engine calls back for.
-// Unary `+` resolves through the arithmetic helper and a numeric string reads
-// as the number it spells, and `-` keeps the sign of negative zero.
+// Unary `+` resolves through the arithmetic helper. A numeric string reads as
+// the number it spells; `-` keeps the sign of negative zero.
 func TestFlatHostUnary(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -83,10 +83,10 @@ func TestFlatHostUnary(t *testing.T) {
 	}
 }
 
-// TestFlatHostEntries covers what the engine's foreach walks. The walk takes an
-// array and an object in the order they read back, and a Go slice or map a
-// binding returned too and `foreach` over a binding's result behaves the way it
-// behaves in the interpreter.
+// TestFlatHostEntries covers the values the engine's foreach walks. The walk
+// takes an array and an object in the order they read back; it also takes a Go
+// slice or map returned by a binding. `foreach` on a binding's result behaves
+// as the interpreter behaves.
 func TestFlatHostEntries(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -149,7 +149,7 @@ func TestFlatHostSetEntry(t *testing.T) {
 }
 
 // TestFlatHostThrow covers turning a thrown value into the error it travels
-// as. An error travels as itself, an instance travels in the wrapper a catch
+// as. An error travels unchanged, an instance travels in the wrapper a catch
 // clause reads its class off, and anything else renders as an uncaught
 // exception.
 func TestFlatHostThrow(t *testing.T) {
@@ -177,8 +177,8 @@ func TestFlatHostThrow(t *testing.T) {
 }
 
 // TestFlatHostEcho covers bytecode output going through the runtime output
-// stack and never to the base writer and ob_start captures what the engine
-// emits the way it captures interpreted output.
+// stack, never to the base writer; ob_start captures the engine's output as it
+// captures interpreted output.
 func TestFlatHostEcho(t *testing.T) {
 	t.Parallel()
 	base := &bytes.Buffer{}
@@ -206,9 +206,9 @@ func TestFlatHostEcho(t *testing.T) {
 }
 
 // TestFlatHostSetProperty covers writing an object property the way the
-// interpreter writes one: a PHP object stores the value in its property map,
-// and a Go binding assigns the struct field the name resolves to and
-// `$db->is_readonly = true` sets IsReadonly.
+// interpreter does: a PHP object stores the value in its property map; a Go
+// binding assigns the struct field the name resolves to. `$db->is_readonly =
+// true` sets IsReadonly.
 func TestFlatHostSetProperty(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -244,8 +244,8 @@ func TestFlatHostSetProperty(t *testing.T) {
 }
 
 // TestFlatHostMemoryCheckInterval covers how often the engine polls the memory
-// limit. A runtime with no limit configured answers zero and the engine runs
-// the poll out of its loop altogether.
+// limit. A runtime holding no configured limit answers zero. The engine runs
+// the poll outside its loop altogether.
 func TestFlatHostMemoryCheckInterval(t *testing.T) {
 	t.Parallel()
 	unbounded := flatHost{runtime: New(io.Discard, Options{})}
@@ -261,8 +261,8 @@ func TestFlatHostMemoryCheckInterval(t *testing.T) {
 
 // TestFlatHostHelpers covers the helpers the engine shares with the
 // interpreter: the array constructor, index access, truthiness, the casts.
-// There is one definition of each and neither engine can answer a different
-// value for the same expression.
+// One definition serves each. Neither engine can answer a different value for
+// the same expression.
 func TestFlatHostHelpers(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}

@@ -12,9 +12,9 @@ import (
 )
 
 // TestReflectImplements covers the clause a class definition prints. The set
-// is the one interface of this module a script names and the standard library
-// conventions a caller acts on, and a bound type satisfying none of it prints
-// no clause.
+// holds the interface of this module that a script names. It also holds the
+// standard library conventions a caller acts on. A bound type satisfying none
+// of these prints no clause.
 func TestReflectImplements(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -62,8 +62,8 @@ func TestReflectImplementsCites(t *testing.T) {
 	if got, want := thrown[0].Link(), "github.com/titpetric/phpscript/runner.Throwable"; got != want {
 		t.Errorf("module citation = %q, want the bare symbol %q", got, want)
 	}
-	// The clause prefers the PHP spelling, because Throwable is what a catch
-	// clause and instanceof name, and the Go symbol stays the citation.
+	// The clause prefers the PHP spelling, because Throwable is the name a
+	// catch clause and instanceof use. The Go symbol stays the citation.
 	if got, want := thrown[0].Clause(), "Throwable"; got != want {
 		t.Errorf("clause = %q, want %q", got, want)
 	}

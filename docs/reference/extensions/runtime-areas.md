@@ -9,11 +9,11 @@ The runtime's bindings answer under namespaces called areas. An area is a group 
 | `Runtime\Go`   | a subset of go's standard library, written in php                        | by `use` per file, or `runner.runtime: go` |
 | `Runtime\None` | no area: the language alone, no binding                                  | when `runner.areas` names it               |
 
-`phpscript list --areas` prints the areas of a build with what each defines.
+`phpscript list --areas` prints the areas of a build, each with its definitions.
 
 ## Folders map to areas
 
-A folder of `stdlib` is an area, and a file of a large folder is a sub-area:
+A folder of `stdlib` is an area. A file of a large folder is a sub-area:
 
 | Folder               | Area                                                        |
 |----------------------|-------------------------------------------------------------|
@@ -28,30 +28,30 @@ A folder of `stdlib` is an area, and a file of a large folder is a sub-area:
 
 The directory tree is the namespace tree: `stdlib/ps` holds `Runtime\PS`, `stdlib/px` holds `Runtime\PX` and `stdlib/go` holds `Runtime\Go`. A package keeps the import path its area name spells.
 
-The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the area of the same name under `Runtime\PS`. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
+The remaining folders (`auth`, `database`, `gd`, `info`, `internals`, `mail`, `regexp`, `session`, `span`, `time`) map to the `Runtime\PS` area of the same name. A file named `phpx_<name>.go` inside a `stdlib/ps` folder registers `Runtime\PX\<Folder>\<Name>`: it overlays the folder's area and installs with the rest of `Runtime\PX`.
 
-`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, because a runtime with no binding still throws. `runner.runtime: go` is the one mount that installs neither: its errors are go's `error` and it names no throwable class.
+`stdlib` itself installs two areas no folder maps to, ahead of every binding package: `Runtime\PS\Exceptions` holds `Exception` and the SPL exception classes, and `Runtime\PS\Errors` holds `Error`, `TypeError`, `ValueError`, `ArithmeticError`, `DivisionByZeroError` and `ArgumentCountError`. They install on every mount, `Runtime\None` included, since a runtime holding no binding still throws. `runner.runtime: go` is the only mount that installs neither: its errors are go's `error` and it names no throwable class.
 
 The [implemented API inventory](implemented-apis.md) groups every function and class by area.
 
 ## The overlay installs last
 
-Every `Runtime\PS` area installs first, in registration order. Every `Runtime\PX` area installs after them, in registration order. A `Runtime\PX` binding that registers a name `Runtime\PS` already defines replaces it, and the area listing counts it under Replaces. The order follows the namespace and does not depend on which Go package initialised first.
+Every `Runtime\PS` area installs first, in registration order. Every `Runtime\PX` area installs second, in registration order. A `Runtime\PX` binding that registers a name `Runtime\PS` already defines replaces it. Replaces records the binding in the listing. The order follows the namespace and does not depend on which Go package initialised first.
 
 ## Calling a function through its area
 
-An area is a namespace. A function answers under it as well as under its bare name:
+An area is a namespace. A function answers through the area and the bare name:
 
 ```php
 echo \Runtime\PS\Core\Strings\strlen("four");   // 4
 var_dump(function_exists('Runtime\PS\Core\Strings\strlen')); // bool(true)
 ```
 
-The area has to be the one that defines the function, or the one that replaces it. `Runtime\PS\Core\Arrays\strlen` names nothing. Both runtimes resolve the name the same way. php has no `Runtime` namespace, and source that must also run on php calls the bare name.
+The area must define the function or replace it. `Runtime\PS\Core\Arrays\strlen` names nothing. Both runtimes resolve the name the same way. php has no `Runtime` namespace, and source that must also run on php calls the bare name.
 
 ## Reaching a class through its area
 
-A class answers under its area the same way. The area's last segment and the class name decide the spelling:
+A class answers through the area the same way. The area's last segment and the class name decide the spelling:
 
 | Area                    | Class                       | Also answers to                          |
 |-------------------------|-----------------------------|------------------------------------------|
@@ -64,11 +64,11 @@ A class answers under its area the same way. The area's last segment and the cla
 
 `runner.AreaName` builds the spelling. A class named exactly like the area's last segment takes the area. A class whose name opens on that segment drops it. Everything else hangs off the area whole.
 
-Both comparisons are exact where the lookup that follows folds case. A folded comparison would resolve `Runtime\PX\Datetime` to the class `DateTime`, and the area a namespace page documents would be a class page as well. `DateTime`, `DateInterval`, `DateTimeImmutable` and `DateTimeZone` each keep a segment under the area for that reason.
+Both comparisons are exact where the lookup that follows folds case. A folded comparison would resolve `Runtime\PX\Datetime` to the class `DateTime`, and the area a namespace page documents would be a class page as well. `DateTime`, `DateInterval`, `DateTimeImmutable`, `DateTimeZone` each keep a segment in the area for that reason.
 
-The class table gains no entry. `get_class()`, `get_declared_classes()` and `phpscript list --classes` report the registered name, and `class_exists('Runtime\PS\Errors\TypeError')` answers true through `runner.areaClass` on the miss.
+The class table gains no entry. `get_class()`, `get_declared_classes()` and `phpscript list --classes` report the registered name, and `class_exists('Runtime\PS\Errors\TypeError')` answers true on the miss through `runner.areaClass`.
 
-`Runtime\Router::Bind` is the one root definition no area name reaches. It names a static method, and nothing registers a constructor for `Runtime\Router`. The class table holds no entry to resolve to.
+`Runtime\Router::Bind` is the only root definition no area name reaches. It names a static method, and nothing registers a constructor for `Runtime\Router`. The class table holds no entry to resolve to.
 
 ## Configuring the default runtime
 
@@ -80,19 +80,19 @@ runner:
     - Runtime\PS
 ```
 
-That runtime installs `Runtime\PS` and no overlay. A deeper name narrows further: `Runtime\PS\Core\Strings` installs the string functions and no other part of the standard library, which suits a runtime for a template engine that never calls a file function. A host sets `Options.Areas` on `runner.Options` for the same effect.
+That runtime installs `Runtime\PS` only. A deeper name narrows further: `Runtime\PS\Core\Strings` installs the string functions, no other part of the standard library, which suits a template engine runtime that calls no file function. A host sets `Options.Areas` on `runner.Options` for the same effect.
 
-`Runtime\None` installs no area. The runtime keeps the language and the exception classes. Every call reads as undefined, `function_exists` included. It suits a plugin host whose scripts compute over values the host passes in, and a test that proves a script needs no binding: `gotest.RunAreas(t, name, []string{runner.NamespaceNone}, cases)`. A host that needs bindings back lists them (`Runtime\PS\Core\Strings`), and the default, an empty list, is `Runtime\PS`: php's standard library in the global function table.
+`Runtime\None` installs no area. The runtime keeps the language and the exception classes. Every call reads as undefined, `function_exists` included. It suits a plugin host whose scripts compute over values the host passes in. It also suits a test that proves a script needs no binding: `gotest.RunAreas(t, name, []string{runner.NamespaceNone}, cases)`. A host that needs bindings back lists the areas (`Runtime\PS\Core\Strings`). The default, an empty list, is `Runtime\PS`: php's standard library in the global function table.
 
-A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects profiles, such as `secure` and `exec`, and the two compose.
+A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects the `secure` or `exec` profile. The two compose.
 
-`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` and no area under `Runtime\PS` or `Runtime\PX`, and every file reads as though it imported the namespace. The configuration refuses a non-empty `runner.areas` beside it. The exception half differs with it: no PHP throwable class installs, and the `ob_*` output buffers do, because a template captures what `echo` writes and a go error needs no class. [The Go runtime](go-runtime.md) is the surface.
+`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` alone. It adds no `Runtime\PS` or `Runtime\PX` area. Every file reads as if it imported the namespace. The configuration refuses a non-empty `runner.areas` alongside. The exception half differs too: no PHP throwable class installs, though the `ob_*` output buffers do, since a template captures `echo` output; a Go error needs no class. [The Go runtime](go-runtime.md) is the surface.
 
 ## Go's standard library, opt-in
 
-`Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)). Its other areas map go's import paths: `Runtime\Go\Strings` for `strings`, `Runtime\Go\Path` for `path`, `Runtime\Go\Net\HTTP` for `net/http`, `Runtime\Go\Encoding\JSON` for `encoding/json`, `Runtime\Go\Database\SQL` for `database/sql`, and the rest under the path's last segments.
+`Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)). Its other areas map go's import paths: `Runtime\Go\Strings` for `strings`, `Runtime\Go\Path` for `path`, `Runtime\Go\Net\HTTP` for `net/http`, `Runtime\Go\Encoding\JSON` for `encoding/json`, `Runtime\Go\Database\SQL` for `database/sql`, and the rest keyed to the path's last segments.
 
-The [Go imports](go-imports.md#the-bindings) inventory lists every name each area binds, read off the runtime this build reports. `Time\Sleep` takes a string duration such as `"100ms"`, and `SQL\Open` takes a connection the host registered, never a DSN from the script.
+The [Go imports](go-imports.md#the-bindings) inventory lists every name each area binds, read off the runtime this build reports. `Time\Sleep` takes a string duration such as `"100ms"`. `SQL\Open` takes a connection the host registered. It refuses a DSN from the script.
 
 A script imports one by its name, and the alias calls the function:
 
@@ -110,13 +110,13 @@ The default runtime installs none of these names. The import installs the area o
 |---------------|-------------|------------------------------------|
 | `repeatLimit` | `256 << 20` | `strings: Repeat output too large` |
 
-The mapping continues down go's import paths: `net/http` is `Runtime\Go\Net\HTTP`, `path/filepath` is `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers under its own profile area, as `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
+The mapping continues down go's import paths. `net/http` maps to `Runtime\Go\Net\HTTP`; `path/filepath` maps to `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers in a separate profile area, which `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
 
-A file that bound the go runtime writes the go spelling of the same import, which resolves to the same area: `import "net/http";` then `http.Get($url)`. [Go imports](go-imports.md) is that statement, the packages it reaches and how a binding package declares one.
+A file that bound the go runtime writes the go spelling of the same import, which resolves to the same area: `import "net/http";` then `http.Get($url)`. [Go imports](go-imports.md) is that statement, the packages it reaches, and the way a binding package declares one.
 
 ## Writing an area
 
-A binding package registers each installer under a name in its `init`:
+A binding package registers each installer by name in its `init`:
 
 ```go
 func init() {
@@ -124,9 +124,9 @@ func init() {
 }
 ```
 
-`RegisterArea` takes the name and the installer; `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. Two files may register under one name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
+`RegisterArea` takes the name and the installer; `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. Two files may register the same name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
 
-An opt-in area registers with `runner.RegisterNamespace(name, installer)`, and names its functions with the full path (`Runtime\Go\Strings\Fields`), which the `use` alias shortens.
+An opt-in area registers through `runner.RegisterNamespace(name, installer)` and names its functions with the full path (`Runtime\Go\Strings\Fields`), which the `use` alias shortens.
 
 ## Listing the areas
 

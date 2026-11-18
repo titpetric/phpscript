@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// resolveSQLiteDSN anchors a relative sqlite path under root, passing memory, absolute and file: DSNs through.
+// resolveSQLiteDSN anchors a relative sqlite path under root, passing memory and file: DSNs.
 func resolveSQLiteDSN(root, dsn string) string {
 	if root == "" || isSQLiteMemoryDSN(dsn) {
 		return dsn
@@ -61,7 +61,7 @@ func isSQLiteMemoryDSN(dsn string) bool {
 	return strings.EqualFold(values.Get("mode"), "memory")
 }
 
-// scriptSQLitePath reports the sqlite path a script DSN names and whether it lies outside root.
+// scriptSQLitePath reports the sqlite path a DSN names and whether it escapes root.
 func scriptSQLitePath(dsn string) (path string, outside bool) {
 	driver, rest := "mysql", dsn
 	if i := strings.Index(rest, "://"); i != -1 {

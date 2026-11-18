@@ -118,7 +118,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("E_STRICT", int64(2048))
 }
 
-// osName reports the PHP_OS value, the uname name that differs from GOOS only in case.
+// osName reports PHP_OS, the uname name differing from GOOS in case alone.
 func osName() string {
 	switch runtime.GOOS {
 	case "windows":
@@ -223,7 +223,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 		// A negative offset caps where the match may start, counted from the
 		// end. PHP 8 raises a ValueError when that runs past the start of the
 		// haystack; phpscript clamps to 0. A match inside the prefix ending
-		// one needle past the cap starts at or before it and LastIndex over
+		// one needle past the cap starts no later than the cap. LastIndex over
 		// that prefix answers directly.
 		last := int64(len(haystack)) + offset[0]
 		if last < 0 {
@@ -241,7 +241,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 		return rt.UnregisterAutoloader(callback)
 	})
 	// stream_resolve_include_path resolves $filename against the include path
-	// and returns the first path that exists, or false when none does.
+	// and returns the first path that exists, or false when no path exists.
 	rt.RegisterFunc("stream_resolve_include_path", func(filename string) any {
 		if filepath.IsAbs(filename) {
 			if _, err := os.Stat(filename); err == nil {

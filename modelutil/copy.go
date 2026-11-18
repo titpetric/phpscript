@@ -8,15 +8,15 @@ import (
 // `foreach` needs: what copying an array means, and whether a loop body would
 // notice the difference.
 //
-// PHP arrays are values. `foreach ($rows as $row)` binds a copy and
-// `$row["x"] = 1` edits the copy and leaves `$rows` alone; `foreach ($rows as
-// &$row)` binds the element itself. phpscript's arrays are pointers and a
-// by-value loop copies up front and never defers: there is no refcount to make
-// it lazy the way PHP's copy-on-write does.
+// PHP arrays are values. `foreach ($rows as $row)` binds a copy.
+// `$row["x"] = 1` edits the copy, and `$rows` stays untouched. `foreach ($rows
+// as &$row)` binds the element itself. phpscript's arrays are pointers. A
+// by-value loop copies up front. It does not defer: no refcount makes it lazy as
+// PHP's copy-on-write does.
 //
 // Copying every element of every loop would be a large price for a semantic
-// almost no loop uses and a loop copies only when the body actually assigns
-// through the loop variable. AssignsTo answers that, once per loop and not
+// almost no loop uses. A loop copies only when the body assigns through the
+// loop variable. AssignsTo answers that, once per loop and not
 // once per iteration, and the flatstack compiler asks it once per program.
 
 // CopyValue returns a value with PHP's assignment semantics applied: a deep
@@ -47,7 +47,7 @@ func CopyArray(a *model.Array) *model.Array {
 func AssignsTo(target model.Expr, body []model.Stmt) bool {
 	root := RootName(target)
 	if root == "" {
-		// A target with no name to root on matches nothing and treat it as a
+		// A target without a name to root on matches nothing. Treat it as a
 		// write the body makes.
 		return true
 	}
@@ -167,7 +167,7 @@ func exprAssignsTo(e model.Expr, root string) bool {
 	case *model.AssignExpr:
 		return RootName(n.Target) == root || listAssignsTo(n.Target, root) || exprAssignsTo(n.Value, root)
 	case *model.Unary:
-		// `$v++` and `--$v` write; every other unary only reads.
+		// `$v++` and `--$v` write; all other unaries only read.
 		if (n.Op == "++" || n.Op == "--") && RootName(n.X) == root {
 			return true
 		}

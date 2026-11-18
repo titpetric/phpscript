@@ -21,7 +21,7 @@ const (
 	matrixSkip
 )
 
-// matrixCell holds one runner's outcome and the detail printed under a verbose row.
+// matrixCell holds one runner's outcome and the detail printed in a verbose row.
 type matrixCell struct {
 	Runner tests.Runner
 	Status matrixStatus
@@ -39,12 +39,12 @@ type matrixRow struct {
 type matrixFixtureResult struct {
 	Row      matrixRow
 	JSONRows []jsonFixture
-	// Durations is what each runner spent on the fixture, summed over its
-	// samples, and the per-engine folder and summary figures add those up.
+	// Durations records each runner's time on the fixture, summed across
+	// samples. The per-engine folder and summary figures add those up.
 	Durations map[tests.Runner]time.Duration
 }
 
-// label returns what a table cell should show for the row.
+// label returns the text a table cell shows for the row.
 func (r matrixRow) label() string {
 	if r.Label != "" {
 		return r.Label
@@ -202,7 +202,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 	return failedCount
 }
 
-// engineOrder arranges the runner durations in report order, keeping a runner that measured 0ms.
+// engineOrder arranges runner durations in report order, keeping a 0ms runner.
 func engineOrder(runners []tests.Runner, durations map[tests.Runner]time.Duration) []engineDuration {
 	engines := make([]engineDuration, 0, len(runners))
 	for _, runner := range runners {

@@ -9,7 +9,7 @@
 // (see the README "omissions" list: inheritance, traits, etc.). `extends` on a
 // class is an exception in one direction only: the parser records it on the
 // AST so such a file lints and reformats, but nothing downstream inherits.
-// The parser reads `interface` declarations and a class's `implements` list;
+// The parser reads `interface` declarations and the `implements` list on a class;
 // modelutil.CheckInterfaces checks the contract, which also inherits nothing.
 package parser
 
@@ -225,7 +225,7 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 	return p.stmts.take(mark), nil
 }
 
-// pushStmt appends s to the statement list, as the one or more statements it lowers to.
+// pushStmt appends s to the statement list as the statements it lowers to.
 func (p *parser) pushStmt(s model.Stmt) {
 	if split := p.lowerChainedAlloc(s); split != nil {
 		for _, one := range split {
@@ -395,7 +395,7 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 	return nil, nil
 }
 
-// parseUse records an import, aliasing the short name or `as` alias to the full name.
+// parseUse records an import, aliasing its short or `as` name.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
 	kind := ""
@@ -436,7 +436,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 	return &model.Use{Kind: kind, Imports: imports}, nil
 }
 
-// aliasSpelling returns the alias to print for an import, empty when alias matches the short name.
+// aliasSpelling returns an import's printed alias, empty when it matches the short name.
 func aliasSpelling(path, alias string) string {
 	if i := strings.LastIndexByte(path, '\\'); i >= 0 {
 		path = path[i+1:]
@@ -1116,7 +1116,7 @@ func (p *parser) parseParamDecoration(pr *model.Param) {
 	}
 }
 
-// parseTypeHint consumes an optional type hint and returns its spelling, ignored by the runtime.
+// parseTypeHint consumes a type hint and returns its spelling, ignored by the runtime.
 func (p *parser) parseTypeHint() string {
 	var b strings.Builder
 	take := func() {
@@ -1374,7 +1374,7 @@ func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 	return p.eatOp("}")
 }
 
-// parseInterface consumes `interface Name [extends A, B] { ... }` of signatures and constants only.
+// parseInterface consumes `interface Name [extends A, B] { ... }`, signatures and constants.
 func (p *parser) parseInterface() (model.Stmt, error) {
 	p.next() // interface
 	if p.cur().kind != tIdent {
@@ -1439,7 +1439,7 @@ func (p *parser) parseInterface() (model.Stmt, error) {
 	return id, p.eatOp("}")
 }
 
-// parseSignature consumes `function name(params): type;`, a declaration with no body.
+// parseSignature consumes `function name(params): type;`, a signature-only declaration.
 func (p *parser) parseSignature(visibility string, isStatic bool) (*model.FuncDecl, error) {
 	p.next() // function
 	if p.cur().kind != tIdent {
@@ -1493,7 +1493,7 @@ func (p *parser) parseConsts() ([]model.Field, error) {
 	return consts, nil
 }
 
-// parseAbstractMethod consumes `function name(params);` with no body.
+// parseAbstractMethod consumes `function name(params);`, a signature-only declaration.
 func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.FuncDecl, error) {
 	fd, err := p.parseSignature(visibility, isStatic)
 	if err != nil {
@@ -1589,7 +1589,7 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 	return p.newExprStmt(lhs), nil
 }
 
-// lowerChainedAlloc splits `$a = $b = array(...)` into one assignment per name.
+// lowerChainedAlloc splits `$a = $b = array(...)` into a single assignment per name.
 func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 	outer, ok := s.(*model.Assign)
 	if !ok || outer.Op != "=" {
@@ -1629,7 +1629,7 @@ func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 	return append(out, outer)
 }
 
-// repeatableExpr reports whether running e again produces the same value with no side effect.
+// repeatableExpr reports whether re-running e produces the same value without effect.
 func repeatableExpr(e model.Expr) bool {
 	switch n := e.(type) {
 	case nil:
@@ -1699,7 +1699,7 @@ func (p *parser) optSemi() {
 	}
 }
 
-// numLit parses an int or float token, dropping underscore separators and accepting base prefixes.
+// numLit parses an int or float, dropping underscores and accepting base prefixes.
 func numLit(t token) (any, error) {
 	val := t.val
 	if strings.ContainsRune(val, '_') {

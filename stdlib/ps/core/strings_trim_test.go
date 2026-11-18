@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// TestTrimSides covers the three trims one constructor builds: the default
-// character list is php's five whitespace bytes plus NUL, a call naming its
-// own list replaces that list, and each side strips its own end.
+// TestTrimSides covers three trims one constructor builds: the default
+// character list is php's five whitespace bytes plus NUL; a call naming a
+// character list replaces the default; each side strips at its end.
 func TestTrimSides(t *testing.T) {
 	t.Parallel()
 	both := phpTrim(trimBoth, defaultTrimChars)
@@ -32,7 +32,7 @@ func TestTrimSides(t *testing.T) {
 }
 
 // TestCharMaskRanges covers the "a..z" spelling the trim family's character
-// list takes: the range includes both ends, and a short list is two literal
+// list takes: the range includes both ends; a short list is two literal
 // characters.
 func TestCharMaskRanges(t *testing.T) {
 	t.Parallel()

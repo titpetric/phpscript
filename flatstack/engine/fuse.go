@@ -72,7 +72,7 @@ func fuseProgram(p *Program) {
 	p.code = fused
 }
 
-// fuseAt returns the fused instruction for position i and the source width it consumed.
+// fuseAt returns the fused instruction at i and the source width consumed.
 func fuseAt(p *Program, protected map[int]bool, i int) (instruction, int) {
 	code := p.code
 	inst := code[i]

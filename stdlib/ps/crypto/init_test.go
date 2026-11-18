@@ -10,11 +10,11 @@ import (
 )
 
 // TestInitContributesEveryInstaller covers the wiring init.go does. init()
-// contributes each of the four installers through runner.RegisterBinding and
-// importing this package is what puts password hashing, the CSPRNG, the
-// message digests and the id generators into a binary, and stdlib.Register is
-// what puts them on a runtime. An installer left out of init() leaves its
-// names undefined while every other name still resolves. This test spells one
+// contributes each installer through runner.RegisterBinding.
+// Importing this package puts password hashing, the CSPRNG, the message digests
+// and the id generators into a binary; stdlib.Register puts them on a runtime.
+// An installer left out of init() leaves its names undefined, while all other
+// names resolve. This test spells one
 // name per installer. This test binary imports only this package and the
 // contributed set is this package's alone.
 func TestInitContributesEveryInstaller(t *testing.T) {

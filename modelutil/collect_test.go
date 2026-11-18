@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// listArray is the array every test below reads, in the one shape that keeps
+// listArray is the array every test below reads, in the single shape that keeps
 // its order: a PHP list.
 func listArray(items ...any) *model.Array {
 	a := model.NewArraySize(len(items))

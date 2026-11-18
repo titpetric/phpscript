@@ -48,7 +48,7 @@ func TestAssignGoIndex(t *testing.T) {
 	}
 }
 
-// TestUnsetGoIndex covers unset($x[$k]) over a binding's Go collection. A map
+// TestUnsetGoIndex covers `unset($x[$k])` on a binding's Go collection. A map
 // deletes in place and answers nothing; a slice cannot hold a hole and it
 // answers a reslice around the element for the caller to assign back; a miss
 // changes nothing and the unset runs unconditionally.
@@ -82,7 +82,7 @@ func TestUnsetGoIndex(t *testing.T) {
 
 // TestAssignGoField covers `$rec->is_readonly = true` landing on a Go struct:
 // the name resolves through the fold ladder, the value coerces to the field's
-// type, and an unwritable or missing field answers an error, with no panic.
+// type, and an unwritable or missing field answers an error, without any panic.
 func TestAssignGoField(t *testing.T) {
 	t.Parallel()
 	type record struct {

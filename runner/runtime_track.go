@@ -4,7 +4,7 @@ import (
 	"sort"
 )
 
-// Track runs install and reports what it defined and replaced; it serves introspection.
+// Track runs install and reports functions defined and replaced, for introspection.
 func (rt *Runtime) Track(install func(*Runtime)) Delta {
 	funcs := make(map[string]*funcEntry, len(rt.funcs))
 	for name, entry := range rt.funcs {

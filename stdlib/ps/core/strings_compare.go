@@ -24,14 +24,14 @@ func registerStringCompare(rt *runner.Runtime) {
 		return compareBytes(string1, string2, wholeString, true)
 	})
 	// strncmp compares at most $length leading bytes of $string1 and $string2
-	// the way strcmp does; a $length past the end of both compares what is
-	// there, and a negative one compares nothing and answers 0.
+	// as strcmp does; a $length past the end of both compares the bytes
+	// present. A negative one compares nothing and answers 0.
 	rt.RegisterFunc("strncmp", func(string1, string2 string, length int64) int64 {
 		return compareBytes(string1, string2, clampLength(length), false)
 	})
 	// strncasecmp compares at most $length leading bytes of $string1 and
-	// $string2 the way strcasecmp does, with the same reading of a $length
-	// past the end or below zero.
+	// $string2 as strcasecmp does. A $length past the end or below zero reads
+	// the same way.
 	rt.RegisterFunc("strncasecmp", func(string1, string2 string, length int64) int64 {
 		return compareBytes(string1, string2, clampLength(length), true)
 	})
@@ -40,7 +40,7 @@ func registerStringCompare(rt *runner.Runtime) {
 // wholeString is the limit the unbounded comparisons pass, letting length break a tie.
 const wholeString = -1
 
-// clampLength reads a negative strncmp length as zero and caps it at the int width.
+// clampLength reads a negative strncmp length as zero, capped at int width.
 func clampLength(length int64) int {
 	if length < 0 {
 		return 0
@@ -77,7 +77,7 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 		}
 	}
 
-	// The compared run agreed. A strncmp that stopped at its own limit compares
+	// The compared run agreed. A strncmp that stopped at its limit compares
 	// no further, whatever the strings do after it.
 	if bounded {
 		return 0
@@ -92,7 +92,7 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 	return 0
 }
 
-// lowerASCII folds one A-Z byte and leaves every other byte alone.
+// lowerASCII folds one A-Z byte and leaves all other bytes alone.
 func lowerASCII(c byte) byte {
 	if c >= 'A' && c <= 'Z' {
 		return c + ('a' - 'A')

@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/modelutil"
 )
 
-// lintTypeReassign reports, as advice, a variable whose later literal assignment spells a different type.
+// lintTypeReassign reports, as advice, a variable later assigned a different literal type.
 func lintTypeReassign(file string, prog *model.Program, out *[]Diagnostic) {
 	w := &reassignWalker{file: file, prog: prog, out: out}
 	w.scope(prog.Stmts)
@@ -25,7 +25,7 @@ type reassignWalker struct {
 	out  *[]Diagnostic
 }
 
-// scope checks one function body's statements, flagging string offsets on the strings it declared.
+// scope checks a body's statements, flagging string offsets on its declared strings.
 func (w *reassignWalker) scope(stmts []model.Stmt) {
 	types := map[string]string{}
 	w.walk(stmts, types)
@@ -48,7 +48,7 @@ func (w *reassignWalker) scope(stmts []model.Stmt) {
 	offsets.walk(stmts)
 }
 
-// declarations opens a new scope for every function and method body nested in s.
+// declarations opens a scope for each nested function and method body.
 func (w *reassignWalker) declarations(s model.Stmt) {
 	switch n := s.(type) {
 	case *model.FuncDecl:

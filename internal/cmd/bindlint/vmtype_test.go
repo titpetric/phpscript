@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// parseType parses a type expression, the shape a parameter or a type switch
-// case holds.
+// parseType parses a type expression, as a parameter or type switch case holds.
 func parseType(t *testing.T, src string) ast.Expr {
 	t.Helper()
 	e, err := parser.ParseExpr(src)
@@ -19,7 +18,7 @@ func parseType(t *testing.T, src string) ast.Expr {
 
 // TestVMType covers the wrappers a runtime value type hides behind: a pointer,
 // a slice, a map value, a variadic slot. Neither an Array another package
-// declares nor model's every other type is a runtime value type.
+// declares nor any other model type is a runtime value type.
 func TestVMType(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -77,8 +76,7 @@ func TestNativeShape(t *testing.T) {
 	}
 }
 
-// TestCallNames covers the two names a call holds: what it calls, and the
-// variable it calls it on.
+// TestCallNames covers a call's callee and the variable it calls on.
 func TestCallNames(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -109,8 +107,8 @@ func TestCallNames(t *testing.T) {
 	}
 }
 
-// TestPHPName covers the spelling a finding reports a namespaced class under:
-// the Go source escapes the separator and a script types one backslash.
+// TestPHPName covers the spelling a finding uses for a namespaced class: the
+// Go source escapes the separator; a script types one backslash.
 func TestPHPName(t *testing.T) {
 	t.Parallel()
 	if got, want := phpName(`Runtime\\Router`), `Runtime\Router`; got != want {

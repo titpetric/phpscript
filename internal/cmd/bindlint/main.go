@@ -1,9 +1,9 @@
 // Command bindlint reports a binding that points at a runtime value type:
-// a parameter declared as *model.Array or *model.Object, and a binding that
+// a parameter declared as *model.Array or *model.Object, plus a binding that
 // narrows a script value to one of them for no reason the code states. Both
 // make a binding answer for the values the interpreter built and for no
-// others, and the same value from another binding is a Go slice, map or
-// struct. It exits 1 when there is any.
+// others, and a binding's own Go slice, map or struct is the same value.
+// It exits 1 when there is any.
 //
 //	go run ./internal/cmd/bindlint [dir]
 //

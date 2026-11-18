@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// TestRow_Percent covers the adjusted percentage: a symbol with no runnable
-// statement has nothing left uncovered and 0/0 reads as covered and not as
-// a zero dragging every average down.
+// TestRow_Percent covers the adjusted percentage: a symbol without a runnable
+// statement has nothing left uncovered; 0/0 reads as covered, not as a zero
+// dragging every average down.
 func TestRow_Percent(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -76,7 +76,7 @@ func TestFuncRows(t *testing.T) {
 }
 
 // TestWriteReport pins the shape `summary coverfunc` parses: three
-// whitespace-separated columns and a total row it skips by name.
+// whitespace-separated columns, a total row it skips by name.
 func TestWriteReport(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

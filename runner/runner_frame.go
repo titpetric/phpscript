@@ -65,7 +65,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// closureEnv holds what a closure captures from its defining scope, snapshotted once at creation.
+// closureEnv holds the values a closure captures from its defining scope.
 type closureEnv struct {
 	filename  any
 	directory any
@@ -102,7 +102,7 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 	return env
 }
 
-// invokeClosure runs a closure in a fresh scope seeded with its captured environment alone.
+// invokeClosure runs a closure in a fresh scope seeded with its captures.
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)

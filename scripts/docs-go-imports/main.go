@@ -45,8 +45,8 @@ func generate(out io.Writer, root string) error {
 	return err
 }
 
-// areaGroup is one area of the inventory, with the import path that reaches it,
-// empty for the names the runtime mounts with no import.
+// areaGroup holds one area of the inventory plus the import path that reaches
+// it, empty for names no import reaches.
 type areaGroup struct {
 	area    string
 	path    string
@@ -90,8 +90,7 @@ func groups(symbols []list.Symbol) []areaGroup {
 	return out
 }
 
-// importPaths maps each area the build binds back to the go path that reaches
-// it.
+// importPaths maps each bound area back to the go path that reaches it.
 func importPaths() map[string]string {
 	out := map[string]string{}
 	for _, path := range bindings.LinkedPackages() {
@@ -102,8 +101,7 @@ func importPaths() map[string]string {
 	return out
 }
 
-// kindRank orders the rows the way a reader looks for them: the calls, the
-// values, the types, their methods.
+// kindRank orders rows as a reader looks: calls, values, types, methods.
 func kindRank(kind string) int {
 	switch kind {
 	case "function":
@@ -126,8 +124,7 @@ func sortSymbols(symbols []list.Symbol) {
 	})
 }
 
-// packagesTable renders the page and the import path of every area an import
-// reaches.
+// packagesTable renders each reachable area's page and import path.
 func (g *generator) packagesTable(symbols []list.Symbol) string {
 	rows := [][]string{}
 	for _, group := range groups(symbols) {

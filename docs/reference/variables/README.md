@@ -34,7 +34,7 @@ unset($row["b"]);
 echo implode(",", array_keys($row));      // a,c
 ```
 
-A value a binding returned as a native slice is the exception, because a slice is dense and cannot hold the hole PHP leaves. Removing an element renumbers the ones after it, as `array_values()` does; see the [divergences](../../README.md#known-divergences-from-php).
+A value a binding returned as a native slice is the exception: a slice is dense and cannot hold the hole PHP leaves. Removing an element renumbers the ones after it; `array_values()` does the same. See the [divergences](../../README.md#known-divergences-from-php).
 
 ```php
 $e = explode(",", "x,y,z");
@@ -48,7 +48,7 @@ Each function call receives a local scope containing its arguments. A function d
 
 phpscript will not build PHP's `global` statement: it parses and binds nothing, and the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
 
-Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value has its own static storage.
+PHP defines function-level `static` variables this way. The initializer runs once per function lifetime; later writes persist across calls. Each closure value has separate static storage.
 
 ```php
 function counter() {

@@ -89,7 +89,7 @@ func (c *IncludeCache) Len() int {
 	return len(c.programs)
 }
 
-// snapshot copies the entries and the version; a caller walks the copy without the lock.
+// snapshot copies entries and version; a caller walks the copy without the lock.
 func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {
 	if c == nil {
 		return nil, 0

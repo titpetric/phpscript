@@ -8,7 +8,7 @@ import (
 )
 
 // write puts src in a temporary directory and returns the path. Each case
-// formats a separate file and no case sees another one's rewrite.
+// formats a separate file; no case sees another one's rewrite.
 func write(t *testing.T, name, src string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
@@ -18,10 +18,10 @@ func write(t *testing.T, name, src string) string {
 	return path
 }
 
-// TestFile covers the rewrite and what it reports: the formatter writes an
-// unformatted file back and calls it changed, and leaves a formatted one
-// untouched and calls it unchanged. A caller running this over a tree counts
-// the second result to decide whether anything moved.
+// TestFile covers the rewrite and its report: the formatter writes an
+// unformatted file back and calls it changed. A formatted file stays untouched,
+// reported unchanged. A caller running this across a tree counts the
+// second result to decide whether anything moved.
 func TestFile(t *testing.T) {
 	t.Parallel()
 	path := write(t, "index.php", "<?php\nif($a){echo 1;}\n")
@@ -58,9 +58,10 @@ func TestFile(t *testing.T) {
 }
 
 // TestFileSkipsWhatItCannotParse covers the refusal: formatting rewrites a
-// file in place and the formatter leaves a file the parser cannot read byte
-// for byte and answers a *SkipError naming it. A directory of PHP holds valid code
-// this parser does not support, and one such file does not stop the rest.
+// file in place. A file the parser cannot read stays byte for byte unchanged
+// and the formatter answers a *SkipError naming the file. A directory of PHP holds
+// valid code this parser does not support; one such file does not stop the
+// rest.
 func TestFileSkipsWhatItCannotParse(t *testing.T) {
 	t.Parallel()
 	source := "<?php\nfunction broken( {\n"
@@ -88,9 +89,9 @@ func TestFileSkipsWhatItCannotParse(t *testing.T) {
 	}
 }
 
-// TestFileReportsAMissingPath covers a path that is not there: the read error
-// comes back as it came, with no *SkipError wrapper, because a caller walking
-// a tree has to stop on a read failure and continue past a refusal.
+// TestFileReportsAMissingPath covers a path that does not exist: the read error
+// comes back unchanged, without a *SkipError wrapper. A caller walking a tree
+// must stop on a read failure and continue past a refusal.
 func TestFileReportsAMissingPath(t *testing.T) {
 	t.Parallel()
 	changed, err := File(filepath.Join(t.TempDir(), "absent.php"))

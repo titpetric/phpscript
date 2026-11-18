@@ -6,7 +6,7 @@ import (
 )
 
 // Overlay reads filename over base and returns the keys the file itself named.
-// A missing file is an error, with no fall back to base.
+// A missing file is an error; the read does not fall back to base.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -16,9 +16,9 @@ func Overlay(base Config, filename string, forbidden []string, owned string) (Co
 }
 
 // OverlayBytes is Overlay over source already read. A caller holding the file
-// as bytes has its own filesystem to read from: the build compiles the fixture
-// tree into the test binary, and a virtual host root is an absolute path no
-// fs.FS spells. filename is only what errors name.
+// as bytes supplies the filesystem: the build compiles the fixture tree into
+// the test binary; a virtual host root is an absolute path no fs.FS spells.
+// filename serves only error messages.
 func OverlayBytes(base Config, filename string, data []byte, forbidden []string, owned string) (Config, map[string]any, error) {
 	var declared map[string]any
 	if err := Unmarshal(data, &declared); err != nil {
@@ -40,17 +40,16 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 		return base, declared, fmt.Errorf("%s: %w", filename, err)
 	}
 
-	// A mapping decoded into a map replaces it and a file that names servers
-	// holds only the ones it named and a site cannot inherit the operator's
-	// credentials. The one spelling that does not behave that way is `mail:`
-	// with no key under it reads as a null node, which the decoder leaves as
-	// the inherited value and a file declaring it had no servers would
-	// inherit the operator's. Naming the key with nothing under it means no
-	// servers.
+	// A mapping decoded into a map replaces the map. A file that names servers
+	// holds only the servers it named; a site cannot inherit the operator's
+	// credentials. One spelling does not behave that way: `mail:` whose key
+	// holds nothing reads as a null node. The decoder leaves the inherited
+	// value. A file that declares the key and names no servers would inherit
+	// the operator's. Naming the key and leaving it empty means no servers.
 	//
-	// This is here and not beside the virtual host checks because a test
-	// suite's phpscript.yml overlays through this same function and needs the
-	// same guarantee.
+	// This sits here, not with the virtual host checks: a test suite's
+	// phpscript.yml overlays through this same function and needs the same
+	// guarantee.
 	if servers, ok := declared["mail"]; ok && servers == nil {
 		result.Mail = nil
 	}
@@ -59,8 +58,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 }
 
 // Declares reports whether a parsed file named the given key path. Validation
-// needs it to tell a setting a file named from one it inherited through
-// Overlay.
+// needs it to distinguish a named setting from one inherited.
 func Declares(declared map[string]any, keys ...string) bool {
 	for i, key := range keys {
 		value, ok := declared[key]

@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// TestHexdec covers the reading hexdec() makes: hex digits until the first
-// character that is not one, with the 0x prefix accepted and a string holding
-// no hex digit at all answering 0 and raising nothing.
+// TestHexdec covers the reading hexdec() makes: hex digits until a non-hex
+// character, with the 0x prefix accepted. A string holding no hex digit
+// answers 0 and raises nothing.
 func TestHexdec(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -19,8 +19,8 @@ var_dump(hexdec("1A"), hexdec("0x1A"), hexdec("ff"), hexdec("zz"), hexdec(""), h
 }
 
 // TestAbs covers the type abs() answers in, which is the argument's: an int
-// stays an int and a float stays a float, and abs() reads a numeric string as
-// the number it spells and abs("-7") is the int 7.
+// stays an int, a float stays a float. abs() reads a numeric string as the
+// number it spells. abs("-7") is the int 7.
 func TestAbs(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -53,13 +53,13 @@ var_dump(pow(2, -1), pow(2.0, 3), pow(2, 0.5));`)
 	}
 }
 
-// TestRound covers php's rounding, which is half away from zero and not Go's
-// half to even: round(2.5) is 3 and round(-2.5) is -3, where Go's math.Round
-// agrees and its banker's rounding would not.
+// TestRound covers php's rounding: half away from zero, not Go's half to even.
+// round(2.5) is 3 and round(-2.5) is -3. Go's math.Round agrees; its banker's
+// rounding would not.
 //
-// A precision argument rounds to that many decimals, and 1.005 is the case
-// that catches a naive multiply-and-round: the float nearest 1.005 is below
-// it and a decimal reading is what answers 1.01.
+// A precision argument rounds to that many decimals. 1.005 is the case that
+// catches a naive multiply-and-round. The float nearest 1.005 is below the
+// decimal. A decimal reading answers 1.01.
 func TestRound(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -73,10 +73,10 @@ var_dump(round(1.2345, 2), round(1.005, 2), round(1.0, 2), round(1234.5678, -2))
 	}
 }
 
-// TestNumberFormat covers the four arguments and their defaults: no decimals, a
-// comma between thousands and a dot before the decimals. number_format takes
-// the separators as given, including an empty thousands separator, and rounds
-// the value without truncating it and 1234.5678 with no decimals is 1,235.
+// TestNumberFormat covers each argument and its default: no decimals,
+// a comma between thousands, a dot before the decimals. number_format takes
+// the separators as given, including an empty thousands separator. It rounds
+// the value without truncating. 1234.5678 without decimals is 1,235.
 func TestNumberFormat(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -92,10 +92,9 @@ var_dump(number_format(1000000), number_format(-0.5), number_format(0.5), number
 	}
 }
 
-// TestMinMax covers the two spellings php accepts: two or more arguments, or
-// one array holding them. The comparison is php's and min() and max() compare
-// a mixed list the way php compares those values. The winner keeps its own
-// type.
+// TestMinMax covers the two spellings php accepts: many arguments, or one
+// array of arguments. The comparison is php's; min() and max() compare a mixed
+// list as php compares those values. The winner keeps its type.
 func TestMinMax(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -109,8 +108,8 @@ var_dump(min("a", "b"), max(1, "2", 3.5));`)
 	}
 }
 
-// TestLog covers the base argument. With none the base is e and log(M_E) is 1;
-// with one the result is the logarithm in that base and log(8, 2) is 3 and the
+// TestLog covers the base argument. Without a base the base is e, and log(M_E)
+// is 1. With a base the result is the logarithm there; log(8, 2) is 3, and the
 // caller divides nothing.
 func TestLog(t *testing.T) {
 	t.Parallel()

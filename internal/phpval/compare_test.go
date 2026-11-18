@@ -73,7 +73,7 @@ func TestCompare(t *testing.T) {
 		{"1e400", "2e400", -1},
 		{"1e20", "100000000000000000000", 0},
 
-		// null against a string is "" against that string
+		// a null compares as "" to that string
 		{nil, nil, 0},
 		{nil, "a", -1},
 		{nil, "", 0},
@@ -100,7 +100,7 @@ func TestCompare(t *testing.T) {
 		{5, list(1), -1},
 		{model.NewArray(), "", 1},
 
-		// an array against a bool or a null is its own emptiness
+		// a bool or a null compares an array as its own emptiness
 		{model.NewArray(), false, 0},
 		{model.NewArray(), nil, 0},
 		{list(1), true, 0},

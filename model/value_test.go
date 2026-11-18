@@ -43,7 +43,7 @@ func TestArrayItemValue(t *testing.T) {
 		}
 	}
 
-	// An integer key is a key and no append: `[2 => "x"]` sets the position it
+	// An integer key is a key, not an append: `[2 => "x"]` sets the position it
 	// names and the next append follows it.
 	explicit := NewArray()
 	explicit.Set(int64(2), "x")

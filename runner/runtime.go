@@ -17,7 +17,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// setVar routes a superglobal to the global binding and every other name to the scope.
+// setVar routes a superglobal to the global binding, other names to the scope.
 func (rt *Runtime) setVar(scope *Scope, name string, val any) {
 	if rt.auto.Set(name, val) {
 		scope.Unset(name)
@@ -169,7 +169,7 @@ type Runtime struct {
 	envShared bool
 
 	// resets run inside resetExecution and a binding keeping separate state
-	// beside the runtime (the ob_* buffer stack) drops it when the runtime is
+	// attached to the runtime (the ob_* buffer stack) drops it when the runtime is
 	// reset between programs. See OnReset.
 	resets []func()
 
@@ -295,7 +295,7 @@ type scopeRef struct {
 	scope *Scope
 }
 
-// evalEnv is one reusable expr environment: the helpers, plus per-expression keys.
+// evalEnv is a reusable expr environment: the helpers, plus per-expression keys.
 type evalEnv struct {
 	ref   *scopeRef
 	env   map[string]any
@@ -308,7 +308,7 @@ type evalEnv struct {
 	cenv expr.Env
 }
 
-// slots returns the pooled slot buffer sized to n, holding only what an evaluation wrote.
+// slots returns the pooled slot buffer sized to n, holding one evaluation's output.
 func (st *evalEnv) slots(n int) []any {
 	if cap(st.vars) < n {
 		st.vars = make([]any, n)
@@ -327,8 +327,8 @@ func (rt *Runtime) Exit(code int) error {
 	return &ExitError{Code: code}
 }
 
-// Output returns the writer script output goes to, which under an active
-// PushOutput is the innermost one and passes nothing on.
+// Output returns the writer script output goes to. An active PushOutput makes
+// that writer the innermost; it passes nothing on.
 func (rt *Runtime) Output() io.Writer {
 	if n := len(rt.outStack); n > 0 {
 		return rt.outStack[n-1]
@@ -336,7 +336,7 @@ func (rt *Runtime) Output() io.Writer {
 	return rt.out
 }
 
-// emptyStdin is the state-free input stream a runtime with no stdin reads.
+// emptyStdin is the state-free input stream a runtime without stdin reads.
 type emptyStdin struct{}
 
 func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
@@ -348,7 +348,7 @@ const (
 	stdlibConsts  = 192
 )
 
-// New returns a Runtime that writes echo output to w (defaults to os.Stdout).
+// New returns a Runtime writing echo output to w, os.Stdout by default.
 func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
 		w = os.Stdout
@@ -404,13 +404,13 @@ func New(w io.Writer, opts Options) *Runtime {
 
 // InfrastructurePrefix names the variables that configure phpscript and the
 // platform it runs on: connection strings, the listen address, the telemetry
-// block. They are the host's configuration and getenv() does not answer them,
-// and a tenant cannot read the operator's connection strings.
+// block. They are the host's configuration: getenv() does not answer those
+// variables; no tenant can read the operator's connection strings.
 const InfrastructurePrefix = "PLATFORM_"
 
 // ScriptEnvironment returns the environment scripts read with getenv().
 //
-// A nil environment means the process environment, as a CLI run has it. A host
+// A nil environment means the process environment, as in a CLI run. A host
 // that configured one passes it instead. Either way ScriptEnvironment drops the
 // infrastructure variables.
 func ScriptEnvironment(environment []string) map[string]string {
@@ -463,14 +463,14 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.interfaces)
 }
 
-// resetExecution drops what one program wrote, keeping declarations for the next request.
+// resetExecution drops the output of one program, keeping declarations for the next request.
 func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	if out == nil {
 		out = os.Stdout
 	}
 	rt.out = out
 	rt.releaseOutput()
-	// Bindings holding state beside the runtime drop it with the output they
+	// Bindings holding state attached to the runtime drop it with the output they
 	// mirror: an ob_* level a program left open is its text and its level, and
 	// both would read back in the next program.
 	for _, reset := range rt.resets {
@@ -523,7 +523,7 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	rt.resetLimits()
 }
 
-// Reset is ResetSession plus the parse caches and the maps keyed by AST node.
+// Reset is ResetSession plus parse caches and the maps keyed by AST node.
 func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.ResetSession(out, stdin)
 	clear(rt.compiled)
@@ -630,9 +630,9 @@ func (rt *Runtime) WorkDirPath() string { return rootPath(rt.opts.WorkDir) }
 func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 
 // SetWorkDir moves the working directory and reports whether it could. A
-// relative path resolves against the current one and an absolute path against
-// the source root, and neither climbs out of it. The directory is per-runtime
-// state and os.Chdir is never called. A path naming no directory returns false.
+// relative path resolves against the current directory, an absolute path
+// against the source root. Neither climbs out. The directory is per-runtime
+// state and os.Chdir is never called; a path naming no directory returns false.
 func (rt *Runtime) SetWorkDir(dir string) bool {
 	target := rt.resolveFSPath(dir)
 	if target == "" {

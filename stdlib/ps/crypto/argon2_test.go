@@ -7,7 +7,7 @@ import (
 
 // TestArgon2VerifyPHPVectors is the interop check the whole encoding exists
 // for: every hash below comes from php 8.5's password_hash(), pasted, and
-// has to verify here. The parameter sets are awkward for a reason: m=1025
+// must verify here. The parameter sets are awkward for a reason: m=1025
 // with p=3 does not divide evenly by 4p, which argon2 rounds down for the
 // lanes while keeping the original value in the initial hash, and m=8 is the
 // smallest php accepts.
@@ -61,8 +61,8 @@ func TestArgon2VariantsDiffer(t *testing.T) {
 	}
 }
 
-// TestArgon2RoundTrip checks that what password_hash writes is what
-// password_get_info reads, for both variants.
+// TestArgon2RoundTrip checks that password_get_info reads password_hash's
+// output, for both variants.
 func TestArgon2RoundTrip(t *testing.T) {
 	t.Parallel()
 	for _, algo := range []string{algoArgon2i, algoArgon2id} {
@@ -103,7 +103,7 @@ func TestArgon2SaltIsFresh(t *testing.T) {
 }
 
 // TestArgon2DecodeRejects covers every way a stored string can fail to be a
-// hash this build will act on. Each one is an error: a best-effort read would
+// hash this build will act on. Each failure is an error: a best-effort read would
 // take a wrong parameter set, derive a wrong tag, and answer false for the
 // right password.
 func TestArgon2DecodeRejects(t *testing.T) {

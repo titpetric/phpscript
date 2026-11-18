@@ -13,12 +13,12 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// suites holds the phpscript.yml files one invocation runs under, the run's own first.
+// suites holds the phpscript.yml files one invocation runs, its own first.
 type suites struct {
-	// run is the suite the invocation itself is under, or nil. Its directory
-	// is not necessarily below the working directory and suites holds it
-	// apart from the discovered ones, and resolve answers it for every
-	// fixture that finds no closer file.
+	// run is the suite governing the invocation itself, or nil. Its directory
+	// is not necessarily below the working directory. suites holds it apart
+	// from the discovered suites; resolve answers it for every fixture that
+	// finds no closer file.
 	run *tests.Suite
 
 	// found are the files discovered below the argument paths, sorted by
@@ -35,7 +35,7 @@ func (s suites) all() []*tests.Suite {
 	return append(result, s.found...)
 }
 
-// resolve returns the nearest suite at or above path's directory, or the run's own.
+// resolve returns the nearest suite at or above path, else the run's own.
 func (s suites) resolve(path string) *tests.Suite {
 	dir := filepath.Dir(path)
 	for {
@@ -52,7 +52,7 @@ func (s suites) resolve(path string) *tests.Suite {
 	}
 }
 
-// discoverSuites loads the run's suite and every phpscript.yml below paths that the walk reaches.
+// discoverSuites loads the run's suite plus every phpscript.yml below the walk's paths.
 func discoverSuites(base config.Config, paths []string) (suites, error) {
 	var result suites
 
@@ -119,7 +119,7 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 	return result, nil
 }
 
-// runSuite reads the nearest phpscript.yml at or above the working directory.
+// runSuite reads the nearest phpscript.yml in the working directory or a parent.
 func runSuite(base config.Config) (*tests.Suite, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -139,7 +139,7 @@ func runSuite(base config.Config) (*tests.Suite, error) {
 	}
 }
 
-// walkRoot splits a fixture path into its directory and whether the walk is recursive.
+// walkRoot splits a fixture path into its directory and recursive flag.
 func walkRoot(p string) (string, bool, error) {
 	p = filepath.Clean(p)
 	recursive := false
@@ -162,7 +162,7 @@ func walkRoot(p string) (string, bool, error) {
 	return p, recursive, nil
 }
 
-// applySuites points every fixture at the suite governing it, and --include overrides the app root.
+// applySuites points every fixture at its governing suite; --include overrides the app root.
 func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {
 		suite := found.resolve(fx.Path)

@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// The null coalescing operators and the word operators print as written: `??=`
-// is not widened to `$a = $a ?? b` and `and` is not narrowed to `&&`, which
-// binds tighter than assignment and would change what the line means.
+// The null coalescing and word operators print as written. `??=` is not widened
+// to `$a = $a ?? b`; `and` is not narrowed to `&&`, which binds tighter than
+// assignment and would change the line's meaning.
 func TestCoalesceAndWordOperatorsKeepTheirSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n$a ??= 1;\n$b = $c ?? $d ?? 0;\n$e['k'] ??= 5;\n$f = $g and $h;\n$i = 1 <=> 2;\n$j = $k xor $l;\n$m = $n or $o;\n"
@@ -44,7 +44,7 @@ func TestQuoteStyleOfStringLiteralsIsKept(t *testing.T) {
 
 // A literal a caller builds without parsing has no source spelling to keep,
 // and the printer picks the quoting: single quotes when they avoid escaping a
-// dollar sign, which a double-quoted literal would interpolate.
+// dollar sign that a double-quoted literal would interpolate.
 func TestSyntheticStringLiteralAvoidsInterpolation(t *testing.T) {
 	t.Parallel()
 	prog := &model.Program{Stmts: []model.Stmt{
@@ -103,10 +103,10 @@ func TestFirstClassCallableIsNotACall(t *testing.T) {
 	}
 }
 
-// A go builtin a file imported resolves to a binding under the go namespace and
-// prints as the source wrote it: the runtime looks the qualified name up, a
-// reader sees the spelling, and a file that calls go's builtins round-trips
-// through the formatter.
+// A go builtin imported by a file resolves to a binding in the go namespace,
+// and prints as the source wrote it. The runtime looks the qualified name up; a
+// reader sees the spelling. A file that calls go's builtins round-trips through
+// the formatter.
 func TestGoBuiltinCallKeepsItsSpelling(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n\nuse Runtime\\Go;\n\n$s = make([]int64, 0, 10);\n$s = append($s, int64($n));\necho len($s), cap($s);\n"

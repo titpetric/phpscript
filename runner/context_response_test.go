@@ -18,10 +18,10 @@ func (e *exception) Error() string { return e.message }
 
 func (e *exception) GetCode() int { return e.code }
 
-// TestAcceptsHTML pins that only an explicit request for HTML counts as one.
-// "*/*" matches every type there is, and curl and fetch() send it and reading
-// it as a request for HTML would put a website's error page in front of every
-// program that talks to the server.
+// TestAcceptsHTML pins that only an explicit request for HTML counts. "*/*"
+// matches every type there is; curl and fetch() send it. Reading that as a
+// request for HTML would put a website's error page in front of every program
+// that talks to the server.
 func TestAcceptsHTML(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -55,9 +55,9 @@ func TestAcceptsHTML(t *testing.T) {
 	}
 }
 
-// TestWantsErrorPage pins that Sec-Fetch-Dest decides when a browser sends it.
-// The header is the one signal separating a navigation from a fetch() the page
-// made on its own behalf, which Accept cannot do: both can name HTML.
+// TestWantsErrorPage pins that Sec-Fetch-Dest decides for a browser request.
+// The header is the signal that separates a navigation from a fetch() the page
+// started, which Accept cannot do: both can name HTML.
 func TestWantsErrorPage(t *testing.T) {
 	t.Parallel()
 	const navigation = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -98,9 +98,9 @@ func TestWantsErrorPage(t *testing.T) {
 	}
 }
 
-// TestStatusFor pins how an uncaught exception becomes a status. Only a code in
-// the 4xx and 5xx range is one; every other code is the script's own numbering,
-// and a request that ended on one simply failed.
+// TestStatusFor pins the way an uncaught exception becomes a status. Only a code in
+// the 4xx and 5xx range counts; a code below 400 or above 599 uses the
+// script's numbering. A request that ended on such a code simply failed.
 func TestStatusFor(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -122,8 +122,8 @@ func TestStatusFor(t *testing.T) {
 		{name: "wrapped", err: errors.Join(&exception{"gone", 410}), want: 410},
 		{name: "plain go error", err: errors.New("parse failed"), want: 500},
 
-		// A failure overrides whatever the script staged before it: the status
-		// describes how the request ends and never how it ran.
+		// A failure overrides whatever the script staged earlier. The status
+		// describes the end of the request.
 		{name: "failure after a staged status", staged: 200, err: &exception{"boom", 0}, want: 500},
 	}
 
@@ -140,8 +140,8 @@ func TestStatusFor(t *testing.T) {
 	}
 }
 
-// TestAnswered pins the opt-out an API relies on. Either a body or a
-// Content-Type is the script saying what its answer is. The script's place
+// TestAnswered pins the opt-out an API relies on. A body or a
+// Content-Type is the script declaring an answer. The script's place
 // in the URL space does not change that.
 func TestAnswered(t *testing.T) {
 	t.Parallel()
@@ -162,7 +162,7 @@ func TestAnswered(t *testing.T) {
 
 // TestWriteResponse pins that WriteResponse flushes a response in one place:
 // the headers the script staged, then the status, then the body. A status of
-// zero writes none and leaves net/http its 200.
+// zero writes nothing and leaves net/http its 200.
 func TestWriteResponse(t *testing.T) {
 	t.Parallel()
 	c := NewContext()
@@ -206,7 +206,7 @@ func TestWriteResponseRefusesAStatusThatCannotBeSent(t *testing.T) {
 	}
 }
 
-// TestSetDefaultHeader pins that a default never overrides what the script said.
+// TestSetDefaultHeader pins that a default never overrides the script's value.
 func TestSetDefaultHeader(t *testing.T) {
 	t.Parallel()
 	c := NewContext()

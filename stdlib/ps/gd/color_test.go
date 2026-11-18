@@ -6,7 +6,7 @@ import (
 )
 
 // TestColorAllocateRoundTrip covers the packed identifier a script holds in a
-// variable. A colour is 0xAARRGGBB and allocating one, painting with it and
+// variable. A colour is 0xAARRGGBB; allocating one, painting with it, then
 // reading the pixel back answers the same integer. A script can compare two
 // colours with ==.
 func TestColorAllocateRoundTrip(t *testing.T) {
@@ -25,7 +25,7 @@ echo $red . " " . $grey . " " . imagecolorat($im, 0, 0) . " " . imagecolorat($im
 	}
 }
 
-// TestColorsForIndexSplitsThePackedValue covers the four components a script
+// TestColorsForIndexSplitsThePackedValue covers each component a script
 // reads back out of an identifier. Alpha is on GD's own 0 to 127 scale, where 0
 // is opaque and 127 is transparent and ported code that computes on the number
 // keeps the same meaning it had under GD.
@@ -55,7 +55,7 @@ echo $c["red"] . " " . $c["green"] . " " . $c["blue"] . " " . $c["alpha"];
 }
 
 // TestColorAlphaBlends covers what alpha does when blendPixel writes a colour.
-// An opaque colour replaces the pixel and a fully transparent one leaves it
+// An opaque colour replaces the pixel; a fully transparent one leaves it
 // alone, the behaviour a PHP script sees with imagealphablending on.
 func TestColorAlphaBlends(t *testing.T) {
 	t.Parallel()
@@ -75,8 +75,8 @@ echo " " . imagecolorat($im, 0, 0);
 }
 
 // TestColorAtOutsideTheImage covers a coordinate the image does not hold.
-// GD answers false and a script that walks past an edge sees a value it can
-// test and never a colour the image does not hold.
+// GD answers false; a script that walks past an edge sees a value it can
+// test.
 func TestColorAtOutsideTheImage(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, `<?php

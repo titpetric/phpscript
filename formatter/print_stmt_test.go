@@ -72,7 +72,7 @@ func TestInlinePHPBlockIsKept(t *testing.T) {
 
 // TestTemplateInlineBraceNestsLines covers the three-line template: the
 // `foreach` on the first line nests the line between, and the closing line
-// aligns with the one that opened the brace.
+// aligns with the line that opened the brace.
 func TestTemplateInlineBraceNestsLines(t *testing.T) {
 	t.Parallel()
 	in := "<?php foreach ($items as $item) { ?>\n    <li><?php echo $item; ?></li>\n<?php } ?>\n"
@@ -86,8 +86,8 @@ func TestTemplateInlineBraceNestsLines(t *testing.T) {
 	}
 }
 
-// TestAssignmentAndCallStayTogether covers a call written under an assignment:
-// the blank line the author left between them comes out.
+// TestAssignmentAndCallStayTogether covers a call written below an assignment:
+// the blank line the author left between the two comes out.
 func TestAssignmentAndCallStayTogether(t *testing.T) {
 	t.Parallel()
 	in := "<?php\n$server = new Server;\n\n$server->run();\n"

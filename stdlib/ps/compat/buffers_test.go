@@ -21,7 +21,7 @@ func TestRegisterBuffers(t *testing.T) {
 }
 
 // TestBuffersNest covers the stack discipline a template engine renders
-// through: ob_start pushes a level, a flush writes into the level below it,
+// through: ob_start pushes a level, a flush writes into the level underneath,
 // a clean drops its text. Writing a flushed level to the real output
 // instead would make an outer buffer miss everything an inner one rendered.
 func TestBuffersNest(t *testing.T) {
@@ -62,9 +62,9 @@ func TestBuffersNest(t *testing.T) {
 	}
 }
 
-// TestBuffersDiscardOnClean covers ob_end_clean: the level closes and pop drops
-// its text and a template that rendered something a page did not want leaves
-// no text in the output below it.
+// TestBuffersDiscardOnClean covers ob_end_clean: the level closes, and pop
+// drops its text. A template that rendered something a page did not want
+// leaves no text in the output underneath.
 func TestBuffersDiscardOnClean(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -84,9 +84,9 @@ func TestBuffersDiscardOnClean(t *testing.T) {
 	}
 }
 
-// TestBuffersReportAbsence covers the result PHP distinguishes with ===: with
-// no level open, contents and pop report false and never an empty string and a
-// script can tell an empty buffer from no buffer at all.
+// TestBuffersReportAbsence covers the result PHP distinguishes with ===:
+// when no level is open, contents and pop report false, never an empty string.
+// A script can tell an empty buffer from an absent buffer.
 func TestBuffersReportAbsence(t *testing.T) {
 	t.Parallel()
 	b := newBuffers(runner.New(&strings.Builder{}, runner.Options{}))

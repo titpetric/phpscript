@@ -38,7 +38,7 @@ public function getValue(): mixed
 
 ## Status
 
-- phpscript has no `SensitiveParameterValue`. The name is not declared.
-- It has no declaration to attach to: attributes are unavailable, and a script cannot write the `SensitiveParameter` attribute that produces one.
+- The name `SensitiveParameterValue` is not declared. phpscript has no such class.
+- It has no declaration to attach to: attributes are unavailable. A script cannot write the `SensitiveParameter` attribute that produces one.
 - `__debugInfo()` is a magic method, which is unavailable as well, and the parser accepts `readonly` without enforcing it.
 - Keep the secret out of the argument list: read it from configuration inside the function that needs it.

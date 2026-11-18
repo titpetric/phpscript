@@ -8,14 +8,14 @@ import (
 )
 
 // SessionPool keeps registered runtimes alive between the sessions they
-// serve and a host answering one request after another pays registration once
-// and a reset per request. A bounded free list and no sync.Pool, because the
-// registered runtime is the asset worth keeping and sync.Pool drops entries on
-// a collection. A Get on an empty list builds through the constructor and a
-// Put over the bound drops. One pool serves one host: the constructor closes
-// over one source root and one set of options and a server with two or more
-// virtual hosts keeps a pool per site and a runtime registered against one
-// site's filesystem never answers for another's.
+// serve. A host answering one request after another pays registration once,
+// plus a reset per request. It uses a bounded free list, not sync.Pool:
+// the registered runtime is the asset worth keeping, and sync.Pool drops
+// entries on a collection. A Get on an empty list builds through the
+// constructor; a Put past the bound drops. One pool serves one host. The
+// constructor captures a source root, plus the options. A server hosting more
+// than one virtual host keeps a pool per site. A runtime registered for
+// a site's filesystem never answers for another's.
 type SessionPool struct {
 	mu    sync.Mutex
 	free  []*Runtime
@@ -24,8 +24,8 @@ type SessionPool struct {
 }
 
 // NewSessionPool returns a pool of up to size runtimes built by build. Zero
-// size is GOMAXPROCS, the parallelism the host has for work that is all CPU,
-// the same default Pool takes for its worker count.
+// size is GOMAXPROCS, the parallelism available for work that is all CPU, the
+// same default Pool takes for its worker count.
 func NewSessionPool(size int, build func() *Runtime) *SessionPool {
 	if size <= 0 {
 		size = goruntime.GOMAXPROCS(0)

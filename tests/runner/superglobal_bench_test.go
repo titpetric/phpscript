@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// browserHeaders is what an ordinary browser sends. The count is what matters:
-// a request holds a dozen or so, and an eager decode would copy each one
-// into $_SERVER under its HTTP_ name even when the script reads none.
+// browserHeaders holds the headers an ordinary browser sends. The count
+// matters: a request holds a dozen or so; an eager decode would copy each
+// header into $_SERVER with the HTTP_ spelling even when the script reads none.
 var browserHeaders = map[string]string{
 	"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 	"Accept-Encoding":           "gzip, deflate, br",
@@ -25,8 +25,7 @@ var browserHeaders = map[string]string{
 	"User-Agent":                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
 }
 
-// BenchmarkRegisterSuperglobals covers what a request pays to reach a script
-// that never names a superglobal, which is the common page.
+// BenchmarkRegisterSuperglobals covers a script naming no superglobal, the common page.
 func BenchmarkRegisterSuperglobals(b *testing.B) {
 	req := httptest.NewRequest("GET", "http://example.com/index.php?page=2&sort=name", nil)
 	for name, value := range browserHeaders {
@@ -42,7 +41,7 @@ func BenchmarkRegisterSuperglobals(b *testing.B) {
 }
 
 // BenchmarkRegisterAndReadOne covers the same request where the script reads a
-// single name, as a router does with REQUEST_URI.
+// single name, as a router reads REQUEST_URI.
 func BenchmarkRegisterAndReadOne(b *testing.B) {
 	req := httptest.NewRequest("GET", "http://example.com/index.php?page=2&sort=name", nil)
 	for name, value := range browserHeaders {
@@ -65,7 +64,7 @@ func BenchmarkRegisterAndReadOne(b *testing.B) {
 }
 
 // BenchmarkRegisterOnly separates registering the superglobals from building
-// the Context they come from, which is most of what the two benchmarks above
+// the Context they come from, most of the work the two benchmarks above
 // measure.
 func BenchmarkRegisterOnly(b *testing.B) {
 	req := httptest.NewRequest("GET", "http://example.com/index.php?page=2&sort=name", nil)

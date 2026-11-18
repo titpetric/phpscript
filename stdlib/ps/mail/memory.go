@@ -12,12 +12,12 @@ import (
 var _ model.MailProvider = (*Memory)(nil)
 
 // Memory is a Provider that appends messages to an in-memory queue and
-// delivers none. A host binds one through runner.Options.Mail to capture
-// what scripts send: tests, local runs, dry runs.
+// delivers none. Each host binds the provider through runner.Options.Mail to
+// capture what scripts send: tests, local runs, dry runs.
 //
-// Memory is a provider and no sender spliced in further down and a test using
-// it still resolves a name and still exercises the refusal a script reads for
-// a server nobody configured.
+// Memory is a provider. The provider splices in no sender further down. A test
+// using it still resolves a name. It still exercises the refusal a script reads for a
+// server nobody configured.
 type Memory struct {
 	mu       sync.Mutex
 	servers  map[string]bool

@@ -122,7 +122,7 @@ func nextCode(lines []string, i int) string {
 	return ""
 }
 
-// isAssignCallSource reports a call written directly under an assignment.
+// isAssignCallSource reports a call written directly beneath an assignment.
 func isAssignCallSource(prev, next string) bool {
 	if !strings.HasPrefix(prev, "$") || !strings.HasSuffix(strings.TrimSuffix(next, ";"), ")") {
 		return false
@@ -146,7 +146,7 @@ func startsPHP(s string) bool {
 	return strings.HasPrefix(s, "<?php") || strings.HasPrefix(s, "<?=")
 }
 
-// isPHPInline reports whether s opens and closes PHP on its own line.
+// isPHPInline reports whether s opens and closes PHP on a line alone.
 func isPHPInline(s string) bool {
 	if !startsPHP(s) {
 		return false
@@ -184,7 +184,7 @@ func leadingClosers(s string) int {
 	return n
 }
 
-// code counts the bracket nesting a PHP run opens and answers where `?>` ends it.
+// code counts the nesting a PHP run opens, answering where `?>` ends it.
 func (s *phpScan) code(src string) (delta, closeAt int) {
 	closeAt = -1
 	lineComment := false

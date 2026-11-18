@@ -1,8 +1,8 @@
 // Package files holds the filesystem shims phpscript exposes to PHP: path
 // helpers, reads, writes, streams, and the uploaded-file functions that go with
-// $_FILES. They sit here and not in stdlib because they are the one part of
-// the standard library bound to a directory on the host and because a host
-// that runs untrusted scripts may leave them out.
+// $_FILES. They sit here, not in stdlib, because they are the only
+// standard-library part bound to a host directory. A host that runs untrusted
+// scripts may leave them out.
 //
 // Go's fs.FS only reads and writes (fopen/fwrite/mkdir) use the os package
 // against the same root; the runner's include resolution still uses the fs.FS
@@ -46,13 +46,13 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	registerUploads(rt, r)
 }
 
-// root is the directory RegisterRoot bound the shims to and the runtime they read through.
+// root is the bound directory and the runtime the shims read through.
 type root struct {
 	rt  *runner.Runtime
 	dir string
 
 	// writable is the resolved writable_paths allowlist. An empty list means
-	// no restriction, and a configuration that names none gets that.
+	// no restriction. A configuration that names none gets that.
 	writable []string
 }
 
@@ -117,7 +117,7 @@ func (r root) globSpelling(pattern string, matches []string) []string {
 	return out
 }
 
-// resolveWrite resolves a write path and refuses one outside writable_paths with an error.
+// resolveWrite refuses a write path outside writable_paths.
 func (r root) resolveWrite(fn, p string) (string, error) {
 	name := r.resolve(p)
 	if r.writableAllows(name) {
@@ -126,7 +126,7 @@ func (r root) resolveWrite(fn, p string) (string, error) {
 	return name, fmt.Errorf("%s(%s): writable_paths allows %s", fn, p, strings.Join(r.writable, ", "))
 }
 
-// writableAllows reports a path under a writable root, an empty list permitting all.
+// writableAllows reports a path inside a writable root, an empty list permitting all.
 func (r root) writableAllows(name string) bool {
 	if len(r.writable) == 0 {
 		return true
@@ -139,7 +139,7 @@ func (r root) writableAllows(name string) bool {
 	return false
 }
 
-// Within reports whether name is dir or something beneath it. The separator
+// Within reports whether name is dir or something beneath. The separator
 // keeps a sibling out: /srv/site/uploads-old is not under /srv/site/upload.
 func Within(name, dir string) bool {
 	if name == dir {
@@ -162,7 +162,7 @@ func HostPath(rt *runner.Runtime, dir, p string) string {
 // project's uploads directory.
 //
 // An absolute entry survives verbatim and then matches no file: resolve clamps
-// what it compares into dir. No entry grants a write outside the root.
+// the comparison into dir. No entry grants a write outside the root.
 func WritableRoots(dir string, paths []string) []string {
 	if len(paths) == 0 {
 		return nil

@@ -14,13 +14,13 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The Runtime\Go bindings are go's builtins, and a script opts into them with
-// `use Runtime\Go`. They are the one binding area no runtime installs by
-// default: `make` and `len` are not php's and a program that imported neither
-// keeps the surface php defines, and the import installs them where
-// stdlib.Mount would install an area every runtime holds.
+// The Runtime\Go bindings are go's builtins, reached with `use Runtime\Go`.
+// A script opts in by importing the namespace. They form a binding
+// area no runtime installs by default: `make` and `len` are not php's. A
+// program importing neither keeps the surface php defines. The import
+// installs them where stdlib.Mount would install an area every runtime holds.
 //
-// Each one reads php's values and answers go's semantics. A length is go's,
+// Each binding reads php's values and answers go's semantics. A length is go's,
 // over php's arrays as well as go's slices; a conversion applies go's width to
 // a value php reduced to one of its scalars; a panic throws a
 // RuntimeException, the class a php `catch` can filter on.
@@ -31,7 +31,7 @@ func init() {
 
 // RegisterGo installs the Runtime\Go bindings on a runtime that imported them.
 func RegisterGo(rt *runner.Runtime) {
-	// Runtime\Go\make allocates a go slice of a length and a capacity: make([]string, 0, 10).
+	// Runtime\Go\make allocates a go slice with a length and capacity: make([]string, 0, 10).
 	rt.RegisterFunc(goFunc("make"), goMake)
 	// Runtime\Go\append appends values to a php array or a go slice and returns it.
 	rt.RegisterFunc(goFunc("append"), goAppend)
@@ -84,7 +84,7 @@ func RegisterGo(rt *runner.Runtime) {
 	registerGoTypes(rt)
 }
 
-// registerGoTypes installs each builtin type's conversion as a function and a constructor.
+// registerGoTypes installs each builtin type's conversion as a function plus a constructor.
 func registerGoTypes(rt *runner.Runtime) {
 	for _, name := range modelutil.GoTypeNames() {
 		// Runtime\Go\<type> converts a value to a go builtin type: int64(0), float64($n).
@@ -97,12 +97,12 @@ func registerGoTypes(rt *runner.Runtime) {
 // goFunc is the name a Runtime\Go binding registers under.
 func goFunc(name string) string { return modelutil.GoNamespace + `\` + name }
 
-// goFail is the RuntimeException a binding throws, which a php `catch` sees.
+// goFail is the RuntimeException a binding throws, visible to a php `catch`.
 func goFail(format string, args ...any) error {
 	return runner.NewRuntimeException(fmt.Sprintf(format, args...), 0)
 }
 
-// goConvert returns one builtin type's conversion, reading a missing argument as the zero value.
+// goConvert returns a builtin type's conversion, a missing argument as the zero value.
 func goConvert(name string) func(args ...any) (any, error) {
 	return func(args ...any) (any, error) {
 		if len(args) > 1 {
@@ -140,7 +140,7 @@ func goReduce(name string, value any) (any, error) {
 	return phpval.Int(value), nil
 }
 
-// goMake allocates a slice of the named type, with length and capacity defaulting to zero.
+// goMake allocates a slice of the named type, length and capacity zero.
 func goMake(spelling string, size ...any) (any, error) {
 	elem, ok := goElem(spelling)
 	if !ok {
@@ -163,7 +163,7 @@ func goMake(spelling string, size ...any) (any, error) {
 	return reflect.MakeSlice(reflect.SliceOf(elem), length, capacity).Interface(), nil
 }
 
-// goElems holds the element types make allocates a slice of, keyed by type name.
+// goElems holds the element types make allocates a slice of, keyed by name.
 var goElems = map[string]reflect.Type{
 	"any":     reflect.TypeFor[any](),
 	"bool":    reflect.TypeFor[bool](),
@@ -259,7 +259,7 @@ func goValue(elem reflect.Type, value any) (reflect.Value, error) {
 	return reflect.Value{}, goFail(`Runtime\Go: a %T does not go in a %s`, value, elem)
 }
 
-// goLen returns go's len over a string, PHP array or Go collection, with nil as empty.
+// goLen returns go's len for a string, PHP array or Go collection, with nil as empty.
 func goLen(value any) (int64, error) {
 	switch text := value.(type) {
 	case nil:
@@ -306,7 +306,7 @@ func goCopyArray(dst *model.Array, src any) (int64, error) {
 	return copied, nil
 }
 
-// goCopySlice copies src into dst's elements, stopping at the shorter of the two.
+// goCopySlice copies src into dst's elements, stopping at the shorter length.
 func goCopySlice(dst reflect.Value, src any) (int64, error) {
 	limit, copied := int64(dst.Len()), int64(0)
 	elem := dst.Type().Elem()
@@ -330,7 +330,7 @@ func goCopySlice(dst reflect.Value, src any) (int64, error) {
 	return copied, nil
 }
 
-// goDeleteKey removes a key from a Go map, the shape left after a PHP array answers for itself.
+// goDeleteKey removes a key from a Go map, as PHP array narrowing does.
 func goDeleteKey(collection reflect.Value, key any) error {
 	if collection.Kind() != reflect.Map {
 		return goFail(`Runtime\Go\delete: cannot delete from a %s`, collection.Type())
@@ -364,7 +364,7 @@ func goClear(collection any) error {
 	return goFail(`Runtime\Go\clear: cannot clear a %T`, collection)
 }
 
-// goOrdered is go's min and max over values, never a list as PHP's min reads.
+// goOrdered is go's min and max over values; it does not read a list the way PHP's min does.
 func goOrdered(name string, args []any, sign int) (any, error) {
 	if len(args) == 0 {
 		return nil, goFail(`%s: takes at least one value`, goFunc(name))

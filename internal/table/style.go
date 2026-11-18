@@ -25,8 +25,8 @@ const (
 	BoxCross       = "┼"
 )
 
-// Colors of the ansi table. They are 256-color codes and not the basic
-// eight and a row keeps the same shade whatever palette the terminal ships.
+// Colors of the ansi table. They are 256-color codes, outside the basic eight.
+// A row keeps the same shade whatever palette the terminal ships.
 const (
 	ColorReset     = "\033[0m"
 	ColorSeparator = "\033[38;5;238m"

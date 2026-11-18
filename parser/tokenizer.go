@@ -221,8 +221,8 @@ func TokenName(id int) string {
 	return "UNKNOWN"
 }
 
-// TokenIDs returns every token name with the id token_get_all reports for it,
-// the ids a host registers as PHP constants.
+// TokenIDs returns every token name with the id token_get_all reports, the
+// ids a host registers as PHP constants.
 func TokenIDs() map[string]int {
 	out := make(map[string]int, len(tokenNames))
 	for id, name := range tokenNames {
@@ -231,7 +231,7 @@ func TokenIDs() map[string]int {
 	return out
 }
 
-// boxedInts holds pre-boxed int64s; emitting a token id or line costs no allocation.
+// boxedInts holds pre-boxed int64s; a token id costs no allocation.
 var boxedInts = func() [boxedIntMax]any {
 	var out [boxedIntMax]any
 	for i := range out {
@@ -282,8 +282,8 @@ type phpTokenizer struct {
 }
 
 func (t *phpTokenizer) run() []any {
-	// Presize (rule 6): PHP averages a little under one token every four bytes
-	// once a whitespace run and an inline HTML block each collapse to one token.
+	// Presize (rule 6): PHP averages just below one token every four bytes
+	// once a whitespace run and an inline HTML block each collapse to a single token.
 	t.out = make([]any, 0, len(t.src)/4+8)
 	for t.pos < len(t.src) {
 		if !t.inPHP {
@@ -339,8 +339,8 @@ func (t *phpTokenizer) scanInlineHTML() {
 		startLine = t.line
 		if strings.HasPrefix(t.src[t.pos:], "<?php") {
 			t.consume(5)
-			// PHP folds the one whitespace character that ends the open tag
-			// into the token and `<?php\n` is a six byte T_OPEN_TAG.
+			// PHP folds the whitespace character that ends the open tag into
+			// the token. `<?php\n` is a six byte T_OPEN_TAG.
 			text := "<?php"
 			if t.pos < len(t.src) && isOpenTagSpace(t.src[t.pos]) {
 				text += string(t.src[t.pos])
@@ -475,10 +475,11 @@ func (t *phpTokenizer) scanString(quote byte) {
 	start := t.pos
 	startLine := t.line
 
-	// A double-quoted literal that embeds an expression is not one token: PHP
-	// opens it with the bare quote, reports each run and each embedded
-	// expression separately, and closes it with the quote again. A literal that
-	// embeds nothing, and every single-quoted literal, stays one token.
+	// A double-quoted literal that embeds an expression is not a single token.
+	// PHP opens it with the bare quote. It reports each run, each embedded
+	// expression, separately, then closes it with the quote again. A literal
+	// that embeds nothing stays a single token. A single-quoted literal stays
+	// one.
 	if quote == '"' {
 		if parts, _, interp, err := scanInterp(t.src, t.pos+1, t.line); err == nil && interp {
 			t.emitInterp(parts)

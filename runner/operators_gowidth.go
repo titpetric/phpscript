@@ -24,7 +24,7 @@ import (
 // Two of php's own operands never reach here: goArith reports false and the
 // caller keeps php's own arithmetic, overflow to float included.
 
-// goArith applies an arithmetic operator at a typed width, reporting whether operands have one.
+// goArith applies an arithmetic operator at a typed width when operands have one.
 func goArith(op string, a, b any) (any, bool, error) {
 	w, typed, err := goOperandWidth(op, a, b)
 	if !typed || err != nil {
@@ -40,7 +40,7 @@ func goArith(op string, a, b any) (any, bool, error) {
 	}
 }
 
-// goBitwise applies a bitwise operator at a typed width, a shift past it leaving zero.
+// goBitwise applies a bitwise operator at a typed width, a long shift zero.
 func goBitwise(op string, a, b any) (any, bool, error) {
 	w, typed, err := goOperandWidth(op, a, b)
 	if !typed || err != nil {
@@ -105,7 +105,7 @@ func goOperandFloat(v any) float64 {
 	return phpval.Float(v)
 }
 
-// goSignedArith computes at a signed width, narrowing an int64 carrier so the result wraps.
+// goSignedArith computes at a signed width, narrowing the int64 carrier to wrap.
 func goSignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	x, y := goOperandInt(a), goOperandInt(b)
 	switch op {
@@ -159,7 +159,7 @@ func goUnsignedArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// goFloatArith computes in float64 and narrows back so a float32 answers as go would.
+// goFloatArith computes in float64 and narrows back for float32 answers.
 func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	x, y := goOperandFloat(a), goOperandFloat(b)
 	switch op {
@@ -188,7 +188,7 @@ func goFloatArith(op string, w model.GoWidth, a, b any) (any, bool, error) {
 	return nil, false, nil
 }
 
-// shiftLeft shifts within the int64 carrier, a count of 64 or more leaving zero.
+// shiftLeft shifts within the int64 carrier; 64 or more leaves zero.
 func shiftLeft(x, count int64) int64 {
 	if count >= 64 {
 		return 0
@@ -196,7 +196,7 @@ func shiftLeft(x, count int64) int64 {
 	return x << uint(count)
 }
 
-// shiftRight shifts in zeroes for an unsigned width, or keeps the sign when signed.
+// shiftRight shifts in zeroes when unsigned, or keeps the sign when signed.
 func shiftRight(w model.GoWidth, x, count int64) int64 {
 	if count >= 64 {
 		if w.Signed && x < 0 {

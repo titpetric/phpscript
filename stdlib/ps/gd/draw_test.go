@@ -5,8 +5,8 @@ import (
 )
 
 // gridHelper is a PHP function the drawing tests echo their result through. A
-// grid of packed colours reads as one string and a test names the whole image
-// it expected and the failure shows which pixel moved.
+// grid of packed colours reads as a single string. A test names the whole
+// image it expects, and the failure shows which pixel moved.
 const gridHelper = `<?php
 function grid($im, $w, $h) {
 	$out = "";
@@ -21,8 +21,8 @@ function grid($im, $w, $h) {
 `
 
 // TestDrawFilledRectangle covers the corner convention. GD rectangles include
-// the far corner where Go's exclude it and a fill from 0,0 to 1,1 paints four
-// pixels and a ported script keeps the area it drew under GD.
+// the far corner, where Go's do not. A fill from 0,0 to 1,1 paints four
+// pixels. A ported script keeps the area it drew under GD.
 func TestDrawFilledRectangle(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`
@@ -41,8 +41,8 @@ echo grid($im, 3, 3);
 }
 
 // TestDrawFilledRectangleNormalisesCorners covers a rectangle named from its
-// far corner back. GD accepts either order and a script computing coordinates
-// does not have to sort them.
+// far corner back. GD accepts either order. A script computing coordinates
+// need not sort them.
 func TestDrawFilledRectangleNormalisesCorners(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`
@@ -59,8 +59,8 @@ echo grid($im, 2, 2);
 
 // TestDrawLine covers the Bresenham walk. The standard library draws no lines
 // and an axis-aligned shortcut is not enough, because ported border code names
-// arbitrary endpoints and the test reads back both an axis-aligned and a
-// diagonal line.
+// arbitrary endpoints. The test reads back an axis-aligned line plus a
+// diagonal.
 func TestDrawLine(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -104,8 +104,8 @@ echo grid($im, 3, 3);
 }
 
 // TestDrawLineClipsToTheImage covers endpoints past an edge. GD draws the part
-// that lands and reports success and a script computing coordinates from input
-// does not have to clip them itself.
+// that lands and reports success. A script computing coordinates from input
+// need not clip them itself.
 func TestDrawLineClipsToTheImage(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`
@@ -146,8 +146,8 @@ echo grid($im, 3, 3);
 }
 
 // TestDrawFillOutsideTheImage covers a starting point the image does not hold.
-// There is no region to walk, and GD treats the call as done and never
-// failed and the return stays true and imagefill paints nothing.
+// There is no region to walk. GD treats the call as successful: the return
+// stays true and imagefill paints nothing.
 func TestDrawFillOutsideTheImage(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`
@@ -163,7 +163,7 @@ echo grid($im, 2, 2);
 }
 
 // TestDrawCopyResampled covers the resize every ported thumbnail path runs. A
-// uniform source scales to a uniform destination, and a degenerate rectangle
+// uniform source scales to a uniform destination. A degenerate rectangle
 // copies nothing and still reports success: the handles are valid and there is
 // no area.
 func TestDrawCopyResampled(t *testing.T) {

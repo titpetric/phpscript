@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestScan exercises the source scan over a synthetic registration file: the
+// TestScan exercises the source scan on a synthetic registration file: the
 // registration-site comment, the godoc fallback with its leading symbol
 // rewritten, signature extraction, and the by-reference setter convention.
 func TestScan(t *testing.T) {
@@ -80,8 +80,8 @@ type Thing struct{}
 	}
 }
 
-// TestScanQualifiedRegistration covers the three shapes a selector takes as the
-// registered expression: a package in the tree, a method on a value, and a
+// TestScanQualifiedRegistration covers three shapes a selector takes as the
+// registered expression: a package in the tree, a method on a value, or a
 // package outside the tree. The last one has no declaration to read, and
 // borrowing one that shares the name published the wrong parameters.
 func TestScanQualifiedRegistration(t *testing.T) {
@@ -145,10 +145,10 @@ func register(rt *Runtime) {
 	}
 }
 
-// TestScanReadsNoRegistrations covers the two empty results the generator has
-// to survive: a tree with no registration in it, and the empty set Reflect
-// passes when there is no source to read at all. Both leave every lookup
-// answering nil and build falls back to reflection for each entry.
+// TestScanReadsNoRegistrations covers the two empty results the generator must
+// survive: a tree without a registration, and the empty set Reflect passes when
+// no source exists. Both leave every lookup answering nil; build falls back to
+// reflection for each entry.
 func TestScanReadsNoRegistrations(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

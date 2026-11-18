@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestFromRequestMultipart covers the body shape ParseForm does not decode: a
-// multipart POST has to reach $_POST as well as an urlencoded one does, and its
-// file parts have to arrive in $_FILES.
+// TestFromRequestMultipart covers the body shape ParseForm does not decode. A
+// multipart POST must reach $_POST as an urlencoded one does; its file parts
+// must arrive in $_FILES.
 func TestFromRequestMultipart(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t,
@@ -58,7 +58,7 @@ func TestFromRequestMultipart(t *testing.T) {
 
 // TestFilesSuperglobal checks the array shape a script indexes into, which is
 // PHP's keys and not the Go struct behind them. full_path holds the name the
-// client sent whole, name holds its base alone and a client cannot choose a
+// client sent whole; name holds its base alone. A client cannot choose a
 // directory for the server.
 func TestFilesSuperglobal(t *testing.T) {
 	t.Parallel()
@@ -124,8 +124,8 @@ echo $f["name"][0] . "|" . $f["name"][1] . "|" . $f["size"][0] . "|" . $f["size"
 }
 
 // TestUploadMaxFilesize covers a single file part over the limit. PHP keeps the
-// rest of the form and marks that one entry UPLOAD_ERR_INI_SIZE and a script
-// can tell the user which file it refuses.
+// rest of the form and marks that one entry UPLOAD_ERR_INI_SIZE. A script can
+// then tell the user which file it refuses.
 func TestUploadMaxFilesize(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t,

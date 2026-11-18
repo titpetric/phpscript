@@ -2,17 +2,16 @@ package model
 
 import (
 	"context"
-
 	"database/sql"
 )
 
 // DatabaseProvider resolves the named connections a script opens.
 //
-// The interface lives here so a runtime can name it in its options without
-// depending on the package that implements it, which is stdlib/ps/database and
-// which imports the runtime to register its bindings. A runtime knows only that
+// The interface lives here so a runtime can name it among its options without
+// depending on the implementing package: stdlib/ps/database. That package
+// imports the runtime to register its bindings. A runtime knows only that
 // something answers to a connection name; which connections exist is the host's
-// business, and a virtual host answers differently from the process it shares.
+// business. A virtual host answers differently from the process it shares.
 type DatabaseProvider interface {
 	// Open returns a client for the first name the host configured.
 	Open(ctx context.Context, names ...string) (*sql.DB, error)
