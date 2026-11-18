@@ -32,6 +32,11 @@ echo strtoupper("php"), " ", strlen("four"), "\n";
 
 // The dot concatenates everything else, in the same file.
 echo "a" . "b", " ", 1 . 2, "\n";
+
+// A string's {$...} compiles against the same names the rest of the file
+// does, the imported package among them.
+$n = 1;
+echo "{$n + http.StatusOK}", " ", "{$n + http.StatusNotFound}", "\n";
 ---
 n=42
 Not Found 404 POST
@@ -41,3 +46,4 @@ bool(false)
 AREA
 PHP 4
 ab 12
+201 405

@@ -88,6 +88,30 @@ func TestGoImportMember(t *testing.T) {
 	}
 }
 
+// TestGoImportInterpolation covers the {$...} form, which re-enters the parser
+// on the file's package map: a member reads the same inside a string as it does
+// outside one.
+func TestGoImportInterpolation(t *testing.T) {
+	t.Parallel()
+	prog := mustParse(t, goImportHeader+"import \"net/http\";\n$n = 200;\necho \"{$n + http.StatusOK}\";")
+	echo, ok := prog.Stmts[len(prog.Stmts)-1].(*model.Echo)
+	if !ok || len(echo.Args) != 1 {
+		t.Fatalf("the file compiles to %#v, want one echo", prog.Stmts[len(prog.Stmts)-1])
+	}
+	interp, ok := echo.Args[0].(*model.Interp)
+	if !ok || len(interp.Parts) != 1 {
+		t.Fatalf("the string compiles to %#v, want one interpolated part", echo.Args[0])
+	}
+	sum, ok := interp.Parts[0].(*model.Binary)
+	if !ok {
+		t.Fatalf("the interpolation compiles to %T, want the sum", interp.Parts[0])
+	}
+	name, ok := sum.Right.(*model.Var)
+	if !ok || !name.Const || name.Name != `Runtime\Go\Net\HTTP\StatusOK` {
+		t.Errorf("the sum reads %v, want the constant Runtime\\Go\\Net\\HTTP\\StatusOK", sum.Right)
+	}
+}
+
 // TestGoImportRefusals covers what stays php's: the statement in a file that
 // bound no go runtime, a path the standard library does not spell, and a dot
 // an import does not claim.
