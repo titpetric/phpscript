@@ -38,6 +38,12 @@ echo strings . "x";              // php's too: no member follows the dot
 
 The import takes the name for the file that wrote it. A file holding a constant named `http` and an `import "net/http"` reads `http . FOO` as the member `FOO` of the package; name the constant something else, or reach the area by its own name.
 
+## One file
+
+An import binds the file that wrote it and reaches neither a file it includes nor a file that includes it. The name is a parser binding, made while the file parses. An include parses its own file: a helper the entry includes writes its own `import "strings";` before it spells `strings.ToUpper`. The entry's import leaves nothing behind in it. Reaching the area by its name, `Runtime\Go\Strings\ToUpper`, needs no import in any file.
+
+The top level of the file holds the statement, beside the `use` that admits it. The runtime installs the area from the top-level statements before the file runs. An import below an `if` would name a package the parse resolved while the run never installs it. The parser refuses such an import at the line that writes it.
+
 ## What an import binds
 
 | A script writes           | It resolves to                   | The name holds                      |

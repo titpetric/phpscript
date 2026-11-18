@@ -127,6 +127,13 @@ func TestGoImportRefusals(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "no go package path") {
 		t.Errorf("a module path parsed: %v", err)
 	}
+	// The statement is file level: the runtime installs the area from the
+	// top-level statements before the file runs. The parser refuses a nested
+	// one, which would name an area the run never installs.
+	_, err = Parse(goImportHeader + "if (false) {\nimport \"net/http\";\n}")
+	if err == nil || !strings.Contains(err.Error(), "only allowed at the top level") {
+		t.Errorf("a nested import parsed: %v", err)
+	}
 	// A dot with no member behind it stays concatenation, in a file that
 	// imported the package named on its left.
 	call, ok := lastExpr(t, goImportHeader+"import \"net/http\";\nvar_dump(http . 1);").(*model.Call)

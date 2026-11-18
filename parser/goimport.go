@@ -19,8 +19,12 @@ import (
 // names something and does not concatenate. The file said which names a
 // package holds; the parser reads the pair as one name.
 //
-// The name binds per file, as every import does. A second file of the same
-// program writes its own `import` line or reaches the area by its name.
+// The name binds per file, as every import does. The statement belongs at the
+// top level: the runtime installs the area before the file runs, from the
+// statements there. A second file of the same program writes its own `import`
+// line or reaches the area by its name. A nested import is a parse error,
+// refused at the line that writes it: it would otherwise resolve a name the
+// runtime never installs.
 
 // atGoImport reports whether the statement ahead is a go import.
 func (p *parser) atGoImport() bool {
@@ -30,6 +34,9 @@ func (p *parser) atGoImport() bool {
 // parseGoImport reads import "path" into a use of the area binding it, refusing an unknown path.
 func (p *parser) parseGoImport() (model.Stmt, error) {
 	line := p.next().line // import
+	if !p.topLevel {
+		return nil, fmt.Errorf("line %d: import is only allowed at the top level", line)
+	}
 	path := p.next().val
 	area, alias, ok := modelutil.GoImportArea(path)
 	if !ok {

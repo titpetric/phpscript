@@ -256,6 +256,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [No channels](extensions/go-runtime.md#no-channels)
 - [Go imports](extensions/go-imports.md) - The import statement a file that bound the go runtime may write, and the packages of go's standard library it reaches.
   - [The dot](extensions/go-imports.md#the-dot)
+  - [One file](extensions/go-imports.md#one-file)
   - [What an import binds](extensions/go-imports.md#what-an-import-binds)
   - [The packages](extensions/go-imports.md#the-packages)
   - [The bindings](extensions/go-imports.md#the-bindings)
