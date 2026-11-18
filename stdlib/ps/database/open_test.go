@@ -7,8 +7,8 @@ import (
 // TestOpen covers the pool DatabaseProvider builds by default. sql.Open
 // records the driver and the DSN and connects to nothing and a pool exists
 // before any server has answered, and a provider holding ten connection
-// strings opens no sockets at startup. The sqlx wrapper keeps the driver
-// name, and sqlx reads it there to rebind placeholders for the dialect.
+// strings opens no sockets at startup. The pdo client detects the driver
+// from the pool and rebinds placeholders for the dialect.
 func TestOpen(t *testing.T) {
 	t.Parallel()
 	db, err := Open("sqlite", ":memory:")
@@ -17,9 +17,6 @@ func TestOpen(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	if got := db.DriverName(); got != "sqlite" {
-		t.Errorf("DriverName() = %q, want %q", got, "sqlite")
-	}
 	if got := db.Stats().OpenConnections; got != 0 {
 		t.Errorf("OpenConnections = %d before the first statement, want 0", got)
 	}

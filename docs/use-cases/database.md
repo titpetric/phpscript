@@ -202,7 +202,7 @@ $db->get("select * from users where id = ?", $ids);
 $db->get("select * from users where id = ?", $ids[0]);
 ```
 
-Code that builds its argument list at runtime checks for it, as dbadmin's `driver_dao::bind()` does, ahead of sqlx reporting it.
+Code that builds its argument list at runtime checks for it, as dbadmin's `driver_dao::bind()` does, ahead of the pdo client reporting it.
 
 A value the driver binds on its own is exempt and a lone `Time` from a date column binds by position like any scalar. See [Dates and times](#dates-and-times).
 
