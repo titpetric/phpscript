@@ -33,12 +33,12 @@ tasks:
       - go install .
       - task: test:introspection
       - task: fmt
-      - task: bake:build
+      - task: bake
 
   ci:daily:
     desc: "The suites a push cannot: the image push and the integration runs"
     cmds:
-      - task: bake
+      - task: deploy
       - task: db:down
         deferred: true
       - task: db:up
@@ -50,30 +50,30 @@ tasks:
   deploy:
     desc: "Publish the image for both architectures"
     cmds:
-      - task: bake
-
-  bake:
-    desc: "Build and push the image for amd64 and arm64"
-    cmds:
       - task: bake:push
 
+  bake:
+    desc: "Build the image for amd64 and arm64"
+    cmds:
+      - task: bake:build
+
   bake:build:
-    desc: "Build the multi-platform image from source"
+    desc: "Build both architecture images from source"
     show: false
     cmds:
       - >
         docker buildx inspect phpscript >/dev/null 2>&1
         || docker buildx create --name phpscript --driver docker-container;
-        docker buildx bake --builder phpscript
+        docker buildx bake --builder phpscript --provenance=false
 
   bake:push:
-    desc: "Build and push the multi-platform image"
+    desc: "Build and push both architecture images"
     show: false
     cmds:
       - >
         docker buildx inspect phpscript >/dev/null 2>&1
         || docker buildx create --name phpscript --driver docker-container;
-        docker buildx bake --builder phpscript --push
+        docker buildx bake --builder phpscript --push --provenance=false
 
   db:up:
     desc: "Start the mysql and postgres services the database fixtures query"

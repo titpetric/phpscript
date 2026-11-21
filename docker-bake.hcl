@@ -4,12 +4,19 @@ variable "TAG" {
 }
 
 group "default" {
-  targets = ["phpscript"]
+  targets = ["phpscript-amd64", "phpscript-arm64"]
 }
 
-target "phpscript" {
+target "phpscript-amd64" {
   context    = "."
   dockerfile = "docker/Dockerfile.build"
-  tags       = ["titpetric/phpscript:${TAG}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+  tags       = ["titpetric/phpscript:${TAG}-amd64"]
+  platforms  = ["linux/amd64"]
+}
+
+target "phpscript-arm64" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.build"
+  tags       = ["titpetric/phpscript:${TAG}-arm64"]
+  platforms  = ["linux/arm64"]
 }

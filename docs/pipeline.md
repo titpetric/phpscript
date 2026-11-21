@@ -14,7 +14,7 @@
 | 4     | `go install .`       | the binary the generated pages read              |
 | 5     | `test:introspection` | the three generated reference pages, regenerated |
 | 6     | `fmt`                | the documentation step 5 wrote                   |
-| 7     | `bake:build`         | the image for both architectures, into the cache |
+| 7     | `bake`               | the image for both architectures, into the cache |
 
 `fmt` runs twice: ahead of the test, then over the generated output. Every formatting job calls `fmt`, never `go:fmt` or `mdox:fmt` alone. The two tools then cannot drift apart. `lint` applies that notion across the linters.
 
@@ -22,11 +22,11 @@
 
 ## What ci:daily runs
 
-`ci:daily` runs the suites a push cannot: `bake` first to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
+`ci:daily` runs the suites a push cannot: `deploy` first to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
 
-`bake` owns the image. It builds `docker/Dockerfile.build` for `linux/amd64` and `linux/arm64` and pushes `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. A release sets `TAG` before the push. `atkins deploy` runs `bake` alone, and `ci:daily` runs it before the integration legs.
+`bake` owns the image. It builds `docker/Dockerfile.build` for `linux/amd64` and `linux/arm64`, tagged `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. `atkins deploy` publishes it. A release sets `TAG` before that push. `ci:daily` publishes it before the integration legs.
 
-The first run creates the `docker-container` builder `phpscript`, because the default driver pushes a single platform. `default` ends with `bake:build`, which fills that builder's cache. `bake` is one `docker buildx bake --push` that builds both platforms and exports them as one manifest list. A source change reuses the Go module and compile caches through the mounts in the Dockerfile.
+The first run creates the `docker-container` builder `phpscript`, because the default driver pushes a single platform. `bake` runs one `docker buildx bake` that builds both platforms into the builder's cache, and `atkins deploy` pushes `latest-amd64` and `latest-arm64` as separate images. A source change reuses the Go module and compile caches through the mounts in the Dockerfile.
 
 The demo suites stay out of `default`. They are compose services. Running them costs the whole stack plus a venom suite per demo, which answers a question about the demo applications, not about the runtime. `atkins test:demos` runs them against the image `ci:daily` built. A change under `demos/` runs it by name.
 
