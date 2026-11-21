@@ -22,7 +22,7 @@
 
 ## What ci:daily runs
 
-`ci:daily` runs the suites a push cannot: `deploy` first to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
+`ci:daily` runs the suites a push cannot: `sca:vuln` first, then `deploy` to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
 
 `bake` owns the image. It builds `docker/Dockerfile.build` for `linux/amd64` and `linux/arm64`, tagged `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. `atkins deploy` publishes it. A release sets `TAG` before that push. `ci:daily` publishes it before the integration legs.
 
@@ -45,6 +45,38 @@ A bench sweep costs minutes of pinned CPU and answers a performance question, wh
 `publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins bake` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus five generated documents are in `.gitignore` for the same reason.
 
 The shared release skill builds through docker and names one tag. `release:notes` and `release:binaries` read git instead: every tag without a release, built from its source with `go build` alone. `scripts/release.sh --help` states the flags.
+
+## The supply chain
+
+`sca:vuln` runs `govulncheck` over the module and fails on a vulnerability the
+binary reaches. `ci:daily` runs it ahead of `deploy`. A nightly image then does
+not publish a reachable advisory. The command names the tool version. The job
+runs it through `go run`, which leaves the module's own requirements alone.
+
+An SBOM describes one artifact. This repository publishes two, a static binary
+and a container image, and each takes its document from the build that produced
+it.
+
+`scripts/release.sh` writes a CycloneDX document beside every binary it builds.
+The document reads the build metadata inside the binary. It names the modules
+the linker kept and the Go version that built it. A module the source tree never
+links stays out. A release holds one document per binary,
+`<name>-<goos>-<goarch>.cdx.json`. The tag supplies the version that license
+detection reads.
+
+The image takes its document from BuildKit. Both targets in `docker-bake.hcl`
+declare `attest = ["type=sbom"]`, which makes `atkins deploy` attach an SPDX
+document to the manifest it pushes. The registry keeps the document beside the
+image, and a pull by digest brings both:
+
+```sh
+docker buildx imagetools inspect titpetric/phpscript:latest-amd64 \
+  --format '{{json .SBOM}}'
+```
+
+The image document covers the Alpine packages and the binary, and the release
+document covers the binary alone. A consumer that pulls the image reads the
+attestation; a consumer that downloads the binary reads the release asset.
 
 ## Generation
 
