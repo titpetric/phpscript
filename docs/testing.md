@@ -6,7 +6,7 @@ Run the full test suite from the repository root:
 go test ./...
 ```
 
-A change to language or runtime behavior lands with a `.phpt` fixture. A Go test in the package that owns the behavior covers assertions needing direct access to Go APIs, parser models, runtime state, concurrency, or error types. Add the fixture as well. A Go test proves the Go code matches its author's intent; a fixture proves a script sees it.
+A change to language or runtime behavior lands with a `.phpt` fixture. A Go test in the package that owns the behavior covers assertions needing direct access to Go APIs, parser models, runtime state, concurrency, or error types. Add the fixture as well. A Go test proves the Go code matches its author's intent. A fixture proves a script sees it.
 
 A Go test file takes the name of the file it covers: `dispatch_test.go` beside `dispatch.go`. That is the pairing the `pairing` linter reads. Two test files covering one source stay one test file. A suite reaching the package only through the public API names no file. A behaviour table over the engine, a benchmark arrangement, a regression per issue goes under [`tests/`](../tests) in a separate folder: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. No file there takes a source file's name, and the linter excuses the directory.
 
@@ -46,7 +46,7 @@ A `PLATFORM_DB_<NAME>=<driver>://<dsn>` variable names a connection. The name a 
 | `PLATFORM_DB_MYSQL_TEST`    | `mysql_test`        | MySQL on `localhost:13306`       |
 | `PLATFORM_DB_SCAFFOLD`      | `scaffold`          | Shared in-memory SQLite database |
 
-It builds a provider; it does not write to the process environment. The PostgreSQL service is [`docker/service/postgres.yml`](../docker/service/postgres.yml) and the MySQL service is [`docker/service/mysql.yml`](../docker/service/mysql.yml), both included by [`compose.yml`](../compose.yml). `TestMain` calls `os.Exit` and call it as the external package's complete `TestMain`, never from an individual test.
+It builds a provider without writing to the process environment. The PostgreSQL service is [`docker/service/postgres.yml`](../docker/service/postgres.yml) and the MySQL service is [`docker/service/mysql.yml`](../docker/service/mysql.yml), both included by [`compose.yml`](../compose.yml). `TestMain` calls `os.Exit` and call it as the external package's complete `TestMain`, never from an individual test.
 
 `phpscript test` is a different process and reads none of that. It builds connections from the environment plus the `env` list of the configuration covering it. Those pipeline jobs run the binary with [`.env.testing`](../.env.testing):
 
@@ -56,7 +56,7 @@ test:phpscript:matrix:
     include: .env.testing
 ```
 
-A fixture area can name connections too. [`tests/fixtures/scaffold`](../tests/fixtures/scaffold) does; see [Suite configuration](#suite-configuration).
+A fixture area can name connections too. [`tests/fixtures/scaffold`](../tests/fixtures/scaffold) does. See [Suite configuration](#suite-configuration).
 
 ### Storage binding
 
@@ -89,28 +89,28 @@ rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
 stdlib.Register(rt)
 ```
 
-PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `get` for string values, `incr` and `count` for named counters, and `delete`, `has`, `clear` for cleanup and assertions. Reuse the same `shm` across runtimes to assert cross-request state; create a new value for each test to avoid state leaking between tests.
+PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `get` for string values, `incr` and `count` for named counters, and `delete`, `has`, `clear` for cleanup and assertions. Reuse the same `shm` across runtimes to assert cross-request state. Create a new value for each test to avoid state leaking between tests.
 
 ### `t.Parallel()`
 
-A top-level test declares `t.Parallel()` as its first statement unless something below disqualifies the test. The suite runs in parallel; a new test follows suit so one serial straggler does not stall the package.
+A top-level test declares `t.Parallel()` as its first statement unless something below disqualifies the test. The suite runs in parallel. A new test follows suit so one serial straggler does not stall the package.
 
 A test stays serial when it:
 
-- calls `t.Setenv` (Go panics on it in a parallel test), `t.Chdir`, `os.Chdir`, or swaps `os.Stdout`, `os.Stderr` or `os.Stdin`;
-- writes process-global state, directly or through a helper it calls: `stdlib.SetProfile` (reached through `flags.Options.Validate`), `lint.SetInclude` (reached through the lint command's `run`), `slog.SetDefault`, the binding registry, a package-level variable;
-- asserts on a process-wide counter: `testing.AllocsPerRun`, `runtime.ReadMemStats`, a live-heap delta recorded by `Precompiler.Run`, a goroutine count;
-- runs fixtures through the `tests` package: `RunFixture` outside a worker loop lands on worker zero. All such callers share one set of caches plus one runtime. The suite's scaffold connections point at one shared in-memory sqlite;
-- bounds elapsed time from above, since four saturated cores stretch every sleep, every scheduling gap;
+- calls `t.Setenv` (Go panics on it in a parallel test), `t.Chdir`, `os.Chdir`, or swaps `os.Stdout`, `os.Stderr` or `os.Stdin`.
+- writes process-global state, directly or through a helper it calls: `stdlib.SetProfile` (reached through `flags.Options.Validate`), `lint.SetInclude` (reached through the lint command's `run`), `slog.SetDefault`, the binding registry, a package-level variable.
+- asserts on a process-wide counter: `testing.AllocsPerRun`, `runtime.ReadMemStats`, a live-heap delta recorded by `Precompiler.Run`, a goroutine count.
+- runs fixtures through the `tests` package: `RunFixture` outside a worker loop lands on worker zero. All such callers share one set of caches plus one runtime. The suite's scaffold connections point at one shared in-memory sqlite.
+- bounds elapsed time from above, since four saturated cores stretch every sleep, every scheduling gap.
 - inspects a value after handing it to a `sync.Pool`, where a concurrent draw can mutate it.
 
-The disqualifying call often sits two frames down, and the check follows helpers, not just the test body. Prove a parallelised package with a `go test -count 2` run plus a separate `-race` run. The first catches shared fixtures; the second catches globals the code read missed. A package that resists stays serial, with a reason recorded. The `cmd/phpscript/server` vhost tests are serial: a recycled tracer span context reaching sqlite's interrupt watcher segfaults under reordering.
+The disqualifying call often sits two frames down, and the check follows helpers, not just the test body. Prove a parallelised package with a `go test -count 2` run plus a separate `-race` run. The first catches shared fixtures. The second catches globals the code read missed. A package that resists stays serial, with a reason recorded. The `cmd/phpscript/server` vhost tests are serial: a recycled tracer span context reaching sqlite's interrupt watcher segfaults under reordering.
 
-A parent that calls `t.Parallel()` returns before its parallel children run and cleanup written after a `t.Run` loop of parallel subtests runs too early; register it with `t.Cleanup` instead.
+A parent that calls `t.Parallel()` returns before its parallel children run and cleanup written after a `t.Run` loop of parallel subtests runs too early. Register it with `t.Cleanup` instead.
 
 ## `.phpt` fixtures
 
-Fixtures go in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every `.phpt` file below that tree. It runs each through the default `runner` runtime plus the other runtimes the fixture did not opt out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions written as `.yml` files, and nothing there runs.
+Fixtures go in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every `.phpt` file below that tree. It runs each through the default `runner` runtime plus the other runtimes the fixture did not opt out of. A new area is a new folder that nothing registers. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions written as `.yml` files, and nothing there runs.
 
 A fixture's own folder is the include root. Every runtime resolves includes against the fixture's own folder. The `php` runner executes with its working directory set to that folder. Both Go runtimes take the same folder as root. A relative path names the same file whichever runtime reads it.
 
@@ -190,11 +190,11 @@ The include root keys the caches. A cache keys on the path as the script wrote i
 
 `--cache` controls the reach of a cached program. The default, `worker`, keeps one set of caches plus one runtime per worker loop. That worker reuses them across the fixtures it runs serially. A run's memory scales with `--parallel`, not with the fixture count. `--cache=off` builds a set for each fixture run. It drops the set and its runtime when the run ends. A fixture's parsed or declared state does not reach the next run. That flag suits a fixture that passes alone and fails in the suite.
 
-Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them. Fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping support files beside their fixture keeps the include root a single directory. Copy a support file that two areas need into each; the harness rejects an include path that climbs out of the fixture's folder.
+Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them. Fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping support files beside their fixture keeps the include root a single directory. Copy a support file that two areas need into each. The harness rejects an include path that climbs out of the fixture's folder.
 
 ### Checking a fixture against PHP
 
-PHP 8.5 is at `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section holds what `php` prints for the same source, and the matrix verifies it. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
+PHP 8.5 is at `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section holds what `php` prints for the same source, and the matrix verifies it. `phpscript test --matrix` runs that check for every fixture at once. To see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
 
 ```bash
 cd tests/fixtures/arrays
@@ -262,7 +262,7 @@ The body is an ordinary php file. Two things follow from that.
 
 Every runtime reads it from where it lies, the php column included. `__FILE__` and `__DIR__` compile to a path all three agree on. A `.phpt` body is a section of a document. The php column runs a throwaway copy with a name no other file sees. A fixture reading either constant cannot assert the file name.
 
-It also runs by hand. `php tests/fixtures/paths/api/magic_scope_test.php` executes the body; redirect the output into the `.txt`:
+It also runs by hand. `php tests/fixtures/paths/api/magic_scope_test.php` executes the body. Redirect the output into the `.txt`:
 
 ```sh
 cd tests/fixtures/paths/api && php magic_scope_test.php > magic_scope_test.txt
@@ -274,7 +274,7 @@ The form holds no frontmatter. A fixture that needs `runner`, `request`, `option
 
 ## Suite configuration
 
-A folder that needs a bootstrap, a connection or a schema writes it down once, off every command line reaching the folder. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run below that file. A fixture resolves the nearest such file at or above the fixture directory. The run resolves the nearest one at or above the working directory. A tree holding none behaves as before; this is a folder opting in.
+A folder that needs a bootstrap, a connection or a schema writes it down once, off every command line reaching the folder. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run below that file. A fixture resolves the nearest such file at or above the fixture directory. The run resolves the nearest one at or above the working directory. A tree holding none behaves as before. This is a folder opting in.
 
 [Test suites](configuration.md#test-suites) documents the block key by key. A suite root names the prelude its fixtures load, the connections they resolve, plus two hook files:
 
@@ -311,7 +311,7 @@ Writing a database area this way keeps its fixtures out of everyone else's flags
 
 Seed the rows from the hook. A `.up.sql` is the wrong place. `Database\Migrate` records a migration, never applying it twice. A seed inside one lands in a database that has never seen it. That hook deletes and reinserts, leaving the same rows whatever state it found. Where a fixture asserts on generated ids, reset the sequence too: sqlite's `AUTOINCREMENT` keeps its high-water mark in `sqlite_sequence`. A delete does not return it.
 
-`@startup` is not this mechanism. Annotations are server surface: `phpscript server` scans `@route`, `@startup` and `@schedule` out of a source tree, per virtual host or per application root depending on configuration; a fixture run is neither scope.
+`@startup` is not this mechanism. Annotations are server surface: `phpscript server` scans `@route`, `@startup` and `@schedule` out of a source tree, per virtual host or per application root depending on configuration. A fixture run is neither scope.
 
 ## Runner metadata
 
@@ -322,7 +322,7 @@ runner:
   php: false
 ```
 
-`runner` accepts `flatstack` and `php`; an omitted key runs that runtime. A fixture cannot opt the default runtime out, because the expected-output section states its output. `runtime: go` (or `options.runtime: go`) opts the php runner out, because php cannot run source written for the go runtime. `runner: {php: true}` is the only way back in.
+`runner` accepts `flatstack` and `php`. An omitted key runs that runtime. A fixture cannot opt the default runtime out, because the expected-output section states its output. `runtime: go` (or `options.runtime: go`) opts the php runner out, because php cannot run source written for the go runtime. `runner: {php: true}` is the only way back in.
 
 Opt out only when the runtime plays no part in the fixture: `php: false` for those three fixture groups above, `flatstack: false` where a program the bytecode engine compiles must still not run there. Syntax the bytecode engine does not compile needs no opt-out: the harness compiles the program through the flat compiler before running, into the run's own cache so the run reuses the result, and reports the fixture as SKIP for that column. It does not delegate to the compatibility interpreter, which embedding does, since a fallback run would record the interpreter's result and cost in the flatstack column.
 
@@ -410,14 +410,17 @@ tests/github/issue_062_test.go   Test_Issue062, the check that fails on a regres
 
 ## The pipeline
 
-`atkins` runs the default pipeline: format, `go install`, `go test`, the coverage reports, build, the fixtures on all three runtimes, the introspection step that regenerates documentation, the docker image, and `mdox:fmt` across the markdown. It needs a Go toolchain, a `php` binary, and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services; the deferred `db:down` stops them. Any pipeline that fails partway still leaves nothing running.
+`atkins` runs the fast gate: format, lint, `go test`, `go install`, the introspection step that regenerates documentation, and `mdox:fmt` across the markdown. It needs a Go toolchain. It starts no container, runs no php and builds no image.
 
-`docker:build` belongs in the default pipeline, not with the demos. `compose:up` and `compose:down` operate on the image. A deployment ships the image. A pipeline run leaves a current one behind whether the demos ran or not.
+`atkins ci:daily` runs the suites a push cannot: build, the fixtures on all three runtimes, the lifecycle run and the demo suites. It needs a `php` binary and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services. The deferred `db:down` stops them. Any run that fails partway still leaves nothing running.
 
-The demo *suites* are not in the default pipeline. `atkins test:demos` brings the compose stack up and runs a venom suite against each of [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example). It runs whatever image the host has. Run `atkins` first when the demos must exercise the tree. Otherwise they test the last release.
+`docker:build` belongs to `ci:daily`, not with the demos. `compose:up` and `compose:down` operate on the image. A deployment ships the image. A daily run leaves a current one behind whether the demos ran or not.
+
+The demo *suites* are not in the default pipeline. `ci:daily` runs `test:demos`, which brings the compose stack up and runs a venom suite against each of [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example). It runs whatever image the host has. Run `atkins build` first when the demos must exercise the tree. Otherwise they test the last release.
 
 ```bash
-atkins                     # the runtime, the docs and the image
+atkins                     # the fast gate: source, unit suite, generated docs
+atkins ci:daily            # the image and the integration suites, out of band
 atkins test:demos          # the demo applications, against the compose stack
 atkins docker:build        # just the image
 atkins test:phpscript:matrix   # just the fixture matrix
