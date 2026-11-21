@@ -39,6 +39,10 @@ func TestBuiltWithCover(t *testing.T) {
 }
 
 func TestCoverRelaunchWithoutCoverBuild(t *testing.T) {
+	if BuiltWithCover() {
+		// The relaunch execs this binary, which would rerun the suite.
+		t.Skip("the test binary is a cover build")
+	}
 	t.Setenv("GOCOVERDIR", "")
-	CoverRelaunch() // a plain test binary returns; a cover build would exec
+	CoverRelaunch() // a plain test binary returns
 }
