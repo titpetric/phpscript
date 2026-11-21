@@ -112,7 +112,7 @@ atkins fmt
 
 `fmt` runs twice, for the reason `default` also runs it twice: `test:introspection` writes the two generated documents under `docs/reference/` as its generators emit them. Committed copies are mdox-normalised. Without the closing pass the gate reports a dirty tree that is nothing but table padding.
 
-`atkins build` and `atkins gen` belong to a release, not to a sprint. The gate, and its report, stay out of a pull request body. `worktree verdict --from=main` states that the branch is green.
+`atkins deploy` and `atkins gen` belong to a release, not to a sprint. The gate, and its report, stay out of a pull request body. `worktree verdict --from=main` states that the branch is green.
 
 ### Samples and statistics
 

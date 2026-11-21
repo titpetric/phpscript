@@ -2,7 +2,7 @@
 
 `atkins` runs the jobs of [`atkins.yml`](../atkins.yml). A job's name and `desc` state its purpose. This document holds the reasoning behind the order, the splits and the generation. `atkins.yml` writes one comment above each top-level key. A nested key, a list item, a value take none.
 
-`atkins --final default` is the gate. It reads a change: the formatter, the linters, the Go suite and the generated pages. The file sets `GOFLAGS: ""` at the top: a `-mod=mod` inherited from a go.work environment breaks every go command.
+`atkins --final default` is the gate. It reads a change: the formatter, the linters, the Go suite, the generated pages and the image. The file sets `GOFLAGS: ""` at the top: a `-mod=mod` inherited from a go.work environment breaks every go command.
 
 ## What the default pipeline runs
 
@@ -14,6 +14,7 @@
 | 4     | `go install .`       | the binary the generated pages read              |
 | 5     | `test:introspection` | the three generated reference pages, regenerated |
 | 6     | `fmt`                | the documentation step 5 wrote                   |
+| 7     | `bake:build`         | the image for both architectures, into the cache |
 
 `fmt` runs twice: ahead of the test, then over the generated output. Every formatting job calls `fmt`, never `go:fmt` or `mdox:fmt` alone. The two tools then cannot drift apart. `lint` applies that notion across the linters.
 
@@ -21,9 +22,11 @@
 
 ## What ci:daily runs
 
-`ci:daily` runs the suites a push cannot: `build` first, `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
+`ci:daily` runs the suites a push cannot: `bake` first to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
 
-`docker:build` belongs to `build`, not to the demos. `compose:up` and `compose:down` operate on its image. `ci:daily` builds it before the integration legs and leaves a current image behind, for a deployment that skips the demos.
+`bake` owns the image. It builds `docker/Dockerfile.build` for `linux/amd64` and `linux/arm64` and pushes `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. A release sets `TAG` before the push. `atkins deploy` runs `bake` alone, and `ci:daily` runs it before the integration legs.
+
+The first run creates the `docker-container` builder `phpscript`, because the default driver pushes a single platform. `default` ends with `bake:build`, which fills that builder's cache. `bake` is one `docker buildx bake --push` that builds both platforms and exports them as one manifest list. A source change reuses the Go module and compile caches through the mounts in the Dockerfile.
 
 The demo suites stay out of `default`. They are compose services. Running them costs the whole stack plus a venom suite per demo, which answers a question about the demo applications, not about the runtime. `atkins test:demos` runs them against the image `ci:daily` built. A change under `demos/` runs it by name.
 
@@ -39,7 +42,7 @@ Both halves nest their variables in `env.vars`. A flat `env` block reaches the c
 
 A bench sweep costs minutes of pinned CPU and answers a performance question, which keeps it out of `default`. Durable numbers land as curated tables in [Allocation and performance](allocation-performance.md), and the `bench*.txt` files are in `.gitignore`. [The measurement protocol](agents/README.md#the-measurement-protocol) governs both halves.
 
-`publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins build` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus five generated documents are in `.gitignore` for the same reason.
+`publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins bake` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus five generated documents are in `.gitignore` for the same reason.
 
 The shared release skill builds through docker and names one tag. `release:notes` and `release:binaries` read git instead: every tag without a release, built from its source with `go build` alone. `scripts/release.sh --help` states the flags.
 

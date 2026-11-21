@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+
+# Cross-compiled on the build platform: one native toolchain, both architectures.
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
+
+ARG TARGETOS TARGETARCH VERSION=latest
+
+ENV CGO_ENABLED=0 GOCACHE=/go-cache
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/go-cache,sharing=locked \
+    go build -trimpath -ldflags="-X main.Version=${VERSION}" -o /out/phpscript .
+
+FROM alpine:latest
+
+COPY --from=build /out/phpscript /usr/local/bin/phpscript
+
+WORKDIR /app
+ENTRYPOINT ["phpscript"]
+CMD ["server"]

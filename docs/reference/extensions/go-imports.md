@@ -196,9 +196,9 @@ Each area with every name it binds, in the order `phpscript list --bindings` pri
 | Kind     | Name                                     | Signature                  |
 |----------|------------------------------------------|----------------------------|
 | function | [`Getenv`](https://pkg.go.dev/os#Getenv) | `Getenv(string): string`   |
-| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x4a80f0120}`           |
-| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x4a80f0060}`           |
-| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x4a80f00c0}`           |
+| constant | [`Stderr`](https://pkg.go.dev/os#Stderr) | `&{0x5fc3fa32120}`         |
+| constant | [`Stdin`](https://pkg.go.dev/os#Stdin)   | `&{0x5fc3fa32060}`         |
+| constant | [`Stdout`](https://pkg.go.dev/os#Stdout) | `&{0x5fc3fa320c0}`         |
 | class    | [`File`](https://pkg.go.dev/os#File)     | `new Runtime\Go\Os\File()` |
 
 ### `Runtime\Go\Path` (`path`)

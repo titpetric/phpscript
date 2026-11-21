@@ -35,5 +35,6 @@ services:
       - $PWD/demos/example/:/app
 
 networks:
+  default:
   projects-ingress:
     external: true

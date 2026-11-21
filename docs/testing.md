@@ -410,18 +410,18 @@ tests/github/issue_062_test.go   Test_Issue062, the check that fails on a regres
 
 ## The pipeline
 
-`atkins` runs the fast gate: format, lint, `go test`, `go install`, the introspection step that regenerates documentation, and `mdox:fmt` across the markdown. It needs a Go toolchain. It starts no container, runs no php and builds no image.
+`atkins` runs the fast gate: format, lint, `go test`, `go install`, the introspection step that regenerates documentation, `mdox:fmt` across the markdown, and `bake:build` for both architectures. It needs a Go toolchain and docker. It runs no php and pushes nothing.
 
-`atkins ci:daily` runs the suites a push cannot: build, the fixtures on all three runtimes, the lifecycle run and the demo suites. It needs a `php` binary and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services. The deferred `db:down` stops them. Any run that fails partway still leaves nothing running.
+`atkins ci:daily` runs the suites a push cannot: bake, the fixtures on all three runtimes, the lifecycle run and the demo suites. It needs a `php` binary and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services. The deferred `db:down` stops them. Any run that fails partway still leaves nothing running.
 
-`docker:build` belongs to `ci:daily`, not with the demos. `compose:up` and `compose:down` operate on the image. A deployment ships the image. A daily run leaves a current one behind whether the demos ran or not.
+`bake` belongs to `ci:daily`, not with the demos. It builds `docker/Dockerfile.build` for amd64 and arm64 and pushes `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. `compose:up` and `compose:down` operate on that image, and `atkins deploy` runs `bake` alone.
 
-The demo *suites* are not in the default pipeline. `ci:daily` runs `test:demos`, which brings the compose stack up and runs a venom suite against each of [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example). It runs whatever image the host has. Run `atkins build` first when the demos must exercise the tree. Otherwise they test the last release.
+The demo *suites* are not in the default pipeline. `ci:daily` runs `test:demos`, which brings the compose stack up and runs a venom suite against each of [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example). It runs whatever image the host has. Run `atkins bake` first when the demos must exercise the tree. Otherwise they test the last release.
 
 ```bash
 atkins                     # the fast gate: source, unit suite, generated docs
 atkins ci:daily            # the image and the integration suites, out of band
 atkins test:demos          # the demo applications, against the compose stack
-atkins docker:build        # just the image
+atkins bake                # build and push the image
 atkins test:phpscript:matrix   # just the fixture matrix
 ```
