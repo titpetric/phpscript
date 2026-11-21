@@ -18,6 +18,19 @@ tasks:
       - go install github.com/titpetric/exp/cmd/summary@main
       - go install github.com/titpetric/tools/splint@main
 
+  sca:vuln:
+    desc: "Fail on a vulnerability the module reaches"
+    passthru: true
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
+
+  sca:sbom:
+    desc: "Build the release binary and write its CycloneDX SBOM under build/sca"
+    cmds:
+      - mkdir -p build/sca
+      - CGO_ENABLED=0 go build -trimpath -o build/sca/phpscript-linux-amd64 .
+      - ./scripts/sbom.sh build/sca/phpscript-linux-amd64 build/sca/phpscript-linux-amd64.cdx.json
+
   fmt:
     desc: "Format the Go source and the markdown"
     cmds:
@@ -36,8 +49,9 @@ tasks:
       - task: bake
 
   ci:daily:
-    desc: "The suites a push cannot: the image push and the integration runs"
+    desc: "The suites a push cannot: the vulnerability gate, the image push and the integration runs"
     cmds:
+      - task: sca:vuln
       - task: deploy
       - task: db:down
         deferred: true

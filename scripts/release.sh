@@ -8,6 +8,9 @@
 # the architecture the asset name claims, and verify() refuses one that is
 # either dynamic or built for another machine.
 #
+# Each binary takes a CycloneDX SBOM beside it, written from the build info in
+# that file, and the release uploads both.
+#
 # Each tag builds from its own source. The script keeps one detached worktree
 # under build/release-src and checks each tag out there, which leaves the
 # caller's working tree untouched.
@@ -24,10 +27,10 @@ usage: scripts/release.sh [--build-only] [--publish-only] [--dry-run] [--keep] [
 
 With no tag, every tag of the repository that names no GitHub release. Builds
 build/release-bin/<tag>/<name>-<goos>-<goarch>, then creates or updates the
-release and uploads the binaries.
+release and uploads the binaries and their SBOMs.
 
   --build-only     build and verify, publish nothing
-  --publish-only   publish the binaries already built, build nothing
+  --publish-only   publish the binaries and SBOMs already built, build nothing
   --dry-run        print the gh commands and run none of them
   --keep           keep the detached worktree the build read
 
@@ -178,6 +181,9 @@ build() {
 					-o "${target}" .
 			) || return 1
 			verify "${target}" "${goarch}" || return 1
+			# The document reads the binary. It describes the file this build
+			# publishes. The module graph names modules the binary never calls.
+			"${root}/scripts/sbom.sh" "${target}" "${target}.cdx.json" "${tag}" || return 1
 		done
 	done
 }
@@ -202,7 +208,11 @@ publish() {
 		for goarch in ${goarch_list}; do
 			asset="${bin_root}/${tag}/${name}-${goos}-${goarch}"
 			if [ -s "${asset}" ]; then
-				upload+=("${asset}")
+				if [ ! -s "${asset}.cdx.json" ]; then
+					echo "release: ${asset} has no SBOM; run --build-only" >&2
+					return 1
+				fi
+				upload+=("${asset}" "${asset}.cdx.json")
 				built=$((built + 1))
 			fi
 		done

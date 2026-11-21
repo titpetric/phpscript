@@ -12,6 +12,7 @@ target "phpscript-amd64" {
   dockerfile = "docker/Dockerfile.build"
   tags       = ["titpetric/phpscript:${TAG}-amd64"]
   platforms  = ["linux/amd64"]
+  attest     = ["type=sbom"]
 }
 
 target "phpscript-arm64" {
@@ -19,4 +20,5 @@ target "phpscript-arm64" {
   dockerfile = "docker/Dockerfile.build"
   tags       = ["titpetric/phpscript:${TAG}-arm64"]
   platforms  = ["linux/arm64"]
+  attest     = ["type=sbom"]
 }
