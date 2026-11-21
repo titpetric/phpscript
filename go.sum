@@ -61,8 +61,8 @@ github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWD
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 github.com/titpetric/cli v0.7.0 h1:+fc6m6gcaQ5N05rXEj/apMjvIwCOgZ60zbnXScIJerc=
 github.com/titpetric/cli v0.7.0/go.mod h1:hsJbPqoIAFF5z1qswZ/O8AcMCl5Pk2cE2oFcPHhi3c8=
-github.com/titpetric/oida v0.5.0 h1:f5rH/UojyO+uuth+72TdQOeOQeCxy858lZs0ytLuLa8=
-github.com/titpetric/oida v0.5.0/go.mod h1:XDHVisUIFklSl+EGGef+pkLVTqt9OoUZwJpCB+eNROE=
+github.com/titpetric/oida v0.6.0 h1:MpprtZ1YDDP5ySqlCMi8Jh1pM0N0qIu6+2fIy117vXs=
+github.com/titpetric/oida v0.6.0/go.mod h1:mY8o/Xfk/DUExg8V/iTcv/2AgvQCxBPuQ3y8Jqf7NtI=
 github.com/titpetric/pdo v0.3.0 h1:L90+0ZAAmnWs6Gztm1EB7KYaJfRmlwAQz9r9Eif5Ksk=
 github.com/titpetric/pdo v0.3.0/go.mod h1:DvZ4gtHpFPuas28xFd6CCRgqPq4twP5jZcQSEkgEXzo=
 github.com/titpetric/platform v0.10.0 h1:lp+37q4RMWxZXREaKAC9/evj39hhUxl2fAT0tT4PYTE=
