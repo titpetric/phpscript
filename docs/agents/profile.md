@@ -2,7 +2,7 @@
 
 The cpu and memory map of the tree, before and after: per package, per function, per fixture, with p50 and p99.
 
-Read this when the question concerns where the cost falls. It follows the contract in [README.md](README.md); that document is not restated here.
+Read this when the question concerns where the cost falls. It follows the contract in [README.md](README.md), which is not restated here.
 
 ## What this produces
 
@@ -16,13 +16,13 @@ This sprint changes no code. That separates it from [performance.md](performance
 
 ## Layer 1: per package
 
-`gotestsum` writes the durations; `gotestsum tool slowest` ranks the durations. The commands are in [collect-go-tests.md](collect-go-tests.md).
+`gotestsum` writes the durations and `gotestsum tool slowest` ranks them. The commands are in [collect-go-tests.md](collect-go-tests.md).
 
 The shape to expect: 53 packages, 43 of them with tests. `tests/runner` is the largest single package and `tests` is next, because `tests` runs the whole fixture corpus twice, once per engine. Those are proportions, not durations - the contract keeps measurements out of these documents.
 
-`tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep`, `connection_aborted` against the clock. Those seconds are sleeps. A reading that drops sleeping time identifies what is slow; the report says so, since the alternative optimises a sleep.
+`tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep`, `connection_aborted` against the clock. Those seconds are sleeps. A reading that drops sleeping time identifies what is slow, and the report says so, since the alternative optimises a sleep.
 
-A duration here is a single sample; it has no interval. It ranks packages; it does not compare two commits.
+A duration here is a single sample with no interval. It ranks packages but does not compare two commits.
 
 ## Layer 2: per function
 
@@ -36,7 +36,7 @@ go tool pprof -top -nodecount=40 -diff_base=cpu-before.pprof cpu-after.pprof
 
 One subtlety decides whether a per-function reading means anything. A profile of `phpscript test` contains the harness: fixture discovery, table rendering, the `php` subprocess, the JSON writer. Those frames wrap the interpreter and crowd out its frames. A per-function reading uses `phpscript run` on a single file instead, which [collect-phpscript-run.md](collect-phpscript-run.md) covers.
 
-The same applies in the other direction: `phpscript run` on a single file includes process start, the parse, and the whole of `stdlib.Register`, a cost a benchmark loop amortises away. Neither profile is wrong; they answer different questions. A profile states which question it answers.
+The same applies in the other direction: `phpscript run` on a single file includes process start, the parse, and the whole of `stdlib.Register`, a cost a benchmark loop amortises away. Neither profile is wrong: they answer different questions. A profile states which question it answers.
 
 ## Layer 3: per fixture
 
@@ -57,7 +57,7 @@ They measure different things, and the report puts them side by side.
 | `runtime.MemStats.TotalAlloc` delta        | Everything the Go process allocated while the work ran, freed or not. Includes allocator overhead and every interpreter structure |
 | `rt.MemoryPeak()` over `runner.MemoryWalk` | The high-water mark of live PHP values only. No allocator overhead, no interpreter structures                                     |
 
-Neither number is ever labelled "memory" alone. A report that prints a number without naming it leaves nothing to act on. The first measures the collector's work ahead; the second measures the script's view of its live values. A large ratio between the two is itself the finding.
+Neither number is ever labelled "memory" alone. A report that prints a number without naming it leaves nothing to act on. The first measures the collector's work ahead, the second the script's view of its live values. A large ratio between the two is itself the finding.
 
 ## Combinations the command refuses
 
@@ -83,4 +83,4 @@ The run produces thousands of rows. The report holds three tables:
 - Per function: the twenty heaviest by cpu and the twenty heaviest by allocated objects, from `-diff_base` where there are two commits to compare.
 - Per fixture: five slowest rows by p99, plus every row whose p99 moved beyond the drift bound.
 
-Canonical shapes from the contract, environment stated once above the first table. The run names the raw artifact so a reader can re-derive any row; the report does not reproduce it.
+Canonical shapes from the contract, environment stated once above the first table. The run names the raw artifact so a reader can re-derive any row. The report does not reproduce it.

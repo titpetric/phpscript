@@ -1,10 +1,10 @@
 # Regexp bindings
 
-This tutorial walks through adding a binding to phpscript, step by step. The goal binds the "regexp" package APIs to a custom `Regexp\` PHP namespace, as phpscript binds `http.ResponseWriter` to `HTTP\ResponseWriter`. It binds `regexp.Compile` as `Regexp\compile`, handles the error return the way phpscript does. It uses `$rx = new Regexp\Compile(string $expr);`. The call returns a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Add CompilePOSIX and omit MustCompile. The binding forwards every type method to phpscript. This API is new and specific to the phpscript/go runtime; vanilla php has no counterpart.
+This tutorial walks through adding a binding to phpscript, step by step. The goal binds the "regexp" package APIs to a custom `Regexp\` PHP namespace, as phpscript binds `http.ResponseWriter` to `HTTP\ResponseWriter`. It binds `regexp.Compile` as `Regexp\compile`, handles the error return the way phpscript does. It uses `$rx = new Regexp\Compile(string $expr);`. The call returns a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Add CompilePOSIX and omit MustCompile. The binding forwards every type method to phpscript. This API is new and specific to the phpscript/go runtime, with no vanilla php counterpart.
 
 Everything below runs in phpscript today. This page quotes the fixtures from `tests/fixtures/bindings/` verbatim, expected output included, and `phpscript test --matrix ./tests/...` checks both engines against them.
 
-The reference for the mechanism is [Go bindings](reference/extensions/bindings.md); the walk below covers one area, start to finish. The `preg_*` family behaves differently, and PCRE parts company with RE2; see [Regular expressions](reference/extensions/regexp.md).
+The reference for the mechanism is [Go bindings](reference/extensions/bindings.md). The walk below covers one area, start to finish. The `preg_*` family behaves differently, and PCRE parts company with RE2. See [Regular expressions](reference/extensions/regexp.md).
 
 ## What the binding is
 
@@ -58,12 +58,12 @@ func Register(rt *runner.Runtime) {
 
 Four things in that file are the convention:
 
-- A namespace is a backslash inside a Go string. `"Regexp\\Compile"` is the name a script types; lookup ignores case and strips a leading `\`. Thus `new \Regexp\compile($e)` resolves the same registration.
+- A namespace is a backslash inside a Go string. `"Regexp\\Compile"` is the name a script types. Lookup ignores case and strips a leading `\`. Thus `new \Regexp\compile($e)` resolves the same registration.
 - The registration takes `regexp.Compile` as-is. Its signature is `func(string) (*Regexp, error)`, the shape the bridge wants: the bridge omits a return slot declared exactly `error` from what PHP sees, and throws a non-nil value in that slot.
-- The doc comment above each registration feeds the generated reference. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site. It ignores the Go function.
+- The doc comment above each registration feeds the generated reference. It starts with the name a script types and ends with punctuation. `internal/apidoc` reads the registration site. It ignores the Go function.
 - The import takes an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which type a reader sees, as `stdlib/ps/http` writes `nethttp "net/http"`.
 
-The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
+The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions, each needing its own `RegisterFunc`, and not part of this area.
 
 ## Step 2: wiring it in
 
@@ -86,9 +86,9 @@ echo $rx->find_string("mail tit@example.com now");   // tit@example.com
 
 Four behaviours, stated here so nobody hunts for them:
 
-- **The class name is the Go type name.** `get_class($rx)` is `Regexp` and `$rx instanceof Regexp` is true; `$rx instanceof Regexp\Regexp` is false. The runtime takes a host-backed value's class from the Go type behind it, with the pointer stripped and `HTTP\Request` answers `Request` for the same reason. `Regexp\Regexp` is the name this document uses for the type; the Go type's name is `Regexp` so that the name a script can test for is the right one.
+- **The class name is the Go type name.** `get_class($rx)` is `Regexp`, `$rx instanceof Regexp` is true, and `$rx instanceof Regexp\Regexp` is false. The runtime takes a host-backed value's class from the Go type behind it, with the pointer stripped and `HTTP\Request` answers `Request` for the same reason. `Regexp\Regexp` is the name this document uses for the type. The Go type's name is `Regexp` so that the name a script can test for is the right one.
 - **Method names are the Go names as PHP spells them.** Lookup tries the exact name, then case-insensitively, then with underscores removed and `FindAllStringSubmatch` is `find_all_string_submatch` and `NumSubexp` is `num_subexp`.
-- **A bad pattern is a throw.** The throwable is the error `regexp.Compile` returned. It belongs to no PHP class. Every `catch` clause takes it; `getMessage()` is Go's text.
+- **A bad pattern is a throw.** The throwable is the error `regexp.Compile` returned. It belongs to no PHP class. Every `catch` clause takes it, with `getMessage()` as Go's text.
 - **Two Go results arrive as a PHP list.** `LiteralPrefix` returns `(string, bool)` and `list($prefix, $complete) = $rx->literal_prefix();` reads both. The bridge removes only a slot declared exactly `error`.
 
 `regexp.Regexp` also implements `fmt.Stringer`, which the runtime uses for any Go value in a string context and `echo $rx` prints the pattern.
@@ -112,7 +112,7 @@ A nested result works through the same rule without a separate conversion: `Find
 
 ## Step 5: the fixtures
 
-A change to runtime behaviour lands with a fixture. These bindings have no PHP counterpart; the fixture defines the behaviour. There is no `php` to check against. Each says so in the `description` and opts the `php` runner out. Both Go engines still run them.
+A change to runtime behaviour lands with a fixture. With no PHP counterpart, the fixture defines the behaviour. There is no `php` to check against. Each says so in the `description` and opts the `php` runner out. Both Go engines still run them.
 
 `tests/fixtures/bindings/regexp_compile.phpt`:
 
@@ -307,7 +307,7 @@ phpscript test --matrix -v ./tests/fixtures/bindings/...
 
 ## Step 6: the Go test
 
-The fixtures state the behaviour; the package test states that both engines produce it. `stdlib/ps/regexp/regexp_test.go` runs each case against both engines and fails when the two disagree:
+The fixtures state the behaviour, which the package test confirms for both engines. `stdlib/ps/regexp/regexp_test.go` runs each case against both engines and fails when the two disagree:
 
 ```go
 func run(t *testing.T, src string) string {
@@ -339,7 +339,7 @@ func run(t *testing.T, src string) string {
 
 The file takes its name from the source it covers, which `splint`'s pairing linter reads: a `_test.go` requires a same-named source in that directory, or the lint gate fails.
 
-One trap this test exists to catch. The fixture harness compiles a program through the flat compiler first and reports the fixture as SKIP for that column when the compiler rejects the program. A fixture using syntax the bytecode engine does not compile - `use (&$x)` is an example - passes the matrix while testing one engine. A fixture claiming to cover flatstack must avoid that syntax; the package test has no such escape.
+One trap this test exists to catch. The fixture harness compiles a program through the flat compiler first and reports the fixture as SKIP for that column when the compiler rejects the program. A fixture using syntax the bytecode engine does not compile - `use (&$x)` is an example - passes the matrix while testing one engine. A fixture claiming to cover flatstack must avoid that syntax. The package test has no such escape.
 
 ## Step 7: regenerate and gate
 
@@ -347,15 +347,15 @@ The reference inventory comes from the live runtime and the registration comment
 
 ```bash
 atkins test:introspection    # implemented-apis.md, phpscript info, reference README.md
-atkins                       # the default pipeline: format, test, matrix, docs, image
+atkins                       # the fast gate: format, test, generated docs
 ```
 
-`atkins` rewrites the two generated documents in `docs/reference/`. A new registration shows up there. It goes into the commit. It does not write `docs/test-fixtures.md` or `docs/coverage/`: `.gitignore` lists those; `atkins gen` writes them, outside the default target. A new package leaves those files stale, along with `docs/assets/*.svg`, until someone runs `atkins gen` by hand.
+`atkins` rewrites the two generated documents in `docs/reference/`. A new registration shows up there. It goes into the commit. It does not write `docs/test-fixtures.md` or `docs/coverage/`: `.gitignore` lists those, which `atkins gen` writes outside the default target. A new package leaves those files stale, along with `docs/assets/*.svg`, until someone runs `atkins gen` by hand.
 
-The generated class entry lists the method set `*regexp.Regexp` published: every method minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). `apidoc` hides those from the reference; a script still calls them.
+The generated class entry lists the method set `*regexp.Regexp` published: every method minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). `apidoc` hides those from the reference. A script still calls them.
 
 ## What publishing a raw Go type costs
 
 `stdlib/ps/http` does the opposite of this binding. Each of its types holds its `net/http` value in an unexported field, because registration is not a method allowlist and embedding `*http.Request` would publish the whole of `net/http` as methods on `HTTP\Request`.
 
-This binding publishes `regexp.Regexp` raw because its 40 exported methods are regexp operations and nothing a script should not reach. Five of them do something other than match, and are reachable: `Longest()` reconfigures the compiled expression in place. `Copy()` duplicates the expression, and `MarshalText`/`UnmarshalText`/`AppendText` are the encoding interfaces. A type with exports beyond its subject gets a facade instead; every export here is a regexp operation.
+This binding publishes `regexp.Regexp` raw because its 40 exported methods are regexp operations and nothing a script should not reach. Five of them do something other than match, and are reachable: `Longest()` reconfigures the compiled expression in place. `Copy()` duplicates the expression, and `MarshalText`/`UnmarshalText`/`AppendText` are the encoding interfaces. A type with exports beyond its subject gets a facade instead. Every export here is a regexp operation.

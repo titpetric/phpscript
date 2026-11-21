@@ -2,7 +2,7 @@
 
 This document states the posture a phpscript deployment must hold: the script's reach, its limits, and which limits the code enforces today. Every claim names the deciding file. A stale claim is findable. A section describing something nothing implements says so in that sentence.
 
-The governing decision, from [issue 139](https://github.com/titpetric/phpscript/issues/139), is that phpscript never manages a raw connection string on a script's behalf. A script names a database connection or a mail server; the credential stays in the host's configuration. No binding reads one back. No binding reaches another virtual host or another document root. The applications phpscript runs are semi-trusted: the design draws the boundaries for a compromised script. None of this is a claim about a compromised host.
+The governing decision, from [issue 139](https://github.com/titpetric/phpscript/issues/139), is that phpscript never manages a raw connection string on a script's behalf. A script names a database connection or a mail server. The credential stays in the host's configuration. No binding reads one back. No binding reaches another virtual host or another document root. The applications phpscript runs are semi-trusted: the design draws the boundaries for a compromised script. None of this is a claim about a compromised host.
 
 ## Creating a virtual host
 
@@ -13,9 +13,9 @@ The order these go in is the order a mistake in them costs the most.
 3. **Declare `mail`, even when empty.** Same rule, same reason. `mail: {}` tells the runtime to send nothing.
 4. **Set `env: []` and `telemetry.enabled: false` in the operator's own file.** The first stops the shipped connection reaching a site that declared nothing. The second leaves the platform's dashboard unmounted, because the root router mounts it in front of the host mux, where it answers on every domain, even a domain no entry claims.
 5. **Name `writable_paths`.** An empty list, the default, allows every write inside the root. A named list also stops the server executing a `.php` file that lands in one. Annotation scanning there stops too (`cmd/phpscript/server/server_run.go:590`).
-6. **Mount the writable volume from outside, and keep durable state out of the tree.** A sqlite file belongs at an absolute DSN; uploads belong in a directory the operator bind-mounts. See [Writable storage](#writable-storage).
+6. **Mount the writable volume from outside, and keep durable state out of the tree.** A sqlite file belongs at an absolute DSN. Uploads belong in a directory the operator bind-mounts. See [Writable storage](#writable-storage).
 7. **Decide the capability set, and start the server with `--stdlib=secure`.** The server installs `exec`, gd, the HTTP client and disk session storage by default. Each binding widens a tenant's reach. Today the flag drops only `exec`. See [Virtual host capabilities](#what-a-virtual-host-can-do).
-8. **Decide who reaches the site dashboard.** A site that enables `telemetry` mounts an unauthenticated front end on the site domain. Its traces record the values bound to database queries. [Access control](telemetry.md#access-control) names three ways to answer that; the configuration file sets none.
+8. **Decide who reaches the site dashboard.** A site that enables `telemetry` mounts an unauthenticated front end on the site domain. Its traces record the values bound to database queries. [Access control](telemetry.md#access-control) names three ways to answer that, none of which the configuration file sets.
 
 [Virtual hosting](use-cases/virtual-hosting.md) works a two site server through in full, and [Configuration](configuration.md#virtual-hosts) is the reference for every key named above.
 
@@ -32,7 +32,7 @@ A script names connections and mail servers, never describes their settings. The
 | `new Auth\Storage\PasswordFile($file)` | A verdict on one credential, and the record it names | Any stored hash, and the file's contents. The store has no properties                                                                      |
 | `getenv()`                             | The variables the site's `env` declared              | Anything named `PLATFORM_*`, and anything the operator's process holds                                                                     |
 
-`Database::register` is the only place a connection string enters from PHP. A script supplies a string it already holds; nothing reads back. The credential goes into the provider that site already resolves through (`stdlib/ps/database/register.go:59`). `Mail` has no counterpart: naming what exists is itself a disclosure. The constructor refuses settings without coercion. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
+`Database::register` is the only place a connection string enters from PHP. A script supplies a string it already holds, and no binding reads it back. The credential goes into the provider that site already resolves through (`stdlib/ps/database/register.go:59`). `Mail` has no counterpart: naming what exists is itself a disclosure. The constructor refuses settings without coercion. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
 
 `runner.InfrastructurePrefix` keeps connection strings out of `getenv()` (`runner/runtime.go:407`). It applies to a variable the site declared itself: a site listing `PLATFORM_DB_SHOP` gets the connection and reads nothing back for the name.
 
@@ -40,7 +40,7 @@ A script names connections and mail servers, never describes their settings. The
 
 `Auth\Storage\PasswordFile` holds a site's accounts by the same rule: the site names the file, the runtime reads it. Verification happens below the boundary. The format is apache's `htpasswd`, which `mod_authn_file` reads. A LAMP stack puts the same work in the same place - php sees `$_SERVER["PHP_AUTH_USER"]` after the web server has decided, and holds no secret store itself.
 
-A script holds a store it can ask one question of, plus the record an accepted credential names: a username plus a primary key computed from the record (`stdlib/ps/auth/user.go`). No property holds a hash. No listing of hashes exists. No method returns one. `users()` lists the accounts and their keys, which is the file as two columns; the third column does not leave the package. Every call reads the file and drops the parse on return. A hash stays a local, as a mail credential already does (`stdlib/ps/mail/provider.go:86`).
+A script holds a store it can ask one question of, plus the record an accepted credential names: a username plus a primary key computed from the record (`stdlib/ps/auth/user.go`). No property holds a hash. No listing of hashes exists. No method returns one. `users()` lists the accounts and their keys, which is the file as two columns. The third column does not leave the package. Every call reads the file and drops the parse on return. A hash stays a local, as a mail credential already does (`stdlib/ps/mail/provider.go:86`).
 
 The path resolves inside the application root, as every path does. A site cannot read a neighbour's file, nor name one outside its tree. Keeping the file out of the document root remains the site's job: the server publishes `public/`. A client fetches a password file there like any other asset.
 
@@ -55,15 +55,15 @@ The constructor refuses a file that exists but is unreadable, naming the line th
 | plain text, crypt DES          | `htpasswd -p`, `htpasswd -d`   | Refused                                                       |
 | `$2$`, bcrypt with no revision | bcrypt before the 2a revision  | Refused                                                       |
 
-The refusal of the last two rows is a decision. Apache reads a plain password on some platforms. A line no format claims also resembles a truncated or corrupted hash, and accepting the class would make a damaged file authenticate. The bcrypt row reads exactly the four revision markers php's crypt reads: for `$2$`, the 1997 spelling without a minor revision, php answers the failure string `*0`, where Go's implementation still verifies the body, while a `$2$` line would sign a user in here and nowhere else. `password_verify` answers false for it in both runtimes (`tests/fixtures/stdlib/password_bcrypt_revisions.phpt` settles that against the php binary). The two weak rows record no cost parameter worth anything. This build reads them for compatibility with files that already exist; write files with `htpasswd -B`. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
+The refusal of the last two rows is a decision. Apache reads a plain password on some platforms. A line no format claims also resembles a truncated or corrupted hash, and accepting the class would make a damaged file authenticate. The bcrypt row reads exactly the four revision markers php's crypt reads: for `$2$`, the 1997 spelling without a minor revision, php answers the failure string `*0`, where Go's implementation still verifies the body, while a `$2$` line would sign a user in here and nowhere else. `password_verify` answers false for it in both runtimes (`tests/fixtures/stdlib/password_bcrypt_revisions.phpt` settles that against the php binary). The two weak rows record no cost parameter worth anything. This build reads them for compatibility with files that already exist. Write files with `htpasswd -B`. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
 
 A file the parse accepts can still hold no account: an operator stages a file of comments, or sweeps the last user out of one. `exists()` answers false for it, as for a missing file. A login page then says there are no accounts, where a form refusing every password would name no cause.
 
 Removing an account ends its sessions, which is a sweep and not a check on the current request. A user holds a session per client, and `$session->delete_by_user($id)` drops them all. It answers how many it took. A session holds its user's primary key as its whole payload. A store matches on that and keeps no user index. The manager clears the session of a user the sweep removed. The `@startup` job that rebuilds a site's user table notices the removal and that job signs the account out: `demos/dbadmin/users.php` reads the ids the table held, refills it from the file, and sweeps whatever the file stopped naming.
 
-A sign-in is the only request that pays a password derivation. The demo bounds the spend of an unauthenticated caller. `demos/dbadmin/login.php` holds every address and account name to five refusals in ten seconds. It answers the sixth post with 429 before anything reads the credential: at bcrypt cost 10 that ceiling caps one client at about three percent of a core ([hashing.md](reference/extensions/hashing.md#what-a-derivation-costs) prices the derivation and names this lever). The sign-in and sign-out forms also send a double-submit token (`demos/dbadmin/setup.php`). A post must return the value the `csrf` cookie holds. The session cookie's `SameSite=Lax` already stops a cross-site post from riding a session the browser holds; the token covers what `SameSite` cannot. A forged sign-in holds no session for `SameSite` to withhold - the attack posts the attacker's own credentials to sign the visitor into an attacker-controlled account - while a client that ignores `SameSite` still cannot produce a field that matches a cookie it can neither read nor set.
+A sign-in is the only request that pays a password derivation. The demo bounds the spend of an unauthenticated caller. `demos/dbadmin/login.php` holds every address and account name to five refusals in ten seconds. It answers the sixth post with 429 before anything reads the credential: at bcrypt cost 10 that ceiling caps one client at about three percent of a core ([hashing.md](reference/extensions/hashing.md#what-a-derivation-costs) prices the derivation and names this lever). The sign-in and sign-out forms also send a double-submit token (`demos/dbadmin/setup.php`). A post must return the value the `csrf` cookie holds. The session cookie's `SameSite=Lax` already stops a cross-site post from riding a session the browser holds. The token covers what `SameSite` cannot. A forged sign-in holds no session for `SameSite` to withhold - the attack posts the attacker's own credentials to sign the visitor into an attacker-controlled account - while a client that ignores `SameSite` still cannot produce a field that matches a cookie it can neither read nor set.
 
-The password file is not the `secrets:` block of issue 139 item 5 and does not advance it. It holds one kind of credential, compared by a login; nothing decrypts.
+The password file is not the `secrets:` block of issue 139 item 5 and does not advance it. It holds one kind of credential, compared by a login, with no decryption.
 
 ## Service-managed and vhost-managed configuration
 
@@ -104,7 +104,7 @@ phpscript --stdlib=secure server
 
 The flag names the binding areas the process installs. `secure` covers every binding confined to the runtime's sandbox. An area it omits is not registered. Its names stay undefined and nothing refuses a call. A direct call, a variable function, `call_user_func`, a callable, either engine: all resolve through a single runtime function table. `stdlib.Mount(rt, profile, bindings...)` is the same selection for a host embedding the package.
 
-`--stdlib` is a single process value. An operator decides the reach of the runtime they started; no per-site key exists. A capability granted in the operator's file for one tenant is readable by the tenant's neighbours. `virtualhost` is already refused in a site's `phpscript.yml`. A compromised tree cannot grant itself anything.
+`--stdlib` is a single process value. An operator decides the reach of the runtime they started, with no per-site key. A capability granted in the operator's file for one tenant is readable by the tenant's neighbours. `virtualhost` is already refused in a site's `phpscript.yml`. A compromised tree cannot grant itself anything.
 
 ## The filesystem boundary
 
@@ -142,7 +142,7 @@ Issue 139 names `/data` as a site's writable filesystem, mapped onto a volume th
 These work today until the mapping exists:
 
 - A sqlite database at an absolute DSN, `sqlite:///srv/data/shop/shop.db`. `resolveSQLiteDSN` leaves absolute paths and `file:` URIs alone and joins only a relative one onto the root (`stdlib/ps/database/dsn.go:15`). The file sits outside the tree and survives a redeploy.
-- Uploads land in a directory the operator bind-mounts onto a path inside the root, named in `writable_paths`. The site's PHP writes a relative path; the mount point stays invisible.
+- Uploads land in a directory the operator bind-mounts onto a path inside the root, named in `writable_paths`. The site's PHP writes a relative path, leaving the mount point invisible.
 
 Both hold whether the tree came from the operator or from a deployment that replaces it wholesale. A site that keeps durable files inside the site root loses them when the root is rebuilt. The configuration cannot express the alternative: a write cannot leave the root, and an absolute `writable_paths` entry pointing outside the root matches nothing.
 
@@ -186,7 +186,7 @@ Each of these is a design in issue 139 with nothing behind it in the code. A doc
 | `config/phpscript.yml` as a second location for a site's file      | 3              | The runtime reads no second location (`config/config_virtualhost.go:12`) |
 | A writable volume presented to a site as `/data`                   | 1              | No mapping. See [Writable storage](#writable-storage)                    |
 
-Two shapes the secrets work must keep when it lands, since the rest of this page depends on those shapes. A secret decrypted for a request stays in a local; nothing outliving the call holds it. Mail credentials already work that way (`stdlib/ps/mail/provider.go:103`). `get_secret()` names a secret the way `new Database` names a connection: a site's secrets belong to the site, no listing call exists. A name another site declared does not resolve.
+Two shapes the secrets work must keep when it lands, since the rest of this page depends on those shapes. A secret decrypted for a request stays in a local. No holder outliving the call retains it. Mail credentials already work that way (`stdlib/ps/mail/provider.go:103`). `get_secret()` names a secret the way `new Database` names a connection: a site's secrets belong to the site, no listing call exists. A name another site declared does not resolve.
 
 ## The class name on a refused write
 

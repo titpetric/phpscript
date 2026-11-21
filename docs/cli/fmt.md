@@ -1,6 +1,6 @@
 # `phpscript fmt <path>...`
 
-Format one or more PHP files or directories in place. A directory path formats PHP files directly in that directory; append `/...` to include its subdirectories. Without a path, the command uses the current directory (`.`).
+Format one or more PHP files or directories in place. A directory path formats PHP files directly in that directory. Append `/...` to include its subdirectories. Without a path, the command uses the current directory (`.`).
 
 It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below belong to this command.
 
@@ -17,7 +17,7 @@ The formatter uses tabs for indentation, keeps class, function and control-state
 
 A go runtime file takes go's spelling: no trailing semicolons, member names in lowerCamelCase. One newline ends the file. A file imports the runtime with `import` or `use Runtime\Go;`, and `phpscript fmt` reads that line to choose the style.
 
-On standard error, the formatter reports a file it cannot read in full; it leaves that file alone and formats the rest:
+On standard error, the formatter reports a file it cannot read in full, leaves that file alone and formats the rest:
 
 ```
 $ phpscript fmt ./vendor/...

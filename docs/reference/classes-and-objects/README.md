@@ -66,11 +66,11 @@ echo Registry::class;                 // Registry
 
 `new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-build recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, the only class either keyword could name here.
 
-`Class::method` is also a callable value. `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
+`Class::method` is also a callable value. `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup. See [Functions](../functions/README.md).
 
 ## Interfaces
 
-An interface names method signatures; a class that declares `implements` must declare each signature itself. The check runs before the program does. A passing class has exactly the members it wrote.
+An interface names method signatures. A class that declares `implements` must declare each signature itself. The check runs before the program does. A passing class has exactly the members it wrote.
 
 ```php
 interface Reader
@@ -96,7 +96,7 @@ class Store implements Listing
 
 `phpscript lint` reports a missing method, which raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked and `implements Countable` loads: phpscript does not declare PHP's built-in interfaces.
 
-`instanceof` tests the class name plus each interface name the class declares, following `extends` on an interface; `$store instanceof Reader` is true for the example above. A constant declared on an interface reads through `Interface::NAME`; a class that implements the interface acquires none of its constants.
+`instanceof` tests the class name plus each interface name the class declares, following `extends` on an interface. `$store instanceof Reader` is true for the example above. A constant declared on an interface reads through `Interface::NAME`. A class that implements the interface acquires none of its constants.
 
 ## Host-backed objects
 

@@ -76,8 +76,7 @@ func TestOverlayBytes(t *testing.T) {
 		if err.Error() != want {
 			t.Errorf("err = %q, want %q", err.Error(), want)
 		}
-		// The declared map holds every key the file named. A caller can report
-		// what else it set.
+		// Declared holds every key the file set, for a caller to report.
 		if _, ok := declared["server"]; !ok {
 			t.Errorf("declared = %+v, want it to name server", declared)
 		}

@@ -16,7 +16,7 @@ registers, grouped by the Go package that registers each binding. The comment
 over a binding's registration site (or the godoc of the function it registers)
 is the line shown here, and the signature comes from the Go implementation.
 Regenerate with ` + "`atkins test:introspection`" + ` after changing a registration
-or its comment; docs/naming-conventions.md documents the comment convention.
+or its comment. docs/naming-conventions.md documents the comment convention.
 
 `
 
@@ -32,7 +32,7 @@ one sub-area per file of a large folder. The comment over a binding's
 registration site (or the godoc of the function it registers) is the line
 shown here, and the signature comes from the Go implementation.
 Regenerate with ` + "`atkins test:introspection`" + ` after changing a registration
-or its comment; docs/naming-conventions.md documents the comment convention
+or its comment. docs/naming-conventions.md documents the comment convention
 and docs/reference/extensions/runtime-areas.md the areas.
 
 `

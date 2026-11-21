@@ -286,8 +286,8 @@ func TestServerVarsContentHeaders(t *testing.T) {
 }
 
 // TestServerVarsTLS covers a request this process accepted over TLS. PHP sets
-// HTTPS only then, and to "on"; an X-Forwarded-Proto is the client's word and
-// changes neither key.
+// HTTPS there, to "on". An X-Forwarded-Proto is the client's word and changes
+// neither key.
 func TestServerVarsTLS(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()

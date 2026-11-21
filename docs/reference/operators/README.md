@@ -52,7 +52,7 @@ This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1, an
 
 A string holds nothing at an offset past the end, a negative offset before its start, or a key spelling no integer. `isset()`, `empty()` and `??` read all three as unset. A plain read of one answers null where php answers the empty string and raises a warning.
 
-`$a ??= $b` assigns `$b` while `$a` is null or unset and leaves `$a` alone otherwise. It stores nothing when the target holds something: `$s[0] ??= "z"` leaves the string as it stands. The target resolves once on both engines, whether the store happens or not: `$a[k()] ??= 1` calls `k` once, `$t[$i++] ??= 1` steps `$i` once, and `f()->p ??= 1` calls `f` once. `$a[] ??= 1` is a parse error here and in php, where an append slot is write-only. Used as a value, `??=` answers the value the target holds afterwards, whether the store ran or not.
+`$a ??= $b` assigns `$b` where `$a` is null or unset, leaving `$a` alone otherwise. It stores nothing when the target holds something: `$s[0] ??= "z"` leaves the string as it stands. The target resolves once on both engines, whether the store happens or not: `$a[k()] ??= 1` calls `k` once, `$t[$i++] ??= 1` steps `$i` once, and `f()->p ??= 1` calls `f` once. `$a[] ??= 1` is a parse error here and in php, where an append slot is write-only. Used as a value, `??=` answers the value the target holds afterwards, whether the store ran or not.
 
 A write to a string offset is not implemented, `??=` included. Both `$s[1] = "Z"` and `$s[10] ??= "z"` end the run with `assign: target is not an array`, where php writes the byte and pads the string out to the offset. `tests/fixtures/syntax/null_coalescing.phpt` pins what works.
 
@@ -60,7 +60,7 @@ A write to a string offset is not implemented, `??=` included. Both `$s[1] = "Z"
 
 `$a <=> $b` is -1, 0 or 1 by the same ordering `<` reads, with PHP's results for arrays, numeric strings, null and bool. A NAN operand answers 1 from either side. Both operands run once, left to right. See [tests/fixtures/syntax/spaceship_operator.phpt](../../../tests/fixtures/syntax/spaceship_operator.phpt).
 
-Two instances of one class compare property by property over the left operand's order. Two classes that differ answer 1, php's answer for a pair it cannot order. An instance is greater than an array or a string; a null on the other side takes the pair into the bool domain. A bool or a null reads an array as its emptiness. `[] == false` holds, and `[1] == true` holds. [tests/fixtures/comparison/objects.phpt](../../../tests/fixtures/comparison/objects.phpt) pins the two kinds; `==`, `<` and `sort` read the same table.
+Two instances of one class compare property by property over the left operand's order. Two classes that differ answer 1, php's answer for a pair it cannot order. An instance is greater than an array or a string. A null on the other side takes the pair into the bool domain. A bool or a null reads an array as its emptiness. `[] == false` holds, and `[1] == true` holds. [tests/fixtures/comparison/objects.phpt](../../../tests/fixtures/comparison/objects.phpt) pins the two kinds. `==`, `<` and `sort` read the same table.
 
 One pairing still differs: `1 <=> $instance` answers -1 where php casts the instance to int, answers 0 and raises a notice.
 
@@ -76,4 +76,4 @@ $flags &= ~2;
 $items[] = $label;
 ```
 
-Every assignment is also an expression answering the stored value; a compound one answers the updated value. The target resolves before the value: `$m[$i++] = $i` reads the key first. See [tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt) and [Assignment expressions](../expressions/README.md#assignment-expressions).
+Every assignment is also an expression answering the stored value. A compound one answers the updated value. The target resolves before the value: `$m[$i++] = $i` reads the key first. See [tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt) and [Assignment expressions](../expressions/README.md#assignment-expressions).

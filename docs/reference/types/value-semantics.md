@@ -68,7 +68,7 @@ A chain that ends in a scalar literal is neither split nor reported: a string or
 $r['y'] = $r['m'] = $r['d'] = '00';   // no finding
 ```
 
-A `for` clause holds an init statement plus a post statement. The split skips a chain written there; `phpscript lint` reports it instead.
+A `for` clause holds an init statement plus a post statement. The split skips a chain written there, and `phpscript lint` reports it instead.
 
 ## foreach binds a copy, or the element
 
@@ -82,7 +82,7 @@ foreach ($rows as &$ref) { $ref["n"] = 99; }    // $rows[0]["n"] is 99
 unset($ref);
 ```
 
-Neither uses a reference, because there are none to use. A by-reference loop writes the loop variable back into the element after each iteration, before it acts on `break`, `continue` or `return`. A write made just before leaving the body survives, as it would in PHP. A by-value loop copies the element on the way in, and only when the body actually assigns through the loop variable. That copy makes the difference observable; a read-only loop does not pay for one. That copy descends into nested arrays, since they are values in PHP as well, and stops at an object. An object is a handle in both.
+Neither uses a reference, because there are none to use. A by-reference loop writes the loop variable back into the element after each iteration, before it acts on `break`, `continue` or `return`. A write made just before leaving the body survives, as it would in PHP. A by-value loop copies the element on the way in, and only when the body actually assigns through the loop variable. That copy makes the difference observable, and a read-only loop does not pay for one. That copy descends into nested arrays, since they are values in PHP as well, and stops at an object. An object is a handle in both.
 
 The loop writes back only to a script-owned array. A native Go collection returned by a binding belongs to the host. A by-reference loop reads the collection without writing back.
 
@@ -99,7 +99,7 @@ echo implode(",", $a);            // phpscript: 1,2,3    PHP: 1,2,2
 
 ## `&` elsewhere does not create a reference
 
-Outside `foreach`, `&` has no work to do. No part of the value model expresses "the storage another name uses". The parser consumes `&` wherever PHP allows it, then discards it. Source written for PHP still parses; every spelling binds by value:
+Outside `foreach`, `&` has no work to do. No part of the value model expresses "the storage another name uses". The parser consumes `&` wherever PHP allows it, then discards it. Source written for PHP still parses, and every spelling binds by value:
 
 ```php
 $a = 1;
@@ -142,6 +142,6 @@ It works because the compiler arranges it at compile time, outside the value mod
 preg_match_all($p, $s, $matches)   ->   preg_match_all($p, $s, __ref("matches"))
 ```
 
-`__ref` is `Runtime.helperRef`, a function returning a `func(any)` closed over the calling scope. The Go shim receives that closure as its trailing argument and calls it with whatever the variable should hold; the closure writes the name back into the frame. It captures the scope by value, not through the evaluation's scope reference. A shim may call the setter after the expression that produced it has finished.
+`__ref` is `Runtime.helperRef`, a function returning a `func(any)` closed over the calling scope. The Go shim receives that closure as its trailing argument and calls it with whatever the variable should hold. The closure writes the name back into the frame. It captures the scope by value, not through the evaluation's scope reference. A shim may call the setter after the expression that produced it has finished.
 
-Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, arrives by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `model`, not part of the host API. A binding outside the standard library declares no output parameter; one with more than one value to send back returns a collection. See [Bindings](../extensions/bindings.md).
+Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, arrives by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `model`, not part of the host API. A binding outside the standard library declares no output parameter, and one with more than one value to send back returns a collection. See [Bindings](../extensions/bindings.md).

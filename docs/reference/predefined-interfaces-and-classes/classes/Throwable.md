@@ -55,5 +55,5 @@ public function Stringable::__toString(): string
 
 - phpscript supports the name in a catch clause and nowhere else. `catch (Throwable $e)` takes any failure, which is the common use of the name.
 - The name is not declared as an interface, and `instanceof Throwable` is false, even inside a `catch (Throwable $e)` block that just caught the value.
-- The interface uses `extends`. `extends Stringable` is where PHP's Throwable declares its `__toString()`; [Stringable](Stringable.md) is not declared here, and phpscript supports no magic method beyond `__construct` and `__invoke`, and the inherited method has no path to arrive through.
+- The interface uses `extends`. `extends Stringable` is where PHP's Throwable declares its `__toString()`. [Stringable](Stringable.md) is not declared here, phpscript supports no magic method beyond `__construct` and `__invoke`, and the inherited method has no path to arrive through.
 - There is no exception hierarchy: a catch clause filters on the class name recorded on the value, and walks no parent chain. See [Design decisions](../../../design.md).

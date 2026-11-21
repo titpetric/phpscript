@@ -1,6 +1,6 @@
 # `phpscript list <path>...`
 
-List routes, PHP files, and classes found beneath one or more paths as a Markdown table. A directory path lists PHP files directly in that directory; append `/...` to include its subdirectories. A run without a path uses the current directory (`.`).
+List routes, PHP files, and classes found beneath one or more paths as a Markdown table. A directory path lists PHP files directly in that directory. Append `/...` to include its subdirectories. A run without a path uses the current directory (`.`).
 
 It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below belong to this command.
 
@@ -22,7 +22,7 @@ phpscript list --bindings | grep '| function' # Just the functions
 phpscript list --bindings --runtime=go --json # The go surface, as data
 ```
 
-The listing comes from the runtime itself: it reports what this build binds, not the contents of a checked-in file; its counts agree with `phpscript info`. Two things are missing from the listing. Both need the binary's own Go source: the doc comment written next to each registration, and the PHP spelling of each parameter name. Signatures here hold reflected types, without parameter names, because reflection invents the names it reports (`$string1`, `$string2`). An invented name would read as the real one. [Implemented PHP APIs](../reference/extensions/implemented-apis.md) holds the annotated listing, written from the same reflection plus a scan of the source.
+The listing comes from the runtime itself: it reports what this build binds, read off the binary. Its counts agree with `phpscript info`. Two things are missing from the listing. Both need the binary's own Go source: the doc comment written next to each registration, and the PHP spelling of each parameter name. Signatures here hold reflected types, without parameter names, because reflection invents the names it reports (`$string1`, `$string2`). An invented name would read as the real one. [Implemented PHP APIs](../reference/extensions/implemented-apis.md) holds the annotated listing, written from the same reflection plus a scan of the source.
 
 Each row of `--bindings` ends with the area that defines the name, a namespace such as `Runtime\PS\Core\Strings`. `--areas` lists the areas themselves: the `Runtime\PS` areas in install order, then the `Runtime\PX` overlay, and the opt-in `Runtime\Go` areas last, with the number of functions, classes and constants each defines and the number of names it registers over. Arguments narrow it to the namespaces named, and `--json` writes the rows as data. [Runtime areas](../reference/extensions/runtime-areas.md) describes the layout.
 
@@ -40,7 +40,7 @@ phpscript list --areas --runtime=go             # Runtime\Go and its packages
 phpscript -f phpscript.yml list --bindings      # The runtime the file configures
 ```
 
-`--classes` answers about a class what `go doc` answers about a Go type, in PHP spelling: the class docblock, then the properties the bound Go type holds, then the constructor and the method declarations. Every declaration ends at the `;` without a body: the implementation is Go. No PHP source exists for a reader to open. Without arguments it prints every class a script can construct; with arguments it prints those, using the spelling on the command line.
+`--classes` answers about a class what `go doc` answers about a Go type, in PHP spelling: the class docblock, then the properties the bound Go type holds, then the constructor and the method declarations. Every declaration ends at the `;` without a body: the implementation is Go. No PHP source exists for a reader to open. Without arguments it prints every class a script can construct. With arguments it prints those, using the spelling on the command line.
 
 ```bash
 phpscript list --classes                  # Every class a script can construct
@@ -57,6 +57,6 @@ phpscript list --classes --json                   # Every class a script can con
 phpscript list --classes --json 'HTTP\Mux' | jq .implements
 ```
 
-The structure comes from reflection over this build. The prose and the parameter names come from an index over the Go source, embedded in the binary. This mode reads the index; `--bindings` does not. `atkins test:introspection` regenerates the index. The listing names the properties a script can reach: an unexported Go field resolves as absent. The exported ones remain, each with the snake_case spelling that property access resolves back to the Go field.
+The structure comes from reflection over this build. The prose and the parameter names come from an index over the Go source, embedded in the binary. This mode reads the index and `--bindings` does not. `atkins test:introspection` regenerates the index. The listing names the properties a script can reach: an unexported Go field resolves as absent. The exported ones remain, each with the snake_case spelling that property access resolves back to the Go field.
 
 The other half of the question: which calls a tree makes that this build does not have. `phpscript lint` answers, reporting each `call to undefined function` or `new: undefined class` against the same registered set.

@@ -17,7 +17,7 @@
 throw new Exception("message");
 ```
 
-phpscript registers every SPL exception and error name. A script constructs each name: they share a single type recording the name the script used. A catch clause filters on that name; no class subclasses another. See [Exceptions](../exceptions/README.md).
+phpscript registers every SPL exception and error name. A script constructs each name: they share a single type recording the name the script used. A catch clause filters on that name alone: no class subclasses another. See [Exceptions](../exceptions/README.md).
 
 ## Runtime class discovery
 

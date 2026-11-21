@@ -50,7 +50,7 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are off. `telemetry.enabled: false` leaves the platform dashboard unmounted. It would mount on the root router, in front of the host mux, and shadow the dashboard each site mounts. `env: []` drops the connection the embedded defaults hold; a site that configures no database inherits nothing. The sites' scripts also read `env` with `getenv()`. Leaving it empty keeps the operator's environment out of them.
+Two keys here are off. `telemetry.enabled: false` leaves the platform dashboard unmounted. It would mount on the root router, in front of the host mux, and shadow the dashboard each site mounts. `env: []` drops the connection the embedded defaults hold. A site that configures no database inherits nothing. The sites' scripts also read `env` with `getenv()`. Leaving it empty keeps the operator's environment out of them.
 
 ## 3. Each site's configuration
 
@@ -194,9 +194,9 @@ curl -H 'Host: shop.example.com' http://127.0.0.1:8080/
 
 ## 6. What one domain cannot reach on the other
 
-Each site gets a private router; every boundary below follows from that.
+Each site gets a private router. Every boundary below follows from that.
 
-**Routes.** Shop's router registers `/hello/{name}`; the blog lacks it. `/feed` is not shop's:
+**Routes.** Shop's router registers `/hello/{name}`. The blog lacks it. `/feed` is not shop's:
 
 ```sh
 curl -i -H 'Host: blog.example.com' http://127.0.0.1:8080/hello/Ada
@@ -236,7 +236,7 @@ curl -i -H 'Host: other.example.com' http://127.0.0.1:8080/
 
 ## 7. What the sites may not do
 
-The listen address belongs to the operator; a site declares no sites. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
+The listen address belongs to the operator. A site declares no sites. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
 
 ```text
 virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the operator, not by the site

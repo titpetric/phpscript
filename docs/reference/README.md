@@ -8,7 +8,7 @@
 
 A PHP language-reference-shaped guide to the syntax and runtime behavior implemented by phpscript.
 
-`php README.php > README.md` writes this file. Edit `README.yml` to change ordering or descriptions; the generator reads document labels and nested links off the Markdown headings.
+`php README.php > README.md` writes this file. Edit `README.yml` to change ordering or descriptions. The generator reads document labels and nested links off the Markdown headings.
 
 ## Syntax and values
 
@@ -115,7 +115,7 @@ The supported error model and values supplied by the runtime or request host.
   - [Reading the phpscript column](predefined-interfaces-and-classes/reserved-interfaces.md#reading-the-phpscript-column)
   - [Interfaces that use extends](predefined-interfaces-and-classes/reserved-interfaces.md#interfaces-that-use-extends)
   - [See also](predefined-interfaces-and-classes/reserved-interfaces.md#see-also)
-- [The Traversable interface](predefined-interfaces-and-classes/classes/Traversable.md) - The base interface foreach detects, declared directly by no class.
+- [The Traversable interface](predefined-interfaces-and-classes/classes/Traversable.md) - The base interface foreach detects, with no class declaring it directly.
   - [Introduction](predefined-interfaces-and-classes/classes/Traversable.md#introduction)
   - [Interface synopsis](predefined-interfaces-and-classes/classes/Traversable.md#interface-synopsis)
   - [Status](predefined-interfaces-and-classes/classes/Traversable.md#status)

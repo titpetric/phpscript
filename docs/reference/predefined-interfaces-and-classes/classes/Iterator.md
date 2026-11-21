@@ -40,7 +40,7 @@ public function valid(): bool
 
 ## Predefined iterators
 
-phpscript declares none of them. PHP ships `ArrayIterator`, `DirectoryIterator`, `SplObjectStorage` and the rest of SPL; none of those names exists here. Build the sequence in an array, or write the walk out with the methods below.
+phpscript declares none of them. PHP ships `ArrayIterator`, `DirectoryIterator`, `SplObjectStorage` and the rest of SPL. None of those names exists here. Build the sequence in an array, or write the walk out with the methods below.
 
 ## Examples
 
@@ -53,8 +53,8 @@ In PHP, `foreach` calls the interface methods in a fixed order: `rewind()`, then
 ## Status
 
 - phpscript declares no `Iterator`. PHP's class name stays undeclared here. `instanceof` answers false, and `class_exists` returns false.
-- The interface uses `extends`. `interface Iterator extends Traversable` parses here, and the parser records the extended name; `instanceof Traversable` follows that name. The relation delivers no members: an interface contributes no method body, property or constant in either language. Traversable declares no method; flattening the two loses nothing.
-- Interface-based dispatch does not exist. This is the incompatibility that matters: a class can declare all five methods and meet the contract, yet `foreach` still will not call them. `foreach` on an object reads its properties; a loop on an iterator ignores the sequence those five methods describe.
+- The interface uses `extends`. `interface Iterator extends Traversable` parses here, and the parser records the extended name. `instanceof Traversable` follows that name. The relation delivers no members: an interface contributes no method body, property or constant in either language. Traversable declares no method. Flattening the two loses nothing.
+- Interface-based dispatch does not exist. This is the incompatibility that matters: a class can declare all five methods and meet the contract, yet `foreach` still will not call them. `foreach` reads an object's properties, ignoring the sequence those five methods describe.
 - `IteratorAggregate`, `yield` and the [Generator](Generator.md) class are all unavailable. No other route to a lazy sequence exists.
 
 A workaround, without `extends` and without relying on dispatch:

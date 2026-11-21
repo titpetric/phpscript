@@ -4,9 +4,9 @@
 
 The recorder is [oida](https://github.com/titpetric/oida), one recorder per service: the [platform](https://github.com/titpetric/platform) builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. phpscript registers no recorder next to it. It observes the interpreter onto the traces that one starts and interpreter work appears on the same page as the request that caused it.
 
-phpscript binds oida into `telemetry/`, the only package here that imports it. Everything else instruments through `telemetry.StartSpan` and its bound types; no call site names the provider. That covers the call sites and not the whole dependency, since the platform names oida itself.
+phpscript binds oida into `telemetry/`, the only package here that imports it. Everything else instruments through `telemetry.StartSpan` and its bound types. No call site names the provider. That covers the call sites and not the whole dependency, since the platform names oida itself.
 
-The bundled server enables telemetry by default. Set `telemetry.enabled` to `false` in a file passed with `-f` to turn it off; retention, sampling, the mount path and memory sampling are configurable in the same section. Set `telemetry.driver` to `disk` and `telemetry.storage_path` to a folder (tmpfs is fine) so completed traces survive a restart as `{id}.json`. Sampling still decides what to record; the disk driver persists the sampled spans alone. See [Configuration](./configuration.md#telemetry).
+The bundled server enables telemetry by default. Set `telemetry.enabled` to `false` in a file passed with `-f` to turn it off. Retention, sampling, the mount path and memory sampling are configurable in the same section. Set `telemetry.driver` to `disk` and `telemetry.storage_path` to a folder (tmpfs is fine) so completed traces survive a restart as `{id}.json`. Sampling still decides what to record. The disk driver persists the sampled spans alone. See [Configuration](./configuration.md#telemetry).
 
 ## Views
 
@@ -20,7 +20,7 @@ The bundled server enables telemetry by default. Set `telemetry.enabled` to `fal
 
 Picking a domain on the landing page narrows the other views to it. With `live_stream` enabled, the live view streams over server sent events and falls back to a refresh timer when the browser cannot stream.
 
-Content negotiation applies across the views: `Accept: application/json` returns JSON. `Accept: text/plain` from a `curl/*` user agent returns plain text; everything else gets HTML.
+Content negotiation applies across the views: `Accept: application/json` returns JSON. `Accept: text/plain` from a `curl/*` user agent returns plain text. Everything else gets HTML.
 
 ## Integration
 
@@ -48,7 +48,7 @@ The platform's middleware records the request and starts the trace. The observer
 
 ## Trace level
 
-An interpreter reports work a host never would. A frame of PHP is a span. A page that calls two hundred methods fills a trace with two hundred spans of a microsecond each; the request they belong to sits somewhere under them. `runner.trace_level` sets the instrumentation level: how much of its work the runtime publishes.
+An interpreter reports work a host never would. A frame of PHP is a span. A page that calls two hundred methods fills a trace with two hundred spans of a microsecond each. The request they belong to sits somewhere under them. `runner.trace_level` sets the instrumentation level: how much of its work the runtime publishes.
 
 | Level   | What the interpreter publishes                                                                                      |
 |---------|---------------------------------------------------------------------------------------------------------------------|
@@ -56,15 +56,15 @@ An interpreter reports work a host never would. A frame of PHP is a span. A page
 | `info`  | A span per frame, marked as detail, and one `includes` span at the end of the request naming the files. The default |
 | `debug` | Everything unmarked, a span per include among it                                                                    |
 
-The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans. A frame worth reading stays; a microsecond of dispatch does not. The dropped frame returns its slot in `max_spans_per_trace` to the work that needs it. Set `Options.DebugSpanMinDuration` to zero and the recorder keeps every frame, which is `trace_level: debug` arrived at from the other side.
+The mark is the division of labour: the runtime decides what to report, the recorder decides what to keep. oida drops a span marked as detail that ran shorter than `Options.DebugSpanMinDuration` and counts it in the trace's dropped spans. A frame worth reading stays. A microsecond of dispatch does not. The dropped frame returns its slot in `max_spans_per_trace` to the work that needs it. Set `Options.DebugSpanMinDuration` to zero and the recorder keeps every frame, which is `trace_level: debug` arrived at from the other side.
 
-A static call opens no span. Its time stays in the frame that made the call; a class of static helpers adds no span per use.
+A static call opens no span. Its time stays in the frame that made the call. A class of static helpers adds no span per use.
 
 The level is a runner option. A virtual host sets it in the `runner` block of `phpscript.yml`. A host embedding the runtime sets `runner.Options.TraceLevel`.
 
-Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier; a log line that records it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.
+Each request receives a ULID in its `Request-Id` request and response headers. That ULID is the trace identifier. A log line that records it links straight to `/debug/oida/trace/{id}`. `telemetry.TraceID(ctx)` returns it.
 
-Statistics group by routed pattern where one is meaningful: `/hello/Ada` and `/hello/Grace` match `GET /hello/{name}`. The PHP file server uses a catch-all pattern. The platform drops that pattern; those requests group by path, which is the PHP file that ran.
+Statistics group by routed pattern where one is meaningful: `/hello/Ada` and `/hello/Grace` match `GET /hello/{name}`. The PHP file server uses a catch-all pattern. The platform drops that pattern. Those requests group by path, which is the PHP file that ran.
 
 ## Spans from PHP
 
@@ -76,17 +76,17 @@ $span->set_attribute("user_id", 42);
 $span->end();
 ```
 
-Methods on the span are the Go methods, by the names PHP uses: `end()`, `set_name()`, `set_source()`, `set_attribute()` and `record_error()`. The span takes its source location from the line of PHP that started it; call `set_source()` only to point somewhere else.
+Methods on the span are the Go methods, by the names PHP uses: `end()`, `set_name()`, `set_source()`, `set_attribute()` and `record_error()`. The span takes its source location from the line of PHP that started it. Call `set_source()` only to point somewhere else.
 
 Kinds are `internal` (the default), `http`, `database`, `external`, `template`, `cache` and `queue`. The set is open: an unrecognized string is a valid kind and gets a distinct color in the timeline.
 
-Spans nest. A span started while an include or a PHP call runs nests below that call; the trace records the shape of the request.
+Spans nest. A span started while an include or a PHP call runs nests below that call. The trace records the shape of the request.
 
 Instrumentation is nil safe. A script that calls `start_span` in a CLI run, in a process with telemetry disabled, or in a request the sampler rejected, gets a span whose methods do nothing.
 
 ## What the bindings record
 
-Span names are stable and low cardinality: a name is an identity. The specifics go in attributes; the detail view expands those under each row.
+Span names are stable and low cardinality: a name is an identity. The specifics go in attributes. The detail view expands those under each row.
 
 | Span                                       | Kind                              | Attributes                                                                           |
 |--------------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------|
@@ -101,15 +101,15 @@ Span names are stable and low cardinality: a name is an identity. The specifics 
 | `session load`/`save`/`delete`/`prune`     | `cache`                           | `hit`, `bytes`                                                                       |
 | `mail`                                     | `external`                        | `server`, `to`, `subject`, `bytes`                                                   |
 
-`includes` is the inventory of the run: what `get_included_files()` answers with, recorded once at the end of the request, in place of the span per file the debug level publishes. It measures nothing; `count` holds how many files and `files` names them.
+`includes` is the inventory of the run: what `get_included_files()` answers with, recorded once at the end of the request, in place of the span per file the debug level publishes. It records no measurement: `count` holds how many files and `files` names them.
 
-`query_type` is the keyword the statement starts with, lowercased. `query_comment` is the text of a `/* */` comment before the statement: a query written as `/* userGet */ SELECT * FROM user ...` records `select` for the type and `userGet` for the comment. Both group a trace by the query; the statement text alone does not. The comment stays in the statement sent to the server; `SHOW PROCESSLIST` and the slow query log show the same tag as the trace.
+`query_type` is the keyword the statement starts with, lowercased. `query_comment` is the text of a `/* */` comment before the statement: a query written as `/* userGet */ SELECT * FROM user ...` records `select` for the type and `userGet` for the comment. Both group a trace by the query. The statement text alone does not. The comment stays in the statement sent to the server. `SHOW PROCESSLIST` and the slow query log show the same tag as the trace.
 
-`args` records the values bound to the statement, positional ones as a list and named ones as the map they came from. A placeholder query names no row and the values are the point; they are as sensitive as the columns they filter on, which is a reason to set `Options.Authorize` before exposing the front end. Message bodies and session IDs are the two things never recorded: only the size of a body; no part of a session ID.
+`args` records the values bound to the statement, positional ones as a list and named ones as the map they came from. A placeholder query names no row and the values are the point. They are as sensitive as the columns they filter on, which is a reason to set `Options.Authorize` before exposing the front end. Message bodies and session IDs are the two things never recorded: the size of a body alone, no part of a session ID.
 
 `server` on a `mail` span holds the mail server's configured name. Its hostname is not recorded. An operator reads the trace by that name, the only thing the binding knows: the provider hands out no part of a credential, hostname included. No username or password reaches a mail span.
 
-Expected outcomes are not failures. The recorder marks a `get()` lookup that found no row, a missing session, a request the client cancelled as a miss or an empty result. It marks none of them as an error: an error fails the trace and the SLA computed from that trace. The same rule decides the scoreboard: a page ending in `exit()` ran to completion; only `exit(1)` and above is an error.
+Expected outcomes are not failures. The recorder marks a `get()` lookup that found no row, a missing session, a request the client cancelled as a miss or an empty result. It marks none of them as an error: an error fails the trace and the SLA computed from that trace. The same rule decides the scoreboard: a page ending in `exit()` ran to completion. Only `exit(1)` and above is an error.
 
 A trace ID is the cheapest correlation there is and the server writes it into the log line of a failed request. The `Request-Id` header and the last path segment of the trace detail page hold the same value.
 
@@ -128,17 +128,17 @@ The states follow the convention used by servers such as lighttpd:
 | `C`   | Closing                                   |
 | `E`   | Runtime error                             |
 
-At every transition the scoreboard adds the time spent in the previous state to a lifetime total, rendered in the live view as a stacked bar with durations and shares. Totals cover the lifetime of the process; because concurrent request time is cumulative, summed state time can exceed wall-clock uptime.
+At every transition the scoreboard adds the time spent in the previous state to a lifetime total, rendered in the live view as a stacked bar with durations and shares. Totals cover the lifetime of the process. Because concurrent request time is cumulative, summed state time can exceed wall-clock uptime.
 
 ## Memory and pool estimates
 
 With `track_memory_use` enabled, the recorder reads `runtime.MemStats` around each trace and writes the deltas onto the trace: heap delta, allocated bytes, allocations, GC cycles and GC pause. The snapshot adds process figures - uptime, PID, Go version, GOMAXPROCS, goroutines, heap, stack and system memory, the next GC target and GC CPU fraction - and estimates how many similarly expensive requests fit before the next GC target and within the effective memory limit.
 
-Go memory statistics are process-wide and concurrent requests include one another's allocations and GC work, and allocated bytes measure churn; the figure holds no retained working set. These are capacity hints, not pool limits: measure with representative traffic and leave headroom for stacks, caches, database drivers and native allocations.
+Go memory statistics are process-wide and concurrent requests include one another's allocations and GC work, and allocated bytes measure churn. The figure holds no retained working set. These are capacity hints, not pool limits: measure with representative traffic and leave headroom for stacks, caches, database drivers and native allocations.
 
 ## Access control
 
-The front end is not authenticated, and `phpscript server` has no setting that changes it. oida gates every route it serves, assets included, behind `Options.Authorize`. That field takes a Go function; a value fits nowhere. No configuration file holds a function; the bundled server never sets one.
+The front end is not authenticated, and `phpscript server` has no setting that changes it. oida gates every route it serves, assets included, behind `Options.Authorize`. That field takes a Go function. A value fits nowhere. No configuration file holds a function. The bundled server never sets one.
 
 For a service run with `phpscript server`, that leaves three options: keep the listener away from a public interface, put a proxy that authenticates in front of `/debug/oida`, or set `telemetry.enabled` to `false`. Traces record the values bound to database queries and the page is as sensitive as the columns those queries filter on.
 

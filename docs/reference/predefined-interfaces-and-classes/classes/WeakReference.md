@@ -35,5 +35,5 @@ public function get(): ?object
 ## Status
 
 - phpscript declares no `WeakReference` anywhere.
-- The concept does not apply here. PHP destroys an object when its reference count reaches zero, which is the event a weak reference reports; phpscript objects are Go values collected by the Go garbage collector, and nothing observes the moment one becomes unreachable.
+- The concept does not apply here. PHP destroys an object when its reference count reaches zero, the event a weak reference reports. phpscript objects are Go values collected by the Go garbage collector, and nothing observes the moment one becomes unreachable.
 - For a cache whose entries should expire, hold the values in an array and remove them manually, or keep the cache on the host side with `SharedMemory`.

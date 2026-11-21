@@ -38,5 +38,5 @@ public function offsetUnset(mixed $offset): void
 ## Status
 
 - phpscript has no such interface, and does not declare the name.
-- The runtime dispatches none of these methods: there is no overloaded index, and `$obj["k"]` does not call `offsetGet()`. A script here reads its data another way; indexing an object does not do it.
+- The runtime dispatches none of these methods: there is no overloaded index, and `$obj["k"]` does not call `offsetGet()`. A script here reads its data another way: indexing an object reads no data.
 - Expose the array through a method, or hold it in a property and index the property.

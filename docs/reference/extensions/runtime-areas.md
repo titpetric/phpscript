@@ -86,11 +86,11 @@ That runtime installs `Runtime\PS` only. A deeper name narrows further: `Runtime
 
 A name outside the installed areas stays undefined, and `function_exists` answers false. The `--stdlib` flag is the other axis: it selects the `secure` or `exec` profile. The two compose.
 
-`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` alone. It adds no `Runtime\PS` or `Runtime\PX` area. Every file reads as if it imported the namespace. The configuration refuses a non-empty `runner.areas` alongside. The exception half differs too: no PHP throwable class installs, though the `ob_*` output buffers do, since a template captures `echo` output; a Go error needs no class. [The Go runtime](go-runtime.md) is the surface.
+`runner.runtime` selects the namespace whole. `runtime: go` installs `Runtime\Go` alone. It adds no `Runtime\PS` or `Runtime\PX` area. Every file reads as if it imported the namespace. The configuration refuses a non-empty `runner.areas` alongside. The exception half differs too: no PHP throwable class installs, though the `ob_*` output buffers do, since a template captures `echo` output. A Go error needs no class. [The Go runtime](go-runtime.md) is the surface.
 
 ## Go's standard library, opt-in
 
-`Runtime\Go` holds go's builtins (`make`, `len`, `append`; see [the Go runtime](go-runtime.md)). Its other areas map go's import paths: `Runtime\Go\Strings` for `strings`, `Runtime\Go\Path` for `path`, `Runtime\Go\Net\HTTP` for `net/http`, `Runtime\Go\Encoding\JSON` for `encoding/json`, `Runtime\Go\Database\SQL` for `database/sql`, and the rest keyed to the path's last segments.
+`Runtime\Go` holds go's builtins (`make`, `len`, `append`, see [the Go runtime](go-runtime.md)). Its other areas map go's import paths: `Runtime\Go\Strings` for `strings`, `Runtime\Go\Path` for `path`, `Runtime\Go\Net\HTTP` for `net/http`, `Runtime\Go\Encoding\JSON` for `encoding/json`, `Runtime\Go\Database\SQL` for `database/sql`, and the rest keyed to the path's last segments.
 
 The [Go imports](go-imports.md#the-bindings) inventory lists every name each area binds, read off the runtime this build reports. `Time\Sleep` takes a string duration such as `"100ms"`. `SQL\Open` takes a connection the host registered. It refuses a DSN from the script.
 
@@ -110,7 +110,7 @@ The default runtime installs none of these names. The import installs the area o
 |---------------|-------------|------------------------------------|
 | `repeatLimit` | `256 << 20` | `strings: Repeat output too large` |
 
-The mapping continues down go's import paths. `net/http` maps to `Runtime\Go\Net\HTTP`; `path/filepath` maps to `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers in a separate profile area, which `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
+The mapping continues down go's import paths. `net/http` maps to `Runtime\Go\Net\HTTP`. `path/filepath` maps to `Runtime\Go\Path\Filepath`. A package that reaches outside the sandbox, such as a network client, registers in a separate profile area, which `stdlib/ps/pexec` does. A host serving untrusted scripts leaves that profile out.
 
 A file that bound the go runtime writes the go spelling of the same import, which resolves to the same area: `import "net/http";` then `http.Get($url)`. [Go imports](go-imports.md) is that statement, the packages it reaches, and the way a binding package declares one.
 
@@ -124,7 +124,7 @@ func init() {
 }
 ```
 
-`RegisterArea` takes the name and the installer; `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. Two files may register the same name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
+`RegisterArea` takes the name and the installer. `RegisterProfileArea` adds the profile mask for an area that leaves the sandbox. Two files may register the same name. An installer that registers no name goes under `Runtime\PS\Unnamed`, which `runner.RegisterBinding` still does for a host.
 
 An opt-in area registers through `runner.RegisterNamespace(name, installer)` and names its functions with the full path (`Runtime\Go\Strings\Fields`), which the `use` alias shortens.
 

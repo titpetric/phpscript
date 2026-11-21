@@ -27,7 +27,7 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 }
 ```
 
-An `http.ResponseWriter` and an `*http.Request` are Go values and they arrive as themselves. The script reads and writes them through the same reflection bridge every host object uses; there is no marshalling step. The bridge copies neither value.
+An `http.ResponseWriter` and an `*http.Request` are Go values and they arrive as themselves. The script reads and writes them through the same reflection bridge every host object uses. There is no marshalling step. The bridge copies neither value.
 
 `HTTP\Request` names `*net/http.Request`, the name a script already knows, which `new HTTP\Request` builds for an outbound call. `HTTP\ResponseWriter` follows the same rule for `http.ResponseWriter`. `HTTP\ResponseWriter` names no constructor: a handler receives a response writer and constructs none.
 
@@ -49,7 +49,7 @@ BenchmarkLookup/runtime      	   10000	    132753 ns/op	   84364 B/op	     684 a
 BenchmarkLookup/request      	    7159	    158615 ns/op	   96324 B/op	     850 allocs/op
 ```
 
-`bind` resolves the symbol and builds the closure, paid per runtime. `invoke` calls it. That line alone scales with traffic. `callable` makes the same call through the untyped `rt.Callable`; the gap between the two shows the signature bridge's cost. `runtime` runs no PHP at all: the benchmark builds a runtime and registers the standard library on it.
+`bind` resolves the symbol and builds the closure, paid per runtime. `invoke` calls it. That line alone scales with traffic. `callable` makes the same call through the untyped `rt.Callable`. The gap between the two shows the signature bridge's cost. `runtime` runs no PHP at all: the benchmark builds a runtime and registers the standard library on it.
 
 In that last pair, `request` less `runtime` is the script. The rest is host setup for that call. A lookup on a reused runtime skips the setup. That setup cost is also why the request path stops scaling with cores while the lookup path keeps going - at ninety kilobytes a go, the collector becomes the limit before the CPU does.
 
@@ -57,7 +57,7 @@ A host needing the superglobals still has them: build the runtime, `runner.FromR
 
 ## Finding the symbol
 
-The symbol may be anywhere inside the runtime's source root. A runtime that has loaded nothing parses its tree on the first lookup through `Precompiler`. No load step needs remembering; a host that already precompiled, or that has been serving requests, resolves against the cache it filled.
+The symbol may be anywhere inside the runtime's source root. A runtime that has loaded nothing parses its tree on the first lookup through `Precompiler`. No load step needs remembering. A host that already precompiled, or that has been serving requests, resolves against the cache it filled.
 
 A free function in a namespaced file keeps the namespace in its name and `App\Handler\index` is the whole name. That name resolves. A trailing part of it also resolves:
 
@@ -104,7 +104,7 @@ Sharing one runtime instead is a crash. Evaluation writes `rt.compiled`, `rt.goM
 
 ## Reusing a runtime
 
-A runtime cannot serve two requests at once. It can serve them in turn, which is a pool; the table below splits the cost:
+A runtime cannot serve two requests at once. It can serve them in turn, which is a pool. The table below splits the cost:
 
 ```go
 pool := sync.Pool{New: func() any {

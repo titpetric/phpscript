@@ -143,7 +143,7 @@ It supports these expressions:
 - Registered/free function calls and method calls, including a dynamic method name `$obj->$m(...)`, trailing variadic parameters and parameter defaults
 - Static calls `Class::method(...)` and static properties `Class::$name`, dispatched through the host bridge onto the interpreter's resolution
 - Function statics `static $x = ...` in named functions and methods, against the same per-statement storage the interpreter uses
-- Invoking a callable held in a value: `$fn($x)`; a string naming a compiled function takes a VM frame, everything else resolves through the host
+- Invoking a callable held in a value: `$fn($x)`, where a string naming a compiled function takes a VM frame and everything else resolves through the host
 - First-class callable syntax, `callable(...)`, in each of the four call forms. The host resolves the callable and the value is the same Closure the interpreter builds, and the declaration it names runs there on call
 - Property reads, writes and `unset($obj->prop)`
 - String concatenation with `.`
@@ -151,7 +151,7 @@ It supports these expressions:
 
 The flat VM and its small PHP-semantics host boundary run arithmetic, coercion, comparison, array access and truthiness. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
-The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compiling native**; `tests/fixtures/functions/static_var_closure.phpt` and `tests/fixtures/functions/func_get_args.phpt` remain with the interpreter. `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that phpscript implements the whole PHP language.
+The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compiling native**, with `tests/fixtures/functions/static_var_closure.phpt` and `tests/fixtures/functions/func_get_args.phpt` remaining with the interpreter. `Supports` is the authoritative per-program answer. A fixture count is useful progress evidence, not a claim that phpscript implements the whole PHP language.
 
 ### Current native barriers
 
@@ -165,7 +165,7 @@ The complete program atomically selects fallback when it contains any unsupporte
 - `try` without a `catch` clause
 - Casts
 - PHP constructors (`__construct`) still run in the interpreter
-- Nested `class` declarations (no-op, same as the interpreter hoist; PHP registers them at runtime)
+- Nested `class` declarations (no-op, same as the interpreter hoist, but PHP registers them at runtime)
 - Included files still execute through the interpreter
 - `include` and `require` fail the request on a missing file (PHP `include` is a warning)
 - A host without Include fails at `opInclude`, after earlier opcodes have run
@@ -174,7 +174,7 @@ These are not called "unsupported programs" at the public runtime boundary: they
 
 ### Closure identity
 
-A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two such values; `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the single documented disagreement between the two engines. The first-class callable syntax differs: `greet(...)` and the other three spellings answer a callable value on each engine, and `$fn(...) === $fn` holds.
+A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two such values, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. That is the single documented disagreement between the two engines. The first-class callable syntax differs: `greet(...)` and the other three spellings answer a callable value on each engine, and `$fn(...) === $fn` holds.
 
 Fixing it means the engine's closure value holds an identity. That identity needs a value type both packages can see in place of a bare `func(...any) (any, error)`, plus a case for it everywhere the host resolves a callable. Comparing the function pointer is no fix: two closures built from one literal share the pointer, and would answer true where php answers false.
 
@@ -188,11 +188,11 @@ Flat bytecode uses the runner's existing host bridge, including:
 - Go constructor and method error propagation
 - Exported Go struct field access
 
-The VM binds a frame handle (`engine.FrameLocals`) to the host once per run, without copying its locals into a map around every call. The host decides when a callee needs the scope: it passes no scope at all to a function-table hit whose signature does not take a `context.Context`, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. The by-reference marks rely on that snapshot-before-call ordering, and the engine's `vm_test` pins it.
+The VM binds a frame handle (`engine.FrameLocals`) to the host once per run, without copying its locals into a map around every call. The host decides when a callee needs the scope: it passes no scope at all to a function-table hit whose signature does not take a `context.Context`, which is the interpreter's own contract for the same binding, while context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. The by-reference marks rely on that snapshot-before-call ordering, and the engine's `vm_test` pins it.
 
 `Snapshot` is the frame's named variables, the set `compact()`, `extract()` and `get_defined_vars()` read. It holds no argument list and the compiler refuses `func_get_args()`.
 
-A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for that map and seeds it into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file. A function or closure reaches a global exactly as far as the interpreter does: not at all. `Host.Lookup` answers the superglobals and the constant table; every frame sees those. Answering a global from `Lookup` instead handed `$argv` to each frame in the program.
+A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for that map and seeds it into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file. A function or closure reaches a global exactly as far as the interpreter does: not at all. `Host.Lookup` answers the superglobals and the constant table, and every frame sees those. Answering a global from `Lookup` instead handed `$argv` to each frame in the program.
 
 The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Any other operand shape dispatches to the host with the operator name. Coercion then has a single home. A measurement stops slot type inference here: values are `[]any` entries, where the type assertion is the unboxing and an opcode holding monomorphic int operand slots saves nothing over the dynamic guard.
 
@@ -206,7 +206,7 @@ try {
 }
 ```
 
-Without a catch, `Runtime.Run` returns the error to Go. The VM also has a last-resort recovery guard for engine defects; ordinary host panics do not rely on that guard.
+Without a catch, `Runtime.Run` returns the error to Go. The VM also has a last-resort recovery guard for engine defects, but ordinary host panics do not rely on that guard.
 
 ## Compilation and caching
 
@@ -222,7 +222,7 @@ runtime.Run(program)
 
 For compile-once/run-many workloads, parse the source once and reuse both the `*model.Program` and cache. Re-parsing creates a different program identity, forcing a new flat compilation.
 
-`runner.Precompiler` is that reuse as a setting. It walks the `.php` files of a source tree, parses each into an `IncludeCache` and compiles each into an `ExprCache`, and `runner.Options.Precompile` makes `Runtime.LoadFile` read an entrypoint back out of the include cache, without a second parse. A server that does not is re-parsing every entrypoint per request and paying a flat compilation for each, because the cache keys the bytecode by the AST the parse produced. `phpscript server` runs one pass per site before it accepts a request; see [Precompilation](configuration.md#precompilation).
+`runner.Precompiler` is that reuse as a setting. It walks the `.php` files of a source tree, parses each into an `IncludeCache` and compiles each into an `ExprCache`, and `runner.Options.Precompile` makes `Runtime.LoadFile` read an entrypoint back out of the include cache, without a second parse. A server that does not is re-parsing every entrypoint per request and paying a flat compilation for each, because the cache keys the bytecode by the AST the parse produced. `phpscript server` runs one pass per site before it accepts a request. See [Precompilation](configuration.md#precompilation).
 
 ## Validation and benchmarks
 

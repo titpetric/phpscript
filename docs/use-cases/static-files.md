@@ -31,7 +31,7 @@ The server answers a request that names a directory with that directory's index 
 
 The server redirects a directory named without a trailing slash to the same path with one, before serving the index page. The links in that page resolve against the serving URL, and `/docs` must become `/docs/` or every relative link in it points a directory too high.
 
-A directory holding neither index page is a 404, answered by the site's [error page](error-handling.md#error-pages) when the site defines one; otherwise it does not list the files below, unless the site enables a listing.
+A directory holding neither index page is a 404, answered by the site's [error page](error-handling.md#error-pages) when the site defines one, and lists nothing unless the site enables a listing.
 
 ## Directory listings
 
@@ -42,13 +42,13 @@ A directory holding neither index page is a 404, answered by the site's [error p
 autoindex: true
 ```
 
-`autoindex` is off by default. Publishing every file below the document root is a decision a site makes; a site should not arrive at it by leaving an `index.html` out of a directory.
+`autoindex` is off by default. Publishing every file below the document root is a decision a site makes, not one to reach by leaving an `index.html` out of a directory.
 
-The server generates the listing; no file needs writing or regenerating when the directory changes. It holds:
+The server generates the listing, with no file to write or regenerate when the directory changes. It holds:
 
 - every entry, linked relative to the directory's request path, with directories first
 - the size of each file and when it last changed
-- images as thumbnails above the table and as rows inside the table; a folder of screenshots is browsable and still shows each file's size
+- images as thumbnails above the table and as rows inside the table, keeping a folder of screenshots browsable and each file's size visible
 - a link to the directory above, except at the document root, whose parent is not the site's to link to
 
 The listing leaves out names beginning with a dot: a listing shows the files the site chose to publish. A dotfile below the document root is noise at best, an editor's backup of a script at worst. The page holds its little styling inline, fetches nothing from elsewhere, tells a third party nothing about the browsing, and renders the same offline.
@@ -61,9 +61,9 @@ A static site puts up error pages the same way an application does: by writing a
 
 ## What is not served
 
-The document root is the boundary. A file above it has no URL; no route reaches one. Files such as `phpscript.yml`, plus the route and template directories, are above the document root; a path holding `..` does not escape.
+The document root is the boundary. A file above it has no URL, and no route reaches one. Files such as `phpscript.yml`, plus the route and template directories, are above the document root. A path holding `..` does not escape.
 
-A `.php` file in a directory the configuration lists in `runner.writable_paths` is content, not code: the server serves it as bytes, without executing it. Examples include an `index.php` or a `404.php`; an upload directory below the document root cannot turn an upload form into a way to run code.
+A `.php` file in a directory the configuration lists in `runner.writable_paths` is content, not code: the server serves it as bytes, without executing it. Examples include an `index.php` or a `404.php`. An upload directory below the document root cannot turn an upload form into a way to run code.
 
 ## Virtual hosting
 

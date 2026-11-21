@@ -45,7 +45,7 @@ scripts/benchmark.php
 
 The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row lists the cognitive complexity and the line count next to the percentage. A low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
 
-Those five documents change on every run; `.gitignore` holds them. `atkins gen` writes the set, and `atkins publish` attaches it to the release, where the links above resolve.
+Those five documents change on every run. `.gitignore` holds them. `atkins gen` writes the set, and `atkins publish` attaches it to the release, where the links above resolve.
 
 ## Building a docker image
 

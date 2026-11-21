@@ -67,9 +67,9 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 ### The toolchain that builds every measurement
 
-`CGO_ENABLED=0` always, for every build and test. `.atkins/skills/go.yml` sets it. `-race` is the only exception. It needs cgo; a race run produces no number. Race output is no baseline.
+`CGO_ENABLED=0` always, for every build and test. `.atkins/skills/go.yml` sets it. `-race` is the only exception. A race run needs cgo and produces no number. Race output is no baseline.
 
-A before/after pair is two binaries built the same way by the same toolchain. A cgo profile measures one program; a static profile measures another. A binary of unknown provenance is not a baseline.
+A before/after pair is two binaries built the same way by the same toolchain. A cgo profile measures one program, a static profile another. A binary of unknown provenance is not a baseline.
 
 `GOFLAGS=""`, matching `atkins.yml`. A `-mod=mod` inherited from a go.work environment breaks every go command.
 
@@ -91,7 +91,7 @@ Two benchmark jobs.
 PARALLEL='BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
 ```
 
-The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved; a bare delta does not.
+The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved, while a bare delta does not.
 
 ### The sprint gate
 
@@ -134,9 +134,9 @@ The window has two edges. A percentile is meaningful only between its edges.
 
 **A fixture whose single run costs more than the window** gets one run per sample. `p50`, `p95` and `p99` then come back equal, each describing one execution. Report them as the single-run cost they are, not as a distribution.
 
-**A fixture whose single run costs far less than the window** fits tens of thousands of runs into it. The `p99` is the hundredth-slowest of those, and measures scheduler preemption and collector assists. The tell is a wide `p99`/`p50` ratio on a cheap fixture while `gc_runs` is zero: there is no such work in it to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
+**A fixture whose single run costs far less than the window** fits tens of thousands of runs into it. The `p99` is the hundredth-slowest of those, and measures scheduler preemption and collector assists. The tell is a wide `p99`/`p50` ratio on a cheap fixture with `gc_runs` at zero: there is no such work to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
 
-**A percentile run uses `--cache=off`.** With `--cache=worker`, the worker holds a runtime per fixture. A late sample window then holds the collector load of every fixture run so far. The set drifts upward across the run. That is the same retention the memory section describes, visible in the timing column and not in resident bytes. It fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser and not execution; one process per fixture is the alternative and is slower still.
+**A percentile run uses `--cache=off`.** With `--cache=worker`, the worker holds a runtime per fixture. A late sample window then holds the collector load of every fixture run so far. The set drifts upward across the run. That is the same retention the memory section describes, visible in the timing column and not in resident bytes. It fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser and not execution, while one process per fixture is the slower alternative.
 
 ### Memory
 
@@ -150,7 +150,7 @@ Three guards, each required.
 GOMEMLIMIT=2GiB GOGC=100 ...
 ```
 
-The limit is soft. As the heap approaches the limit, the collector works harder. The kernel chooses no victim. That changes GC behaviour, and timing with it. Both sides of a before/after pair run at the same `GOMEMLIMIT`; the manifest records the limit. A pair measured across two different limits measures two programs, the same way a CGO mismatch is.
+The limit is soft. As the heap approaches the limit, the collector works harder. The kernel chooses no victim. That changes GC behaviour, and timing with it. Both sides of a before/after pair run at the same `GOMEMLIMIT`, the limit the manifest records. A pair measured across two different limits measures two programs, the same way a CGO mismatch is.
 
 **Scope a sampling run per area, not over the whole suite.** A runtime lives as long as its parse cache. A process that samples 264 fixtures holds 264 fixtures' worth of runtimes. One process per area releases it between areas:
 
@@ -167,9 +167,9 @@ done
 
 ### GC and drift
 
-Four rules. No script enforces them; they are protocol.
+Four rules. They are protocol that no script enforces.
 
-- **Medians and percentiles, never means.** `--json` reports `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` reports medians; `wrk --latency` reports a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles. `hey` reports latency to four decimal places of a second. Every percentile of a sub-millisecond handler then comes back as the same number; `performance.md` uses wrk.
+- **Medians and percentiles, never means.** `--json` reports `p50_ns`, `p95_ns` and `p99_ns`, `benchstat` reports medians, and `wrk --latency` reports a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles. `hey` reports latency to four decimal places of a second. Every percentile of a sub-millisecond handler then comes back as the same number, hence `performance.md` uses wrk.
 - **A static control outside the interpreter.** For the HTTP target the control is `testdata/goserver`, the route-for-route Go floor. Read every phpscript number against the Go floor.
 - **A drift guard across a segment.** Compare the first quartile of a segment's samples against the last and publish the percentage. A segment that drifted is re-measured, not published.
 - **Drop a sample whose window overlapped a collection.** `--json` reports `gc_runs` per row. A row whose GC share differs between before and after is not comparable. Where a single request is the unit, drop the sample outright.
@@ -224,7 +224,7 @@ Some benchmarks do not resolve a small effect on this hardware, and saying so is
 
 - `-t` before a command name is `--testconfig` and runs no command. After `test` it means `--time`. The same two letters, two meanings, decided by position.
 - A global flag goes before or after the command name.
-- A directory path is not recursive. `phpscript test ./...` walks a tree; `phpscript test .` matches only the fixtures sitting directly in that directory and can pass over nothing. Every pipeline line spells the `./...`.
+- A directory path is not recursive. `phpscript test ./...` walks a tree, while `phpscript test .` matches only the fixtures sitting directly in that directory and can pass over nothing. Every pipeline line spells the `./...`.
 
 ## The table shape
 
@@ -247,7 +247,7 @@ HTTP, not yet documented:
 
 The table reports microseconds to one decimal, as `phpscript test` prints them. `--json` reports nanoseconds. A run collects p95 and does not publish it.
 
-In a document, use `(was)` and `(now)` as row labels, never extra columns. A document's table shows the current shape, with the previous shape alongside. A pull request body takes the tool's own shape instead; [The measurement table](#the-measurement-table) states that rule.
+In a document, use `(was)` and `(now)` as row labels, never extra columns. A document's table shows the current shape, with the previous shape alongside. A pull request body takes the tool's own shape instead, as [The measurement table](#the-measurement-table) states.
 
 State the environment once above the table, in the form [../allocation-performance.md](../allocation-performance.md) uses: the harness, the box, the Go version and the CGO setting.
 
@@ -261,13 +261,13 @@ No change edits a test, a fixture, an expected-output section or an allocation b
 
 The operator must confirm any permitted edit after reading four things: the test as it stands, the output it now produces, what `php` prints for the same source where the test is a `.phpt`, and which of the two is wrong.
 
-The escape hatch is exact. The agent stops. It does not edit the test, skip it, mark it expected-fail, comment it out, or raise a budget. It writes the four items and asks. Other findings continue; that one blocks.
+The escape hatch is exact. The agent stops. It does not edit the test, skip it, mark it expected-fail, comment it out, or raise a budget. It writes the four items and asks. Other findings continue, while that one blocks.
 
 A new fixture's expected section comes from running the source through real `php` and pasting the output, never from phpscript's own. [../testing.md](../testing.md) owns the format and the oracle rule.
 
 ### The guards
 
-Three tests fail the build when they regress; none of them skips.
+Three tests fail the build when they regress. None of them skips.
 
 | Guard                                      | Where                          | What it holds                                                                         |
 |--------------------------------------------|--------------------------------|---------------------------------------------------------------------------------------|
@@ -345,7 +345,7 @@ Leave out the items below. Each has gone in and made a body worse:
 
 <!-- vale llm-slop.ReviewerAddress = YES -->
 
-A rejected approach goes in the document that owns the subject, with its number and its reason, not in the body. A reader reads a body once; the next person to try the approach reads the document.
+A rejected approach goes in the document that owns the subject, with its number and its reason, not in the body. A reader reads a body once, while the next person to try the approach reads the document.
 
 ### The measurement table
 
@@ -368,7 +368,7 @@ The shape, as the operator writes it:
 
 <!-- vale off -->
 
-> Calling runtime.ReadMem is a 400ns performance hit; the field is used to provide \_\_\_\_, and it does so for the service level runtime, however is triggered by a http request. As the command is intended for server monitoring, the behaviour changes to be configured in the config package, adds a monitoring interval to trigger it in the background.
+> Calling runtime.ReadMem is a 400ns performance hit. The field is used to provide \_\_\_\_, and it does so for the service level runtime, however is triggered by a http request. As the command is intended for server monitoring, the behaviour changes to be configured in the config package, adds a monitoring interval to trigger it in the background.
 
 <!-- vale on -->
 
@@ -386,7 +386,7 @@ The naming rule is the gitignore rule. Every name below is already covered by a 
 | pprof            | `cpu-<label>.pprof`, `mem-<label>.pprof` | `*.pprof`           |
 | coverage         | `cover/<label>.cov`                      | `/cover/*`, `*.cov` |
 
-Raw output goes to the worktree root, or under `cover/` for coverage profiles, never under `docs/`. No artifact takes any other extension; those lines keep covering it.
+Raw output goes to the worktree root, or under `cover/` for coverage profiles, never under `docs/`. No artifact takes any other extension, as those lines keep covering it.
 
 The repository root already holds `bench-after.txt`, `bench-after2.txt`, `bench-after3.txt`, `bench-before.txt`, `bench-e2e-*.json` and `bench-profile-*.json` from earlier sprints, lacking a manifest and of unknown build provenance. They are not baselines. The `flatstack.test`, `runner.test` and `tests.test` binaries are leftovers of an earlier build, and `.gitignore` covers them.
 

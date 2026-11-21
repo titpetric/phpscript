@@ -29,7 +29,7 @@ Embedded applications can expose a value before execution:
 rt.SetConst("APP_ENV", "production")
 ```
 
-The script can then read `APP_ENV` as a bare identifier. `define()`, the top-level `const` statement, `defined()`, and `constant()` do the same from PHP, and `get_defined_constants()` inspects the whole set. `define()` and `const` write the same table; `const` evaluates its value once, at the declaration.
+The script can then read `APP_ENV` as a bare identifier. `define()`, the top-level `const` statement, `defined()`, and `constant()` do the same from PHP, and `get_defined_constants()` inspects the whole set. `define()` and `const` write the same table, and `const` evaluates its value once, at the declaration.
 
 ```php
 define("APP_ENV", "production");
@@ -37,7 +37,7 @@ const APP_VERSION = "1.0";
 echo defined("APP_ENV") ? constant("APP_ENV") : "unset";
 ```
 
-A constant is visible everywhere, including inside functions and methods. A bare identifier resolves from the current scope first, the constant table last; a variable of the same name shadows one.
+A constant is visible everywhere, including inside functions and methods. A bare identifier resolves from the current scope first, the constant table last, and a variable of the same name shadows one.
 
 A bare identifier nothing defines throws:
 
@@ -48,7 +48,7 @@ echo $missing;        // null, and the script continues
 
 The two are separate lookups and an unset variable is still the null PHP reads it as.
 
-PHP 8 raises `Error` for the same expression. This raises `RuntimeException`; `catch (Exception $e)`, `catch (RuntimeException $e)`, and `catch (Throwable $e)` take it, `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle. A name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
+PHP 8 raises `Error` for the same expression. This raises `RuntimeException`. `catch (Exception $e)`, `catch (RuntimeException $e)`, and `catch (Throwable $e)` take it, `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle. A name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
 
 ## Magic constants
 
@@ -112,13 +112,13 @@ At the top level all three are empty strings. The fixture that holds each of the
 
 Registering the standard library installs the platform constants a PHP library branches on. The set: `PHP_VERSION`, `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` plus its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS`, `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `INF`, `NAN`, `DIRECTORY_SEPARATOR`, `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, the `T_*` tokenizer ids.
 
-`INF` and `NAN` are the two float values without a numeric spelling. `NAN` compares equal to nothing, itself included; `$x !== $x` is the test for it; `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
+`INF` and `NAN` are the two float values without a numeric spelling. `NAN` compares equal to nothing, itself included, and `$x !== $x` is the test for it. `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
 
-`PHP_VERSION` reports the PHP language version whose semantics the fixtures hold phpscript to. The number claims no full compatibility with that release; library code reads it to decide which language features it may use.
+`PHP_VERSION` reports the PHP language version whose semantics the fixtures hold phpscript to. The number claims no full compatibility with that release, and library code reads it to decide which language features it may use.
 
 ### Time layouts
 
-`TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()`, `DateTime::parse()`. A layout is an ordinary string; a script can spell any of them out. These are the ones worth naming.
+`TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()`, `DateTime::parse()`. A script can spell any of them out, since a layout is an ordinary string. These are the ones worth naming.
 
 `TIME_RFC3339` is the default choice. Alone among the layouts here it includes the UTC offset and it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
 

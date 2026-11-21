@@ -2,13 +2,13 @@
 
 A pprof cpu or heap profile, or a PHP coverage profile, of one script. The profile holds no test harness.
 
-Read this to find the function where the cost sits. The contract in [README.md](README.md) governs this work; that document is not restated here.
+Read this to find the function where the cost sits. The contract in [README.md](README.md) governs this work and is not restated here.
 
 ## What this collects
 
 One script, one profile. No other work appears in the frames.
 
-That is why this is the per-function tool. A profile of `phpscript test` shows fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` shows the script.
+That is why this is the per-function tool. A profile of `phpscript test` shows fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter. A profile of `phpscript run` shows the script.
 
 ## Preconditions
 

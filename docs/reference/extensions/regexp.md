@@ -28,9 +28,9 @@ phpscript compiles each pattern with whichever engine can express it:
 
 One case depends on the call and not on the pattern. A non-zero `$offset` moves where the match starts without moving where the subject begins. `^` and `\b` still see the real start of the string. RE2 has no entry point that takes a start position, and slicing `$subject` would move the start. A call with an offset runs on the backtracking engine whichever one compiled the pattern. phpscript compiles a pattern RE2 accepted a second time, once, on the first call that passes an offset.
 
-phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee. A one-second timeout bounds a match it runs; a pattern that exceeds it reports no match without holding the request.
+phpscript prefers RE2: it runs faster, and hostile input cannot force a pattern it accepts to backtrack catastrophically. The fallback engine has no such guarantee. A one-second timeout bounds a match it runs, and a pattern that exceeds it reports no match without holding the request.
 
-phpscript compiles each pattern once per runtime. It caches the compiled pattern; the choice of engine is not paid for on each call.
+phpscript compiles each pattern once per runtime. It caches the compiled pattern, and the choice of engine is not paid for on each call.
 
 Which engine ran is not observable from PHP. The same `$matches` shape comes back either way. A group that matched nothing is the empty string in both.
 
@@ -38,17 +38,17 @@ Without this, the gap is worse than a missing feature: a pattern RE2 cannot comp
 
 ## What still differs from PCRE
 
-**Delimiters and modifiers.** A pattern uses the PHP spelling, `/body/flags`. Any of `( { [ <` may open it, with the matching bracket closing. phpscript translates the modifiers `s`, `m`, `i`, `x` and `U`; it accepts and ignores anything else (`u`, `D`, `A`, `S`). Both engines match over UTF-8 already and `u` is redundant except in one place: PCRE's `u` also makes `\w`, `\d` and `\b` Unicode-aware, and RE2 keeps them ASCII-only. `/(\w)/u` matches `ä` in PHP and does not here.
+**Delimiters and modifiers.** A pattern uses the PHP spelling, `/body/flags`. Any of `( { [ <` may open it, with the matching bracket closing. phpscript translates the modifiers `s`, `m`, `i`, `x` and `U`, accepting and ignoring anything else (`u`, `D`, `A`, `S`). Both engines match over UTF-8 already and `u` is redundant except in one place: PCRE's `u` also makes `\w`, `\d` and `\b` Unicode-aware, and RE2 keeps them ASCII-only. `/(\w)/u` matches `ä` in PHP and does not here.
 
 **Escape sequences.** `\_` and an escaped space are rewritten to the bare character, because both engines reject them as unknown classes where PCRE accepts them.
 
 **Replacements.** `preg_replace` accepts both PHP spellings of a group reference in the replacement (`\1`, `$1`), then normalises them to `${1}`, so that a reference followed by a digit, `\1` before a literal `0`, still names group 1.
 
-**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default. `$matches[0]` holds every whole match; `$matches[n]` holds every capture of group n. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
+**Return shapes.** `preg_match` fills `$matches` with the first match's groups. `preg_match_all` fills it in `PREG_PATTERN_ORDER` by default. `$matches[0]` holds every whole match, and `$matches[n]` holds every capture of group n. `PREG_SET_ORDER` transposes that to one entry per match. Both drop the trailing groups that matched nothing, as PHP does, unless `PREG_UNMATCHED_AS_NULL` keeps them as nulls.
 
 **Offsets.** `PREG_OFFSET_CAPTURE` turns every entry into a pair of the matched text and its offset, and `-1` is the offset of a group that matched nothing. The offsets are byte offsets, as PHP reports them even with the `u` modifier: a match after a two-byte character starts at 2, not at 1. phpscript reads `$offset` the same way, and counts from the end of the subject when the offset is negative. An `$offset` outside the subject is a failed call, not a failed match: `preg_match` returns `false`.
 
-**Failure.** A pattern that does not compile makes `preg_match` and `preg_match_all` return `false` and `preg_replace_callback` return null, in each case leaving the by-reference argument as the caller left it. PHP also emits a warning; phpscript emits nothing.
+**Failure.** A pattern that does not compile makes `preg_match` and `preg_match_all` return `false` and `preg_replace_callback` return null, in each case leaving the by-reference argument as the caller left it. PHP also emits a warning, and phpscript emits nothing.
 
 ## Go's regexp, under its own name
 

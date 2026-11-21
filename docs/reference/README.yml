@@ -53,7 +53,7 @@ sitemap:
       - path: predefined-interfaces-and-classes/reserved-interfaces.md
         description: Every interface and class PHP predefines, its introducing version, and the phpscript handling.
       - path: predefined-interfaces-and-classes/classes/Traversable.md
-        description: The base interface foreach detects, declared directly by no class.
+        description: The base interface foreach detects, with no class declaring it directly.
       - path: predefined-interfaces-and-classes/classes/Iterator.md
         description: foreach's five methods, the lack of dispatch, and the flattened workaround.
       - path: predefined-interfaces-and-classes/classes/IteratorAggregate.md

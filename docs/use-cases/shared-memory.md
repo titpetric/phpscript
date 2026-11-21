@@ -2,7 +2,7 @@
 
 `SharedMemory` is a thread-safe, process-local key/value store with atomic counters. A host can use it for small amounts of state that scripts or HTTP requests in the same Go process need in common.
 
-The class belongs to the phpscript standard library; a script constructs it without an include:
+The class belongs to the phpscript standard library. A script constructs it without an include:
 
 ```php
 <?php
@@ -27,7 +27,7 @@ $shm->delete("status");
 echo $shm->get("status"); // an empty string
 ```
 
-`set($key, $value)` stores a value; `get($key)` retrieves that value; `has($key)` tests whether a value or counter exists for the key. `delete($key)` removes both the value and counter for that key and returns whether either one existed. `clear()` removes all values and counters.
+`set($key, $value)` stores a value, `get($key)` retrieves that value and `has($key)` tests whether a value or counter exists for the key. `delete($key)` removes both the value and counter for that key and returns whether either one existed. `clear()` removes all values and counters.
 
 ## Counters
 
@@ -55,7 +55,7 @@ The available methods are:
 
 ## Sharing state between runtimes
 
-Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included; a script running under any of them gets a store per `new` and reads back only its writes. To keep state between HTTP requests or other PHP runtimes, create one store in Go and add it to each runtime's context:
+Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included. A script running under any of them gets a store per `new` and reads back only its writes. To keep state between HTTP requests or other PHP runtimes, create one store in Go and add it to each runtime's context:
 
 ```go
 shm := core.NewSharedMemory()

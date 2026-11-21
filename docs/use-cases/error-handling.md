@@ -78,9 +78,9 @@ rt.OnError(func(err error) {
 })
 ```
 
-The callback consumes each non-exit statement error and execution continues. It can prevent an enclosing PHP `try`/`catch` from receiving the error; omit `OnError` when PHP code should control propagation.
+The callback consumes each non-exit statement error and execution continues. Omit `OnError` when PHP code should control propagation, because the callback can prevent an enclosing PHP `try`/`catch` from receiving the error.
 
-The runtime context comes from `rt.Context()` and holds the running span. `SpanFromContext` returns nil outside a trace. Every span method tolerates that; the callback needs no guard.
+The runtime context comes from `rt.Context()` and holds the running span. `SpanFromContext` returns nil outside a trace. The callback needs no guard, because every span method tolerates that.
 
 ## Errors over HTTP
 
@@ -138,7 +138,7 @@ The server tries four names for a status, in this order:
 
 The server prefers the `.php` name at each step. A site adds a `404.php` next to a hand-written `404.html` and starts serving the new one by writing it. Deleting the file stops a site using one.
 
-`error.php` reads the status it answers for out of `$_SERVER["REDIRECT_STATUS"]`. `error.html` cannot name that status; a site of static files must answer every failure with this page.
+`error.php` reads the status it answers for out of `$_SERVER["REDIRECT_STATUS"]`. `error.html` cannot name that status, and a site of static files must answer every failure with this page.
 
 The page receives the request that failed, in the `$_SERVER` keys Apache fills in for an `ErrorDocument`:
 
@@ -154,7 +154,7 @@ $body  = "<p>" . htmlspecialchars($path) . " is not here.</p>";
 include "templates/layout.php";
 ```
 
-An `include` resolves against the application root. The document root is a different base. A page shares the layout the rest of the site uses. The keys are absent on a direct request for `/404.php`; the example reads `REDIRECT_URL` through `isset`.
+An `include` resolves against the application root. The document root is a different base. A page shares the layout the rest of the site uses. The example reads `REDIRECT_URL` through `isset`, because the keys are absent on a direct request for `/404.php`.
 
 | Key                     | Holds                                                |
 |-------------------------|------------------------------------------------------|
@@ -163,11 +163,11 @@ An `include` resolves against the application root. The document root is a diffe
 | `REDIRECT_QUERY_STRING` | Its query string                                     |
 | `REDIRECT_ERROR_NOTES`  | What went wrong, when the request failed on a script |
 
-`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's. A page may set its status; the status of the call is only the default. The server logs a page that fails. The request falls back to the plain status, dispatching no page behind it.
+`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's. A page may set its status, and the call's status is only the default. The server logs a page that fails. The request falls back to the plain status, dispatching no page behind it.
 
 Whether the page also gets `$_POST`, `$_FILES` and `php://input` depends on which of the two things went wrong. The rule is not a policy:
 
-- **The request matched nothing.** No file answered; no script ran; nothing read the body. The page gets it whole. This lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives as its target endpoint would see it. That page answers `http_response_code(200)` and includes the route target.
+- **The request matched nothing.** No file answered, no script ran and nothing read the body. The page gets it whole. This lets `404.php` dispatch a site's own routes: a form posting to a URL no file backs arrives as its target endpoint would see it. That page answers `http_response_code(200)` and includes the route target.
 - **A script failed.** It had already read the body by the time it threw, leaving nothing further. `$_POST` and `$_FILES` are empty, and `php://input` reads nothing.
 
 ```php

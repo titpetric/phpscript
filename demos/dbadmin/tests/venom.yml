@@ -6,17 +6,17 @@ name: dbadmin
 #
 # Every step is an `exec` running curl rather than an `http` step, and that is
 # the login's doing. venom's http executor follows redirects and cannot be told
-# not to, so the 302 that carries the session cookie is a response gone by the
-# time it reports; and `extracts` does not publish a variable a later step or
-# testcase can read in this build, so there is nowhere to put the session id
-# even once it is captured. curl's cookie jar solves both: .venom-jar carries
+# not to, so the 302 that sets the session cookie is a response gone by the
+# time it reports. `extracts` publishes no variable a later step or testcase
+# can read in this build, leaving nowhere to put the session id even once
+# captured. curl's cookie jar solves both: .venom-jar carries
 # the session the way a browser would, and it is a file on disk that survives
 # from one step to the next.
 #
 # Each step prints the response and then a STATUS line, so a step asserts on
 # the status and the body together. A step that wants to see a redirect asks
-# for headers and does not follow; a step that wants the page the redirect
-# leads to follows with -L and does not ask for headers.
+# for headers and does not follow. One that wants the page the redirect leads
+# to follows with -L and no headers.
 #
 # The sign-in and sign-out posts carry a csrf field that must agree with the
 # csrf cookie. The pair is double-submit: the server stores nothing, so any

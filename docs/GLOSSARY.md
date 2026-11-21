@@ -51,7 +51,7 @@ This project's words and their meanings here. Most are ordinary web development 
 
 ## Mail
 
-**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/ps/mail`. SMTP appears only for the wire protocol itself: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time an API reaches a server instead.
+**Mail is the subject, SMTP one protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/ps/mail`. SMTP appears only for the wire protocol itself: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time an API reaches a server instead.
 
 | Term          | What it means                                                                                                                                                                                                 |
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

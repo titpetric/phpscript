@@ -36,7 +36,7 @@ echo "a" . "b";                  // php's concatenation
 echo strings . "x";              // php's too: no member follows the dot
 ```
 
-The import takes the name for the file that wrote it. A file holding a constant named `http` and an `import "net/http"` reads `http . FOO` as the member `FOO` of the package; name the constant something else, or reach the area by its own name.
+The import takes the name for the file that wrote it. A file holding a constant named `http` and an `import "net/http"` reads `http . FOO` as the member `FOO` of the package. Name the constant something else, or reach the area by its own name.
 
 ## One file
 
@@ -57,7 +57,7 @@ The area answers under its own name as well: `Runtime\Go\Net\HTTP\StatusText(404
 
 ## The packages
 
-The rows below come from the runtime this build binds: `phpscript list --runtime=go --bindings --json` prints the same inventory, and [the bindings](#the-bindings) lists every name. `Runtime\Go` holds the builtins and `Runtime\PS\Compat` the output buffers; an import reaches neither.
+The rows below come from the runtime this build binds: `phpscript list --runtime=go --bindings --json` prints the same inventory, and [the bindings](#the-bindings) lists every name. `Runtime\Go` holds the builtins and `Runtime\PS\Compat` the output buffers. An import reaches neither.
 
 {{PACKAGES}}
 
@@ -65,7 +65,7 @@ A package var binds as a constant: `sql.ErrNoRows` arrives as the error value it
 
 ## The bindings
 
-Each area with every name it binds, in the order `phpscript list --bindings` prints them. A signature is the PHP declaration; a constant shows its value.
+Each area with every name it binds, in the order `phpscript list --bindings` prints them. A signature is the PHP declaration, a constant its value.
 
 {{BINDINGS}}
 
@@ -100,11 +100,11 @@ The folder is the area, as every binding folder is: `stdlib/go/net/http` is `Run
 
 `Bind` names functions. The types a script reaches are the ones those signatures already imply. The set walks them: `http.NewRequest` names `*http.Request`, whose fields name `http.Header` and the url behind it, and whose methods name `*http.Cookie`. Every struct of the package the walk reaches registers as a class of the area, and `new http.Request` and `make([]http.Request, 2)` resolve to one.
 
-The walk stops six levels from a bound signature; past that it pulls in the transitive closure of the standard library for no gain. A struct it does not reach, `http.Client` among them, is one line: `Type(gohttp.Client{})` seeds the walk from the type itself. An interface, a named map and a func type register no class, because `new` would answer a nil of one. The technique is [gozero](https://github.com/titpetric/gozero)'s, which discovers the types behind its bindings the same way.
+The walk stops six levels from a bound signature. Past that it pulls in the transitive closure of the standard library for no gain. A struct it does not reach, `http.Client` among them, is one line: `Type(gohttp.Client{})` seeds the walk from the type itself. An interface, a named map and a func type register no class, because `new` would answer a nil of one. The technique is [gozero](https://github.com/titpetric/gozero)'s, which discovers the types behind its bindings the same way.
 
 ### A package this build does not link
 
-A binding binds a package the binary already links. Binding one it does not grows the binary and the dependency surface of every host that embeds the runtime, which is a decision and not a side effect of adding a function. `bindings.Linked` holds the list, read off the released binary's symbols and sanitised; `bindings.For` panics on a path `Linked` does not name. Adding a path to the list belongs in the change that binds it, with the reason in the commit.
+A binding binds a package the binary already links. Binding one it does not grows the binary and the dependency surface of every host that embeds the runtime, which is a decision and not a side effect of adding a function. `bindings.Linked` holds the list, read off the released binary's symbols and sanitised. `bindings.For` panics on a path `Linked` does not name. Adding a path to the list belongs in the change that binds it, with the reason in the commit.
 
 ```bash
 go tool nm $(which phpscript) \

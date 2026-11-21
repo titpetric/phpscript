@@ -45,4 +45,4 @@ public function valid(): bool
 
 - phpscript has no `InternalIterator`. The name is not declared.
 - It exists in PHP to serve internal classes, where a script cannot construct one either, and nothing portable depends on it.
-- A host binding with a sequence to expose returns a Go slice or an array; the runtime iterates both.
+- A host binding with a sequence to expose returns a Go slice or an array, and the runtime iterates both.

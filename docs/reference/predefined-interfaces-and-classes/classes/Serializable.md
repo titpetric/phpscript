@@ -32,5 +32,5 @@ public function unserialize(string $data): void
 ## Status
 
 - phpscript declares no `Serializable`.
-- PHP's own serialization format has no implementation here; no call site dispatches through the interface.
-- PHP 8.1.0 deprecated the interface in favour of `__serialize()` and `__unserialize()`, which are magic methods and also unavailable. Encode with `json_encode()`; decode with `json_decode()` instead.
+- PHP's own serialization format has no implementation here. No call site dispatches through the interface.
+- PHP 8.1.0 deprecated the interface in favour of `__serialize()` and `__unserialize()`, which are magic methods and also unavailable. Encode with `json_encode()` and decode with `json_decode()` instead.

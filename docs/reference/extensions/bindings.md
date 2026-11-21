@@ -1,6 +1,6 @@
 # Go bindings
 
-Go bindings let an embedding application expose selected functions and object capabilities to PHP without serialization or an inter-process call. The PHP VM still adds parsing/execution and reflection overhead; the invoked implementation runs directly in the host process.
+Go bindings let an embedding application expose selected functions and object capabilities to PHP without serialization or an inter-process call. The PHP VM still adds parsing/execution and reflection overhead, while the invoked implementation runs directly in the host process.
 
 ## Runtime setup
 
@@ -61,7 +61,7 @@ function main(\HTTP\Request $r) {
 }
 ```
 
-The bridge widens arguments to the value set the interpreter operates on. Predeclared numeric types become `int64` or `float64`. A named scalar keeps its name. Everything else passes through. Results take PHP's own coercions for the predeclared scalar kinds. A function returning `1` fills a `bool`; a truthy int coerces. A PHP array fills a `[]T` or a `map[K]V`.
+The bridge widens arguments to the value set the interpreter operates on. Predeclared numeric types become `int64` or `float64`. A named scalar keeps its name. Everything else passes through. Results take PHP's own coercions for the predeclared scalar kinds. A function returning `1` fills a `bool`, and a truthy int coerces. A PHP array fills a `[]T` or a `map[K]V`.
 
 Two limits apply. A looked-up symbol executes through the interpreter, even on a runtime built with `NewFlatStack`. A flat-declared function belongs to the bytecode program table, and the runtime table does not list it. `Options.Include` does not run per invocation. A composer autoloader is not installed by a lookup. A function needing one requires it in its body, or the host runs the prelude on the runtime first.
 
@@ -98,9 +98,9 @@ PHP construction invokes that function and leaves its first non-error return val
 $storage = new Storage;
 ```
 
-The constructor may take ordinary PHP-supplied arguments after an optional leading `context.Context`. The bridge omits return slots declared exactly as `error`. A non-nil value in such a slot becomes a PHP runtime error that `try`/`catch` catches. Other slots reach PHP: one value is the result; more than one becomes a PHP list in declaration order. A script destructures that list. `regexp.Regexp.LiteralPrefix` returns `(string, bool)`. `list($prefix, $complete) = $rx->literal_prefix();` reads both. Keeping just the first answers a different question.
+The constructor may take ordinary PHP-supplied arguments after an optional leading `context.Context`. The bridge omits return slots declared exactly as `error`. A non-nil value in such a slot becomes a PHP runtime error that `try`/`catch` catches. Other slots reach PHP: one value is the result, and more than one becomes a PHP list in declaration order. A script destructures that list. `regexp.Regexp.LiteralPrefix` returns `(string, bool)`. `list($prefix, $complete) = $rx->literal_prefix();` reads both. Keeping just the first answers a different question.
 
-The bridge pads missing non-variadic constructor arguments with their Go zero values; relying on this differs from PHP default-parameter semantics and is best avoided.
+The bridge pads missing non-variadic constructor arguments with their Go zero values, and relying on this differs from PHP default-parameter semantics and is best avoided.
 
 Go constructors take precedence when the same name is also declared as a PHP class. Namespaced registrations use escaped Go strings, for example `rt.RegisterConstructor("Service\\Database", constructor)`. The built-in `Database` and `SharedMemory` bindings use bare class names.
 
@@ -136,7 +136,7 @@ $name = lookup_name(42);
 
 Registered functions use the same positional conversion and return/error rules as constructors. The bridge accepts variadic Go functions and pads missing fixed arguments with zero values.
 
-The context injected into a free function also contains the active PHP scope; runtime helpers can retrieve it with `runner.ScopeFromContext`. Constructors and Go methods receive the runtime lifecycle context directly, without the scope value.
+The context injected into a free function also contains the active PHP scope, which runtime helpers retrieve with `runner.ScopeFromContext`. Constructors and Go methods receive the runtime lifecycle context directly, without the scope value.
 
 ## Callbacks
 
@@ -176,7 +176,7 @@ Two rules apply to the declared signature. It returns one value or none. PHP's c
 
 Errors differ between the two shapes. Prefer the uniform one for anything that can fail. A signature with an `error` slot gets the error the callback reported. A signature without that slot leaves it nowhere to go. The error crosses the intervening Go frames as a panic. The host boundary unwraps it into the throwable the script threw: a `catch` around the call takes the script's exception. A host panic naming a Go type never reaches the script. A binding between the callback and the boundary must not recover a panic it did not raise.
 
-A callable belongs to the runtime making the call. A comparator or a handler built before an HTTP server started runs on the worker answering the request; see [program re-entry](../../design.md#program-re-entry).
+A callable belongs to the runtime making the call. A comparator or a handler built before an HTTP server started runs on the worker answering the request, as [program re-entry](../../design.md#program-re-entry) explains.
 
 ### Describing one to a host
 
@@ -190,13 +190,13 @@ if err != nil {
 result, err := callable.Invoke(worker, w, r)
 ```
 
-`AsCallable` is the narrower of the two; it needs a declaration to store. It refuses the two array spellings by decision. A handler is a function of its arguments. Wrapping one in an array to name a method is a spelling this API leaves out. They stay callable everywhere else. It refuses a Go func for a different reason: the func has no declaration. A host holding one already holds the call. The error names the refused spelling and its alternative.
+`AsCallable` is the narrower of the two, needing a declaration to store. It refuses the two array spellings by decision. A handler is a function of its arguments. Wrapping one in an array to name a method is a spelling this API leaves out. They stay callable everywhere else. It refuses a Go func for a different reason: the func has no declaration. A host holding one already holds the call. The error names the refused spelling and its alternative.
 
 `Callable.Captures` reports whether the value holds anything from its defining scope: a closure's `use (...)` list, the `$this` binding a method writes, or a bound method's receiver. Captures stay read-only and shared by each runtime that runs them. Declared functions capture nothing. A static method captures nothing too. Both run anywhere.
 
 ## Output parameters
 
-A binding returns its result; it cannot write back into a caller's variable. A PHP variable here is a name in a frame table. A Go function has no cell to hold a variable. One exception happens at compile time. `byRefArgs` in `model/byref.go` names the output argument positions, per function. Both runtimes read that table; a plain variable at such a position compiles to a setter closure in place of its value. `preg_match`'s `$matches` is the case that exists.
+A binding returns its result and cannot write back into a caller's variable. A PHP variable here is a name in a frame table. A Go function has no cell to hold a variable. One exception happens at compile time. `byRefArgs` in `model/byref.go` names the output argument positions, per function. Both runtimes read that table, where a plain variable at such a position compiles to a setter closure in place of its value. `preg_match`'s `$matches` is the case that exists.
 
 The table is a package-level variable, not part of this API. A host binding declares no output parameter. Return a collection instead. See [Value semantics](../types/value-semantics.md#output-parameters) for the mechanism.
 
@@ -224,10 +224,10 @@ Context values, cancellation, and deadlines remain available to bound Go APIs be
 
 Arguments remain dynamically typed on the PHP side. At the Go boundary the reflection bridge:
 
-1. converts `nil` to the zero value of the declared target type;
-2. uses a non-nil value directly when assignable to the declared Go type;
-3. renders the value as PHP renders it in a string context when the target is a string and `strlen(65)` measures `"65"`, where Go's conversion of the code point 65 produces `"A"`;
-4. uses Go reflection conversion when the source type is convertible; and
+1. converts `nil` to the zero value of the declared target type.
+2. uses a non-nil value directly when assignable to the declared Go type.
+3. renders the value as PHP renders it in a string context when the target is a string and `strlen(65)` measures `"65"`, where Go's conversion of the code point 65 produces `"A"`.
+4. uses Go reflection conversion when the source type is convertible, and
 5. otherwise passes the original value to reflection, which fails at runtime if its type does not match the Go signature.
 
 The bridge pads omitted trailing arguments with their Go zero values, for constructors, registered functions and methods alike. A Go binding has no optional parameters. Padding spells PHP's optional arguments.
@@ -236,9 +236,9 @@ The bridge refuses a call passing more arguments than a non-variadic callable de
 
 This is not a complete PHP-to-Go coercion system. Prefer stable scalar signatures, and check values in the binding when the host runs untrusted scripts.
 
-PHP `foreach` traverses Go slices and arrays. `->` reads exported Go struct fields under case-insensitive names. Go maps and slices support PHP-style index reads. phpscript arrays are `*model.Array`; they are not automatically converted to arbitrary Go map or slice types.
+PHP `foreach` traverses Go slices and arrays. `->` reads exported Go struct fields under case-insensitive names. Go maps and slices support PHP-style index reads. phpscript arrays are `*model.Array`, not automatically converted to arbitrary Go map or slice types.
 
-A collection parameter takes `any`. One argument takes the array a literal wrote, or the slice, map or struct another binding returned. `modelutil.RangeValues`, `modelutil.LenValues` and `modelutil.IsCollection` read every shape. A parameter that names one shape answers a `TypeError` for every value of the other. `internal/cmd/bindlint` reports a binding declaring `*model.Array` or a Go slice or map, or narrowing a script value without cause; [Allocation and performance](../../allocation-performance.md) states the rules it reads.
+A collection parameter takes `any`. One argument takes the array a literal wrote, or the slice, map or struct another binding returned. `modelutil.RangeValues`, `modelutil.LenValues` and `modelutil.IsCollection` read every shape. A parameter that names one shape answers a `TypeError` for every value of the other. `internal/cmd/bindlint` reports a binding declaring `*model.Array` or a Go slice or map, or narrowing a script value without cause, as [Allocation and performance](../../allocation-performance.md) states the rules it reads.
 
 A `[]byte` is the exception to that, and is a PHP string: PHP's strings are byte strings, and half of Go's text API takes byte slices. `echo`, `strlen`, `var_dump`, `gettype`, `is_string`, `===`, an offset read and truthiness all read a returned `[]byte` as its text, `is_array` is false, and `foreach` across one iterates zero times. A `[][]byte` is still a list, of strings. `phpval.Bytes` is the test, and [Regexp bindings](../../bindings-regexp.md) lists where the runtime applies it.
 
@@ -250,8 +250,8 @@ Bindings run in-process and may expose mutable Go pointers. Their lifetime, thre
 
 `BenchmarkGoBindingHTTP` in `tests/fixtures_test.go` compares two `http.HandlerFunc` implementations performing the same operation:
 
-1. construct `Storage` from the request context;
-2. call `Set`, `Get` and `Tenant`;
+1. construct `Storage` from the request context.
+2. call `Set`, `Get` and `Tenant`.
 3. write `acme:blue` to the HTTP response.
 
 The `go_handler` sub-benchmark calls the Go constructor and methods directly. The `php_vm_handler` sub-benchmark creates a runtime for the request, registers the constructor, and performs the same calls from a pre-parsed PHP program. It uses a shared expression cache keyed by AST node, warmed by the correctness check before timing, as production HTTP hosts should. The timing excludes source parsing and request creation, and reuses one request across iterations. It counts per-iteration response-recorder allocation, runtime setup, expression compilation on a cache miss, closure execution, reflective dispatch, and response writing where applicable.
@@ -262,4 +262,4 @@ Run it with:
 go test ./tests -run '^$' -bench '^BenchmarkGoBindingHTTP$' -benchmem
 ```
 
-The difference between the two sub-benchmarks estimates the end-to-end overhead of using a fresh PHP VM for this binding path on the current machine. That difference is not a reflection-only microbenchmark; do not treat it as a fixed production latency figure.
+The difference between the two sub-benchmarks estimates the end-to-end overhead of using a fresh PHP VM for this binding path on the current machine. That difference is not a reflection-only microbenchmark. Do not treat it as a fixed production latency figure.

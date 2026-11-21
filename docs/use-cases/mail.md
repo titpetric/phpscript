@@ -1,6 +1,6 @@
 # Mail bindings
 
-`mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells a server and cannot read one back.
+`mail()` and `Mail` send through a mail server the host configured. A script names a server, never spells one and cannot read one back.
 
 That split is the whole design. Connection settings are operator configuration, the same way database credentials are. The [`mail` block](../configuration.md#mail-servers) holds them. They reach a script only as a name it may construct against.
 
@@ -90,7 +90,7 @@ mail:
     from: Marketing <marketing@example.com>
 ```
 
-`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. Given both `username` and `password`, the relay authenticates. Given neither, a local mailhog accepts the unauthenticated connection. `from` may hold a display name, in which case the bare address becomes the envelope sender.
+`port` defaults to 25, with 587 as the submission port. Authentication is PLAIN. Given both `username` and `password`, the relay authenticates. Given neither, a local mailhog accepts the unauthenticated connection. `from` may hold a display name, in which case the bare address becomes the envelope sender.
 
 The full key reference, including `insecure` and the STARTTLS rules, is in [Mail servers](../configuration.md#mail-servers).
 
@@ -121,7 +121,7 @@ try {
 }
 ```
 
-Here `mail()` diverges from PHP, which answers `false` and reports no reason. The binding queues no message and retries no delivery. A delivery either happened or it threw; the response belongs to the application.
+Here `mail()` diverges from PHP, which answers `false` and reports no reason. The binding queues no message and retries no delivery. A delivery either happened or threw, leaving the response to the application.
 
 ## What a script cannot do
 
@@ -136,7 +136,7 @@ var_dump($mail->password);       // NULL
 var_dump($mail->host);           // NULL
 ```
 
-The object holds no properties. A property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. No call lists the configured servers either, because naming what exists is itself a disclosure. The settings are a configuration key; `env` holds none. `getenv()` never reaches them.
+The object holds no properties. A property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. No call lists the configured servers either, because naming what exists is itself a disclosure. The settings are a configuration key, absent from `env`. `getenv()` never reaches them.
 
 The constructor refuses the settings in place of a name and accepts nothing quietly:
 
@@ -159,7 +159,7 @@ mail:
     from: orders@shop.example
 ```
 
-A site that declares no `mail` block inherits the operator's servers. `mail:` with nothing beneath it means no servers at all; the site says it sends none.
+A site that declares no `mail` block inherits the operator's servers. `mail:` with nothing beneath it means no servers at all, and the site says it sends none.
 
 The map replaces wholesale. A single unnamed block used to merge. A site setting only `host` and `from` kept the operator's `username` and `password` while authenticating as the operator.
 
@@ -174,7 +174,7 @@ provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, bo
 options.Mail = provider
 ```
 
-A `Deliver` reads three parts of a plain-text message. A provider built on that interface refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's `model.MailProvider`, whose `Send` is plain text. It sends the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`. `mail.Provider` and `mail.Memory` do.
+A `Deliver` reads three parts of a plain-text message. A provider built on that interface refuses a message with an HTML part or a Reply-To and names why, never delivering the text alone. The same holds for a host's `model.MailProvider`, whose `Send` is plain text. It sends the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`. `mail.Provider` and `mail.Memory` do.
 
 `mail.NewMemory(names...)` is a provider that queues messages and sends nothing and tests and dry runs capture mail without a mail server. Naming no servers configures every name. Each queued `mail.Message` holds the HTML part and the Reply-To as the script sent them.
 

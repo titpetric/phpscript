@@ -90,7 +90,7 @@ $request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 
-Everything `net/http` exports on a request is reachable. A single vocabulary describes a request; no PHP-side name labels a part.
+Everything `net/http` exports on a request is reachable. A single vocabulary describes a request. No PHP-side name labels a part.
 
 ## Read a response
 
@@ -177,7 +177,7 @@ foreach ($response->json() as $user) {
 }
 ```
 
-A transport failure throws; an error status does not. The route handles both cases. Neither leaves the page rendering a half-built list.
+A transport failure throws. An error status does not. The route handles both cases. Neither leaves the page rendering a half-built list.
 
 ## Tracing
 

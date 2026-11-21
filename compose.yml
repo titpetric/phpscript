@@ -2,7 +2,7 @@ include:
   - docker/service/mysql.yml
   - docker/service/postgres.yml
 
-# The demo applications; docs/pipeline.md argues the commands and the networks.
+# The demo applications, with the commands and networks argued in docs/pipeline.md.
 services:
   phpscript:
     image: titpetric/phpscript:latest

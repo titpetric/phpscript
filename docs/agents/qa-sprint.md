@@ -2,7 +2,7 @@
 
 Find and diagnose bugs, delete what nothing reaches, cut code without changing behaviour, and leave every finding as a fixture.
 
-Read this when running a correctness pass over the tree. The contract in [README.md](README.md) governs this work; that document is not restated here.
+Read this when running a correctness pass over the tree. The contract in [README.md](README.md) governs this work and is not restated here.
 
 ## Scope
 
@@ -37,14 +37,14 @@ A `SKIP` is a fixture that opted a runtime out, or a missing `php` binary. Any o
 
 **A thin fixture area.** `../test-fixtures.md` holds one table per area. An area with three fixtures covering a stdlib surface of thirty functions hides a defect.
 
-**`tests/fixtures/github/`** records each report. It keeps no backlog. Three files there hold closed reports, each naming the regression test that guards it. Read it for the shape of a good report; it holds no open work.
+**`tests/fixtures/github/`** records each report. It keeps no backlog. Three files there hold closed reports, each naming the regression test that guards it. Read it for the shape of a good report, not for open work.
 
 ## Diagnosis
 
 A diagnosis comes before a fix and has four parts:
 
 - The smallest source that shows the bug. Leave out the surrounding program.
-- What `php` prints for that same source. Run it; do not reason.
+- What `php` prints for that same source. Run it yourself.
 - The file and line that decides. The symptom's file is elsewhere.
 - Whether the behaviour is a bug or a documented divergence.
 
@@ -64,7 +64,7 @@ Where it goes:
 | Not reachable from a fixture, and not from route registration, server flags or host bindings either | `tests/github/issue_NNN_test.go` holding `Test_IssueNNN`, with a `.yml` in `tests/fixtures/github/` naming that test |
 | Reported but not yet diagnosed                                                                      | `tests/fixtures/github/<n>.yml`, written against the expected behaviour                                              |
 
-The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule; this document repeats none of it.
+The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule. This document repeats none of it.
 
 A new area is a new folder. The runtime finds a new area without a registration. The fixture folder is the include root. Copy a shared support file into that folder: phpscript rejects an include that climbs out.
 
@@ -82,14 +82,14 @@ splint ./...
 
 Four false positives, each real in this tree. A symbol reached only:
 
-- from a benchmark, which `go test` without `-bench` never runs;
-- from a `//go:build ignore` file, which `testdata/goserver/main.go` is;
-- from a demo or a venom suite; no Go test reads those;
+- from a benchmark, which `go test` without `-bench` never runs,
+- from a `//go:build ignore` file, which `testdata/goserver/main.go` is,
+- from a demo or a venom suite, which no Go test reads,
 - by registered name: every binding registers this way. A PHP source line calls a binding by its string name. It has no Go caller at all.
 
 Two hard rules. A test is never dead code. The contract states this. It makes deleting a test an edit governed by the test-immutability rule. A registered name comes out in a separate change: `../../AGENTS.md` requires a rename to register the new name and keep the old name as a second registration. A removal in the same commit as a rename is two changes in one.
 
-Every rule blocks. A finding is work. Do not turn it into a number. Three paths in `.splint.yml` are exempt from the length limit; that list is complete. A change that adds a fourth argues for it.
+Every rule blocks. A finding is work. Do not turn it into a number. Three paths in `.splint.yml` are exempt from the length limit. That list is complete. A change that adds a fourth argues for it.
 
 ## Simplification
 

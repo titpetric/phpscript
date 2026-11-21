@@ -29,7 +29,7 @@ The table shows all five. Each route ran six segments of 3s at concurrency 1, fo
 
 Compare rows inside one table, never across tables. `scripts/bench-http.sh` and `scripts/benchmark.php` answer a few percent apart on the same configuration. A server's lifetime differs in what else it served. A figure copied between tables comes from another run.
 
-Two things drive them. Both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through a single load generator. It reports a latency distribution, with a request rate per route. `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds; it reports `allocs/op`. No fixture or venom suite covers either.
+Two things drive them. Both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through a single load generator. It reports a latency distribution, with a request rate per route. `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, reporting `allocs/op`. No fixture or venom suite covers either.
 
 That sequencing holds for everything later: publish the baseline before the first change. Read later numbers against the baseline, never against the tree.
 
@@ -52,15 +52,15 @@ Path B is already structurally right. It has no re-parse or re-register. The gap
 
 ## The harness
 
-`scripts/bench-http.sh` is the sweep. `wrk --latency` is the generator it drives. `hey` fails on output alone: it prints every latency as four decimal places of a second. That is coarser than any handler here answers in. Each percentile it reports comes back as the same number. wrk prints no 95th percentile; it reports 50, 75, 90 and 99; the sweep collects the 90th instead.
+`scripts/bench-http.sh` is the sweep. `wrk --latency` is the generator it drives. `hey` fails on output alone: it prints every latency as four decimal places of a second. That is coarser than any handler here answers in. Each percentile it reports comes back as the same number. wrk prints no 95th percentile, reporting 50, 75, 90 and 99. The sweep collects the 90th instead.
 
-A latency column is never finer than the generator; none prices a per-request allocation. `BenchmarkTestServerRoute` is the other half of the harness. It drives the same router through `httptest` with the socket left out. `ns/op`, `B/op` and `allocs/op` come off one request path at a resolution the sweep lacks. The sweep confirms that the socket and the wire undid nothing.
+A latency column is never finer than the generator. None prices a per-request allocation. `BenchmarkTestServerRoute` is the other half of the harness. It drives the same router through `httptest` with the socket left out. `ns/op`, `B/op` and `allocs/op` come off one request path at a resolution the sweep lacks. The sweep confirms that the socket and the wire undid nothing.
 
 Concurrency 1 measures the delta, as the contract's single-threaded rule requires. A second table at concurrency 4 covers queueing behaviour but never becomes the headline.
 
-A segment covers one wrk run; each route gets six. The contract's drift guard needs two ends to compare. One long run reports one distribution, and nothing records busy periods during it.
+A segment covers one wrk run. Each route gets six. The contract's drift guard needs two ends to compare. One long run reports one distribution, and nothing records busy periods during it.
 
-`testdata/goserver` is the floor column. The file holds `//go:build ignore`; it runs as `go run testdata/goserver/main.go`. Read it as the floor, not as a target: the comparison measures the VM alone.
+`testdata/goserver` is the floor column. The file holds `//go:build ignore` and runs as `go run testdata/goserver/main.go`. Read it as the floor, not as a target: the comparison measures the VM alone.
 
 `BENCH_TARGETS` selects the sides. The default pair needs no docker:
 
@@ -68,11 +68,11 @@ A segment covers one wrk run; each route gets six. The contract's drift guard ne
 BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 ```
 
-One table per side. Two sides use different execution models. `bridge` and `service` are the pair. The table header names the model; each number states its meaning. The sweep starts and stops every side, including the compose stacks.
+One table per side. Two sides use different execution models. `bridge` and `service` are the pair. The table header names the model. Each number states its meaning. The sweep starts and stops every side, including the compose stacks.
 
-`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php`. The web server is a column of the table; no part of the stack stays fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default; every side answers the same number of requests at once. opcache runs with `validate_timestamps` off; Slim caches its routes; the autoloader is `--classmap-authoritative`. An application without those measures the compiler. The JIT is off, php's default. `VANILLA_JIT` sets the mode. The README prices all three of its modes and the buffer each fills. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
+`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php`. The web server is a column of the table. No part of the stack stays fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default. Every side answers the same number of requests at once. opcache runs with `validate_timestamps` off, Slim caches its routes and the autoloader is `--classmap-authoritative`. An application without those measures the compiler. The JIT is off, php's default. `VANILLA_JIT` sets the mode. The README prices all three of its modes and the buffer each fills. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
 
-Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements are not interchangeable; the note column distinguishes the two. A host process reports its RSS; phpscript and the twin answer every request on one process, with threads as workers. The container reports a cgroup over apache's parent and all forked children. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` prices a request.
+Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements are not interchangeable. The note column distinguishes the two. A host process reports its RSS, phpscript and the twin answering every request on one process, with threads as workers. The container reports a cgroup over apache's parent and all forked children. Neither number is a per-request figure. `B/op` from `BenchmarkTestServerRoute` prices a request.
 
 Routes in:
 
@@ -88,7 +88,7 @@ Routes out:
 - `GET /slow` is twenty `usleep(100000)` calls by construction. It prices the deadline machinery. It gets a correctness check that `connection_aborted` still fires after a change. It gets no latency row.
 - `GET /info` is `phpinfo()`. Nobody serves that shape.
 
-The harness must respect two asymmetries. The PHP side answers four requests at once behind a queue of 64. `config()` hardcodes the queue depth. The worker count comes from elsewhere, without an environment variable override. The Go side has no queue; its semaphore blocks. The comparison is honest only up to `TESTSERVER_WORKERS` concurrent requests.
+The harness must respect two asymmetries. The PHP side answers four requests at once behind a queue of 64. `config()` hardcodes the queue depth. The worker count comes from elsewhere, without an environment variable override. The Go side has no queue. Its semaphore blocks. The comparison is honest only up to `TESTSERVER_WORKERS` concurrent requests.
 
 `TESTSERVER_ADDR` defaults to `127.0.0.1:8099` and takes `127.0.0.1:0` to let the kernel pick. `TESTSERVER_WORKERS` defaults to 4. `TESTSERVER_LIMIT` is a duration and defaults to ten seconds.
 
@@ -115,18 +115,18 @@ A row that buys something is not automatically a target. Each row answers whethe
 
 ## Profiles
 
-A profile names the site a benchmark only prices. Collect both kinds from the benchmark that owns the question, at least `BenchmarkTestServerRoute`, with `-cpuprofile cpu-<label>.pprof -memprofile mem-<label>.pprof` added to the contract's pinned command; the artifact names are already gitignored.
+A profile names the site a benchmark only prices. Collect both kinds from the benchmark that owns the question, at least `BenchmarkTestServerRoute`, with `-cpuprofile cpu-<label>.pprof -memprofile mem-<label>.pprof` added to the contract's pinned command. The artifact names are already gitignored.
 
-Read four tables per benchmark. `go tool pprof -top` flat shows where the cost sits; `-top -cum` shows the chain that reaches it. Read the memory profile twice: `-sample_index=alloc_objects`, then `alloc_space`. A small struct allocated per request ranks high in objects and low in bytes. `-peek <symbol>` answers who calls an ambiguous entry such as `io.WriteString`.
+Read four tables per benchmark. `go tool pprof -top` flat shows where the cost sits. `-top -cum` shows the chain that reaches it. Read the memory profile twice: `-sample_index=alloc_objects`, then `alloc_space`. A small struct allocated per request ranks high in objects and low in bytes. `-peek <symbol>` answers who calls an ambiguous entry such as `io.WriteString`.
 
 Two traps the first collection walked into:
 
-- The harness is inside the profile. `newTestServerHandler` parses the file and runs `stdlib.Register` once per benchmark invocation; registration frames in a Path B profile belong to the setup. The contract's `-benchtime 1s` keeps that share small. On a Path A profile, the registration frames are the finding.
+- The harness is inside the profile. `newTestServerHandler` parses the file and runs `stdlib.Register` once per benchmark invocation. Registration frames in a Path B profile belong to the setup. The contract's `-benchtime 1s` keeps that share small. On a Path A profile, the registration frames are the finding.
 - `benchServerWriter` discards without a `WriteString` method, the shape the `answerTracker` forwards today. The benchmark then prices the output path's clone truthfully. A change that teaches the tracker `WriteString` must teach the benchmark writer the same method in the same commit. Otherwise the gain never reaches the number.
 
 ## The benchmarks that price a change
 
-Which of the ninety-four answers which question. The commands are in [collect-go-benchmarks.md](collect-go-benchmarks.md); none appear here.
+Which of the ninety-four answers which question. The commands are in [collect-go-benchmarks.md](collect-go-benchmarks.md). None appear here.
 
 | Question                                                          | Benchmark                                                                                                                 |
 |-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
@@ -144,13 +144,13 @@ An engine comparison means nothing unless `flatstack.Supports` gates the program
 
 `atkins bench` used to run every benchmark pinned to one core with `-count 3`. That is the pinned half alone, with nothing excluded. Its numbers for `BenchmarkLookup`, `BenchmarkLookupHandler` and `BenchmarkFlatstackParallelHostBridge` described a single goroutine.
 
-The contract now defines two jobs. `atkins bench:pinned` runs at `-count 6`; `atkins bench:parallel` runs at `-count 10`. Each writes `bench-go-$SIDE.txt`; each takes the measure lock. `atkins bench` runs the pair and summarises the file with benchstat. The default pipeline runs neither job; the comment above them states the reason. A sweep costs minutes of pinned CPU and settles a performance question. The load sweep has no atkins job. `scripts/bench-http.sh <side>` is the whole interface; a job wrapping it would only hide the side.
+The contract now defines two jobs. `atkins bench:pinned` runs at `-count 6`. `atkins bench:parallel` runs at `-count 10`. Each writes `bench-go-$SIDE.txt` and takes the measure lock. `atkins bench` runs the pair and summarises the file with benchstat. The default pipeline runs neither job. The comment above them states the reason. A sweep costs minutes of pinned CPU and settles a performance question. The load sweep has no atkins job. `scripts/bench-http.sh <side>` is the whole interface. A job wrapping it would only hide the side.
 
 ## Techniques
 
 The contract names three tiers. This target invites, by name:
 
-- Forward `io.StringWriter` through the `answerTracker`; an echo stops cloning its string. The harness trap above names the second half of that change.
+- Forward `io.StringWriter` through the `answerTracker`. An echo stops cloning its string. The harness trap above names the second half of that change.
 - A fixed-arity fast path or a pooled slice for `baseCall`'s argument boxing, sized by the arity the compiler already knows.
 - A typed bridge in front of `reflect.Value.Call` for the handful of host types every handler touches: the response writer, the request, `url.Values`.
 - Register superglobals as lazily as they decode. A handler that reads none pays none of the `mapmap` layers.
@@ -165,7 +165,7 @@ Record a technique that lost with its number. `../flatstack.md` is the model: it
 
 The contract owns the body order. Two things are specific to this sprint.
 
-The summary statement names the path and the route; otherwise a reader cannot tell what moved:
+The summary statement names the path and the route. Otherwise a reader cannot tell what moved:
 
 > Optimized the per-request output path by keeping the output stack's backing array between requests, in place of clearing it to nil. This nets a positive change of -X% in latency on `GET /hello`. It moves from X allocs/op to Y allocs/op (-Z%).
 

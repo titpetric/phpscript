@@ -4,7 +4,7 @@
 // The set exists so no command spells the same idea again. Examples: --include
 // in test and lint, through two help texts, two implementations; server had no
 // copy; --cpuprofile only in test; -v defined twice; -f parsed by hand out
-// of argv, printed by no help output. One Options binds onto every command. A
+// of argv, printed in no help output. One Options binds onto every command. A
 // command reads the options it uses.
 //
 // Pre reads -f and -w before anything constructs the command. The configuration

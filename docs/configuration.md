@@ -8,7 +8,7 @@ phpscript -f config.yml run script.php
 phpscript server -f config.yml ./my-app
 ```
 
-Without `-f`, phpscript uses the [`config/config.yml`](../config/config.yml) compiled into the binary. It does not search the working directory for a configuration file. A path passed with `-f` must exist and contain valid YAML; otherwise the command exits with an error.
+Without `-f`, phpscript uses the [`config/config.yml`](../config/config.yml) compiled into the binary. It does not search the working directory for a configuration file. A path passed with `-f` must exist and contain valid YAML. Otherwise the command exits with an error.
 
 Two commands read a second file called `phpscript.yml`, discovered by its position in the tree. A [virtual host](#virtual-hosts) reads the file in the application root its entry points name. [`phpscript test`](#test-suites) reads those it finds in the fixture tree. Both layer over whatever `-f` produced, as that file layers over the embedded defaults.
 
@@ -73,7 +73,7 @@ env:
   - "PLATFORM_DB_APP=sqlite://app.db"
 ```
 
-Apart from the `env` entry, this is the embedded [`config/config.yml`](../config/config.yml) verbatim. That file holds every default phpscript has; Go defaults nothing. A file passed with `-f` layers on top and names only the keys it changes. A section it leaves out keeps the embedded file's value.
+Apart from the `env` entry, this is the embedded [`config/config.yml`](../config/config.yml) verbatim. That file holds every default phpscript has. Go defaults nothing. A file passed with `-f` layers on top and names only the keys it changes. A section it leaves out keeps the embedded file's value.
 
 ## Runner
 
@@ -141,11 +141,11 @@ runner:
   writable_paths: ["upload", "public/upload"]
 ```
 
-`upload` is the project's own directory, reachable by scripts and by no one else. `public/upload` is below the document root. The server publishes a script's stored files there over HTTP at `/upload/...`, including files written while the server runs.
+`upload` is the project's own directory, reachable by scripts alone. `public/upload` is below the document root. The server publishes a script's stored files there over HTTP at `/upload/...`, including files written while the server runs.
 
 No entry grants a write outside the application root. The allowlist accepts an absolute entry and then never matches it. All paths a script names resolve against the root first, absolute ones included. A script writing `/srv/shared/x` writes to `/srv/shared/x` *below the root*, not inside the `/srv/shared` the entry named. A host that must write elsewhere binds a different root.
 
-An empty list, the default, allows every write. A non-empty one is a tree: the directory and everything below; a name sharing only the prefix does not qualify. `upload-old` is then not inside `upload`.
+An empty list, the default, allows every write. A non-empty one is a tree: the directory and everything below. A name sharing only the prefix does not qualify. `upload-old` is then not inside `upload`.
 
 Writes refused by the allowlist **throw**. A write the operating system refused returns `false`, as PHP's does. A script continuing as though a write happened is the failure worth stopping. The exception is catchable:
 
@@ -166,7 +166,7 @@ Configuring it also changes how the server treats those directories:
 
 ### Execution limits
 
-The runtime enforces `memory_limit`. It measures usage by walking the live variables of every execution frame. The number counts the values the script still holds. It does not count the allocation total. The walk runs when the script calls `memory_get_usage()` and at periodic checkpoints while a limit applies; exceeding the limit raises a `RuntimeException` the script may catch. The number is an estimate of PHP value payloads, not Go allocator truth, and falls far below what PHP reports for the same script (no zval overhead).
+The runtime enforces `memory_limit`. It measures usage by walking the live variables of every execution frame. The number counts the values the script still holds. It does not count the allocation total. The walk runs when the script calls `memory_get_usage()` and at periodic checkpoints while a limit applies. Exceeding the limit raises a `RuntimeException` the script may catch. The number is an estimate of PHP value payloads, not Go allocator truth, and falls far below what PHP reports for the same script (no zval overhead).
 
 What outlives a request is outside the usage number and outside the limit: the parsed and compiled source tree, plus a `SharedMemory` store a host bound. Every request the process serves shares both and charging either to whichever script asked would report one process-lifetime cost once per request. PHP draws the same line, charging a compiled script to `opcache.memory_consumption` and not to `memory_limit`.
 
@@ -187,17 +187,17 @@ Counters => 3
 Size => 0.06 MiB
 ```
 
-`Cached Size` is the heap a precompile pass measured itself adding. The value is absent when no pass runs: the runtime never measures a cache filled request by request. Printing zero would read as a measurement. A section with nothing to report drops out, not printed as a heading over nothing. A run without a store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented, and will not be; see [Won't build](design.md#wont-build).
+`Cached Size` is the heap a precompile pass measured itself adding. The value is absent when no pass runs: the runtime never measures a cache filled request by request. Printing zero would read as a measurement. A section with nothing to report drops out, not printed as a heading over nothing. A run without a store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented, and will not be. See [Won't build](design.md#wont-build).
 
 phpscript **accepts `time_limit` and `concurrency_limit` without enforcing them**. Both keys parse and travel through to the runtime so a configuration written today keeps working when enforcement lands.
 
-`memory_limit` is a size written the way the upload limits are. `time_limit` is php.ini's `max_execution_time`, in seconds. `concurrency_limit` has no php.ini counterpart: the SAPI owns that number; here one process serves more than one site, each with its share.
+`memory_limit` is a size written the way the upload limits are. `time_limit` is php.ini's `max_execution_time`, in seconds. `concurrency_limit` has no php.ini counterpart: the SAPI owns that number. Here one process serves more than one site, each with its share.
 
 ### Sizes
 
 `max_input_vars` and `max_input_nesting_level` are php.ini's, and bound the structure the form decoder builds from an attacker-controlled body: `a[x][x][x]...` costs one array per level. See [`$_GET`](reference/predefined-variables/README.md#_get).
 
-`upload_max_filesize` and `post_max_size` are php.ini's, with php.ini's defaults. Write a size as a bare number of bytes or as a number with an `M` suffix for megabytes; phpscript rejects php.ini's `K` and `G` shorthands. A value that does not parse fails the configuration file. `0` means no limit.
+`upload_max_filesize` and `post_max_size` are php.ini's, with php.ini's defaults. Write a size as a bare number of bytes or as a number with an `M` suffix for megabytes. phpscript rejects php.ini's `K` and `G` shorthands. A value that does not parse fails the configuration file. `0` means no limit.
 
 ```yaml
 runner:
@@ -207,7 +207,7 @@ runner:
 
 ### Upload file mode
 
-An upload arrives in a temporary file readable only by the process that wrote it. `move_uploaded_file()` applies a mode when it stores one. `upload_file_mode` is that mode, written in octal the way `chmod()` takes it, with or without the leading zero. PHP has no setting for this, it leaves the mode to the process umask; naming it here means an upload lands the same way whatever the umask of the process is.
+An upload arrives in a temporary file readable only by the process that wrote it. `move_uploaded_file()` applies a mode when it stores one. `upload_file_mode` is that mode, written in octal the way `chmod()` takes it, with or without the leading zero. PHP has no setting for this, it leaves the mode to the process umask. Naming it here means an upload lands the same way whatever the umask of the process is.
 
 ```yaml
 runner:
@@ -235,9 +235,9 @@ Set `flatstack.enabled` to `true` to select the experimental flat-stack bytecode
 
 `pid_file` makes a running server reachable. [`phpscript -s reload`](cli/server.md#reloading) reads the pid back out of it. `kill -HUP $(cat ...)` reads the same pid. An empty path writes no file. A reload then has no pid to read. The file holds the decimal pid, then a newline. A clean shutdown removes the file. A file left behind means the process did not get a pid. The path resolves against the working directory. `-s reload` then needs the same `-w` as the running server. A service unit names an absolute path.
 
-The process reads every key here once, at startup. A reload re-reads the file and cannot apply any key. The reload reports which keys it skipped; see [Reloading](cli/server.md#reloading).
+The process reads every key here once, at startup. A reload re-reads the file and cannot apply any key. The reload reports which keys it skipped. See [Reloading](cli/server.md#reloading).
 
-This section, together with `telemetry` below, is the only source of the platform's options. phpscript builds them from the configuration file and the platform's `PLATFORM_SERVER_ADDR`, `PLATFORM_MODULES` and `PLATFORM_TELEMETRY_*` environment variables are not read. The `PLATFORM_DB_*` variables fall outside the platform's options and phpscript still reads them; see [Database connections](#database-connections).
+This section, together with `telemetry` below, is the only source of the platform's options. phpscript builds them from the configuration file and the platform's `PLATFORM_SERVER_ADDR`, `PLATFORM_MODULES` and `PLATFORM_TELEMETRY_*` environment variables are not read. The `PLATFORM_DB_*` variables fall outside the platform's options and phpscript still reads them. See [Database connections](#database-connections).
 
 ## HTTP modules
 
@@ -245,7 +245,7 @@ This section, together with `telemetry` below, is the only source of the platfor
 
 ## Document root
 
-`document_root` is the directory beneath the application root served over HTTP by `phpscript server`. The default is `public`; an application has no reason to change that. The key exists for a tree that already calls that directory something else.
+`document_root` is the directory beneath the application root served over HTTP by `phpscript server`. The default is `public`. An application has no reason to change that. The key exists for a tree that already calls that directory something else.
 
 ```yaml
 document_root: web
@@ -253,7 +253,7 @@ document_root: web
 
 The server runs a `.php` file found there, serves anything else as a static file, and answers a request that names a directory with that directory's `index.php`, or its `index.html` when `index.php` is missing. The entrypoint's name resolves against the application root. The document root does not affect it. Any `include` reaching above the served directory still resolves inside the project. Route scanning also skips the directory. An annotation in a file the server serves directly does not publish another unguarded route.
 
-The directory also holds a site's error pages. A file named after a status answers for it: `404.php`, `503.html`, or `error.php` for the statuses a site does not name. Writing the file is the whole of turning it on. That is a convention. No key here turns it on; see [Error pages](use-cases/error-handling.md#error-pages) for the data a page receives and the requests that get one.
+The directory also holds a site's error pages. A file named after a status answers for it: `404.php`, `503.html`, or `error.php` for the statuses a site does not name. Writing the file is the whole of turning it on. That is a convention. No key here turns it on. See [Error pages](use-cases/error-handling.md#error-pages) for the data a page receives and the requests that get one.
 
 ## Autoindex
 
@@ -265,7 +265,7 @@ autoindex: true
 
 With autoindex disabled, a directory holding neither `index.php` nor `index.html` is a 404, and the site's [error page](use-cases/error-handling.md#error-pages) answers it like any other dead link. Publishing every file below the document root is a site's decision, not a default it should reach by leaving an `index.html` out.
 
-The server generates the listing; no file needs writing or keeping in step with the directory. It names each entry, its size and when it last changed, renders images inline, and links to the directory above. The listing drops names beginning with a dot. The page styles itself. It fetches nothing from anywhere else. A listing does not tell a third party the pages a visitor browses.
+The server generates the listing. No file needs writing or keeping in step with the directory. It names each entry, its size and when it last changed, renders images inline, and links to the directory above. The listing drops names beginning with a dot. The page styles itself. It fetches nothing from anywhere else. A listing does not tell a third party the pages a visitor browses.
 
 Virtual hosts each answer for themselves: each site reads the key from its `phpscript.yml`. One domain can publish a file drop while another does not. See [Serving static files](use-cases/static-files.md).
 
@@ -313,13 +313,13 @@ $app = new Database("app");
 $reporting = new Database("reporting");
 ```
 
-phpscript reads the list into the database connection registry; it does not add the entries to the process environment or PHP variables. Actual process environment variables named `PLATFORM_DB_*` are also registered when phpscript starts.
+phpscript reads the list into the database connection registry and does not add the entries to the process environment or PHP variables. Actual process environment variables named `PLATFORM_DB_*` are also registered when phpscript starts.
 
 In a virtual host, a relative sqlite path resolves against the site's application root and `sqlite://data/app.db` in a site's `phpscript.yml` names the `data/` directory of that site whatever directory the server runs in. phpscript takes absolute paths, memory databases and `file:` URIs as written. Outside virtual hosts, a CLI run or a single application root, a relative path resolves against the process working directory.
 
 ## Mail servers
 
-`mail` is a map of named mail servers. A script names a server; the key is the name:
+`mail` is a map of named mail servers. A script names a server. The key is the name:
 
 ```yaml
 mail:
@@ -423,7 +423,7 @@ virtualhost:
     root: /srv/blog
 ```
 
-The entry says which domain reaches a site and where it lives; everything else about the site comes from its file. [Virtual hosting](use-cases/virtual-hosting.md) works a two site server through in full.
+The entry says which domain reaches a site and where it lives. Everything else about the site comes from its file. [Virtual hosting](use-cases/virtual-hosting.md) works a two site server through in full.
 
 ### The site's configuration file
 
@@ -527,7 +527,7 @@ A `phpscript.yml` found in the fixture tree marks a **suite root**, the director
 | `cache`          | `worker` | run        | How far a parsed include travels, `--cache`.               |
 | `skip_php`       |  `false` | run        | Leave the `php` binary out of a matrix run, `--skip-php`.  |
 
-The flag wins over the file. A configuration describes a tree; a flag records the operator's intent for this run. `-p 1` on a file naming four sets the run to one at a time.
+The flag wins over the file. A configuration describes a tree. A flag records the operator's intent for this run. `-p 1` on a file naming four sets the run to one at a time.
 
 ### The suite root
 
@@ -573,7 +573,7 @@ A failing `setup` fails the run before a fixture executes. The fixtures below as
 
 `teardown` runs whether the fixtures passed or failed. The run reports its failure without displacing theirs. Where one run covers more than one suite, the setups run outermost first and the teardowns in reverse.
 
-Hook output reaches the terminal only under `-v`. Without the flag a run answers with a folder table; a schema's log lines in the middle are noise.
+Hook output reaches the terminal only under `-v`. Without the flag a run answers with a folder table. A schema's log lines in the middle are noise.
 
 These are configuration keys, separate from the `@startup` annotation. Annotations are server surface: `phpscript server` scans `@route`, `@startup` and `@schedule` out of a source tree and runs them per virtual host or per application root depending on its configuration. A fixture run is neither of those scopes, and nothing holds a suite to a comment in a file that a walk happened to reach. The two also do different work: a server's `@startup` applies the schema an application boots with, where a suite's `setup` also seeds the rows its fixtures assert against.
 
@@ -594,4 +594,4 @@ The setup hook and the fixtures below share one connection pool. Two pools on on
 
 A suite's `mail` block names the servers its fixtures may open, by the same replacing rule. A fixture cannot name a server its folder did not configure. `tests/fixtures/mail` is the worked example.
 
-A fixture run delivers nothing. Constructing a `Mail` is a name lookup and dials nothing; only `send()` reaches a server. A fixture run has no server to dial. A fixture about resolution reads only the names from the block.
+A fixture run delivers nothing. Constructing a `Mail` is a name lookup and dials nothing. Only `send()` reaches a server. A fixture run has no server to dial. A fixture about resolution reads only the names from the block.

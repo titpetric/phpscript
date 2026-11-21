@@ -32,7 +32,7 @@ The order is the request's. Two limits bound a hostile query: `max_input_vars` (
 
 ## `$_POST`
 
-Contains parsed form-body values, last one wins. The decoder reads both body encodings a browser form produces: `application/x-www-form-urlencoded` and `multipart/form-data`. The value parts of a multipart body land here; its file parts land in `$_FILES`.
+Contains parsed form-body values, last one wins. The decoder reads both body encodings a browser form produces: `application/x-www-form-urlencoded` and `multipart/form-data`. The value parts of a multipart body land here, its file parts in `$_FILES`.
 
 The decoder reads field names as `$_GET` does. A repeating form row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES` is the exception: its entries stay keyed by the literal field name. A file input named `docs[]` arrives as a single entry `docs[]`, without nesting.
 
@@ -58,17 +58,17 @@ if ($file["error"] === 0) {
 
 A field named `files[]` collects every file sent under it. The entry holds one array per key, with each array listing the files in order: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent for that field, as a repeated form value assigns over the earlier one.
 
-The temporary copy lives for the duration of one request; a host handler removes it after writing the response. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce. `is_uploaded_file()` follows the same rule. Both arrive with the rest of the filesystem shims and the destination resolves against the same root.
+The temporary copy lives for the duration of one request. A host handler removes it after writing the response. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce. `is_uploaded_file()` follows the same rule. Both arrive with the rest of the filesystem shims and the destination resolves against the same root.
 
-A stored upload takes the `upload_file_mode` of the runner, `0644` by default, because the temporary copy it came from is readable by nobody but this process. See [Configuration](../../configuration.md#upload-file-mode).
+A stored upload takes the `upload_file_mode` of the runner, `0644` by default, because the temporary copy it came from is readable only by this process. See [Configuration](../../configuration.md#upload-file-mode).
 
 ### Size limits
 
-`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them; see [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored, its entry holds `UPLOAD_ERR_INI_SIZE`, and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all; `$_POST` and `$_FILES` are both empty.
+`upload_max_filesize` and `post_max_size` are configuration keys of the runner, written and defaulted as php.ini writes them. See [Configuration](../../configuration.md#sizes). A file part over `upload_max_filesize` is not stored, its entry holds `UPLOAD_ERR_INI_SIZE`, and the rest of the form still reaches the script. A body over `post_max_size` is not parsed at all. `$_POST` and `$_FILES` are both empty.
 
 An entry for a part nothing stored, for any error code, describes only the client's input: `name` and `full_path` hold it, `type` and `tmp_name` are empty and `size` is `0`.
 
-Neither limit is catchable: they happen before the script runs. The runner reports why to the Go host through `Runtime.RecordError`; see [Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
+Neither limit is catchable: they happen before the script runs. The runner reports why to the Go host through `Runtime.RecordError`. See [Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
 
 PHP's per-form `MAX_FILE_SIZE` field is unavailable. The `UPLOAD_ERR_FORM_SIZE` and `UPLOAD_ERR_PARTIAL` constants exist, though no upload produces either one.
 

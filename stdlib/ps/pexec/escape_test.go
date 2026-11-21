@@ -53,10 +53,9 @@ func TestEscapeshellarg(t *testing.T) {
 	}
 }
 
-// TestLastLine covers what system() answers with. The output has already gone
-// to the page by then and lastLine keeps the last line as the stream passes
-// and buffers nothing before it, and a stream that ended without a newline
-// still has a last line.
+// TestLastLine covers what system() answers with. The output has already
+// reached the page. lastLine keeps only the last line as the stream passes, and
+// a stream that ends without a newline still has one.
 func TestLastLine(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

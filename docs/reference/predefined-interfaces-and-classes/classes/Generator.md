@@ -6,7 +6,7 @@
 
 Objects returned from generators, implementing [Iterator](Iterator.md).
 
-A generator is a function containing `yield`. Calling it returns a Generator and runs no part of the body; the body advances as the caller reads the sequence. A script cannot construct one with `new`.
+A generator is a function containing `yield`. Calling it returns a Generator and runs no part of the body. The body advances as the caller reads the sequence. A script cannot construct one with `new`.
 
 ## Class synopsis
 

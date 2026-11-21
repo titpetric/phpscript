@@ -23,7 +23,7 @@ $ratio = 1.5;
 $name = "Ada";
 ```
 
-A script writes an integer literal in any of PHP's bases; the underscore separator groups digits in each base. A float takes a fractional part, an exponent, or both. An integer literal too large for an int becomes a float, as in PHP.
+A script writes an integer literal in any of PHP's bases, and the underscore separator groups digits in each base. A float takes a fractional part, an exponent, or both. An integer literal too large for an int becomes a float, as in PHP.
 
 ```php
 $decimal = 1_000_000;
@@ -36,7 +36,7 @@ $float = 1.5e3;     // 1500.0
 
 ## Strings
 
-A single-quoted literal holds the characters between the quotes; only `\'` and `\\` are escapes. A double-quoted literal decodes the C-style escapes and the numeric forms (`\x41`, `\101`, `\u{1F600}`), and evaluates the variables written into it.
+A single-quoted literal holds the characters between the quotes, and only `\'` and `\\` are escapes. A double-quoted literal decodes the C-style escapes and the numeric forms (`\x41`, `\101`, `\u{1F600}`), and evaluates the variables written into it.
 
 Two spellings embed an expression. Simple syntax is a bare `$name`, a `$name[key]` subscript, or one level of `$name->prop`:
 
@@ -58,9 +58,9 @@ echo "deep {$rows['a']['b']}\n";
 echo "call {$user->label()}\n";
 ```
 
-The braces close on the matching brace; a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A dollar sign that starts no name is literal text; `\$` is a dollar; a single-quoted literal never interpolates. The runtime converts each embedded expression to a string the way `.` converts the expression. An interpolated literal and the matching concatenation produce the same string.
+The braces close on the matching brace, and a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A dollar sign that starts no name is literal text, `\$` is a dollar, and a single-quoted literal never interpolates. The runtime converts each embedded expression to a string the way `.` converts the expression. An interpolated literal and the matching concatenation produce the same string.
 
-The forms `${name}` and `${name[$k]}` read as a variable reference. The `${expression}` form does not: in PHP it names the variable the expression returns, which needs `$$name`. That spelling is a decision against. PHP deprecated both spellings in 8.2, removes them in 9; `{$name}` is the form that keeps working.
+The forms `${name}` and `${name[$k]}` read as a variable reference. The `${expression}` form does not: in PHP it names the variable the expression returns, which needs `$$name`. That spelling is a decision against. PHP deprecated both spellings in 8.2 and removes them in 9. `{$name}` keeps working.
 
 ## Arrays
 
@@ -74,7 +74,7 @@ $extended = {"name" => "Ada"}; // phpscript only
 
 ### Keys
 
-An array key is an int or a string; a value a script writes between the brackets becomes one of the two, as in PHP. `null` is the empty string; `true`, `false` are `1`, `0`; a float truncates toward zero: `$a[1.7]` and `$a[1]` are a single entry.
+An array key is an int or a string, and a value a script writes between the brackets becomes one of the two, as in PHP. `null` is the empty string, `true` and `false` are `1` and `0`, and a float truncates toward zero: `$a[1.7]` and `$a[1]` are a single entry.
 
 A string becomes an int key only when it spells that integer canonically, which means it reads back identically from the integer it would become:
 
@@ -94,6 +94,6 @@ So `$a["08"]` and `$a[8]` are two entries. The comparison is exact: a form field
 
 phpscript implements the casts `(bool)`, `(boolean)`, `(int)`, `(integer)`, `(float)`, `(double)`, `(real)`, `(string)`, `(array)` and `(object)`. PHP's `(unset)` cast is not implemented.
 
-`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits; a scalar lands under `scalar`, null produces an empty object, and an object comes back unchanged. `(array)` reads the properties out in the object's own read order. A digit-named property is an integer key again; a cast round trip of a list is a list.
+`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits: a scalar lands under `scalar`, null produces an empty object, and an object comes back unchanged. `(array)` reads the properties out in the object's own read order. A digit-named property is an integer key again, and a cast round trip of a list is a list.
 
-Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array, because arrays are values there; here they are handles, and source and result share a nested array. `(array)` uses the plain property name where PHP prefixes a private or protected one with the declaring class; phpscript enforces no visibility; a key holding a NUL byte is a key no script could index.
+Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array, because arrays are values there, whereas here they are handles, and source and result share a nested array. `(array)` uses the plain property name where PHP prefixes a private or protected one with the declaring class, because phpscript enforces no visibility. A key holding a NUL byte is a key no script could index.

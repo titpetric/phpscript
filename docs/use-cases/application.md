@@ -6,7 +6,7 @@ The finished application is [demos/example](../../demos/example). Every snippet 
 
 ## 1. The layout
 
-phpscript serves an application directory. Only `public/` is reachable over HTTP; everything else is code the server loads but never exposes:
+phpscript serves an application directory. Only `public/` is reachable over HTTP. Everything else is code the server loads but never exposes:
 
 ```text
 example/
@@ -41,7 +41,7 @@ env:
   - "PLATFORM_DB_BOOKMARKS=sqlite://bookmarks.db"
 ```
 
-The part after `PLATFORM_DB_` is the connection name PHP names, lowercased: this one is `"bookmarks"`. Pass the file with `-f`; by default, phpscript uses its embedded defaults. See [Configuration](../configuration.md).
+The part after `PLATFORM_DB_` is the connection name PHP names, lowercased: this one is `"bookmarks"`. Pass the file with `-f`, since phpscript otherwise uses its embedded defaults. See [Configuration](../configuration.md).
 
 ## 3. Create the schema
 
@@ -58,7 +58,7 @@ CREATE TABLE bookmarks (
 INSERT INTO bookmarks (title, url) VALUES ('phpscript', 'https://github.com/titpetric/phpscript');
 ```
 
-The server runs a file with the `@startup` annotation to completion before it listens; that file applies them:
+The server runs a file with the `@startup` annotation to completion before it listens. That file applies them:
 
 ```php
 <?php
@@ -75,7 +75,7 @@ Migration files are append only. [Run migrations](database.md#run-migrations) co
 
 ## 4. Share setup between endpoints
 
-Every endpoint needs the same database handle and template engine. One file holds both; each endpoint includes it. `bootstrap.php` is not routed and is outside `public/`. No request reaches it directly:
+Every endpoint needs the same database handle and template engine. One file holds both, and each endpoint includes it. `bootstrap.php` is not routed and is outside `public/`. No request reaches it directly:
 
 ```php
 <?php
@@ -255,7 +255,7 @@ Write the suite so it can run twice. No case depends on which row ids exist: eac
 
 A named capture group in `extracts` becomes a variable for later steps. The suite cleans up after itself. It stays independent of earlier runs.
 
-Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead; see [Testing](../testing.md).
+Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead. See [Testing](../testing.md).
 
 ## Where to go next
 

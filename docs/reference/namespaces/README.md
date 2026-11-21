@@ -50,10 +50,10 @@ class Bootstrap
 }
 ```
 
-The parser accepts both `use function` and `use const`; aliasing works the same way.
+The parser accepts both `use function` and `use const`. Aliasing works the same way.
 
 ## Autoloading
 
-Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching the callable's name; identity does not matter. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
+Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching the callable's name. Identity does not matter. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
 
-phpscript interprets composer's generated autoloader as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. No part of composer is special-cased in the runtime; see [demos/dbadmin](../../../demos/dbadmin) for a working application.
+phpscript interprets composer's generated autoloader as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. No part of composer is special-cased in the runtime. See [demos/dbadmin](../../../demos/dbadmin) for a working application.

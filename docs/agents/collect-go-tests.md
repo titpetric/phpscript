@@ -2,7 +2,7 @@
 
 Pass/fail and per-package duration from `go test`, including the tests that gate the build on an allocation count.
 
-Read this when the artifact needed is a test run. It runs within the contract in [README.md](README.md); that document is not restated here.
+Read this when the artifact needed is a test run. It runs within the contract in [README.md](README.md), not restated here.
 
 ## What this collects
 
@@ -22,7 +22,7 @@ set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 
 Exported, not sourced. `. ./.env.testing` does not work: three of the four values hold an unquoted `&`, the fourth unquoted parentheses, and bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser and `env: include: .env.testing` works where the shell does not. Leave the file alone.
 
-The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression; report it as a missing precondition.
+The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression. Report it as a missing precondition.
 
 `-count 1` so the test cache answers from this run, never an earlier one.
 
@@ -83,11 +83,11 @@ The ranking:
 gotestsum tool slowest --jsonfile bench-gotest-after.json
 ```
 
-`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` or `connection_aborted` against the real clock. Report it as excluded; the slowest-package label points the reading at a sleep.
+`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` or `connection_aborted` against the real clock. Report it as excluded. The slowest-package label points the reading at a sleep.
 
 `tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/ps/internals` and `stdlib/ps/http` run real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
 
-Three tests fail when they regress; none of them skips. A failure in one is a finding:
+Three tests fail when they regress. None of them skips. A failure in one is a finding:
 
 | Test                                       | Where                          | What a failure means                                                                                     |
 |--------------------------------------------|--------------------------------|----------------------------------------------------------------------------------------------------------|

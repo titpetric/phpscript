@@ -2,13 +2,13 @@
 
 The phpscript runtime contains a routing helper that turns PHP files into `net/http` handlers. It keeps the server shell and shared services in Go, while PHP owns small endpoint behavior.
 
-When `routes.enabled` is true in the active configuration, `phpscript server [directory]` scans the PHP source tree for `// @route` comments and registers those files as HTTP handlers. Without a directory argument it scans the current directory. Pass a custom configuration with `-f config.yml`; otherwise it reads the embedded defaults.
+When `routes.enabled` is true in the active configuration, `phpscript server [directory]` scans the PHP source tree for `// @route` comments and registers those files as HTTP handlers. Without a directory argument it scans the current directory. Pass a custom configuration with `-f config.yml`. Otherwise it reads the embedded defaults.
 
 ```sh
 phpscript server ./my-app
 ```
 
-The server also serves only the application's `public/` directory directly. Route files belong outside `public/`; the scan skips annotations under `public/`.
+The server also serves only the application's `public/` directory directly. Route files belong outside `public/`. The scan skips annotations under `public/`.
 
 ```yaml
 routes:
@@ -38,7 +38,7 @@ $shm = new SharedMemory;
 echo $shm->get($_REQUEST["key"]);
 ```
 
-A route without a method registers both GET and POST. The annotation spells explicit methods such as PUT or DELETE. HEAD and OPTIONS get no specific handling; bind them explicitly.
+A route without a method registers both GET and POST. The annotation spells explicit methods such as PUT or DELETE. HEAD and OPTIONS get no specific handling. Bind them explicitly.
 
 ### Path parameters
 

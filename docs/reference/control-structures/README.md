@@ -26,7 +26,7 @@ if ($foo) {
 }
 ```
 
-An `if` body requires braces. Prefer parentheses for PHP-portable source; phpscript also accepts `if $foo { ... }`.
+An `if` body requires braces. Prefer parentheses for PHP-portable source. phpscript also accepts `if $foo { ... }`.
 
 ## Loops
 
@@ -52,7 +52,7 @@ do {
 
 `foreach` assignment targets may be variables, indexes, or properties. `list(...)` destructuring works in ordinary assignment but not as a `foreach` target.
 
-`foreach ($a as &$v)` binds the element itself; writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for the cost of the two spellings and where they stop matching PHP.
+`foreach ($a as &$v)` binds the element itself. Writing to `$v` edits `$a`. Only the value half may take `&`. A key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for the cost of the two spellings and where they stop matching PHP.
 
 ## Switch
 

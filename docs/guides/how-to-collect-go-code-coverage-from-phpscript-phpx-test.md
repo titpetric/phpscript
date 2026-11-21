@@ -64,7 +64,7 @@ GOCOVERDIR=cover/phpscript-test bin/phpscript-test test --matrix ./tests/...
 ls cover/phpscript-test
 ```
 
-The directory holds two kinds of file: `covmeta.<hash>`, which describes the program; `covcounters.<hash>.<pid>.<time>`, a file per process that ran. Run the binary again with the same variable and more counter files appear. The runtime overwrites no file. One directory holds a whole pipeline of runs.
+The directory holds two kinds of file: `covmeta.<hash>`, which describes the program, and `covcounters.<hash>.<pid>.<time>`, a file per process that ran. Run the binary again with the same variable and more counter files appear. The runtime overwrites no file. One directory holds a whole pipeline of runs.
 
 If the variable is not set the binary still runs and prints:
 

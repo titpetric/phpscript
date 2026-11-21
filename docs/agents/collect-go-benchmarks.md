@@ -2,7 +2,7 @@
 
 `ns/op`, `B/op` and `allocs/op` from the Go benchmarks, as benchstat input.
 
-Read this when the artifact needed is a benchmark sweep. It follows the contract in [README.md](README.md); that document is not restated here.
+Read this when the artifact needed is a benchmark sweep. It follows the contract in [README.md](README.md), not restated here.
 
 ## What this collects
 
@@ -14,7 +14,7 @@ No percentiles: a Go benchmark averages its iterations. No custom metrics, becau
 
 The contract's lock, private binary and `CGO_ENABLED=0` all apply. A sweep takes minutes of pinned CPU and is out of the default pipeline.
 
-No other work may run on the box. The lock enforces that against other agents; the operator enforces the rest.
+No other work may run on the box. The lock enforces that against other agents. The operator enforces the rest.
 
 ## The run
 

@@ -35,7 +35,7 @@ Short open tags do not depend on PHP configuration:
 <? echo "Hello"; ?>
 ```
 
-`<?= ... ?>` is not implemented; use `<?php echo ...; ?>`.
+`<?= ... ?>` is not implemented. Use `<?php echo ...; ?>`.
 
 ## Escaping from HTML
 

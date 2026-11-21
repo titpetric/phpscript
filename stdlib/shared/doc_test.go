@@ -97,7 +97,7 @@ func TestParsePairs(t *testing.T) {
 // through this decoder. The nested array a request produces matches what
 // parse_str() produces for the same bytes. Decoding runs before parseKey reads
 // the brackets. `k%5Ba%20b%5D=1` nests beneath the key `a b`. A plus in a
-// top-level name is a space by then, and mangles to an underscore.
+// top-level name decodes to a space and mangles to an underscore.
 func TestFormDecodingIsOneImplementation(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

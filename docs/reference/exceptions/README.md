@@ -20,11 +20,11 @@ try {
 }
 ```
 
-The catch variable receives the thrown object. `getMessage()` and `getCode()` report its constructor arguments; `get_class()` reports the class the `throw` named.
+The catch variable receives the thrown object. `getMessage()` and `getCode()` report its constructor arguments. `get_class()` reports the class the `throw` named.
 
 ## Which clause takes it
 
-Every throwable class is a single type recording the constructed name; the runtime answers a clause from that name. No hierarchy descends:
+Every throwable class is a single type recording the constructed name. The runtime answers a clause from that name. No hierarchy descends:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|
@@ -34,7 +34,7 @@ Every throwable class is a single type recording the constructed name; the runti
 | `Error`                                         | any class whose name ends in `Error`                                         |
 | any other name                                  | that class name, case-insensitively                                          |
 
-The runtime tries clauses in source order; a union matches either alternative:
+The runtime tries clauses in source order. A union matches either alternative:
 
 ```php
 try {
@@ -51,8 +51,8 @@ The suffix separates a fault in the program from a condition it raised, and agre
 Three things follow from the absent hierarchy, and differ from PHP:
 
 - `catch (LogicException $e)` does not take an `InvalidArgumentException`.
-- `catch (Exception $e)` takes a user-defined class named `NotFound`; `catch (Error $e)` takes one named `MyError`.
-- `$e instanceof Throwable` is false. `Throwable` is a PHP built-in interface; no declaration in the program lists it.
+- `catch (Exception $e)` takes a user-defined class named `NotFound`. `catch (Error $e)` takes one named `MyError`.
+- `$e instanceof Throwable` is false. `Throwable` is a PHP built-in interface. No declaration in the program lists it.
 
 Where a catch must find a throw, name the same class at both ends, or catch `Throwable` and branch on `get_class($e)`.
 

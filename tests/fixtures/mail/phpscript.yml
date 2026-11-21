@@ -4,9 +4,9 @@
 #
 # mail replaces rather than extends, the rule a virtual host is held to. The
 # fixtures here name default and marketing only. Nothing is delivered: `new
-# Mail` is a name lookup; a fixture run has no mail server to dial. marketing
-# carries a password because the fixture that proves a script cannot read one
-# back is only worth anything when a password exists to read.
+# Mail` is a name lookup, and a fixture run has no mail server to dial.
+# marketing holds a password because the fixture that proves a script cannot
+# read one back is only worth anything when a password exists to read.
 mail:
   default:
     host: mail.example.test

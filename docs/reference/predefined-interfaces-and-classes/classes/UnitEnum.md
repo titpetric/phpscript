@@ -28,6 +28,6 @@ public static function cases(): array
 
 ## Status
 
-- phpscript lacks `UnitEnum`; the name is not declared.
-- Enumerations are unavailable: `enum` is not a keyword here; the engine has no enum to apply the interface to.
+- phpscript lacks `UnitEnum` and declares no such name.
+- Enumerations are unavailable: `enum` is not a keyword here. The engine has no enum to apply the interface to.
 - Declare class constants and check a value against the constants. The runtime checks a class constant where a script reads the constant, and resolves `Class::NAME`.
