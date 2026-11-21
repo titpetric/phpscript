@@ -26,7 +26,7 @@ func registerFiles(rt *runner.Runtime) {
 	rt.RegisterFunc("HTTP\\StripPrefix", stripPrefix("HTTP\\StripPrefix"))
 }
 
-// RegisterGoNames installs the same three names in a Go area, as functions.
+// RegisterGoNames installs the file-serving names in a Go area, as functions.
 func RegisterGoNames(rt *runner.Runtime, area string) {
 	// Runtime\Go\Net\HTTP\ServeFile answers $r with the file at $path, with the content type, the byte range and the conditional headers net/http writes.
 	rt.RegisterFunc(area+`\ServeFile`, serveFile(rt, area+`\ServeFile`))

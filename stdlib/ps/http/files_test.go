@@ -185,7 +185,7 @@ define("MUX", $mux);`)
 	}
 }
 
-// TestRegisterGoNames covers the same three names in the Go runtime, which an
+// TestRegisterGoNames covers the file-serving names in the Go runtime, which an
 // `import "net/http"` reaches by the spelling go uses. FileServer answers as a
 // function there and as a class in Runtime\PS\HTTP, because that is what each
 // language spells.

@@ -110,7 +110,7 @@ $mux->handle("GET /assets/", HTTP\StripPrefix("/assets/", new HTTP\FileServer("p
 
 That route runs no PHP per request and takes no worker: the mux registers the Go handler itself and that handler answers. The mux refuses a Go handler under a `use` middleware, on the line the route is on, because `use` calls a middleware with the handler and no script can call a Go value.
 
-A path resolves against the source filesystem the script itself reads, and a name climbing out of the root resolves back under the root: `../../etc/passwd` names a file of the tree or no file at all. The tree is the script's own: a `FileServer` over the root publishes the sources under it, and the directory to name is the one holding what the server is for. `Runtime\PS\HTTP\Files` is the area, and a host that selects areas leaves it out to register no file serving at all.
+A path resolves against the source filesystem the script itself reads, and a name climbing out of the root resolves back under the root: `../../etc/passwd` names a file of the tree or no file at all. The tree is the script's own: `FileServer` rooted at the source tree publishes the sources, and the directory to name is the one holding what the server is for. `Runtime\PS\HTTP\Files` is the area, and a host that selects areas leaves it out to register no file serving at all.
 
 `FileServer` lists a directory holding no `index.html`, as `net/http` does.
 
