@@ -157,13 +157,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	if coverErr := writeCoverage(collector, globals, root); coverErr != nil {
 		return coverErr
 	}
-	if runErr != nil {
-		if exitErr, ok := runner.IsExit(runErr); ok {
-			os.Exit(exitErr.Code)
-		}
-		return runErr
-	}
-	return nil
+	return runErr
 }
 
 // writeCoverage writes the profile and --cover report to stderr, outside the script's control.

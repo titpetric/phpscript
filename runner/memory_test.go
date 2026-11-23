@@ -17,10 +17,10 @@ func TestDeepSize(t *testing.T) {
 
 	outer := model.NewArray()
 	outer.Append(inner)
-	once := DeepSize(outer, make(visitedSet))
+	once := DeepSize(outer, newVisitedSet())
 
 	outer.Append(inner)
-	twice := DeepSize(outer, make(visitedSet))
+	twice := DeepSize(outer, newVisitedSet())
 	if twice <= once {
 		t.Errorf("a second entry did not raise the size: %d, want more than %d", twice, once)
 	}
@@ -28,14 +28,14 @@ func TestDeepSize(t *testing.T) {
 	shared := model.NewArray()
 	shared.Append(inner)
 	shared.Append(inner)
-	visited := make(visitedSet)
-	if got := DeepSize(shared, visited); got >= DeepSize(inner, make(visitedSet))*2+64 {
+	visited := newVisitedSet()
+	if got := DeepSize(shared, visited); got >= DeepSize(inner, newVisitedSet())*2+64 {
 		t.Errorf("the shared array was counted twice: %d", got)
 	}
 
 	cyclic := model.NewArray()
 	cyclic.Append(cyclic)
-	if got := DeepSize(cyclic, make(visitedSet)); got == 0 {
+	if got := DeepSize(cyclic, newVisitedSet()); got == 0 {
 		t.Error("a self-referential array measured nothing")
 	}
 }
@@ -56,7 +56,7 @@ func TestDeepSizeContainers(t *testing.T) {
 		{"a nil object", nilObject},
 		{"nil", nil},
 	} {
-		if got := DeepSize(tc.value, make(visitedSet)); got != 0 {
+		if got := DeepSize(tc.value, newVisitedSet()); got != 0 {
 			t.Errorf("%s costs %d, want 0", tc.name, got)
 		}
 	}
@@ -64,12 +64,12 @@ func TestDeepSizeContainers(t *testing.T) {
 	obj := model.NewObject(&model.Class{Name: "Row"})
 	obj.SetProp("name", "ada")
 	bare := model.NewObject(&model.Class{Name: "Row"})
-	if DeepSize(obj, make(visitedSet)) <= DeepSize(bare, make(visitedSet)) {
+	if DeepSize(obj, newVisitedSet()) <= DeepSize(bare, newVisitedSet()) {
 		t.Error("a property added nothing to the measured size of an object")
 	}
 
 	nested := map[string]any{"rows": []any{"a", "b"}}
-	if DeepSize(nested, make(visitedSet)) <= DeepSize(map[string]any{}, make(visitedSet)) {
+	if DeepSize(nested, newVisitedSet()) <= DeepSize(map[string]any{}, newVisitedSet()) {
 		t.Error("the entries added nothing to the measured size of a map")
 	}
 }
@@ -105,7 +105,7 @@ func TestEstimateValueSize(t *testing.T) {
 	leaf := model.NewArray()
 	leaf.Append("abcdefghijklmnop")
 	deep.Append(leaf)
-	if EstimateValueSize(deep) >= DeepSize(deep, make(visitedSet)) {
+	if EstimateValueSize(deep) >= DeepSize(deep, newVisitedSet()) {
 		t.Error("the shallow estimate is not below the walk on a nested array")
 	}
 }

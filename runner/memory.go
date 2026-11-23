@@ -17,7 +17,18 @@ const (
 )
 
 // visitedSet dedups containers by pointer identity during a deep walk.
-type visitedSet map[any]struct{}
+type visitedSet struct {
+	arrays  map[*model.Array]struct{}
+	objects map[*model.Object]struct{}
+}
+
+// newVisitedSet returns an empty visited set.
+func newVisitedSet() visitedSet {
+	return visitedSet{
+		arrays:  map[*model.Array]struct{}{},
+		objects: map[*model.Object]struct{}{},
+	}
+}
 
 // DeepSize estimates the bytes held by a PHP value, recursing into
 // script-owned containers. A container already in visited costs nothing.
@@ -29,10 +40,10 @@ func DeepSize(v any, visited visitedSet) int64 {
 		if x == nil {
 			return 0
 		}
-		if _, seen := visited[x]; seen {
+		if _, seen := visited.arrays[x]; seen {
 			return 0
 		}
-		visited[x] = struct{}{}
+		visited.arrays[x] = struct{}{}
 		total := int64(64)
 		x.Range(func(key, val any) bool {
 			total += DeepSize(key, visited) + DeepSize(val, visited)
@@ -43,10 +54,10 @@ func DeepSize(v any, visited visitedSet) int64 {
 		if x == nil {
 			return 0
 		}
-		if _, seen := visited[x]; seen {
+		if _, seen := visited.objects[x]; seen {
 			return 0
 		}
-		visited[x] = struct{}{}
+		visited.objects[x] = struct{}{}
 		total := int64(64)
 		for k, val := range x.Props {
 			total += 16 + int64(len(k)) + DeepSize(val, visited)

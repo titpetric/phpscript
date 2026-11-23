@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -29,11 +30,11 @@ type Collector struct {
 	files map[string]bool
 }
 
-// coverStmt holds one registered statement's file, line range and execution count.
+// coverStmt holds one registered statement's file, line range and atomic execution count.
 type coverStmt struct {
 	file  string
 	span  model.SourceSpan
-	count int
+	count atomic.Int64
 }
 
 // Block holds a line-range entry of a coverage profile. Lines only: the parser
@@ -179,11 +180,9 @@ func (c *Collector) Functions() []FuncSpan {
 // Hit charges one execution to a registered statement. An unregistered
 // statement (a declaration, a program built without the parser) is not counted.
 func (c *Collector) Hit(s model.Stmt) {
-	c.mu.Lock()
 	if entry, ok := c.stmts[s]; ok {
-		entry.count++
+		entry.count.Add(1)
 	}
-	c.mu.Unlock()
 }
 
 // Blocks renders the collected counts as profile entries, sorted by file and
@@ -207,8 +206,8 @@ func (c *Collector) Blocks() []Block {
 			merged[k] = block
 		}
 		block.NumStmt++
-		if entry.count > block.Count {
-			block.Count = entry.count
+		if count := int(entry.count.Load()); count > block.Count {
+			block.Count = count
 		}
 	}
 
