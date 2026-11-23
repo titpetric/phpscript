@@ -90,10 +90,14 @@ func (a *Array) Set(key, val any) {
 		}
 		a.promote()
 	}
-	if _, ok := a.values[key]; !ok {
+	// One map write and a length check in place of a lookup and a write: the
+	// length moves exactly when the key is new, which is when the order slice
+	// takes it.
+	size := len(a.values)
+	a.values[key] = val
+	if len(a.values) != size {
 		a.keys = append(a.keys, key)
 	}
-	a.values[key] = val
 	if i, ok := key.(int64); ok && i >= a.nextID {
 		a.nextID = i + 1
 	}

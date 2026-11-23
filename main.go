@@ -33,6 +33,7 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/ps/database"
 )
 
@@ -47,6 +48,12 @@ func main() {
 		os.Exit(code)
 	}
 	err := start()
+	// A script's exit() ends the process with its code after the command's
+	// deferred work ran: the CPU profile is stopped and the heap profile is
+	// written, and neither happens behind an os.Exit inside the run.
+	if exitErr, ok := runner.IsExit(err); ok {
+		os.Exit(exitErr.Code)
+	}
 	switch {
 	case err == nil:
 	case errors.Is(err, server.ErrReported):

@@ -36,7 +36,7 @@ func (rt *Runtime) Precompiled() bool { return rt.opts.Precompile }
 // AccountRequest folds host-owned request values into the baseline the memory
 // walk starts from, as an estimate only.
 func (rt *Runtime) AccountRequest(values ...any) {
-	visited := make(visitedSet)
+	visited := newVisitedSet()
 	for _, v := range values {
 		rt.memBase += DeepSize(v, visited)
 	}
@@ -48,7 +48,7 @@ func (rt *Runtime) AccountRequest(values ...any) {
 // more than one variable once and terminates cycles. The result refreshes the
 // cached usage and the peak.
 func (rt *Runtime) MemoryWalk() int64 {
-	visited := make(visitedSet)
+	visited := newVisitedSet()
 	total := runtimeBaseline + rt.memBase
 	for _, scope := range rt.frames {
 		for name, val := range scope.vars {
