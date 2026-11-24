@@ -2,6 +2,8 @@
 
 The `phpscript` project has similar use cases to PHP. With implicit error checking and source code evaluation that matches the experience of PHP, it can be pretty much used in the same ways as you would use PHP.
 
+- [Install and run phpscript](install.md)
+- [Naming conventions](naming-conventions.md)
 - [Building an application](application.md)
 - [Usage of Go bindings](bindings.md)
 - [Custom entrypoints](entrypoints.md)
