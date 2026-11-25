@@ -36,6 +36,7 @@ type Runtime struct {
 	entrypoint string
 	observers  []Observer
 	funcs      map[string]*funcEntry
+	funcsFold  map[string]*funcEntry
 	userFns    map[string]struct{}
 	// funcSites records the site of each user function declaration and a
 	// second one can name the first the way PHP's fatal error does. userFns
@@ -50,6 +51,12 @@ type Runtime struct {
 	// replays onto a sibling so it declares the same symbols.
 	hoisted map[*model.Program]string
 	classes map[string]*model.Class
+	// classesFold, interfacesFold and constructorsFold key the same names
+	// case-insensitively, so a lookup pays a map access rather than a scan of
+	// the table. A name registers in both; see lookupClass.
+	classesFold      map[string]*model.Class
+	interfacesFold   map[string]*model.InterfaceDecl
+	constructorsFold map[string]*funcEntry
 
 	// imported records the namespaces a program on this runtime opted into
 	// with `use Namespace`, and a second import of one installs it no
@@ -358,30 +365,34 @@ func New(w io.Writer, opts Options) *Runtime {
 	}
 	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
-		out:          w,
-		Env:          ScriptEnvironment(opts.Env),
-		opts:         opts,
-		profile:      ^Profile(0),
-		includeCache: NewIncludeCache(),
-		funcs:        make(map[string]*funcEntry, stdlibFuncs),
-		userFns:      map[string]struct{}{},
-		funcSites:    map[string]FuncSite{},
-		hoisted:      map[*model.Program]string{},
-		workDirBase:  opts.WorkDir,
-		classes:      make(map[string]*model.Class, stdlibClasses),
-		interfaces:   map[string]*model.InterfaceDecl{},
-		constructors: make(map[string]*funcEntry, stdlibClasses),
-		includePath:  ".",
-		ctx:          context.Background(),
-		host:         context.Background(),
-		client:       context.Background(),
-		globals:      map[string]any{},
-		constants:    make(map[string]any, stdlibConsts),
-		classConsts:  map[string]map[string]any{},
-		classStatics: map[string]map[string]any{},
-		funcStatics:  map[*model.StaticVar]map[string]any{},
-		exprCache:    NewExprCache(),
-		sourceSpans:  map[model.Stmt]model.SourceSpan{},
+		out:              w,
+		Env:              ScriptEnvironment(opts.Env),
+		opts:             opts,
+		profile:          ^Profile(0),
+		includeCache:     NewIncludeCache(),
+		funcs:            make(map[string]*funcEntry, stdlibFuncs),
+		funcsFold:        make(map[string]*funcEntry, stdlibFuncs),
+		userFns:          map[string]struct{}{},
+		funcSites:        map[string]FuncSite{},
+		hoisted:          map[*model.Program]string{},
+		workDirBase:      opts.WorkDir,
+		classes:          make(map[string]*model.Class, stdlibClasses),
+		classesFold:      make(map[string]*model.Class, stdlibClasses),
+		interfaces:       map[string]*model.InterfaceDecl{},
+		interfacesFold:   map[string]*model.InterfaceDecl{},
+		constructors:     make(map[string]*funcEntry, stdlibClasses),
+		constructorsFold: make(map[string]*funcEntry, stdlibClasses),
+		includePath:      ".",
+		ctx:              context.Background(),
+		host:             context.Background(),
+		client:           context.Background(),
+		globals:          map[string]any{},
+		constants:        make(map[string]any, stdlibConsts),
+		classConsts:      map[string]map[string]any{},
+		classStatics:     map[string]map[string]any{},
+		funcStatics:      map[*model.StaticVar]map[string]any{},
+		exprCache:        NewExprCache(),
+		sourceSpans:      map[model.Stmt]model.SourceSpan{},
 		helpers: map[string]func(...any) (any, error){
 			"__bool":       adapt(phpTruthy),
 			"__concat":     adapt(helperConcat),
@@ -454,13 +465,16 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	// binding it must not shadow.
 	for name := range rt.userFns {
 		delete(rt.funcs, name)
+		delete(rt.funcsFold, foldName(name))
 	}
 	clear(rt.userFns)
 	clear(rt.funcSites)
 	clear(rt.hoisted)
 	rt.included = nil
 	clear(rt.classes)
+	clear(rt.classesFold)
 	clear(rt.interfaces)
+	clear(rt.interfacesFold)
 }
 
 // resetExecution drops the output of one program, keeping declarations for the next request.

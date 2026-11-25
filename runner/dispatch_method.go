@@ -40,7 +40,18 @@ type goMethodInfo struct {
 	direct func(base any, args []any) (any, bool, error)
 }
 
-// resolveGoMethod finds a method by exact, folded or underscore-free name.
+// foldGoName is the key a Go binding name resolves under from PHP: a spelling
+// matches a Go identifier whatever its case and underscores, so get_all,
+// getAll and GetAll all fold to "getall". A PHP variable is exact and never
+// passes through here; only a name that reaches a Go method or field does.
+func foldGoName(name string) string {
+	if !strings.ContainsRune(name, '_') {
+		return strings.ToLower(name)
+	}
+	return strings.ToLower(strings.ReplaceAll(name, "_", ""))
+}
+
+// resolveGoMethod finds a method by exact name, then by folded name.
 func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	t := rv.Type()
 	index := -1
@@ -48,17 +59,9 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 		index = m.Index
 	}
 	if index < 0 {
+		want := foldGoName(name)
 		for i := 0; i < t.NumMethod(); i++ {
-			if strings.EqualFold(t.Method(i).Name, name) {
-				index = i
-				break
-			}
-		}
-	}
-	if index < 0 {
-		bare := strings.ReplaceAll(name, "_", "")
-		for i := 0; i < t.NumMethod(); i++ {
-			if strings.EqualFold(strings.ReplaceAll(t.Method(i).Name, "_", ""), bare) {
+			if foldGoName(t.Method(i).Name) == want {
 				index = i
 				break
 			}
@@ -191,7 +194,7 @@ func throwableMethod(base any, method string) (any, bool) {
 	if !ok {
 		return nil, false
 	}
-	switch strings.ToLower(strings.ReplaceAll(method, "_", "")) {
+	switch foldGoName(method) {
 	case "getmessage", "tostring", "__tostring":
 		return err.Error(), true
 	case "getcode":
@@ -213,18 +216,15 @@ func throwableMethod(base any, method string) (any, bool) {
 	return nil, false
 }
 
-// methodByNameFold finds a method by exact, folded or underscore-free name.
+// methodByNameFold finds a method by exact then folded name.
 func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 	t := rv.Type()
-	for i := 0; i < t.NumMethod(); i++ {
-		if strings.EqualFold(t.Method(i).Name, method) {
-			return rv.Method(i)
-		}
+	if m := rv.MethodByName(method); m.IsValid() {
+		return m
 	}
-	method = strings.ReplaceAll(method, "_", "")
+	want := foldGoName(method)
 	for i := 0; i < t.NumMethod(); i++ {
-		name := strings.ReplaceAll(t.Method(i).Name, "_", "")
-		if strings.EqualFold(name, method) {
+		if foldGoName(t.Method(i).Name) == want {
 			return rv.Method(i)
 		}
 	}
@@ -245,13 +245,8 @@ func (rt *Runtime) structField(t reflect.Type, name string) ([]int, bool) {
 	}
 	field, ok := t.FieldByName(name)
 	if !ok {
-		field, ok = t.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) })
-	}
-	if !ok {
-		folded := strings.ReplaceAll(name, "_", "")
-		field, ok = t.FieldByNameFunc(func(n string) bool {
-			return strings.EqualFold(strings.ReplaceAll(n, "_", ""), folded)
-		})
+		want := foldGoName(name)
+		field, ok = t.FieldByNameFunc(func(n string) bool { return foldGoName(n) == want })
 	}
 	info := goFieldInfo{index: field.Index, found: ok && field.PkgPath == ""}
 	if rt.goFields == nil {
@@ -266,11 +261,6 @@ func fieldByNameFold(value reflect.Value, name string) reflect.Value {
 	if f := value.FieldByName(name); f.IsValid() {
 		return f
 	}
-	if f := value.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
-		return f
-	}
-	folded := strings.ReplaceAll(name, "_", "")
-	return value.FieldByNameFunc(func(n string) bool {
-		return strings.EqualFold(strings.ReplaceAll(n, "_", ""), folded)
-	})
+	want := foldGoName(name)
+	return value.FieldByNameFunc(func(n string) bool { return foldGoName(n) == want })
 }

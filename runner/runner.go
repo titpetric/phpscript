@@ -175,6 +175,7 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 		// no storage, and confers nothing on an implementing class.
 		if id, ok := s.(*model.InterfaceDecl); ok {
 			rt.interfaces[id.Name] = id
+			rt.interfacesFold[foldName(id.Name)] = id
 		}
 	}
 	for _, cd := range prog.AnonClasses {

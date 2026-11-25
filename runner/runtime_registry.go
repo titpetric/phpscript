@@ -22,7 +22,9 @@ import (
 //	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... }).
 //	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx).
 func (rt *Runtime) RegisterConstructor(name string, ctor any) {
-	rt.constructors[name] = &funcEntry{fn: ctor}
+	entry := &funcEntry{fn: ctor}
+	rt.constructors[name] = entry
+	rt.constructorsFold[foldName(name)] = entry
 }
 
 // LookupConstructor returns the host constructor registered for name.
@@ -111,7 +113,9 @@ func (rt *Runtime) RegisterFunc(name string, fn any) {
 	// call (see installFunc), the direct compiler reads no type env, the entry
 	// builds its invoker on first dispatch. A re-registration is a fresh entry
 	// with a fresh invoker.
-	rt.funcs[name] = &funcEntry{fn: fn}
+	entry := &funcEntry{fn: fn}
+	rt.funcs[name] = entry
+	rt.funcsFold[foldName(name)] = entry
 }
 
 // LookupFunc returns the host function registered for name. A PHP user-defined
@@ -141,15 +145,13 @@ func (rt *Runtime) lookupFunc(name string) (any, bool) {
 	return nil, false
 }
 
-// lookupEntry resolves a function-table entry by exact then case-insensitive name.
+// lookupEntry resolves a function-table entry by exact then folded name.
 func (rt *Runtime) lookupEntry(name string) (*funcEntry, bool) {
 	if entry, ok := rt.funcs[name]; ok {
 		return entry, true
 	}
-	for functionName, entry := range rt.funcs {
-		if strings.EqualFold(functionName, name) {
-			return entry, true
-		}
+	if entry, ok := rt.funcsFold[foldName(name)]; ok {
+		return entry, true
 	}
 	if global, ok := areaFunc(name); ok && global != name {
 		return rt.lookupEntry(global)
@@ -230,9 +232,11 @@ func (rt *Runtime) RegisterClass(c *model.Class) {
 		if len(c.Fields) > 0 {
 			existing.Fields = c.Fields
 		}
+		rt.classesFold[foldName(c.Name)] = existing
 		return
 	}
 	rt.classes[c.Name] = c
+	rt.classesFold[foldName(c.Name)] = c
 }
 
 // RegisterAutoloader appends or prepends a callback to the SPL autoload queue.
@@ -294,31 +298,30 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 	if c, ok := rt.classes[name]; ok {
 		return c, true
 	}
-	for className, c := range rt.classes {
-		if strings.EqualFold(className, name) {
-			return c, true
-		}
+	folded := foldName(name)
+	if c, ok := rt.classesFold[folded]; ok {
+		return c, true
 	}
 	// stdClass answers last. A script's declaration shadows it. It lives
 	// outside the table; clearing the table between runs leaves it in place.
 	// See model.StdClass.
-	if strings.EqualFold(name, "stdClass") {
+	if folded == stdClassFold {
 		return model.StdClass(), true
 	}
 	return nil, false
 }
 
-// lookupInterface resolves an interface by exact then case-insensitive name.
+// stdClassFold is the table key stdClass answers under when no class of that
+// name is declared.
+var stdClassFold = foldName(model.StdClass().Name)
+
+// lookupInterface resolves an interface by exact then folded name.
 func (rt *Runtime) lookupInterface(name string) (*model.InterfaceDecl, bool) {
 	if id, ok := rt.interfaces[name]; ok {
 		return id, true
 	}
-	for interfaceName, id := range rt.interfaces {
-		if strings.EqualFold(interfaceName, name) {
-			return id, true
-		}
-	}
-	return nil, false
+	id, ok := rt.interfacesFold[foldName(name)]
+	return id, ok
 }
 
 // InterfaceExists reports whether the interface table holds name. If autoload
@@ -343,10 +346,8 @@ func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 	if ctor, ok := rt.constructors[name]; ok {
 		return ctor, true
 	}
-	for className, ctor := range rt.constructors {
-		if strings.EqualFold(className, name) {
-			return ctor, true
-		}
+	if ctor, ok := rt.constructorsFold[foldName(name)]; ok {
+		return ctor, true
 	}
 	if registered, ok := areaClass(name); ok && registered != name {
 		return rt.lookupConstructor(registered)

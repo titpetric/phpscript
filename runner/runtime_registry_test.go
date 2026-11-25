@@ -2,10 +2,13 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // TestRuntimeSymbolTables covers the introspection functions' output. Each
@@ -200,5 +203,25 @@ func TestRuntime_OnReset(t *testing.T) {
 	rt.ResetSession(io.Discard, nil)
 	if calls != 1 {
 		t.Fatalf("the reset ran the hook %d times, want 1", calls)
+	}
+}
+
+// BenchmarkLookupConstructorMiss prices a `new` on a declared class against a
+// table holding a thousand host constructors: the constructor table misses and
+// the folded index answers, so the cost is a map access and not a scan.
+func BenchmarkLookupConstructorMiss(b *testing.B) {
+	rt := New(io.Discard, Options{})
+	for i := 0; i < 1000; i++ {
+		rt.RegisterConstructor(fmt.Sprintf("Host%d", i), func() any { return nil })
+	}
+	rt.RegisterClass(&model.Class{Name: "Circle"})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, ok := rt.lookupConstructor("Circle"); ok {
+			b.Fatal("Circle resolved as a host constructor")
+		}
+		if _, ok := rt.lookupClass("Circle"); !ok {
+			b.Fatal("Circle did not resolve")
+		}
 	}
 }
