@@ -2,7 +2,7 @@
 
 Run the PHP application rooted at the given directory. The directory defaults to the current working directory and must contain a `public/` web root.
 
-It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`.
+It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`.
 
 ```bash
 phpscript server
@@ -117,7 +117,7 @@ A `SIGINT` or a `SIGTERM` stops the server instead: it stops accepting, finishes
 
 ## Coverage from a running server
 
-`--cover` counts the statements the server executes, across each request, routed endpoint, `@startup` job and scheduled run, for the life of the process. A request folds its counts into a single aggregator when it ends. The process holds one entry per statement range. A parsed program adds no further entry.
+`--cover` measures the statements the server executes, across each request, routed endpoint, `@startup` job and scheduled run, for the life of the process. A request folds what it recorded into a single aggregator when it ends. Under `--covermode=count` the counts add across requests; under `--covermode=atomic` a line once covered stays covered. The process holds one entry per statement range. A parsed program adds no further entry.
 
 ```bash
 phpscript --cover --coverfile cover/site.{time}.cov server

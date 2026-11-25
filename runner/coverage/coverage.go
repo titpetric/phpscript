@@ -8,6 +8,7 @@
 package coverage
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -16,25 +17,56 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Collector accumulates statement execution counts, keyed by the statement
+// Mode selects what a collector records.
+//
+// Count counts executions with an atomic increment and writes go's count
+// profile. Atomic marks a statement covered once with a compare-and-swap and
+// writes 0 or 1: every later execution is a load, and the profile's shape is a
+// set even though its header names the mode that recorded it.
+type Mode string
+
+const (
+	// ModeCount counts executions; the profile carries the count.
+	ModeCount Mode = "count"
+	// ModeAtomic marks a statement covered once; the profile carries 0 or 1.
+	ModeAtomic Mode = "atomic"
+)
+
+// DefaultMode is the mode New records: counting, as this runtime always has.
+const DefaultMode Mode = ModeCount
+
+// ParseMode reads a --covermode value, answering DefaultMode for an empty one.
+func ParseMode(value string) (Mode, error) {
+	switch Mode(value) {
+	case "":
+		return DefaultMode, nil
+	case ModeCount, ModeAtomic:
+		return Mode(value), nil
+	}
+	return "", fmt.Errorf("unknown cover mode %q, want %s or %s", value, ModeCount, ModeAtomic)
+}
+
+// Collector records which statements ran, or how often, keyed by the statement
 // nodes the parser produced.
 //
-// Register runs before the program, seeding each executable statement at count
-// zero by its filename. The entrypoint, every include and the files in a
+// Register runs before the program, seeding each executable statement as
+// uncovered by its filename. The entrypoint, every include and the files in a
 // profile match get_included_files. An included-but-unexecuted statement still
 // appears, at zero.
 type Collector struct {
 	mu    sync.Mutex
-	stmts map[model.Stmt]*coverStmt
+	mode  Mode
+	stmts stmtTable
 	funcs map[funcKey]FuncSpan
 	files map[string]bool
 }
 
-// coverStmt holds one registered statement's file, line range and atomic execution count.
+// coverStmt holds one registered statement's file, line range and mark.
 type coverStmt struct {
-	file  string
-	span  model.SourceSpan
-	count atomic.Int64
+	file    string
+	span    model.SourceSpan
+	count   atomic.Int64
+	covered atomic.Bool
 }
 
 // Block holds a line-range entry of a coverage profile. Lines only: the parser
@@ -65,14 +97,23 @@ type funcKey struct {
 	start int
 }
 
-// New returns an empty collector.
-func New() *Collector {
+// New returns an empty collector in DefaultMode.
+func New() *Collector { return NewMode(DefaultMode) }
+
+// NewMode returns an empty collector recording mode.
+func NewMode(mode Mode) *Collector {
+	if mode != ModeCount && mode != ModeAtomic {
+		mode = DefaultMode
+	}
 	return &Collector{
-		stmts: map[model.Stmt]*coverStmt{},
+		mode:  mode,
 		funcs: map[funcKey]FuncSpan{},
 		files: map[string]bool{},
 	}
 }
+
+// Mode returns the mode the collector records under.
+func (c *Collector) Mode() Mode { return c.mode }
 
 // Register seeds every executable statement of program at count zero under
 // filename. A declaration does not execute, and Register skips it. The body's
@@ -87,10 +128,10 @@ func (c *Collector) Register(filename string, program *model.Program) {
 		if !coverable(stmt) {
 			continue
 		}
-		if _, ok := c.stmts[stmt]; ok {
+		if c.stmts.get(stmtKey(stmt)) != nil {
 			continue
 		}
-		c.stmts[stmt] = &coverStmt{file: filename, span: coverSpan(stmt, span)}
+		c.stmts.put(stmt, &coverStmt{file: filename, span: coverSpan(stmt, span)})
 	}
 	c.registerFuncs(filename, program)
 }
@@ -177,18 +218,28 @@ func (c *Collector) Functions() []FuncSpan {
 	return funcs
 }
 
-// Hit charges one execution to a registered statement. An unregistered
-// statement (a declaration, a program built without the parser) is not counted.
+// Hit records a registered statement. An unregistered statement (a
+// declaration, a program built without the parser) is not recorded. Under
+// ModeAtomic the load is the loop's fast path and the compare-and-swap runs on
+// the first pass alone; under ModeCount the increment is atomic.
 func (c *Collector) Hit(s model.Stmt) {
-	if entry, ok := c.stmts[s]; ok {
+	entry := c.stmts.get(stmtKey(s))
+	if entry == nil {
+		return
+	}
+	if c.mode == ModeCount {
 		entry.count.Add(1)
+		return
+	}
+	if !entry.covered.Load() {
+		entry.covered.CompareAndSwap(false, true)
 	}
 }
 
-// Blocks renders the collected counts as profile entries, sorted by file and
+// Blocks renders the collected marks as profile entries, sorted by file and
 // position. Statements sharing a line range merge into a single block: NumStmt
-// adds up, and Count is the largest of theirs, the number of times the line runs;
-// summing would charge `$a = 1; $b = 2;` twice per pass.
+// adds up, and Count is 1 when any of them ran under ModeAtomic, or the largest
+// count under ModeCount; summing would charge `$a = 1; $b = 2;` twice per pass.
 func (c *Collector) Blocks() []Block {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -198,7 +249,7 @@ func (c *Collector) Blocks() []Block {
 		start, end int
 	}
 	merged := map[key]*Block{}
-	for _, entry := range c.stmts {
+	c.stmts.each(func(entry *coverStmt) {
 		k := key{file: entry.file, start: entry.span.Start, end: entry.span.End}
 		block, ok := merged[k]
 		if !ok {
@@ -206,10 +257,16 @@ func (c *Collector) Blocks() []Block {
 			merged[k] = block
 		}
 		block.NumStmt++
-		if count := int(entry.count.Load()); count > block.Count {
+		count := 0
+		if c.mode == ModeCount {
+			count = int(entry.count.Load())
+		} else if entry.covered.Load() {
+			count = 1
+		}
+		if count > block.Count {
 			block.Count = count
 		}
-	}
+	})
 
 	blocks := make([]Block, 0, len(merged))
 	for _, block := range merged {

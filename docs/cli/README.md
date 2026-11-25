@@ -33,6 +33,7 @@ Every command accepts these. A command reads the flags it needs. Write them befo
 | `--memprofile`    | Write a pprof heap profile when the command ends.                                                                                  |
 | `--cover`         | Measure statement coverage. `line` writes the profile, `func` and `file` also print a report.                                      |
 | `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and the command creates missing directories.        |
+| `--covermode`     | How coverage is recorded: `count` counts executions with an atomic increment, `atomic` marks a line once with a compare-and-swap. Implies `--cover`; default `count`. |
 | `--stdlib`        | Install only these binding areas: `all`, `secure`, `exec`, comma separated. Default `all`.                                         |
 
 `--stdlib` limits the standard library for the whole process. `secure` confines every binding to the runtime's sandbox. `exec` names `stdlib/pexec`, which runs a command with the permissions of the user running phpscript, outside every filesystem boundary. A name the flag leaves out stays undefined and nothing refuses it. A script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, either engine.

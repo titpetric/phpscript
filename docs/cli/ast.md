@@ -2,7 +2,7 @@
 
 Tokenize a PHP file and print its PHP-style token stream.
 
-It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`.
+It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`.
 
 ```bash
 phpscript ast tests/fixtures/syntax/code/TestCase.php

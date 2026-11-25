@@ -1,8 +1,10 @@
 package coverage_test
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner/coverage"
 )
@@ -142,5 +144,80 @@ func TestName(t *testing.T) {
 	a.Add(collect(t, "app.php", aggregatorSource, 1))
 	if files := a.Files(); len(files) != 1 {
 		t.Errorf("files = %v, want the two spellings folded into one", files)
+	}
+}
+
+// TestCollectorMode covers the two recording modes: count adds every pass, and
+// atomic marks the first and leaves every later pass a load. The profile names
+// the mode that recorded it.
+func TestCollectorMode(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		mode coverage.Mode
+		want int
+	}{
+		{coverage.ModeCount, 3},
+		{coverage.ModeAtomic, 1},
+	} {
+		program, err := parser.Parse("<?php\necho 1;\n")
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		c := coverage.NewMode(tc.mode)
+		c.Register("app.php", program)
+		for statement := range program.SourceSpans {
+			for range 3 {
+				c.Hit(statement)
+			}
+		}
+		var out strings.Builder
+		if err := coverage.WriteProfile(&out, coverage.Columns(c.Blocks(), func(string) []string { return nil }), tc.mode); err != nil {
+			t.Fatalf("WriteProfile: %v", err)
+		}
+		if !strings.HasPrefix(out.String(), "mode: "+string(tc.mode)+"\n") {
+			t.Errorf("profile header = %q, want mode %s", out.String(), tc.mode)
+		}
+		for _, block := range c.Blocks() {
+			if block.Count != tc.want {
+				t.Errorf("mode %s: line %d count = %d, want %d", tc.mode, block.StartLine, block.Count, tc.want)
+			}
+		}
+	}
+}
+
+// benchCollector returns a collector over a three-statement program and the
+// first registered statement, so a benchmark charges one lookup per op.
+func benchCollector(b *testing.B, mode coverage.Mode) (*coverage.Collector, model.Stmt) {
+	b.Helper()
+	program, err := parser.Parse("<?php\n$a = 1;\necho $a;\n")
+	if err != nil {
+		b.Fatalf("parse: %v", err)
+	}
+	c := coverage.NewMode(mode)
+	c.Register("app.php", program)
+	var stmt model.Stmt
+	for s := range program.SourceSpans {
+		stmt = s
+		break
+	}
+	return c, stmt
+}
+
+// BenchmarkCollectorHitCount prices the atomic increment count mode charges.
+func BenchmarkCollectorHitCount(b *testing.B) {
+	c, stmt := benchCollector(b, coverage.ModeCount)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.Hit(stmt)
+	}
+}
+
+// BenchmarkCollectorHitAtomic prices the compare-and-swap atomic mode runs on
+// its first pass and the load it leaves every later one.
+func BenchmarkCollectorHitAtomic(b *testing.B) {
+	c, stmt := benchCollector(b, coverage.ModeAtomic)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.Hit(stmt)
 	}
 }

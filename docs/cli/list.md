@@ -2,7 +2,7 @@
 
 List routes, PHP files, and classes found beneath one or more paths as a Markdown table. A directory path lists PHP files directly in that directory. Append `/...` to include its subdirectories. A run without a path uses the current directory (`.`).
 
-It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below belong to this command.
+It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`. The flags below belong to this command.
 
 ```bash
 phpscript list ./src        # PHP files directly in ./src

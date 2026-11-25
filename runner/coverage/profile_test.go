@@ -58,7 +58,7 @@ func TestColumns(t *testing.T) {
 func TestWriteProfile(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
-	if err := coverage.WriteProfile(&out, coverage.Columns(profileBlocks, testSource)); err != nil {
+	if err := coverage.WriteProfile(&out, coverage.Columns(profileBlocks, testSource), coverage.DefaultMode); err != nil {
 		t.Fatalf("WriteProfile: %v", err)
 	}
 	want := "mode: count\n" +

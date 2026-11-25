@@ -269,7 +269,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 		// interpreter feature and the fallback is atomic. The pool drops the
 		// collector with the session; nothing keyed by an AST node outlives the
 		// program.
-		collector := coverage.New()
+		collector := coverage.NewMode(h.coverage.Mode())
 		rt.SetCoverage(collector)
 		defer h.coverage.Add(collector)
 	}

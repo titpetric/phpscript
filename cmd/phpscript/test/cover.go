@@ -25,20 +25,21 @@ type profileBlock = coverage.ProfileBlock
 
 // writeCoverage renders one profile per fixture under --split, else the merged profile.
 func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
+	mode := opts.coverageMode()
 	if opts.Split {
 		for _, fx := range fixtures {
 			if fx.Coverage() == nil {
 				continue
 			}
 			split := strings.TrimSuffix(fx.Path, ".phpt") + ".cov"
-			if err := writeCoverProfile(split, fixtureCoverBlocks(fx)); err != nil {
+			if err := writeCoverProfile(split, fixtureCoverBlocks(fx), mode); err != nil {
 				return err
 			}
 		}
 	}
 
 	blocks := mergeCoverBlocks(fixtures)
-	if err := writeCoverProfile(opts.CoverFile, blocks); err != nil {
+	if err := writeCoverProfile(opts.CoverFile, blocks, mode); err != nil {
 		return err
 	}
 	switch opts.Cover {
@@ -162,19 +163,19 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 }
 
 // writeCoverProfile writes blocks in the format go test -coverprofile writes.
-func writeCoverProfile(path string, blocks []profileBlock) error {
+func writeCoverProfile(path string, blocks []profileBlock, mode coverage.Mode) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create coverfile: %w", err)
 	}
 	defer f.Close()
-	return coverage.WriteProfile(f, blocks)
+	return coverage.WriteProfile(f, blocks, mode)
 }
 
 // coverFixtures installs one collector per fixture, keeping parallel fixtures off shared state.
-func coverFixtures(fixtures []*tests.Fixture) {
+func coverFixtures(fixtures []*tests.Fixture, mode coverage.Mode) {
 	for _, fx := range fixtures {
-		fx.SetCoverage(coverage.New())
+		fx.SetCoverage(coverage.NewMode(mode))
 	}
 }
 

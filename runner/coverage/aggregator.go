@@ -10,29 +10,42 @@ import (
 // keySep separates a composed map key's fields and appears in no path.
 const keySep = "\x00"
 
-// Aggregator accumulates the counts of many collectors for the lifetime of a
-// process. Counts add: a statement two requests reached ran twice.
+// Aggregator accumulates the coverage many collectors report for the lifetime
+// of a process. Under ModeCount the counts add: a statement two requests
+// reached ran twice. Under ModeAtomic a line once covered stays covered, and
+// two requests are one line that ran.
 //
 // A Collector keys statements by AST node; one kept across requests grows with
 // every re-parse. The aggregator keys statements by the profile line it writes,
 // and the size of the application bounds that.
 type Aggregator struct {
 	mu     sync.Mutex
+	mode   Mode
 	blocks map[string]int
 	files  map[string]bool
 	funcs  map[string]int
 }
 
-// NewAggregator returns an empty aggregator.
-func NewAggregator() *Aggregator {
+// NewAggregator returns an empty aggregator in DefaultMode.
+func NewAggregator() *Aggregator { return NewAggregatorMode(DefaultMode) }
+
+// NewAggregatorMode returns an empty aggregator recording mode.
+func NewAggregatorMode(mode Mode) *Aggregator {
+	if mode != ModeCount && mode != ModeAtomic {
+		mode = DefaultMode
+	}
 	return &Aggregator{
+		mode:   mode,
 		blocks: map[string]int{},
 		files:  map[string]bool{},
 		funcs:  map[string]int{},
 	}
 }
 
-// Add folds one collector's counts in and returns. It reads the collector and
+// Mode returns the mode the aggregator records under.
+func (a *Aggregator) Mode() Mode { return a.mode }
+
+// Add folds one collector's coverage in and returns. It reads the collector and
 // keeps no reference. The caller may drop both the collector and the AST it
 // keys on.
 func (a *Aggregator) Add(c *Collector) {
@@ -46,7 +59,14 @@ func (a *Aggregator) Add(c *Collector) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for _, b := range blocks {
-		a.blocks[blockKey(b)] += b.Count
+		key := blockKey(b)
+		if a.mode == ModeCount {
+			a.blocks[key] += b.Count
+			continue
+		}
+		if b.Count > 0 {
+			a.blocks[key] = 1
+		}
 	}
 	for _, f := range files {
 		a.files[f] = true
@@ -56,8 +76,8 @@ func (a *Aggregator) Add(c *Collector) {
 	}
 }
 
-// Blocks returns the accumulated counts as profile entries, sorted by file and
-// position.
+// Blocks returns the accumulated coverage as profile entries, sorted by file
+// and position.
 func (a *Aggregator) Blocks() []Block {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -66,6 +86,9 @@ func (a *Aggregator) Blocks() []Block {
 		block, ok := parseBlockKey(key)
 		if !ok {
 			continue
+		}
+		if a.mode != ModeCount && count > 0 {
+			count = 1
 		}
 		block.Count = count
 		blocks = append(blocks, block)

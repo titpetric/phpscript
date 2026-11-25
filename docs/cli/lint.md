@@ -2,7 +2,7 @@
 
 Lint one or more PHP files or directories.
 
-It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below belong to this command.
+It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`. The flags below belong to this command.
 
 ```bash
 phpscript lint tests/fixtures/...

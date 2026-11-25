@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -23,6 +24,7 @@ type Options struct {
 	Output    string
 	Cover     string
 	CoverFile string
+	CoverMode string
 	Split     bool
 	SkipPHP   bool
 	Cache     string
@@ -59,6 +61,15 @@ func (o Options) given(name string) bool {
 // coverReport reports whether the cover mode owns stdout, leaving the tables off.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
+}
+
+// coverageMode returns the mode fixtures collect coverage under.
+func (o Options) coverageMode() coverage.Mode {
+	mode, err := coverage.ParseMode(o.CoverMode)
+	if err != nil {
+		return coverage.DefaultMode
+	}
+	return mode
 }
 
 // runners answers the matrix columns, dropping php's column under --skip-php.

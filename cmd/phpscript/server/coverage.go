@@ -35,7 +35,7 @@ type coverageModule struct {
 func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 	return &coverageModule{
 		ZeroModule: *newZeroModule("phpcoverage"),
-		aggregator: coverage.NewAggregator(),
+		aggregator: coverage.NewAggregatorMode(globals.CoverageMode()),
 		globals:    globals,
 		roots:      roots,
 	}
@@ -76,7 +76,7 @@ func (m *coverageModule) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch mode {
 	case coverage.ModeLine:
-		_ = coverage.WriteProfile(w, blocks)
+		_ = coverage.WriteProfile(w, blocks, m.aggregator.Mode())
 	case coverage.ModeFunc:
 		_ = coverage.WriteReport(w, coverage.FuncRows(blocks, m.aggregator.Functions(), m.aggregator.Files()))
 	case coverage.ModeFile:

@@ -133,7 +133,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	// interpreted whole.
 	var collector *coverage.Collector
 	if globals.Covering() {
-		collector = coverage.New()
+		collector = coverage.NewMode(globals.CoverageMode())
 		rt.SetCoverage(collector)
 	}
 

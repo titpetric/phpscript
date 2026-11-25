@@ -62,9 +62,12 @@ type Options struct {
 	MemProfile string
 
 	// Cover is --cover: "", or one of the coverage modes. CoverFile names the
-	// path the profile lands at, TimePlaceholder expanded.
+	// path the profile lands at, TimePlaceholder expanded. CoverMode is
+	// --covermode: count (an atomic counter) or atomic (a compare-and-swap
+	// mark), named as go test names them.
 	Cover     string
 	CoverFile string
+	CoverMode string
 
 	// TestConfig is -t: test the configuration and exit, running no command.
 	TestConfig bool
@@ -88,6 +91,7 @@ func (o *Options) Bind(fs *cli.FlagSet) {
 	fs.StringVar(&o.Cover, "cover", o.Cover, "Measure statement coverage: line writes the profile, func/file also print a coverage report")
 	fs.Lookup("cover").NoOptDefVal = coverage.ModeLine
 	fs.StringVar(&o.CoverFile, "coverfile", o.CoverFile, "Write the coverage profile to this file (implies --cover; default "+coverage.DefaultCoverFile+", "+TimePlaceholder+" expands to a timestamp)")
+	fs.StringVar(&o.CoverMode, "covermode", o.CoverMode, "Record coverage as count (an atomic counter) or atomic (a compare-and-swap mark); default "+string(coverage.DefaultMode))
 	fs.StringVar(&o.Stdlib, "stdlib", o.Stdlib, "Install only these binding areas, comma separated: "+stdlib.AreaNames+" (default all)")
 }
 
@@ -200,7 +204,7 @@ func Pre(args []string) (*Options, []string, error) {
 // valued names shared flags that take a value and consume the next word.
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,
-	"--cover": true, "--coverfile": true, "--file": true, "--workdir": true,
+	"--cover": true, "--coverfile": true, "--covermode": true, "--file": true, "--workdir": true,
 	"--stdlib": true, "-f": true, "-w": true,
 }
 
@@ -289,11 +293,19 @@ func (o *Options) Check() error {
 	if o.CoverFile != "" && o.Cover == "" {
 		o.Cover = coverage.ModeLine
 	}
+	if o.CoverMode != "" && o.Cover == "" {
+		o.Cover = coverage.ModeLine
+	}
 	switch o.Cover {
 	case "", coverage.ModeLine, coverage.ModeFunc, coverage.ModeFile:
 	default:
 		return fmt.Errorf("--cover: unknown mode %q, want %s, %s or %s", o.Cover, coverage.ModeLine, coverage.ModeFunc, coverage.ModeFile)
 	}
+	mode, err := coverage.ParseMode(o.CoverMode)
+	if err != nil {
+		return fmt.Errorf("--covermode: %w", err)
+	}
+	o.CoverMode = string(mode)
 	if o.Cover != "" && o.CoverFile == "" {
 		o.CoverFile = coverage.DefaultCoverFile
 	}
@@ -307,6 +319,15 @@ func (o *Options) Check() error {
 
 // Covering reports whether the flags name coverage.
 func (o *Options) Covering() bool { return o.Cover != "" }
+
+// CoverageMode returns the collector mode --covermode names.
+func (o *Options) CoverageMode() coverage.Mode {
+	mode, err := coverage.ParseMode(o.CoverMode)
+	if err != nil {
+		return coverage.DefaultMode
+	}
+	return mode
+}
 
 // Report reports whether the coverage mode prints a per-symbol report.
 func (o *Options) Report() bool {
@@ -341,7 +362,7 @@ func (o *Options) WriteCoverProfile(blocks []coverage.ProfileBlock) (string, err
 		return "", fmt.Errorf("create coverfile: %w", err)
 	}
 	defer f.Close()
-	if err := coverage.WriteProfile(f, blocks); err != nil {
+	if err := coverage.WriteProfile(f, blocks, o.CoverageMode()); err != nil {
 		return "", err
 	}
 	return name, nil

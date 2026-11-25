@@ -88,9 +88,13 @@ func SortProfile(blocks []ProfileBlock) {
 }
 
 // WriteProfile writes blocks in the format go test -coverprofile writes, with
-// the measurement mode go names "count".
-func WriteProfile(w io.Writer, blocks []ProfileBlock) error {
-	if _, err := fmt.Fprintln(w, "mode: count"); err != nil {
+// the header naming the mode that recorded them. A block's Count is the number
+// of executions under ModeCount and 0 or 1 under ModeAtomic.
+func WriteProfile(w io.Writer, blocks []ProfileBlock, mode Mode) error {
+	if mode != ModeCount && mode != ModeAtomic {
+		mode = DefaultMode
+	}
+	if _, err := fmt.Fprintf(w, "mode: %s\n", mode); err != nil {
 		return fmt.Errorf("write coverfile: %w", err)
 	}
 	for _, b := range blocks {

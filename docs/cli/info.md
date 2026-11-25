@@ -2,7 +2,7 @@
 
 Print the runtime environment, the way `phpinfo()` does in a terminal.
 
-It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`.
+It accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`.
 
 ```bash
 phpscript info

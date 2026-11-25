@@ -233,7 +233,7 @@ func TestOptions_Bind(t *testing.T) {
 
 	for name, shorthand := range map[string]string{
 		"file": "f", "workdir": "w", "verbose": "v",
-		"include": "", "cpuprofile": "", "memprofile": "", "cover": "", "coverfile": "",
+		"include": "", "cpuprofile": "", "memprofile": "", "cover": "", "coverfile": "", "covermode": "",
 	} {
 		flag := fs.Lookup(name)
 		if flag == nil {
@@ -521,5 +521,35 @@ func TestPreControlFlags(t *testing.T) {
 				t.Errorf("remaining = %#v, want %#v", remaining, test.remaining)
 			}
 		})
+	}
+}
+
+// TestOptions_CoverMode covers --covermode: a valid mode names the collector,
+// a bad one is refused, and naming a mode alone implies --cover.
+func TestOptions_CoverMode(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		mode string
+		want coverage.Mode
+	}{
+		{"", coverage.DefaultMode},
+		{"count", coverage.ModeCount},
+		{"atomic", coverage.ModeAtomic},
+	} {
+		opts := flags.Options{CoverMode: tc.mode}
+		if err := opts.Check(); err != nil {
+			t.Fatalf("Check(%q): %v", tc.mode, err)
+		}
+		if got := opts.CoverageMode(); got != tc.want {
+			t.Errorf("CoverageMode(%q) = %q, want %q", tc.mode, got, tc.want)
+		}
+		if tc.mode != "" && opts.Cover == "" {
+			t.Errorf("--covermode=%s did not imply --cover", tc.mode)
+		}
+	}
+
+	opts := flags.Options{CoverMode: "bogus"}
+	if err := opts.Check(); err == nil {
+		t.Error("Check accepted an unknown cover mode")
 	}
 }

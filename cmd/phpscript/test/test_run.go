@@ -13,6 +13,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -74,6 +75,7 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 			opts.Verbose = globals.Verbose
 			opts.Cover = globals.Cover
 			opts.CoverFile = globals.CoverFile
+			opts.CoverMode = globals.CoverMode
 			opts.Config = appConfig
 			opts.typed = func(name string) bool { return bound != nil && bound.Changed(name) }
 			return Run(ctx, args, opts)
@@ -119,6 +121,12 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	if opts.Cover == "" && opts.Split {
 		opts.Cover = CoverLine
 	}
+	if opts.Cover == "" && opts.CoverMode != "" {
+		opts.Cover = CoverLine
+	}
+	if _, err := coverage.ParseMode(opts.CoverMode); err != nil {
+		return fmt.Errorf("covermode: %w", err)
+	}
 	if opts.Cover != "" {
 		// A coverage count is how many times the fixture reached a line and a
 		// benchmark loop would multiply every count by its repetitions.
@@ -163,7 +171,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	}
 
 	if opts.Cover != "" {
-		coverFixtures(fixtures)
+		coverFixtures(fixtures, opts.coverageMode())
 	}
 
 	displayPaths := make([]string, len(fixtures))

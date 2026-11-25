@@ -2,7 +2,7 @@
 
 Format one or more PHP files or directories in place. A directory path formats PHP files directly in that directory. Append `/...` to include its subdirectories. Without a path, the command uses the current directory (`.`).
 
-It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below belong to this command.
+It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover`, `--coverfile` and `--covermode`. The flags below belong to this command.
 
 ```bash
 phpscript fmt script.php
