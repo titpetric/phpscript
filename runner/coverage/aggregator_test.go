@@ -3,6 +3,7 @@ package coverage_test
 import (
 	"testing"
 
+	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
@@ -134,5 +135,45 @@ func TestNewAggregator(t *testing.T) {
 	a.Add(nil)
 	if !a.Empty() {
 		t.Error("a nil collector folded something in")
+	}
+}
+
+// collectWith registers src and charges hits executions to every statement, so
+// a test can tell a count from a mark.
+func collectWith(t *testing.T, filename, src string, hits int, mode coverage.Mode) *coverage.Collector {
+	t.Helper()
+	program, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	c := coverage.NewMode(mode)
+	c.Register(filename, program)
+	for statement := range program.SourceSpans {
+		for range hits {
+			c.Hit(statement)
+		}
+	}
+	return c
+}
+
+// TestAggregatorMode covers the two modes across requests: count adds the
+// executions, atomic keeps one mark.
+func TestAggregatorMode(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		mode coverage.Mode
+		want int
+	}{
+		{coverage.ModeCount, 3},
+		{coverage.ModeAtomic, 1},
+	} {
+		a := coverage.NewAggregatorMode(tc.mode)
+		a.Add(collectWith(t, "app.php", aggregatorSource, 1, tc.mode))
+		a.Add(collectWith(t, "app.php", aggregatorSource, 2, tc.mode))
+		for _, block := range a.Blocks() {
+			if block.Count != tc.want {
+				t.Errorf("mode %s: line %d count = %d, want %d", tc.mode, block.StartLine, block.Count, tc.want)
+			}
+		}
 	}
 }

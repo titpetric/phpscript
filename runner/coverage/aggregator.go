@@ -64,6 +64,9 @@ func (a *Aggregator) Add(c *Collector) {
 			a.blocks[key] += b.Count
 			continue
 		}
+		if _, ok := a.blocks[key]; !ok {
+			a.blocks[key] = 0
+		}
 		if b.Count > 0 {
 			a.blocks[key] = 1
 		}
