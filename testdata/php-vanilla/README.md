@@ -44,7 +44,7 @@ BENCH_TARGETS="bridge vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 ```
 
-It renices the containers' processes to match the other sides, records what each holds in memory with its last request answered, and checks `/slow` on every side. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the protocol the numbers have to meet.
+It renices the containers' processes to match the other sides, records what each holds in memory with its last request answered, and checks `/slow` on every side.
 
 ## Where the cost is
 

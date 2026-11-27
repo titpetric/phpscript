@@ -25,7 +25,7 @@
 # requests, with the superglobals decoded for each one. A number from one never
 # belongs in a table with a number from the other. The table header names the
 # model. BenchmarkTestServerRoute prices the per-request allocations, the other
-# half of this harness. docs/agents/performance.md is the comparison.
+# half of this harness.
 #
 #	scripts/bench-http.sh before
 #	BENCH_SEGMENTS=6 scripts/bench-http.sh after
@@ -535,8 +535,8 @@ summarise() {
 #
 # Two of the sides are different execution models: phpscript-service is Path A,
 # a pooled runtime reset between requests, and phpscript-http-bridge is Path B,
-# workers forked once at listen(). docs/agents/performance.md forbids a Path A number
-# and a Path B number sharing a table, because the two answer different
+# workers forked once at listen(). A Path A number and a Path B number
+# cannot share a table, because the two answer different
 # questions and a reader comparing rows across them is comparing nothing. The
 # table header names the path. What each number describes travels with it.
 #

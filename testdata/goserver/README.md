@@ -29,4 +29,4 @@ CGO_ENABLED=0 go build -o bin/testserver-go testdata/goserver/main.go
 
 `TESTSERVER_WORKERS` bounds how many requests the server answers at once, the way the bridge's worker count does. Go needs no such bound, `net/http` answering each request on a goroutine and the scheduler taking it from there and leaving it unset bounds nothing, which is the Go server anyone would actually write. Set, it becomes a semaphore of that depth and a side by side against a bounded phpscript server compares the same arrangement on both sides.
 
-This column is the floor and no number to reach. [../../docs/agents/performance.md](../../docs/agents/performance.md) owns the comparison.
+This column is the floor and no number to reach.

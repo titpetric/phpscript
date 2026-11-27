@@ -17,7 +17,7 @@ These are decisions. A prompt that proposes one of them gets the pointer to the 
 
 ## Working here
 
-- `go install .` before testing a change. The `$PATH` binary is a published build and does not contain your edits. A measurement run does the opposite: `GOBIN` is `/usr/local/bin` and installing overwrites the binary another agent measures. A sprint builds a private one instead. [docs/agents/README.md](docs/agents/README.md)
+- `go install .` before testing a change. The `$PATH` binary is a published build and does not contain your edits.
 - Fixture paths: `phpscript test ./...` runs a tree. `phpscript test .` matches only fixtures directly in the directory and can silently pass. Every pipeline job spells the `./...`. Otherwise a job points at a directory of folders and passes over nothing.
 - A change to language or runtime behaviour lands with a fixture in the matching `tests/fixtures/<area>/` folder, either a `.phpt` document or a `<name>_test.php` body plus a `<name>_test.txt` output file. A new area is a new folder, needing no registration. Include resolution starts at the fixture's folder. Copy shared support files into it, because the runtime rejects an include that climbs out.
 - Pre-submit: run the affected package tests, `go test ./...`, then `phpscript test --matrix tests/fixtures/...`. A fixture covering PHP behaviour is not done until its php column passes.
@@ -44,8 +44,6 @@ These are decisions. A prompt that proposes one of them gets the pointer to the 
 | Explaining output that differs from php | Known divergences in [docs/README.md](docs/README.md) |
 | Naming a concept in prose or a doc comment | [docs/GLOSSARY.md](docs/GLOSSARY.md) |
 | Adding or changing a pipeline job, or asking what writes a generated file | [docs/pipeline.md](docs/pipeline.md) |
-| Running a QA or performance sprint | [docs/agents/README.md](docs/agents/README.md) |
-| Quoting a measurement in a PR, an issue or a doc | [The measurement protocol](docs/agents/README.md#the-measurement-protocol) |
 
 ## Checkouts
 

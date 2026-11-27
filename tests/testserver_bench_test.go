@@ -20,8 +20,8 @@ import (
 // pool parses the program once, resolves each handler once at $mux->handle(),
 // forks the workers once and streams the response. `phpscript server` is
 // Path A and builds a runtime per request; a number from one never belongs in a
-// table with a number from the other. docs/agents/performance.md owns the
-// comparison and scripts/bench-http.sh is the latency half of the same harness.
+// table with a number from the other. scripts/bench-http.sh is the latency
+// half of the same harness.
 //
 // The benchmark runs the real testdata/phpscript-http-bridge/server.php. It
 // takes the file's class declaration and leaves its two trailing statements.
@@ -45,7 +45,7 @@ bench_mux((new Server)->mount());
 
 // benchServerRoutes are the routes that price the request path. /slow is
 // twenty usleep calls and prices the deadline machinery instead; /info is
-// phpinfo(). docs/agents/performance.md says why each is in or out.
+// phpinfo().
 var benchServerRoutes = []struct {
 	name   string
 	method string

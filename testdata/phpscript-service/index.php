@@ -9,7 +9,7 @@
 //
 // This is Path A, a runtime per request. The bridge is Path B, workers forked
 // once at listen(). A number from one never belongs in a table with a number
-// from the other; docs/agents/performance.md is the rule.
+// from the other.
 
 header("Content-Type: text/plain; charset=utf-8");
 

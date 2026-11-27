@@ -48,8 +48,8 @@ func readConfig() config {
 	return config{addr: addr, workers: workers, limit: readLimit(os.Getenv("TESTSERVER_LIMIT"))}
 }
 
-// readLimit reads TESTSERVER_LIMIT as the duration docs/agents/performance.md
-// describes, and as the bare seconds scripts/bench-http.sh passes.
+// readLimit reads TESTSERVER_LIMIT as a duration or as the bare seconds
+// scripts/bench-http.sh passes.
 //
 // Reading it as seconds alone leaves `600s` parsing to nothing and the server
 // holding the ten-second default, and it stops listening part-way through a

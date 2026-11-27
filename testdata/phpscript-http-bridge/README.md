@@ -34,6 +34,6 @@ The compose file mounts the binary. A benchmark measures the build under test, a
 
 The program parses once and registers its handlers once: one read takes it, `$mux->handle()` resolves each handler, and `listen()` forks the workers once. `testdata/phpscript-service` is Path A, where `phpscript server` builds a runtime per request.
 
-A number from one never belongs in a table with a number from the other. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule, [../../docs/use-cases/http-server.md](../../docs/use-cases/http-server.md) is the surface, and [../../docs/design.md](../../docs/design.md) is why both paths exist.
+A number from one never belongs in a table with a number from the other. [../../docs/use-cases/http-server.md](../../docs/use-cases/http-server.md) is the surface, and [../../docs/design.md](../../docs/design.md) is why both paths exist.
 
 `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` reads this file by path, takes its class declaration, and mounts its router and a change here reaches the allocation half of the harness directly. It fails when a route stops answering what it expects and no 404 reaches the measurement.

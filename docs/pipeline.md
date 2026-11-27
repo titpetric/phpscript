@@ -38,7 +38,7 @@ The first run creates the `docker-container` builder `phpscript`, because the de
 
 Both halves nest their variables in `env.vars`. A flat `env` block reaches the command line, not the child process: `$PARALLEL` expands to nothing, the pinned job skips nothing and runs three parallel benchmarks as a single goroutine, the parallel job matches nothing and runs none, and `GOMEMLIMIT`, `GOGC`, `CGO_ENABLED` never reach `go test`.
 
-A bench sweep costs minutes of pinned CPU and answers a performance question, which keeps it out of `default`. Durable numbers land as curated tables in [Allocation and performance](allocation-performance.md), and the `bench*.txt` files are in `.gitignore`. [The measurement protocol](agents/README.md#the-measurement-protocol) governs both halves.
+A bench sweep costs minutes of pinned CPU and answers a performance question, which keeps it out of `default`. Durable numbers land as curated tables in [Allocation and performance](allocation-performance.md), and the `bench*.txt` files are in `.gitignore`.
 
 `publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins bake` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus three generated documents are in `.gitignore` for the same reason.
 

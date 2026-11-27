@@ -15,7 +15,7 @@ One set of endpoints written six ways, each in a directory under `testdata/`, al
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                                          | 2429 req/s, 383 us/req | 496    | 900    |
 | [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                                         | 2128 req/s, 446 us/req | 514    | 860    |
 
-Each directory's README explains the numbers and the per-request cost of the stack. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. [The comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
+Each directory's README explains the numbers and the per-request cost of the stack. `phpscript-http-bridge`, `phpscript-go-runtime-server` and `phpscript-service` answer under three execution models: Path B twice, once with `use Runtime\Go;` per file and once with `runner.runtime: go`, then Path A. This one goes stale the moment either path changes. It names the commit it describes, and these two commands write it again:
 
 ```sh
 BENCH_TARGETS="goserver bridge goruntime service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
@@ -31,7 +31,6 @@ scripts/benchmark.php
 - [Testing and extending tests](./docs/testing.md)
 - [Test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md)
 - [Code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md)
-- [Agent sprints and the measurement protocol](./docs/agents/README.md)
 - [Naming conventions](./docs/naming-conventions.md)
 - [Adding a binding, start to finish](./docs/bindings-regexp.md)
 - [Glossary](./docs/GLOSSARY.md)
