@@ -29,7 +29,7 @@ The table shows all five. Each route ran six segments of 3s at concurrency 1, fo
 
 Compare rows inside one table, never across tables. `scripts/bench-http.sh` and `scripts/benchmark.php` answer a few percent apart on the same configuration. A server's lifetime differs in what else it served. A figure copied between tables comes from another run.
 
-Two things drive them. Both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through a single load generator. It reports a latency distribution, with a request rate per route. `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, reporting `allocs/op`. No fixture or venom suite covers either.
+Two things drive them. Both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through a single load generator. It reports a latency distribution, with a request rate per route. `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, reporting `allocs/op`. No fixture covers either.
 
 That sequencing holds for everything later: publish the baseline before the first change. Read later numbers against the baseline, never against the tree.
 

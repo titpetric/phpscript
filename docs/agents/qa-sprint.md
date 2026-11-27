@@ -80,11 +80,10 @@ uncover cover/qa.cov
 splint ./...
 ```
 
-Four false positives, each real in this tree. A symbol reached only:
+Three false positives, each real in this tree. A symbol reached only:
 
 - from a benchmark, which `go test` without `-bench` never runs,
 - from a `//go:build ignore` file, which `testdata/goserver/main.go` is,
-- from a venom suite, which no Go test reads,
 - by registered name: every binding registers this way. A PHP source line calls a binding by its string name. It has no Go caller at all.
 
 Two hard rules. A test is never dead code. The contract states this. It makes deleting a test an edit governed by the test-immutability rule. A registered name comes out in a separate change: `../../AGENTS.md` requires a rename to register the new name and keep the old name as a second registration. A removal in the same commit as a rename is two changes in one.
