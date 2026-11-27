@@ -2,7 +2,7 @@
 
 This walkthrough builds a complete phpscript application from an empty directory: a bookmark list with a database, migrations, routed endpoints, compiled templates and an integration test suite.
 
-The finished application is [phpscript-demos/example](https://github.com/titpetric/phpscript-demos/tree/main/example). Every snippet below comes from it. Its [venom suite](https://github.com/titpetric/phpscript-demos/blob/main/example/tests/venom.yml) runs in CI, and the code here stays true.
+The finished application is [phpscript-demos/example](https://github.com/titpetric/phpscript-demos/tree/main/example). Every snippet below comes from it. Its [HTTP suite](https://github.com/titpetric/phpscript-demos/tree/main/example/tests) runs in CI, and the code here stays true.
 
 ## 1. The layout
 
@@ -223,37 +223,9 @@ The server parses PHP when it boots and restart it after editing a source file.
 
 ## 8. Test it
 
-Endpoints are HTTP and test them over HTTP. The application's suite is a [venom](https://github.com/ovh/venom) testsuite:
+Endpoints are HTTP. The application's suite drives them over HTTP. A case posts a bookmark, asserts the saved page, reads the new id out of the delete form and deletes it again. The suite in [phpscript-demos/example/tests](https://github.com/titpetric/phpscript-demos/tree/main/example/tests) runs it in CI.
 
-```yaml
-testcases:
-  - name: a bookmark can be added
-    steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/bookmarks"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "title=Venom&url=https://github.com/ovh/venom"
-        assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Bookmark saved.
-          - result.body ShouldContainSubstring Venom
-```
-
-venom follows the redirect and the assertions after a successful `POST` read the returned page.
-
-Write the suite so it can run twice. No case depends on which row ids exist: each case that adds a bookmark reads back the id the application returned and deletes it again:
-
-```yaml
-        extracts:
-          result.body: "action=\"/bookmarks/(?P<added>[0-9]+)/delete\""
-      - type: http
-        method: POST
-        url: "{{.host}}/bookmarks/{{.added}}/delete"
-```
-
-A named capture group in `extracts` becomes a variable for later steps. The suite cleans up after itself. It stays independent of earlier runs.
+Write the suite so it can run twice. No case depends on which row ids exist: each case that adds a bookmark reads back the id the application returned and deletes it again. It cleans up after itself. It stays independent of earlier runs.
 
 Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead. See [Testing](../testing.md).
 
