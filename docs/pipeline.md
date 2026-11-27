@@ -22,19 +22,17 @@
 
 ## What ci:daily runs
 
-`ci:daily` runs the suites a push cannot: `sca:vuln` first, then `deploy` to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix`, `test:lifecycle` and `test:demos`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
+`ci:daily` runs the suites a push cannot: `sca:vuln` first, then `deploy` to publish the image, then `db:up`, `test:phpscript:run`, `test:phpscript:matrix` and `test:lifecycle`. The pipeline declares the name a scheduler looks for, while the schedule itself lives outside the repository. The default gate never starts a docker service, a second runtime or a server process.
 
 `bake` owns the image. It builds `docker/Dockerfile.build` for `linux/amd64` and `linux/arm64`, tagged `titpetric/phpscript:latest`, a tag that follows `main` and is unstable. `atkins deploy` publishes it. A release sets `TAG` before that push. `ci:daily` publishes it before the integration legs.
 
 The first run creates the `docker-container` builder `phpscript`, because the default driver pushes a single platform. `bake` runs one `docker buildx bake` that builds both platforms into the builder's cache, and `atkins deploy` pushes `latest-amd64` and `latest-arm64` as separate images. A source change reuses the Go module and compile caches through the mounts in the Dockerfile.
 
-The demo suites stay out of `default`. They are compose services. Running them costs the whole stack plus a venom suite per demo, which answers a question about the demo applications, not about the runtime. `atkins test:demos` runs them against the image `ci:daily` built. A change under `demos/` runs it by name.
-
-`mysql` and `postgres` are test infrastructure, outside the demos. `test-database.php` and the `platform_database` fixtures query all three dialects, and sqlite alone would miss a dialect divergence. `ci:daily` starts both, and tears them down when the run ends.
+`mysql` and `postgres` are test infrastructure. `test-database.php` and the `platform_database` fixtures query all three dialects, and sqlite alone would miss a dialect divergence. `compose.yml` includes both service files, and `ci:daily` starts them with `db:up` and tears them down when the run ends.
 
 ## The jobs outside the default pipeline
 
-`setup` installs the two tools `atkins.yml` calls by name, `summary` and `splint`, at the revision their repositories hold. The repository changes both, and neither changes for it alone. A tag would lag a fix made for a job here. `mdox` stays out: `atkins mdox:setup` declares `interactive: true` and fails without a tty.
+`setup` installs the one tool `atkins.yml` calls by name, `splint`, at the revision its repository holds. The repository changes it, and a tag would lag a fix made for a job here. `mdox` stays out: `atkins mdox:setup` declares `interactive: true` and fails without a tty.
 
 `bench` delegates to two jobs. `taskset -c 3` narrows the affinity mask to one core. Go reads that mask for `GOMAXPROCS`, leaving a `b.RunParallel` benchmark there to run a single goroutine: a contention fix measures as zero, a contention regression as nothing. `bench:pinned` skips three parallel benchmarks. `bench:parallel` runs them unpinned, at the higher `-count`: a parallel benchmark on a shared box is the noisiest number in the set. `BenchmarkLookupTreeSize` is serial, and the `$` anchoring the first selector name keeps it in the pinned job.
 
@@ -42,7 +40,7 @@ Both halves nest their variables in `env.vars`. A flat `env` block reaches the c
 
 A bench sweep costs minutes of pinned CPU and answers a performance question, which keeps it out of `default`. Durable numbers land as curated tables in [Allocation and performance](allocation-performance.md), and the `bench*.txt` files are in `.gitignore`. [The measurement protocol](agents/README.md#the-measurement-protocol) governs both halves.
 
-`publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins bake` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus five generated documents are in `.gitignore` for the same reason.
+`publish` shadows the `publish` alias the release skill contributes. `atkins publish` attaches everything a release holds, the binaries included. `release:publish` keeps its name. Run `atkins bake` and `atkins gen` first: the release skill creates a release for an existing tag and never creates the tag. `bin/` plus three generated documents are in `.gitignore` for the same reason.
 
 The shared release skill builds through docker and names one tag. `release:notes` and `release:binaries` read git instead: every tag without a release, built from its source with `go build` alone. `scripts/release.sh --help` states the flags.
 
@@ -92,25 +90,21 @@ The two listings read the runtime the build binds. `scripts/docs-go-imports` ren
 
 The index comes first, the markdown second. The index is a Go file the next build embeds: a shipped binary holds no source tree, and `phpscript list --classes` answers out of the index. `scripts/list-apis --index` writes that file and takes no redirection, which would truncate the bytes the compiler is about to embed. The job ends with `mdox:fmt`. Each generator emits an unpadded table, and the formatter repads it, leaving a generated file dirty after every run.
 
-`.gitignore` names five more. They travel as release assets: each changes on every run, and generating them inside a correctness run dirtied the tree on every invocation.
+`.gitignore` names three more. They travel as release assets: each changes on every run, and generating them inside a correctness run dirtied the tree on every invocation.
 
-| File                                | Written by                    | Reads                     |
-|-------------------------------------|-------------------------------|---------------------------|
-| `docs/test-fixtures.md`             | `atkins gen:fixtures`         | a matrix run of the suite |
-| `docs/coverage/phpscript.md`        | `atkins cover`                | `cover/pkg.cov`           |
-| `docs/coverage/phpscript-detail.md` | `atkins cover`                | `cover/pkg.cov`           |
-| `docs/coverage/dbadmin.md`          | `atkins gen:coverage:dbadmin` | `cover/dbadmin.file.txt`  |
-| `docs/coverage/dbadmin-detail.md`   | `atkins gen:coverage:dbadmin` | `cover/dbadmin.file.txt`  |
+| File                                | Written by            | Reads                     |
+|-------------------------------------|-----------------------|---------------------------|
+| `docs/test-fixtures.md`             | `atkins gen:fixtures` | a matrix run of the suite |
+| `docs/coverage/phpscript.md`        | `atkins cover`        | `cover/pkg.cov`           |
+| `docs/coverage/phpscript-detail.md` | `atkins cover`        | `cover/pkg.cov`           |
 
-`atkins gen` writes all five, `atkins release:docs` attaches them, and `atkins publish` runs both halves. Do not commit one.
+`atkins gen` writes all three, `atkins release:docs` attaches them, and `atkins publish` runs both halves. Do not commit one.
 
 `gen:fixtures` is the matrix run again with `-o`, a second execution of the suite. The gate runs on every pipeline invocation and this job does not. Paying for the report on demand is the cheaper half. The command names no `--profile`, `--count` or `--time`: a timing that differs by a millisecond per run would dirty every commit.
 
-The Go coverage pair reads the `cover/pkg.cov` that `go:test` wrote, through the `.md.tpl` template beside each document. `splint coverage` answers this and `summary coverfunc` does not. splint reads the Go source alongside the profile, which lets a row hold the cognitive complexity and the line count next to the percentage, sorted, in markdown tables. Two documents: a reader scans the per-package summary, while the per-function detail serves somebody hunting the gap. Each is the same command with the other template.
+The Go coverage pair reads the `cover/pkg.cov` that `go:test` wrote, through the `.md.tpl` template beside each document. `splint coverage` answers this. splint reads the Go source alongside the profile, which lets a row hold the cognitive complexity and the line count next to the percentage, sorted, in markdown tables. Two documents: a reader scans the per-package summary, while the per-function detail serves somebody hunting the gap. Each is the same command with the other template.
 
-The dbadmin pair stays on `summary coverfunc`. Its input is PHP coverage read off the running service, and splint parses Go source. `cover/dbadmin.file.txt` comes from the dbadmin venom suite in `demos/dbadmin/tests/atkins.yml`, which reads it off the running container. The report then states which paths an end-to-end run of the application executed.
-
-A tree without a measurement leaves the documents alone and writes no empty report. The coverage pair needs `atkins go:test` and the dbadmin pair needs `atkins test:demos`. Each names the missing input and exits 0.
+A tree without a measurement leaves the documents alone and writes no empty report. The coverage pair needs `atkins go:test`. It names the missing input and exits 0.
 
 `atkins gen` ends with `fmt`. splint and mdox disagree on how wide an emoji is, the coverage tables come out of splint with padding mdox rewrites, and without that pass the target always leaves a diff. `atkins cover` alone runs no `fmt`. Run it by hand and leave the padding alone.
 
@@ -134,37 +128,9 @@ vale keeps its gate: its exit status reads a rule's level alone. Three write-goo
 
 `test:lifecycle` drives the server like an operator: a real process, a real pidfile, a real signal. No fixture reaches any of that. Two parts matter most: the pidfile names the running process, and a refused reload leaves it serving. A Go test in the same process cannot reach either.
 
-## Composer
-
-`titpetric/minitpl` arrives per project and nobody vendors it by hand. Every tree with a `composer.json` installs before the demo suites run. No Go test reads these trees, which keeps `composer:install` out of the default pipeline: `test:demos`, the job that executes them, owns it.
-
-A `for:` over `demos.all` replaces the shell loop. The shell loop took the exit code of its last iteration: a failed install in `demos/example` passed the task as long as the next one worked.
-
-`demos.all` names every tree with a `composer.json`. `demos.venom` is the subset that is a compose service with a separate venom suite. `demos/common` joins the first, not the second: that package's fixtures share a directory with its source, which answers to `test:phpscript:common`, never to a server.
-
-Each demo declares a separate pipeline, because it resolves the address of its container first. `test:demos:venom` delegates to `atkins test` in the demo's `tests/` and runs no venom here.
-
-## The demo pipelines
-
-Neither demo service publishes a port. `demos/dbadmin/tests/atkins.yml` reads its container's address out of `docker inspect`, then passes it to venom through `--var=host=`. The example pipeline does the same. `atkins host` prints that address alone, for a run by hand.
-
-Each lookup is a pipeline of `xargs --no-run-if-empty`. atkins expands `$(...)` as it reads the file, ahead of bash: a command substitution would resolve while the file loads, before any container runs. The `--no-run-if-empty` guard holds back the stage after it when `docker compose ps -q` prints no id, and `atkins host` then fails with a message naming `atkins up`.
-
-Each suite restarts its service first. The container reads the PHP sources through a volume mount. A restart re-reads an edited one.
-
-## The compose services
-
-[`compose.yml`](../compose.yml) runs both demos off the image `build` wrote, and includes the mysql and postgres services from `docker/service/`.
-
-The dbadmin service takes `--cover`: the venom suite in `demos/dbadmin/tests` measures those PHP sources. Every request folds into a single aggregator. `/debug/phpscript/coverage` publishes it while the container runs, and shutdown writes `cover/dbadmin.{time}.cov` into the mounted `cover/`. `{time}` names one file per run and keeps the file the run before it wrote.
-
-That service joins two networks. caddy reaches it over the ingress network, while the compose default hosts mysql and postgres. dbadmin opens a connection to each dialect. A service that cannot resolve them reports every driver but sqlite as unreachable.
-
-The example service keeps a `config.yml` and names it with `-f`. `.env.docker` configures the dbadmin service alone.
-
 ## The vendored skills
 
-`.atkins/skills/` holds this repository's copies of the shared skills. `go.yml` and `mdox.yml` differ from the ones in `$HOME` in one path: every `.cov` file this tree produces goes under `cover/`, Go and PHP alike, which puts the coverage artifact of a run in one directory. The other repositories read `pkg.cov` at their root.
+`.atkins/skills/` holds this repository's copies of the shared skills. `go.yml` and `mdox.yml` differ from the ones in `$HOME` in one path: every `.cov` file this tree produces goes under `cover/`, which puts the coverage artifact of a run in one directory. The other repositories read `pkg.cov` at their root.
 
 `go:test` puts the package list last. gotestsum passes everything after `--` to go test, and `-coverprofile` writes no profile, silently, when the list precedes the flags.
 

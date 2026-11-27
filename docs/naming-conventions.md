@@ -144,7 +144,7 @@ The comment describes the behaviour a script sees: the arguments as PHP variable
 
 [`docs/reference/extensions/implemented-apis.md`](reference/extensions/implemented-apis.md) is the inventory: every function and class the standard CLI runtime registers, the Go package of each binding, its doc comment and its signature. `go run ./scripts/list-apis` writes it from the live runtime and the source tree, and `atkins test:introspection` regenerates it.
 
-The names there record the convention in use. The fixtures and the demos both type every name listed, `new Database("dbadmin")` and `new Database\Migrate("dbadmin")` among them.
+The names there record the convention in use. The fixtures and the [demos](https://github.com/titpetric/phpscript-demos) both type every name listed, `new Database("dbadmin")` and `new Database\Migrate("dbadmin")` among them.
 
 ### Areas of interest
 

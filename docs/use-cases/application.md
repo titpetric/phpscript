@@ -2,7 +2,7 @@
 
 This walkthrough builds a complete phpscript application from an empty directory: a bookmark list with a database, migrations, routed endpoints, compiled templates and an integration test suite.
 
-The finished application is [demos/example](../../demos/example). Every snippet below comes from it. Its [venom suite](../../demos/example/tests/venom.yml) runs in CI, and the code here stays true.
+The finished application is [phpscript-demos/example](https://github.com/titpetric/phpscript-demos/tree/main/example). Every snippet below comes from it. Its [venom suite](https://github.com/titpetric/phpscript-demos/blob/main/example/tests/venom.yml) runs in CI, and the code here stays true.
 
 ## 1. The layout
 
@@ -263,4 +263,4 @@ Unit-level behaviour that does not need a server belongs in a `.phpt` fixture in
 - [Database bindings](database.md) - queries, transactions and migrations
 - [Templating](templating.md) - the template syntax in full
 - [Error handling](error-handling.md) - exceptions from bindings
-- [dbadmin](../../demos/dbadmin) - a larger application built the same way
+- [dbadmin](https://github.com/titpetric/phpscript-demos/tree/main/dbadmin) - a larger application built the same way

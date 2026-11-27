@@ -2,7 +2,6 @@ vendor
 /phpscript
 /docs/data
 /docs/log
-.venom*
 *.pprof
 *.db
 *.sqlite
@@ -15,16 +14,10 @@ vendor
 # release and read back from there, never committed.
 /build
 
-# Coverage profiles, both Go and PHP, written here by the test job and by a
-# server started with --cover. The directory is committed empty because the
-# compose stack bind mounts it into the container.
+# Coverage profiles written here by the test job. The directory is committed
+# empty so the profile has a path to land in.
 /cover/*
 !/cover/.gitkeep
-
-# Build and run artifacts: the templates a demo compiles on first request, and
-# venom's per-run logs. Neither is committed.
-venom*.log
-demos/*/templates/cache/
 
 # The matrix runner writes a hidden temp script next to each fixture for the
 # php runner, and the filesystem fixture writes into its own area folder.

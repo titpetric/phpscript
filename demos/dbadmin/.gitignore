@@ -1,6 +1,0 @@
-*.db*
-*.sqlite*
-venom*.log
-/.claude
-/vendor/
-/templates/cache/

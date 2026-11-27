@@ -31,7 +31,7 @@ A `SKIP` is a fixture that opted a runtime out, or a missing `php` binary. Any o
 
 **The known divergences, read as claims.** `../README.md` lists the places phpscript differs from PHP, and nearly every entry names the fixture that pins it. Re-run those fixtures against `php` directly. An entry whose fixture fails to show the documented divergence is either a stale paragraph for a fixed divergence, or a new divergence.
 
-**The advisory findings.** `phpscript lint ./...` over the demo trees and the fixture corpus. Undefined names, unreachable code and unused variables. A finding over `demos/` matters more than a fixture finding: a demo is real code.
+**The advisory findings.** `phpscript lint ./...` over the fixture corpus. Undefined names, unreachable code and unused variables.
 
 **The bindings the audit marks TODO.** `../allocation-performance.md` holds a per-binding audit whose legend distinguishes optimal, allocates-by-design, and real improvement available. The TODO rows are a worklist the audit already triaged.
 

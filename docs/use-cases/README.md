@@ -18,7 +18,7 @@ The `phpscript` project has similar use cases to PHP. With implicit error checki
 - [Shared memory bindings](shared-memory.md)
 - [Templating](templating.md)
 
-Combining these principles you can create lightweight web applications that follow simple PHP conventions without OOP. This repository holds two, and tests cover both:
+Combining these principles you can create lightweight web applications that follow simple PHP conventions without OOP. [phpscript-demos](https://github.com/titpetric/phpscript-demos) holds two, and tests cover both:
 
-- [demos/example](../../demos/example) - the application the walkthrough builds
-- [demos/dbadmin](../../demos/dbadmin) - a phpMyAdmin-style SQLite console
+- [example](https://github.com/titpetric/phpscript-demos/tree/main/example) - the application the walkthrough builds
+- [dbadmin](https://github.com/titpetric/phpscript-demos/tree/main/dbadmin) - a phpMyAdmin-style SQLite console

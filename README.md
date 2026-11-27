@@ -43,9 +43,9 @@ scripts/benchmark.php
 
 `.phpt` fixtures settle behaviour: each starts by running the source through real `php`, and `phpscript test --matrix ./tests/...` checks runtime output against `php` output on both engines and on `php` itself. The [test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md) come out of that run and hold every fixture, its area and three columns. A table copied into this page goes stale the moment an area grows, as this one did.
 
-The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row lists the cognitive complexity and the line count next to the percentage. A low number says whether there is a branch left to cover or nothing to cover at all. `atkins gen:coverage:dbadmin` measures the dbadmin demo the same way from a running server, in [dbadmin.md](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md).
+The Go test run collects a coverage profile, and `atkins cover` folds it into splint's document of the tree to render the generated [code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md) report, per package, with [the detail](https://github.com/titpetric/phpscript/releases/latest/download/phpscript-detail.md) per function. Each row lists the cognitive complexity and the line count next to the percentage. A low number says whether there is a branch left to cover or nothing to cover at all.
 
-Those five documents change on every run. `.gitignore` holds them. `atkins gen` writes the set, and `atkins publish` attaches it to the release, where the links above resolve.
+Those three documents change on every run. `.gitignore` holds them. `atkins gen` writes the set, and `atkins publish` attaches it to the release, where the links above resolve.
 
 ## Building a docker image
 

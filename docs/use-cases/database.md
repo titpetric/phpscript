@@ -57,7 +57,7 @@ foreach (Database::connections() as $name) {
 }
 ```
 
-The [dbadmin demo](../../demos/dbadmin) uses this. Each row holds a name plus a DSN. `connection_dao::open()` registers the DSN before it constructs a client.
+The [dbadmin demo](https://github.com/titpetric/phpscript-demos/tree/main/dbadmin) uses this. Each row holds a name plus a DSN. `connection_dao::open()` registers the DSN before it constructs a client.
 
 ## Read-only clients
 
@@ -107,7 +107,7 @@ That is the shape of the whole feature: a boundary for the code holding the clie
 
 ## Run migrations
 
-`Database\Migrate` applies `*.up.sql` migration files to a named connection. This section sets up migrations for an application from scratch. The [dbadmin demo](../../demos/dbadmin) is a working copy of the result.
+`Database\Migrate` applies `*.up.sql` migration files to a named connection. This section sets up migrations for an application from scratch. The [dbadmin demo](https://github.com/titpetric/phpscript-demos/tree/main/dbadmin) is a working copy of the result.
 
 ### Lay out the schema
 

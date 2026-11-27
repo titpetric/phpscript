@@ -158,7 +158,7 @@ The split mirrors JSON above. The PHP names keep PHP's behaviour for ported code
 
 The session cookie belongs to `Session\Manager`. `Session\Manager::start()` mints the session id from `crypto/rand` and sets the header itself with `HttpOnly`, `Path=/` and `SameSite=Lax` fixed. A script cannot weaken those attributes or choose the value. `destroy()` writes the expiry of that same cookie. `$_COOKIE` is the read side, which the runtime fills per request.
 
-[demos/dbadmin](../demos/dbadmin) demonstrates that the shape is enough: every page behind a session, a login against the application's own `.htpasswd`, and logout. No cookie string or password hash appears anywhere in its PHP.
+[phpscript-demos/dbadmin](https://github.com/titpetric/phpscript-demos/tree/main/dbadmin) demonstrates that the shape is enough: every page behind a session, a login against the application's own `.htpasswd`, and logout. No cookie string or password hash appears anywhere in its PHP.
 
 ### Error handlers
 
