@@ -14,7 +14,7 @@ A Go test file takes the name of the file it covers: `dispatch_test.go` beside `
 
 A fixture does two jobs and must do both:
 
-1. It states the behavior. A change that alters it fails a named test, ahead of any benchmark or demo.
+1. It states the behavior. A change that alters it fails a named test, ahead of any benchmark.
 2. It records what PHP itself produces. The fixture measures the runtime against the language, not against the runtime's own output.
 
 The second job finds defects. Expected output written from what phpscript prints locks in whatever it prints, including the wrong parts. Expected output taken from `php` makes the fixture a compatibility check.
@@ -412,7 +412,7 @@ tests/github/issue_062_test.go   Test_Issue062, the check that fails on a regres
 
 `atkins` runs the fast gate: format, lint, `go test`, `go install`, the introspection step that regenerates documentation, `mdox:fmt` across the markdown, and `bake` for both architectures. It needs a Go toolchain and docker. It runs no php and pushes nothing.
 
-`atkins ci:daily` runs the suites a push cannot: bake, the fixtures on all three runtimes and the lifecycle run. It needs a `php` binary and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services. The deferred `db:down` stops them. Any run that fails partway still leaves nothing running.
+`atkins ci:daily` runs the suites a push cannot: the vulnerability gate, the image push, the fixtures on all three runtimes and the lifecycle run. It needs a `php` binary and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services. The deferred `db:down` stops them. Any run that fails partway still leaves nothing running.
 
 `bake` builds `docker/Dockerfile.build` for amd64 and arm64, and `atkins deploy` pushes `titpetric/phpscript:latest-amd64` and `latest-arm64`, tags that follow `main` and are unstable. The gate ends with `bake`, and `ci:daily` deploys it.
 

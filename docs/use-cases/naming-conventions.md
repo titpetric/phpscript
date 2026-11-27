@@ -123,7 +123,7 @@ names report.
 ## What a site may contain
 
 The names below are conventions, not requirements. A site needs only a
-document root. The rest are the names the examples and the demo trees use.
+document root. The rest are the names the examples use.
 
 | Name              | What it holds                                                                 |
 |-------------------|-------------------------------------------------------------------------------|
@@ -135,7 +135,6 @@ document root. The rest are the names the examples and the demo trees use.
 | `vendor/`         | composer packages, loaded with `--include vendor/autoload.php` or `runner.include` |
 | `tests/`          | `.phpt` fixtures and the scripts `phpscript test ./...` runs                  |
 | `migrations/`     | SQL or PHP a `@startup` job applies                                           |
-| `dbadmin/`        | the phpMyAdmin-style demo, when a tree carries one                            |
 
 `@route`, `@startup` and `@schedule` are comments, not files. The scanner reads
 them in PHP files outside `public/`. A route file may be anywhere the scan

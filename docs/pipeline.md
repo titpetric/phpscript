@@ -32,7 +32,7 @@ The first run creates the `docker-container` builder `phpscript`, because the de
 
 ## The jobs outside the default pipeline
 
-`setup` installs the one tool `atkins.yml` calls by name, `splint`, at the revision its repository holds. The repository changes it, and a tag would lag a fix made for a job here. `mdox` stays out: `atkins mdox:setup` declares `interactive: true` and fails without a tty.
+`setup` installs the one tool `atkins.yml` calls by name, `splint`, at the revision its repository holds. The repository changes it. A tag would lag a fix made for a job here. `mdox` stays out: `atkins mdox:setup` declares `interactive: true` and fails without a tty.
 
 `bench` delegates to two jobs. `taskset -c 3` narrows the affinity mask to one core. Go reads that mask for `GOMAXPROCS`, leaving a `b.RunParallel` benchmark there to run a single goroutine: a contention fix measures as zero, a contention regression as nothing. `bench:pinned` skips three parallel benchmarks. `bench:parallel` runs them unpinned, at the higher `-count`: a parallel benchmark on a shared box is the noisiest number in the set. `BenchmarkLookupTreeSize` is serial, and the `$` anchoring the first selector name keeps it in the pinned job.
 
@@ -46,35 +46,20 @@ The shared release skill builds through docker and names one tag. `release:notes
 
 ## The supply chain
 
-`sca:vuln` runs `govulncheck` over the module and fails on a vulnerability the
-binary reaches. `ci:daily` runs it ahead of `deploy`. A nightly image then does
-not publish a reachable advisory. The command names the tool version. The job
-runs it through `go run`, which leaves the module's own requirements alone.
+`sca:vuln` runs `govulncheck` over the module and fails on a vulnerability the binary reaches. `ci:daily` runs it ahead of `deploy`. A nightly image then does not publish a reachable advisory. The command names the tool version. The job runs it through `go run`, which leaves the module's own requirements alone.
 
-An SBOM describes one artifact. This repository publishes two, a static binary
-and a container image, and each takes its document from the build that produced
-it.
+An SBOM describes one artifact. This repository publishes two, a static binary and a container image, and each takes its document from the build that produced it.
 
-`scripts/release.sh` writes a CycloneDX document beside every binary it builds.
-The document reads the build metadata inside the binary. It names the modules
-the linker kept and the Go version that built it. A module the source tree never
-links stays out. A release holds one document per binary,
-`<name>-<goos>-<goarch>.cdx.json`. The tag supplies the version that license
-detection reads.
+`scripts/release.sh` writes a CycloneDX document beside every binary it builds. The document reads the build metadata inside the binary. It names the modules the linker kept and the Go version that built it. A module the source tree never links stays out. A release holds one document per binary, `<name>-<goos>-<goarch>.cdx.json`. The tag supplies the version that license detection reads.
 
-The image takes its document from BuildKit. Both targets in `docker-bake.hcl`
-declare `attest = ["type=sbom"]`, which makes `atkins deploy` attach an SPDX
-document to the manifest it pushes. The registry keeps the document beside the
-image, and a pull by digest brings both:
+The image takes its document from BuildKit. Both targets in `docker-bake.hcl` declare `attest = ["type=sbom"]`, which makes `atkins deploy` attach an SPDX document to the manifest it pushes. The registry keeps the document beside the image, and a pull by digest brings both:
 
 ```sh
 docker buildx imagetools inspect titpetric/phpscript:latest-amd64 \
   --format '{{json .SBOM}}'
 ```
 
-The image document covers the Alpine packages and the binary, and the release
-document covers the binary alone. A consumer that pulls the image reads the
-attestation; a consumer that downloads the binary reads the release asset.
+The image document covers the Alpine packages and the binary, and the release document covers the binary alone. A consumer that pulls the image reads the attestation; a consumer that downloads the binary reads the release asset.
 
 ## Generation
 

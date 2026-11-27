@@ -362,7 +362,7 @@ Six slots, one or two lines each.
 | Consumer and trigger | Who it serves, what triggers it, and why those two do not match                                                                            |
 | Intent               | The stated purpose the current trigger is wrong against                                                                                    |
 | Proposal             | Where the setting lives, its name, its default, and what an existing file does with the key absent                                         |
-| What breaks for whom | The configuration keys, demo, fixture or venom suite whose behaviour changes, and what a user who upgrades without editing their file sees |
+| What breaks for whom | The configuration keys, fixture or venom suite whose behaviour changes, and what a user who upgrades without editing their file sees |
 
 The shape, as the operator writes it:
 
