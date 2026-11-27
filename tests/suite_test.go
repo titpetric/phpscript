@@ -193,7 +193,7 @@ func TestSuite_Mail(t *testing.T) {
 }
 
 // TestSuite_Include covers the prelude the fixtures below a suite root load.
-// A nil suite answers "". A fixture tree without a phpscript.yml takes the
+// A nil suite answers "". A fixture tree holding no phpscript.yml takes the
 // same path as a tree whose file named no include.
 func TestSuite_Include(t *testing.T) {
 	dir := writeSuite(t, "test:\n  include: bootstrap.php\n")
@@ -363,4 +363,31 @@ func loadHookSuite(t *testing.T, tag, setup, teardown string) *Suite {
 		t.Fatal(err)
 	}
 	return suite
+}
+
+// TestSuite_Excluded covers the directories test.exclude names: a fixture
+// inside one is not part of the run, and a sibling with the same prefix is.
+// The entries resolve from the suite root.
+func TestSuite_Excluded(t *testing.T) {
+	dir := writeSuite(t, "test:\n  exclude:\n    - ext\n    - build/generated\n")
+	suite, err := LoadSuite(dir, config.New(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"ext/acme/tests/a.phpt", "build/generated/b.phpt"} {
+		if !suite.Excluded(filepath.Join(dir, filepath.FromSlash(name))) {
+			t.Errorf("%s is not excluded", name)
+		}
+	}
+	for _, name := range []string{"tests/a.phpt", "extensions/a.phpt", "build/other/a.phpt"} {
+		if suite.Excluded(filepath.Join(dir, filepath.FromSlash(name))) {
+			t.Errorf("%s is excluded", name)
+		}
+	}
+
+	var absent *Suite
+	if absent.Excluded(filepath.Join(dir, "ext/a.phpt")) {
+		t.Error("a missing suite excludes nothing")
+	}
 }

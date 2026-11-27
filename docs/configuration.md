@@ -37,6 +37,7 @@ routes:
 
 test:
   include: ""
+  exclude: []
   hooks:
     setup: ""
     teardown: ""
@@ -521,6 +522,7 @@ A `phpscript.yml` found in the fixture tree marks a **suite root**, the director
 | Key              | Default  | Scope      | Purpose                                                    |
 |------------------|---------:|------------|------------------------------------------------------------|
 | `include`        |     none | suite root | File included ahead of every fixture below the suite root. |
+| `exclude`        |     none | suite root | Directories below the root whose fixtures the run skips.   |
 | `hooks.setup`    |     none | suite root | File run once before those fixtures.                       |
 | `hooks.teardown` |     none | suite root | File run once after them.                                  |
 | `parallel`       |      `1` | run        | Fixtures of one area running at once, `--parallel`.        |
@@ -534,6 +536,16 @@ The flag wins over the file. A configuration describes a tree. A flag records th
 `include` and the hook files resolve against the directory holding the file, which is also the application root of the fixtures below. Their own folder still answers first. Its relative includes keep their meaning. The suite root supplies the files the folder does not hold.
 
 `--include` is the operator's. It speaks from the directory holding the command, not from a suite. It replaces what any suite named.
+
+`exclude` names directories below the suite root whose fixtures the run skips. An entry is a relative path. It drops every fixture below it. A composer install directory is the usual one. A dependency's own suite is not the application's to run. Its fixtures cannot resolve an autoloader the application does not install.
+
+```yaml
+test:
+  exclude:
+    - ext/
+```
+
+A suite file below an excluded directory is not read either. Its hooks stay out of the run.
 
 ### Run keys
 

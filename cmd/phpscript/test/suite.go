@@ -52,6 +52,28 @@ func (s suites) resolve(path string) *tests.Suite {
 	}
 }
 
+// excluded reports whether the suite governing path lists it as skipped.
+func (s suites) excluded(path string) bool {
+	return s.resolve(path).Excluded(path)
+}
+
+// excludedDir reports whether the suite governing dir's contents skips dir.
+func (s suites) excludedDir(dir string) bool {
+	return s.resolve(filepath.Join(dir, "fixture.phpt")).Excluded(dir)
+}
+
+// dropExcluded removes the fixtures a suite's exclude list names.
+func dropExcluded(fixtures []*tests.Fixture, found suites) []*tests.Fixture {
+	kept := make([]*tests.Fixture, 0, len(fixtures))
+	for _, fx := range fixtures {
+		if found.excluded(fx.Path) {
+			continue
+		}
+		kept = append(kept, fx)
+	}
+	return kept
+}
+
 // discoverSuites loads the run's suite plus every phpscript.yml below the walk's paths.
 func discoverSuites(base config.Config, paths []string) (suites, error) {
 	var result suites
@@ -104,6 +126,9 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 			// An installed dependency publishes no suite, and walking an
 			// install tree costs a stat per directory in it.
 			if d.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+			if result.excludedDir(path) {
 				return filepath.SkipDir
 			}
 			return load(path)

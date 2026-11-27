@@ -23,6 +23,7 @@ routes:
 # The defaults `phpscript test` runs under. docs/configuration.md#test-suites names the scope of each key.
 test:
   include: ""
+  exclude: []
   hooks:
     setup: ""
     teardown: ""

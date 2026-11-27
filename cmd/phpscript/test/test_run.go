@@ -147,6 +147,8 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		return fmt.Errorf("discover fixtures: %w", err)
 	}
 
+	fixtures = dropExcluded(fixtures, found)
+
 	mode, err := cacheMode(opts.Cache)
 	if err != nil {
 		return err

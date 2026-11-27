@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 )
 
 // runKeys are test keys a suite below the invocation root cannot set.
@@ -25,6 +27,11 @@ type Test struct {
 	// a composer autoloader, a bootstrap file. The --include flag
 	// overrides this key. The session skips a missing file.
 	Include string `yaml:"include"`
+
+	// Exclude names directories below this suite root whose fixtures the run
+	// skips: an installed dependency, a generated tree. An entry is a path
+	// relative to the root.
+	Exclude []string `yaml:"exclude"`
 
 	// Hooks are the PHP files the session runs around the fixtures.
 	Hooks Hooks `yaml:"hooks"`
@@ -102,6 +109,13 @@ func (t Test) Check(filename string) error {
 	}
 	if t.Parallel < 0 {
 		return fmt.Errorf("%s: test.parallel must be at least 1, not %d", filename, t.Parallel)
+	}
+	for _, dir := range t.Exclude {
+		clean := filepath.Clean(dir)
+		if dir == "" || clean == "." || clean == ".." || filepath.IsAbs(clean) ||
+			strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("%s: test.exclude wants a directory below the suite root, not %q", filename, dir)
+		}
 	}
 	return nil
 }

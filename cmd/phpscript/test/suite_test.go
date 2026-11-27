@@ -190,3 +190,52 @@ func TestRunSuiteSetsFlagDefaults(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 }
+
+// TestSuiteExcludeDropsFixtures covers test.exclude: a fixture below the named
+// directory is not part of the run. A vendored suite cannot fail the
+// application's.
+func TestSuiteExcludeDropsFixtures(t *testing.T) {
+	writeTree(t, map[string]string{
+		"phpscript.yml": "test:\n  exclude:\n    - ext\n",
+		"tests/a.phpt":  passingFixture,
+		"ext/dep/tests/fail.phpt": "name: fails\ndescription: A vendored fixture the suite excludes.\n---\n<?php echo \"no\";\n---\nyes\n",
+	})
+
+	if err := test.Run(context.Background(), []string{"./..."}, test.Options{Config: config.New()}); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+}
+
+// TestSuiteExcludeSkipsTheSuiteBelow covers the suite file a dependency
+// publishes: an excluded directory holds no suite of the run. Its hooks stay
+// out too.
+func TestSuiteExcludeSkipsTheSuiteBelow(t *testing.T) {
+	writeTree(t, map[string]string{
+		"phpscript.yml":         "test:\n  exclude:\n    - ext\n",
+		"tests/a.phpt":          passingFixture,
+		"ext/dep/phpscript.yml": "test:\n  hooks:\n    setup: setup.php\n",
+		"ext/dep/setup.php":     "<?php throw new Exception(\"excluded suite ran\");\n",
+		"ext/dep/a.phpt":        passingFixture,
+	})
+
+	if err := test.Run(context.Background(), []string{"./..."}, test.Options{Config: config.New()}); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+}
+
+// TestSuiteExcludeAllLeavesNothing covers an exclusion naming every fixture:
+// the run fails, naming the empty selection.
+func TestSuiteExcludeAllLeavesNothing(t *testing.T) {
+	writeTree(t, map[string]string{
+		"phpscript.yml": "test:\n  exclude:\n    - tests\n",
+		"tests/a.phpt":  passingFixture,
+	})
+
+	err := test.Run(context.Background(), []string{"./..."}, test.Options{Config: config.New()})
+	if err == nil {
+		t.Fatal("run passed with every fixture excluded")
+	}
+	if !strings.Contains(err.Error(), "no .phpt test fixtures found") {
+		t.Fatalf("err = %v, want the empty selection reported", err)
+	}
+}

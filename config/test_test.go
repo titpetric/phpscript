@@ -42,6 +42,9 @@ func TestTest_Validate(t *testing.T) {
 		{name: "cache off", block: config.Test{Cache: "off", Parallel: 4}},
 		{name: "no cache named", block: config.Test{Parallel: 0}},
 		{name: "an unknown cache", block: config.Test{Cache: "request"}, want: "test.cache must be worker or off"},
+		{name: "an exclude below the root", block: config.Test{Exclude: []string{"ext", "build/out"}}},
+		{name: "an absolute exclude", block: config.Test{Exclude: []string{"/tmp"}}, want: "test.exclude wants a directory below the suite root"},
+		{name: "an exclude climbing out", block: config.Test{Exclude: []string{"../other"}}, want: "test.exclude wants a directory below the suite root"},
 		{name: "a negative parallel", block: config.Test{Parallel: -1}, want: "test.parallel must be at least 1"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

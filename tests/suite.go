@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/titpetric/phpscript/config"
@@ -129,6 +130,37 @@ func (s *Suite) Include() string {
 	return s.Config.Test.Include
 }
 
+// Excluded reports whether path is inside a directory test.exclude names,
+// resolved from the suite root.
+func (s *Suite) Excluded(path string) bool {
+	if s == nil {
+		return false
+	}
+	for _, dir := range s.Config.Test.Exclude {
+		if underDir(filepath.Join(s.Dir, dir), path) {
+			return true
+		}
+	}
+	return false
+}
+
+// underDir reports whether path is dir itself or a file below it.
+func underDir(dir, path string) bool {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return false
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
 // Setup names the hook the session runs before the fixtures, or "".
 func (s *Suite) Setup() string {
 	if s == nil {
@@ -195,7 +227,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 
 // RunSetup runs the setup hooks of every suite, outermost first, and stops at
 // the first failure. A suite that lays down no state leaves its fixtures
-// nothing to assert against. The run fails once, before a fixture executes,
+// nothing to assert. The run fails once, before a fixture executes,
 // and reports the missing table once.
 func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 	for _, suite := range suites {
